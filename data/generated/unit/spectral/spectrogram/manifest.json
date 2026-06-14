@@ -1,0 +1,27 @@
+{
+  "perf_cases": [
+    {
+      "id": "perf_psd",
+      "fs": 400.0,
+      "window": {
+        "kind": "string",
+        "value": "hann"
+      },
+      "nperseg": 128,
+      "noverlap": 96,
+      "nfft": 256,
+      "mode": "psd",
+      "x_generator": {
+        "kind": "real_array_pattern",
+        "shape": [
+          1048576
+        ],
+        "freq_row": 0.011,
+        "freq_col": 0.019,
+        "phase": 0.0,
+        "amplitude": 1.0,
+        "bias": 0.0
+      }
+    }
+  ]
+}

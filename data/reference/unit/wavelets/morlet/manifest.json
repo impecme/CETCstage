@@ -1,0 +1,54 @@
+{
+  "accuracy_cases": [
+    {
+      "id": "complete_default",
+      "points": 16,
+      "w": 5.0,
+      "s": 1.0,
+      "complete": true,
+      "atol": 1e-12,
+      "rtol": 1e-12,
+      "expected_signal_file": "expected/complete_default__signal.csv"
+    },
+    {
+      "id": "standard_custom",
+      "points": 17,
+      "w": 4.5,
+      "s": 1.75,
+      "complete": false,
+      "atol": 1e-12,
+      "rtol": 1e-12,
+      "expected_signal_file": "expected/standard_custom__signal.csv"
+    },
+    {
+      "id": "point_center",
+      "points": 1,
+      "w": 3.0,
+      "s": 2.0,
+      "complete": true,
+      "atol": 1e-12,
+      "rtol": 1e-12,
+      "expected_signal_file": "expected/point_center__signal.csv"
+    },
+    {
+      "id": "zero_points",
+      "points": 0,
+      "w": 5.0,
+      "s": 1.0,
+      "complete": true,
+      "atol": 1e-12,
+      "rtol": 1e-12,
+      "expected_signal_file": "expected/zero_points__signal.csv"
+    },
+    {
+      "id": "invalid_s",
+      "points": 16,
+      "w": 5.0,
+      "s": 0.0,
+      "complete": true,
+      "atol": 1e-12,
+      "rtol": 1e-12,
+      "expect_invalid_argument": true
+    }
+  ]
+}

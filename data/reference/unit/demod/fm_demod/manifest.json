@@ -1,0 +1,42 @@
+{
+  "accuracy_cases": [
+    {
+      "id": "constant_step",
+      "axis": -1,
+      "input_file": "input/constant_step__signal.csv",
+      "expected_signal_file": "expected/constant_step__signal.csv",
+      "atol": 1e-06,
+      "rtol": 1e-06
+    },
+    {
+      "id": "unwrap_step",
+      "axis": -1,
+      "input_file": "input/unwrap_step__signal.csv",
+      "expected_signal_file": "expected/unwrap_step__signal.csv",
+      "atol": 1e-06,
+      "rtol": 1e-06
+    },
+    {
+      "id": "matrix_axis0",
+      "axis": 0,
+      "shape": [
+        3,
+        2
+      ],
+      "input_file": "input/matrix_axis0__signal.csv",
+      "expected_signal_file": "expected/matrix_axis0__signal.csv",
+      "expected_shape": [
+        2,
+        2
+      ],
+      "atol": 1e-06,
+      "rtol": 1e-06
+    },
+    {
+      "id": "invalid_axis",
+      "axis": 3,
+      "input_file": "input/invalid_axis__signal.csv",
+      "expect_invalid_argument": true
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "perf_cases": [
+    {
+      "id": "perf_case",
+      "shape": [
+        64,
+        512
+      ],
+      "axis": -1,
+      "phase_step": 0.01
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "perf_cases": [
+    {
+      "id": "perf_lags",
+      "in1_len": 4096,
+      "in2_len": 1025,
+      "mode": "full"
+    }
+  ]
+}

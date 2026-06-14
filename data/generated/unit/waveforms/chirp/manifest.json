@@ -1,0 +1,59 @@
+{
+  "__comment": "参数说明：以下为可修改参数的中文解释，仅当前文件实际出现的字段生效。",
+  "__comment_fields": {
+    "perf_cases": "性能测试用例列表",
+    "id": "测试用例 ID（建议唯一）",
+    "t_generator": "时间向量生成器",
+    "start": "生成器起点",
+    "stop": "生成器终点",
+    "count": "生成器采样点数",
+    "endpoint": "是否包含终点",
+    "f0": "起始频率",
+    "t1": "达到 f1 的时间",
+    "f1": "终止频率",
+    "method": "算法方法（如 pad/gust、auto/direct/fft）",
+    "phi": "相位偏移（度）",
+    "vertex_zero": "二次 chirp 顶点位置开关",
+    "type": "类型参数（如 detrend/chirp 输出类型）",
+    "atol": "绝对误差容限",
+    "rtol": "相对误差容限"
+  },
+  "perf_cases": [
+    {
+      "id": "perf_linear_real",
+      "t_generator": {
+        "start": 0.0,
+        "stop": 1.0,
+        "count": 16777216,
+        "endpoint": false
+      },
+      "f0": 6.0,
+      "t1": 1.0,
+      "f1": 10.0,
+      "method": "linear",
+      "phi": 0.0,
+      "vertex_zero": true,
+      "type": "real",
+      "atol": 1e-12,
+      "rtol": 1e-12
+    },
+    {
+      "id": "perf_linear_complex",
+      "t_generator": {
+        "start": 0.0,
+        "stop": 1.0,
+        "count": 16777216,
+        "endpoint": false
+      },
+      "f0": 6.0,
+      "t1": 1.0,
+      "f1": 10.0,
+      "method": "linear",
+      "phi": 30.0,
+      "vertex_zero": true,
+      "type": "complex",
+      "atol": 1e-12,
+      "rtol": 1e-12
+    }
+  ]
+}

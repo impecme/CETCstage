@@ -1,0 +1,40 @@
+{
+  "__comment": "参数说明：以下为可修改参数的中文解释，仅当前文件实际出现的字段生效。",
+  "__comment_fields": {
+    "accuracy_cases": "精度测试用例列表",
+    "id": "测试用例 ID（建议唯一）",
+    "b_file": "输入/输出数据文件路径",
+    "x_file": "输入/输出数据文件路径",
+    "x_shape": "张量/数组形状",
+    "axis": "算子处理轴",
+    "padtype": "边界扩展类型",
+    "padlen": "边界填充长度",
+    "method": "算法方法（如 pad/gust、auto/direct/fft）",
+    "irlen": "冲激响应长度提示",
+    "atol": "绝对误差容限",
+    "rtol": "相对误差容限",
+    "expected_signal_file": "输入/输出数据文件路径",
+    "expected_signal_shape": "张量/数组形状"
+  },
+  "accuracy_cases": [
+    {
+      "id": "fir_pad",
+      "b_file": "input/b.csv",
+      "x_file": "input/x.csv",
+      "x_shape": [
+        32
+      ],
+      "axis": -1,
+      "padtype": "odd",
+      "padlen": -1,
+      "method": "pad",
+      "irlen": -1,
+      "atol": 1e-09,
+      "rtol": 1e-09,
+      "expected_signal_file": "expected/fir_pad.csv",
+      "expected_signal_shape": [
+        32
+      ]
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+{
+  "__comment": "参数说明：以下为可修改参数的中文解释，仅当前文件实际出现的字段生效。",
+  "__comment_fields": {
+    "accuracy_cases": "精度测试用例列表",
+    "id": "测试用例 ID（建议唯一）",
+    "is_nd": "是否为 N 维模式",
+    "size": "窗口长度或输出长度",
+    "dtype": "数据类型字符串",
+    "index_mode": "索引模式",
+    "atol": "绝对误差容限",
+    "rtol": "相对误差容限",
+    "expected_signal_file": "输入/输出数据文件路径",
+    "shape": "形状参数",
+    "index_shape": "索引形状"
+  },
+  "accuracy_cases": [
+    {
+      "id": "one_dim_default",
+      "is_nd": false,
+      "size": 5,
+      "dtype": "float32",
+      "index_mode": "default",
+      "atol": 0.0,
+      "rtol": 0.0,
+      "expected_signal_file": "expected/one_dim_default.csv"
+    },
+    {
+      "id": "one_dim_mid",
+      "is_nd": false,
+      "size": 5,
+      "dtype": "float32",
+      "index_mode": "mid",
+      "atol": 0.0,
+      "rtol": 0.0,
+      "expected_signal_file": "expected/one_dim_mid.csv"
+    },
+    {
+      "id": "nd_mid",
+      "is_nd": true,
+      "shape": [3, 4],
+      "dtype": "float32",
+      "index_mode": "mid",
+      "atol": 0.0,
+      "rtol": 0.0,
+      "expected_signal_file": "expected/nd_mid.csv"
+    },
+    {
+      "id": "nd_shape",
+      "is_nd": true,
+      "shape": [2, 3],
+      "dtype": "float32",
+      "index_mode": "shape",
+      "index_shape": [1, 2],
+      "atol": 0.0,
+      "rtol": 0.0,
+      "expected_signal_file": "expected/nd_shape.csv"
+    }
+  ]
+}

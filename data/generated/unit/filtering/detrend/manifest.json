@@ -1,0 +1,30 @@
+{
+  "__comment": "参数说明：以下为可修改参数的中文解释，仅当前文件实际出现的字段生效。",
+  "__comment_fields": {
+    "perf_cases": "性能测试用例列表",
+    "id": "测试用例 ID（建议唯一）",
+    "data_file": "输入/输出数据文件路径",
+    "data_shape": "张量/数组形状",
+    "axis": "算子处理轴",
+    "type": "类型参数（如 detrend/chirp 输出类型）",
+    "bp": "断点索引序列",
+    "overwrite_data": "是否允许原地覆盖输入",
+    "atol": "绝对误差容限",
+    "rtol": "相对误差容限"
+  },
+  "perf_cases": [
+    {
+      "id": "perf_linear",
+      "data_file": "input/data.csv",
+      "data_shape": [
+        1048576
+      ],
+      "axis": -1,
+      "type": "linear",
+      "bp": [],
+      "overwrite_data": false,
+      "atol": 1e-10,
+      "rtol": 1e-10
+    }
+  ]
+}

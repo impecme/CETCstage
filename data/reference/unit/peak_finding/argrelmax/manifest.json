@@ -1,0 +1,42 @@
+{
+  "accuracy_cases": [
+    {
+      "id": "max_1d",
+      "comparator": "greater",
+      "axis": 0,
+      "order": 1,
+      "mode": "clip",
+      "shape": [
+        7
+      ],
+      "data_file": "input/max_1d__data.csv",
+      "expected_axis0_file": "expected/max_1d__axis0.csv"
+    },
+    {
+      "id": "max_2d_axis1",
+      "comparator": "greater",
+      "axis": 1,
+      "order": 1,
+      "mode": "clip",
+      "shape": [
+        2,
+        5
+      ],
+      "data_file": "input/max_2d_axis1__data.csv",
+      "expected_axis0_file": "expected/max_2d_axis1__axis0.csv",
+      "expected_axis1_file": "expected/max_2d_axis1__axis1.csv"
+    },
+    {
+      "id": "plateau_none",
+      "comparator": "greater",
+      "axis": 0,
+      "order": 1,
+      "mode": "clip",
+      "shape": [
+        4
+      ],
+      "data_file": "input/plateau_none__data.csv",
+      "expected_axis0_file": "expected/plateau_none__axis0.csv"
+    }
+  ]
+}

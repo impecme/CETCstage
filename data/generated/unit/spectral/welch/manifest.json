@@ -1,0 +1,27 @@
+{
+  "perf_cases": [
+    {
+      "id": "perf_mean_hann",
+      "fs": 800.0,
+      "window": {
+        "kind": "string",
+        "value": "hann"
+      },
+      "nperseg": 256,
+      "noverlap": 128,
+      "nfft": 256,
+      "average": "mean",
+      "x_generator": {
+        "kind": "real_array_pattern",
+        "shape": [
+          4096
+        ],
+        "freq_row": 0.013,
+        "freq_col": 0.023,
+        "phase": 0.05,
+        "amplitude": 1.0,
+        "bias": 0.0
+      }
+    }
+  ]
+}

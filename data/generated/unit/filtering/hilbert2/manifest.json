@@ -1,0 +1,25 @@
+{
+  "__comment": "参数说明：以下为可修改参数的中文解释，仅当前文件实际出现的字段生效。",
+  "__comment_fields": {
+    "perf_cases": "性能测试用例列表",
+    "id": "测试用例 ID（建议唯一）",
+    "x_file": "输入/输出数据文件路径",
+    "x_shape": "张量/数组形状",
+    "n_shape": "张量/数组形状",
+    "atol": "绝对误差容限",
+    "rtol": "相对误差容限"
+  },
+  "perf_cases": [
+    {
+      "id": "perf_2d",
+      "x_file": "input/x.csv",
+      "x_shape": [
+        1024,
+        1024
+      ],
+      "n_shape": [],
+      "atol": 1e-09,
+      "rtol": 1e-09
+    }
+  ]
+}

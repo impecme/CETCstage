@@ -1,0 +1,58 @@
+{
+  "__comment": "参数说明：以下为可修改参数的中文解释，仅当前文件实际出现的字段生效。",
+  "__comment_fields": {
+    "accuracy_cases": "精度测试用例列表",
+    "id": "测试用例 ID（建议唯一）",
+    "x_shape": "张量/数组形状",
+    "atol": "绝对误差容限",
+    "rtol": "相对误差容限",
+    "n": "阶数或长度参数（按算子语义）",
+    "x_file": "输入/输出数据文件路径",
+    "expected_signal_file": "输入/输出数据文件路径",
+    "expected_signal_shape": "张量/数组形状",
+    "expect_invalid_argument": "布尔开关参数"
+  },
+  "accuracy_cases": [
+    {
+      "id": "order3_vector",
+      "x_shape": [
+        17
+      ],
+      "atol": 1e-11,
+      "rtol": 1e-11,
+      "n": 3,
+      "x_file": "input/order3_vector.csv",
+      "expected_signal_file": "expected/order3_vector.csv",
+      "expected_signal_shape": [
+        17
+      ]
+    },
+    {
+      "id": "order6_matrix",
+      "x_shape": [
+        3,
+        6
+      ],
+      "atol": 1e-11,
+      "rtol": 1e-11,
+      "n": 6,
+      "x_file": "input/order6_matrix.csv",
+      "expected_signal_file": "expected/order6_matrix.csv",
+      "expected_signal_shape": [
+        3,
+        6
+      ]
+    },
+    {
+      "id": "invalid_order",
+      "x_shape": [
+        1
+      ],
+      "atol": 1e-11,
+      "rtol": 1e-11,
+      "n": -1,
+      "x_file": "input/invalid_order.csv",
+      "expect_invalid_argument": true
+    }
+  ]
+}

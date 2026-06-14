@@ -1,0 +1,77 @@
+{
+  "__comment": "参数说明：以下为可修改参数的中文解释，仅当前文件实际出现的字段生效。",
+  "__comment_fields": {
+    "accuracy_cases": "精度测试用例列表",
+    "id": "测试用例 ID（建议唯一）",
+    "t_file": "输入/输出数据文件路径",
+    "fc": "中心频率",
+    "bw": "带宽参数",
+    "bwr": "带宽参考电平（dB）",
+    "tpr": "时间功率参考电平（dB）",
+    "retquad": "是否返回正交通道",
+    "retenv": "是否返回包络通道",
+    "atol": "绝对误差容限",
+    "rtol": "相对误差容限",
+    "expected_signal_file": "输入/输出数据文件路径",
+    "expected_quadrature_file": "输入/输出数据文件路径",
+    "expected_envelope_file": "输入/输出数据文件路径"
+  },
+  "accuracy_cases": [
+    {
+      "id": "real",
+      "t_file": "input/small_time.csv",
+      "fc": 5.0,
+      "bw": 0.5,
+      "bwr": -6.0,
+      "tpr": -60.0,
+      "retquad": false,
+      "retenv": false,
+      "atol": 1e-12,
+      "rtol": 1e-12,
+      "expected_signal_file": "expected/signal.csv"
+    },
+    {
+      "id": "iq",
+      "t_file": "input/small_time.csv",
+      "fc": 5.0,
+      "bw": 0.5,
+      "bwr": -6.0,
+      "tpr": -60.0,
+      "retquad": true,
+      "retenv": false,
+      "atol": 1e-12,
+      "rtol": 1e-12,
+      "expected_signal_file": "expected/signal.csv",
+      "expected_quadrature_file": "expected/quadrature.csv"
+    },
+    {
+      "id": "ienv",
+      "t_file": "input/small_time.csv",
+      "fc": 5.0,
+      "bw": 0.5,
+      "bwr": -6.0,
+      "tpr": -60.0,
+      "retquad": false,
+      "retenv": true,
+      "atol": 1e-12,
+      "rtol": 1e-12,
+      "expected_signal_file": "expected/signal.csv",
+      "expected_envelope_file": "expected/envelope.csv"
+    },
+    {
+      "id": "bundle",
+      "t_file": "input/small_time.csv",
+      "fc": 5.0,
+      "bw": 0.5,
+      "bwr": -6.0,
+      "tpr": -60.0,
+      "retquad": true,
+      "retenv": true,
+      "atol": 1e-12,
+      "rtol": 1e-12,
+      "expected_signal_file": "expected/signal.csv",
+      "expected_quadrature_file": "expected/quadrature.csv",
+      "expected_envelope_file": "expected/envelope.csv"
+    }
+  ]
+}

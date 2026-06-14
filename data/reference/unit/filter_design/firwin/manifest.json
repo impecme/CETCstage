@@ -1,0 +1,85 @@
+{
+  "__comment": "参数说明：以下为可修改参数的中文解释，仅当前文件实际出现的字段生效。",
+  "__comment_fields": {
+    "accuracy_cases": "精度测试用例列表",
+    "id": "测试用例 ID（建议唯一）",
+    "numtaps": "FIR taps 数量",
+    "cutoff": "截止频率参数",
+    "width": "过渡带宽度",
+    "window": "窗函数配置",
+    "kind": "参数类型/生成器类型",
+    "value": "参数数值",
+    "pass_zero": "通带设置参数",
+    "scale": "是否进行增益归一化",
+    "nyq": "Nyquist 频率（兼容参数）",
+    "fs": "采样频率",
+    "atol": "绝对误差容限",
+    "rtol": "相对误差容限",
+    "expected_signal_file": "输入/输出数据文件路径"
+  },
+  "accuracy_cases": [
+    {
+      "id": "lowpass_scalar",
+      "numtaps": 11,
+      "cutoff": 0.3,
+      "width": -1.0,
+      "window": {
+        "kind": "string",
+        "value": "hamming"
+      },
+      "pass_zero": {
+        "kind": "bool",
+        "value": true
+      },
+      "scale": true,
+      "nyq": -1.0,
+      "fs": 2.0,
+      "atol": 1e-11,
+      "rtol": 1e-11,
+      "expected_signal_file": "expected/lowpass_scalar.csv"
+    },
+    {
+      "id": "bandpass_multi",
+      "numtaps": 13,
+      "cutoff": [
+        0.2,
+        0.5
+      ],
+      "width": -1.0,
+      "window": {
+        "kind": "string",
+        "value": "hann"
+      },
+      "pass_zero": {
+        "kind": "bool",
+        "value": false
+      },
+      "scale": true,
+      "nyq": -1.0,
+      "fs": 2.0,
+      "atol": 1e-11,
+      "rtol": 1e-11,
+      "expected_signal_file": "expected/bandpass_multi.csv"
+    },
+    {
+      "id": "width_override",
+      "numtaps": 21,
+      "cutoff": 0.25,
+      "width": 0.05,
+      "window": {
+        "kind": "string",
+        "value": "boxcar"
+      },
+      "pass_zero": {
+        "kind": "bool",
+        "value": true
+      },
+      "scale": true,
+      "nyq": -1.0,
+      "fs": 2.0,
+      "atol": 1e-10,
+      "rtol": 1e-10,
+      "expected_signal_file": "expected/width_override.csv"
+    }
+  ]
+}

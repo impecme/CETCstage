@@ -1,0 +1,29 @@
+{
+  "__comment": "参数说明：以下为可修改参数的中文解释，仅当前文件实际出现的字段生效。",
+  "__comment_fields": {
+    "accuracy_cases": "精度测试用例列表",
+    "id": "测试用例 ID（建议唯一）",
+    "x_file": "输入/输出数据文件路径",
+    "h_file": "输入/输出数据文件路径",
+    "n_chans": "通道数",
+    "atol": "绝对误差容限",
+    "rtol": "相对误差容限",
+    "expected_signal_file": "输入/输出数据文件路径",
+    "expected_signal_shape": "张量/数组形状"
+  },
+  "accuracy_cases": [
+    {
+      "id": "channels_4",
+      "x_file": "input/x.csv",
+      "h_file": "input/h.csv",
+      "n_chans": 4,
+      "atol": 1e-10,
+      "rtol": 1e-10,
+      "expected_signal_file": "expected/channels_4.csv",
+      "expected_signal_shape": [
+        6,
+        4
+      ]
+    }
+  ]
+}

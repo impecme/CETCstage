@@ -1,0 +1,25 @@
+{
+  "perf_cases": [
+    {
+      "id": "perf_large",
+      "x_shape": [
+        4096,
+        256
+      ],
+      "nfft": 128,
+      "atol": 1e-11,
+      "rtol": 1e-11,
+      "x_generator": {
+        "kind": "complex_matrix_tone",
+        "shape": [
+          4096,
+          256
+        ],
+        "freq_row": 0.017,
+        "freq_col": 0.023,
+        "phase": 0.1,
+        "amplitude": 1.0
+      }
+    }
+  ]
+}

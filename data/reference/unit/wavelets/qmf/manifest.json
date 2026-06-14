@@ -1,0 +1,25 @@
+{
+  "accuracy_cases": [
+    {
+      "id": "even_taps",
+      "atol": 1e-12,
+      "rtol": 1e-12,
+      "hk_file": "input/even_taps__hk.csv",
+      "expected_signal_file": "expected/even_taps__signal.csv"
+    },
+    {
+      "id": "odd_taps",
+      "atol": 1e-12,
+      "rtol": 1e-12,
+      "hk_file": "input/odd_taps__hk.csv",
+      "expected_signal_file": "expected/odd_taps__signal.csv"
+    },
+    {
+      "id": "empty_taps",
+      "atol": 1e-12,
+      "rtol": 1e-12,
+      "hk_file": "input/empty_taps__hk.csv",
+      "expected_signal_file": "expected/empty_taps__signal.csv"
+    }
+  ]
+}

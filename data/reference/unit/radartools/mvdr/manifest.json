@@ -1,0 +1,38 @@
+{
+  "accuracy_cases": [
+    {
+      "id": "calc_cov_true",
+      "x_shape": [
+        4,
+        16
+      ],
+      "x_file": "input/calc_cov_true_x.csv",
+      "sv_shape": [
+        4,
+        1
+      ],
+      "sv_file": "input/calc_cov_true_sv.csv",
+      "calc_cov": true,
+      "atol": 1e-10,
+      "rtol": 1e-10,
+      "expected_signal_file": "expected/calc_cov_true_signal.csv"
+    },
+    {
+      "id": "covariance_input",
+      "x_shape": [
+        4,
+        4
+      ],
+      "x_file": "input/covariance_input_x.csv",
+      "sv_shape": [
+        4,
+        1
+      ],
+      "sv_file": "input/covariance_input_sv.csv",
+      "calc_cov": false,
+      "atol": 1e-10,
+      "rtol": 1e-10,
+      "expected_signal_file": "expected/covariance_input_signal.csv"
+    }
+  ]
+}

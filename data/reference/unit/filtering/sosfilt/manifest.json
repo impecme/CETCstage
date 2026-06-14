@@ -1,0 +1,51 @@
+{
+  "__comment": "参数说明：以下为可修改参数的中文解释，仅当前文件实际出现的字段生效。",
+  "__comment_fields": {
+    "accuracy_cases": "精度测试用例列表",
+    "id": "测试用例 ID（建议唯一）",
+    "sos_file": "输入/输出数据文件路径",
+    "sos_shape": "张量/数组形状",
+    "x_file": "输入/输出数据文件路径",
+    "x_shape": "张量/数组形状",
+    "axis": "算子处理轴",
+    "zi_file": "输入/输出数据文件路径",
+    "zi_shape": "张量/数组形状",
+    "atol": "绝对误差容限",
+    "rtol": "相对误差容限",
+    "expected_signal_file": "输入/输出数据文件路径",
+    "expected_signal_shape": "张量/数组形状",
+    "expected_state_file": "输入/输出数据文件路径",
+    "expected_state_shape": "张量/数组形状"
+  },
+  "accuracy_cases": [
+    {
+      "id": "with_state_1d",
+      "sos_file": "input/sos.csv",
+      "sos_shape": [
+        1,
+        6
+      ],
+      "x_file": "input/x.csv",
+      "x_shape": [
+        6
+      ],
+      "axis": -1,
+      "zi_file": "input/zi.csv",
+      "zi_shape": [
+        1,
+        2
+      ],
+      "atol": 1e-10,
+      "rtol": 1e-10,
+      "expected_signal_file": "expected/with_state_1d.csv",
+      "expected_signal_shape": [
+        6
+      ],
+      "expected_state_file": "expected/with_state_1d__state.csv",
+      "expected_state_shape": [
+        1,
+        2
+      ]
+    }
+  ]
+}

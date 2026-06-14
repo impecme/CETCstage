@@ -1,0 +1,38 @@
+{
+  "accuracy_cases": [
+    {
+      "id": "real_full_direct",
+      "mode": "full",
+      "method": "direct",
+      "is_complex": false,
+      "shape1": [
+        3
+      ],
+      "shape2": [
+        3
+      ],
+      "in1_file": "input/real_full_direct__in1.csv",
+      "in2_file": "input/real_full_direct__in2.csv",
+      "expected_values_file": "expected/real_full_direct__values.csv",
+      "atol": 1e-06,
+      "rtol": 1e-06
+    },
+    {
+      "id": "complex_full_fft",
+      "mode": "full",
+      "method": "fft",
+      "is_complex": true,
+      "shape1": [
+        2
+      ],
+      "shape2": [
+        2
+      ],
+      "in1_file": "input/complex_full_fft__in1.csv",
+      "in2_file": "input/complex_full_fft__in2.csv",
+      "expected_values_file": "expected/complex_full_fft__values.csv",
+      "atol": 1e-06,
+      "rtol": 1e-06
+    }
+  ]
+}

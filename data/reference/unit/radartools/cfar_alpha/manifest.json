@@ -1,0 +1,12 @@
+{
+  "accuracy_cases": [
+    {
+      "id": "basic",
+      "cells": 20,
+      "pfa": 0.001,
+      "atol": 1e-14,
+      "rtol": 1e-14,
+      "expected_value_file": "expected/basic_value.csv"
+    }
+  ]
+}

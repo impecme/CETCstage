@@ -1,0 +1,14 @@
+{
+  "perf_cases": [
+    {
+      "id": "perf_cycle",
+      "dim_x": 4,
+      "dim_z": 2,
+      "dim_u": 2,
+      "points": 64,
+      "dtype": "float32",
+      "control_fill": 0.25,
+      "measurement_fill": 0.5
+    }
+  ]
+}

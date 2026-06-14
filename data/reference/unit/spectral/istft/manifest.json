@@ -1,0 +1,26 @@
+{
+  "accuracy_cases": [
+    {
+      "id": "onesided_boundary",
+      "atol": 1e-08,
+      "rtol": 1e-08,
+      "fs": 400.0,
+      "window": {
+        "kind": "string",
+        "value": "hann"
+      },
+      "nperseg": 64,
+      "noverlap": 48,
+      "nfft": 128,
+      "input_onesided": true,
+      "boundary_enabled": true,
+      "zxx_shape": [
+        65,
+        25
+      ],
+      "zxx_file": "input/onesided_boundary__zxx.csv",
+      "expected_times_file": "expected/onesided_boundary__times.csv",
+      "expected_signal_file": "expected/onesided_boundary__signal.csv"
+    }
+  ]
+}

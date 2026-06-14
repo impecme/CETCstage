@@ -1,0 +1,22 @@
+{
+  "__comment": "参数说明：以下为可修改参数的中文解释，仅当前文件实际出现的字段生效。",
+  "__comment_fields": {
+    "accuracy_cases": "精度测试用例列表",
+    "id": "测试用例 ID（建议唯一）",
+    "size": "窗口长度或输出长度",
+    "sym": "是否使用对称窗（false 常表示周期窗）",
+    "atol": "绝对误差容限",
+    "rtol": "相对误差容限",
+    "expected_signal_file": "输入/输出数据文件路径"
+  },
+  "accuracy_cases": [
+    {
+      "id": "sym_small",
+      "size": 8,
+      "sym": true,
+      "atol": 0.0,
+      "rtol": 0.0,
+      "expected_signal_file": "expected/sym_small.csv"
+    }
+  ]
+}

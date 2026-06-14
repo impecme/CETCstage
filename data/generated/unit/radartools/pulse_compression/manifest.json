@@ -1,0 +1,33 @@
+{
+  "perf_cases": [
+    {
+      "id": "perf_large",
+      "x_shape": [
+        4096,
+        256
+      ],
+      "nfft": 256,
+      "normalize": true,
+      "atol": 1e-11,
+      "rtol": 1e-11,
+      "x_generator": {
+        "kind": "complex_matrix_tone",
+        "shape": [
+          4096,
+          256
+        ],
+        "freq_row": 0.013,
+        "freq_col": 0.041,
+        "phase": 0.2,
+        "amplitude": 1.0
+      },
+      "templ_generator": {
+        "kind": "complex_signal_tone",
+        "length": 256,
+        "freq": 0.037,
+        "phase": 0.15,
+        "amplitude": 1.0
+      }
+    }
+  ]
+}

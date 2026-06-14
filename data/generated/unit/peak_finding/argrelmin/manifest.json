@@ -1,0 +1,14 @@
+{
+  "perf_cases": [
+    {
+      "id": "perf_case",
+      "shape": [
+        128,
+        256
+      ],
+      "axis": 1,
+      "order": 2,
+      "mode": "clip"
+    }
+  ]
+}

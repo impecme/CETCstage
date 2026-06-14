@@ -1,0 +1,24 @@
+{
+  "perf_cases": [
+    {
+      "id": "perf_hann_density",
+      "fs": 1024.0,
+      "window": {
+        "kind": "string",
+        "value": "hann"
+      },
+      "scaling": "density",
+      "x_generator": {
+        "kind": "real_array_pattern",
+        "shape": [
+          4096
+        ],
+        "freq_row": 0.009,
+        "freq_col": 0.021,
+        "phase": 0.1,
+        "amplitude": 1.0,
+        "bias": 0.0
+      }
+    }
+  ]
+}

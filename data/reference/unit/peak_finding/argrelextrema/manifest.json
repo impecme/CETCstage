@@ -1,0 +1,42 @@
+{
+  "accuracy_cases": [
+    {
+      "id": "extrema_greater_order2",
+      "comparator": "greater",
+      "axis": 0,
+      "order": 2,
+      "mode": "clip",
+      "shape": [
+        9
+      ],
+      "data_file": "input/extrema_greater_order2__data.csv",
+      "expected_axis0_file": "expected/extrema_greater_order2__axis0.csv"
+    },
+    {
+      "id": "extrema_less_2d",
+      "comparator": "less",
+      "axis": 1,
+      "order": 1,
+      "mode": "clip",
+      "shape": [
+        2,
+        5
+      ],
+      "data_file": "input/extrema_less_2d__data.csv",
+      "expected_axis0_file": "expected/extrema_less_2d__axis0.csv",
+      "expected_axis1_file": "expected/extrema_less_2d__axis1.csv"
+    },
+    {
+      "id": "invalid_order",
+      "comparator": "greater",
+      "axis": 0,
+      "order": 0,
+      "mode": "clip",
+      "shape": [
+        3
+      ],
+      "data_file": "input/invalid_order__data.csv",
+      "expect_invalid_argument": true
+    }
+  ]
+}

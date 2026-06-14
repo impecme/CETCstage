@@ -1,0 +1,95 @@
+{
+  "__comment": "参数说明：以下为可修改参数的中文解释，仅当前文件实际出现的字段生效。",
+  "__comment_fields": {
+    "accuracy_cases": "精度测试用例列表",
+    "id": "测试用例 ID（建议唯一）",
+    "size": "窗口长度或输出长度",
+    "sym": "是否使用对称窗（false 常表示周期窗）",
+    "atol": "绝对误差容限",
+    "rtol": "相对误差容限",
+    "spec": "参数规格对象",
+    "kind": "参数类型/生成器类型",
+    "value": "参数数值",
+    "expected_signal_file": "输入/输出数据文件路径",
+    "name": "参数名称",
+    "first": "参数对中的第一个参数",
+    "second": "参数对中的第二个参数",
+    "nbar": "Taylor 窗 nbar 参数",
+    "sll": "旁瓣电平（dB）",
+    "norm": "是否归一化",
+    "values": "参数数组"
+  },
+  "accuracy_cases": [
+    {
+      "id": "string_hann",
+      "size": 9,
+      "sym": true,
+      "atol": 1e-12,
+      "rtol": 1e-12,
+      "spec": {
+        "kind": "string",
+        "value": "hann"
+      },
+      "expected_signal_file": "expected/string_hann.csv"
+    },
+    {
+      "id": "float_kaiser",
+      "size": 10,
+      "sym": false,
+      "atol": 1e-12,
+      "rtol": 1e-12,
+      "spec": {
+        "kind": "float",
+        "value": 8.0
+      },
+      "expected_signal_file": "expected/float_kaiser.csv"
+    },
+    {
+      "id": "named_pair_general_gaussian",
+      "size": 11,
+      "sym": true,
+      "atol": 1e-12,
+      "rtol": 1e-12,
+      "spec": {
+        "kind": "named_pair",
+        "name": "general_gaussian",
+        "first": 1.5,
+        "second": 4.0
+      },
+      "expected_signal_file": "expected/named_pair_general_gaussian.csv"
+    },
+    {
+      "id": "named_taylor",
+      "size": 12,
+      "sym": false,
+      "atol": 1e-11,
+      "rtol": 1e-11,
+      "spec": {
+        "kind": "named_taylor",
+        "name": "taylor",
+        "nbar": 4,
+        "sll": 35.0,
+        "norm": true
+      },
+      "expected_signal_file": "expected/named_taylor.csv"
+    },
+    {
+      "id": "array_passthrough",
+      "size": 5,
+      "sym": true,
+      "atol": 1e-12,
+      "rtol": 1e-12,
+      "spec": {
+        "kind": "array",
+        "values": [
+          0.1,
+          0.4,
+          1.0,
+          0.4,
+          0.1
+        ]
+      },
+      "expected_signal_file": "expected/array_passthrough.csv"
+    }
+  ]
+}

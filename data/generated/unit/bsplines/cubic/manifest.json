@@ -1,0 +1,26 @@
+{
+  "__comment": "参数说明：以下为可修改参数的中文解释，仅当前文件实际出现的字段生效。",
+  "__comment_fields": {
+    "perf_cases": "性能测试用例列表",
+    "id": "测试用例 ID（建议唯一）",
+    "x_shape": "张量/数组形状",
+    "atol": "绝对误差容限",
+    "rtol": "相对误差容限",
+    "x_start": "x 生成起点",
+    "x_stop": "x 生成终点",
+    "x_count": "x 采样点数"
+  },
+  "perf_cases": [
+    {
+      "id": "perf_large_vector",
+      "x_shape": [
+        262144
+      ],
+      "atol": 1e-12,
+      "rtol": 1e-12,
+      "x_start": -4.0,
+      "x_stop": 4.0,
+      "x_count": 262144
+    }
+  ]
+}

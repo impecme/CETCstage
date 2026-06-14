@@ -1,0 +1,28 @@
+{
+  "__comment": "参数说明：以下为可修改参数的中文解释，仅当前文件实际出现的字段生效。",
+  "__comment_fields": {
+    "accuracy_cases": "精度测试用例列表",
+    "id": "测试用例 ID（建议唯一）",
+    "size": "窗口长度或输出长度",
+    "sym": "是否使用对称窗（false 常表示周期窗）",
+    "int_param0": "整型参数",
+    "param0": "第一个窗函数参数",
+    "bool_param0": "布尔参数",
+    "atol": "绝对误差容限",
+    "rtol": "相对误差容限",
+    "expected_signal_file": "输入/输出数据文件路径"
+  },
+  "accuracy_cases": [
+    {
+      "id": "nbar5_sll35",
+      "size": 12,
+      "sym": true,
+      "int_param0": 5,
+      "param0": 35.0,
+      "bool_param0": true,
+      "atol": 1e-11,
+      "rtol": 1e-11,
+      "expected_signal_file": "expected/nbar5_sll35.csv"
+    }
+  ]
+}

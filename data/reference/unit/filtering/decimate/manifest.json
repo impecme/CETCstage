@@ -1,0 +1,36 @@
+{
+  "__comment": "参数说明：以下为可修改参数的中文解释，仅当前文件实际出现的字段生效。",
+  "__comment_fields": {
+    "accuracy_cases": "精度测试用例列表",
+    "id": "测试用例 ID（建议唯一）",
+    "x_file": "输入/输出数据文件路径",
+    "x_shape": "张量/数组形状",
+    "q": "抽取倍数",
+    "n": "阶数或长度参数（按算子语义）",
+    "axis": "算子处理轴",
+    "zero_phase": "是否启用零相位处理",
+    "atol": "绝对误差容限",
+    "rtol": "相对误差容限",
+    "expected_signal_file": "输入/输出数据文件路径",
+    "expected_signal_shape": "张量/数组形状"
+  },
+  "accuracy_cases": [
+    {
+      "id": "q3_zero_phase",
+      "x_file": "input/x.csv",
+      "x_shape": [
+        48
+      ],
+      "q": 3,
+      "n": -1,
+      "axis": -1,
+      "zero_phase": true,
+      "atol": 1e-08,
+      "rtol": 1e-08,
+      "expected_signal_file": "expected/q3_zero_phase.csv",
+      "expected_signal_shape": [
+        16
+      ]
+    }
+  ]
+}

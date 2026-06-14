@@ -1,0 +1,36 @@
+{
+  "accuracy_cases": [
+    {
+      "id": "basic",
+      "x_shape": [
+        3,
+        8
+      ],
+      "x_file": "input/basic_x.csv",
+      "templ_file": "input/basic_templ.csv",
+      "nfft": 8,
+      "normalize": false,
+      "atol": 1e-11,
+      "rtol": 1e-11,
+      "expected_signal_file": "expected/basic_signal.csv"
+    },
+    {
+      "id": "normalize_boxcar_nfft16",
+      "x_shape": [
+        2,
+        8
+      ],
+      "x_file": "input/normalize_boxcar_nfft16_x.csv",
+      "templ_file": "input/normalize_boxcar_nfft16_templ.csv",
+      "window": {
+        "kind": "string",
+        "value": "boxcar"
+      },
+      "nfft": 16,
+      "normalize": true,
+      "atol": 1e-11,
+      "rtol": 1e-11,
+      "expected_signal_file": "expected/normalize_boxcar_nfft16_signal.csv"
+    }
+  ]
+}

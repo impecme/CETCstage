@@ -1,0 +1,41 @@
+{
+  "__comment": "参数说明：以下为可修改参数的中文解释，仅当前文件实际出现的字段生效。",
+  "__comment_fields": {
+    "perf_cases": "性能测试用例列表",
+    "id": "测试用例 ID（建议唯一）",
+    "is_nd": "是否为 N 维模式",
+    "size": "窗口长度或输出长度",
+    "dtype": "数据类型字符串",
+    "index_mode": "索引模式",
+    "atol": "绝对误差容限",
+    "rtol": "相对误差容限",
+    "shape": "形状参数",
+    "scalar_index": "标量索引位置"
+  },
+  "perf_cases": [
+    {
+      "id": "perf_1d_mid",
+      "is_nd": false,
+      "size": 16777216,
+      "dtype": "float32",
+      "index_mode": "mid",
+      "atol": 0.0,
+      "rtol": 0.0,
+      "shape": null
+    },
+    {
+      "id": "perf_nd_scalar",
+      "is_nd": true,
+      "shape": [
+        4096,
+        4096
+      ],
+      "dtype": "float32",
+      "index_mode": "scalar",
+      "scalar_index": 3,
+      "atol": 0.0,
+      "rtol": 0.0,
+      "size": null
+    }
+  ]
+}

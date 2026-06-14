@@ -1,0 +1,35 @@
+{
+  "__comment": "参数说明：以下为可修改参数的中文解释，仅当前文件实际出现的字段生效。",
+  "__comment_fields": {
+    "perf_cases": "性能测试用例列表",
+    "id": "测试用例 ID（建议唯一）",
+    "x_file": "输入/输出数据文件路径",
+    "x_shape": "张量/数组形状",
+    "num": "目标输出长度",
+    "axis": "算子处理轴",
+    "window": "窗函数配置",
+    "kind": "参数类型/生成器类型",
+    "value": "参数数值",
+    "domain": "处理域（如 time/freq）",
+    "atol": "绝对误差容限",
+    "rtol": "相对误差容限"
+  },
+  "perf_cases": [
+    {
+      "id": "perf_time_domain",
+      "x_file": "input/x.csv",
+      "x_shape": [
+        1048576
+      ],
+      "num": 1572864,
+      "axis": 0,
+      "window": {
+        "kind": "string",
+        "value": "hann"
+      },
+      "domain": "time",
+      "atol": 1e-09,
+      "rtol": 1e-09
+    }
+  ]
+}

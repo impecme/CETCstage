@@ -1,0 +1,28 @@
+{
+  "accuracy_cases": [
+    {
+      "id": "width4_points17",
+      "points": 17,
+      "a": 4.0,
+      "atol": 1e-12,
+      "rtol": 1e-12,
+      "expected_signal_file": "expected/width4_points17__signal.csv"
+    },
+    {
+      "id": "width10_point1",
+      "points": 1,
+      "a": 10.0,
+      "atol": 1e-12,
+      "rtol": 1e-12,
+      "expected_signal_file": "expected/width10_point1__signal.csv"
+    },
+    {
+      "id": "invalid_a",
+      "points": 16,
+      "a": 0.0,
+      "atol": 1e-12,
+      "rtol": 1e-12,
+      "expect_invalid_argument": true
+    }
+  ]
+}

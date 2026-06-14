@@ -1,0 +1,28 @@
+{
+  "accuracy_cases": [
+    {
+      "id": "min_1d",
+      "comparator": "less",
+      "axis": 0,
+      "order": 1,
+      "mode": "clip",
+      "shape": [
+        5
+      ],
+      "data_file": "input/min_1d__data.csv",
+      "expected_axis0_file": "expected/min_1d__axis0.csv"
+    },
+    {
+      "id": "min_wrap",
+      "comparator": "less",
+      "axis": 0,
+      "order": 1,
+      "mode": "wrap",
+      "shape": [
+        3
+      ],
+      "data_file": "input/min_wrap__data.csv",
+      "expected_axis0_file": "expected/min_wrap__axis0.csv"
+    }
+  ]
+}

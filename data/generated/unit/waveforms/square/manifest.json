@@ -1,0 +1,41 @@
+{
+  "__comment": "参数说明：以下为可修改参数的中文解释，仅当前文件实际出现的字段生效。",
+  "__comment_fields": {
+    "perf_cases": "性能测试用例列表",
+    "id": "测试用例 ID（建议唯一）",
+    "t_generator": "时间向量生成器",
+    "start": "生成器起点",
+    "stop": "生成器终点",
+    "count": "生成器采样点数",
+    "endpoint": "是否包含终点",
+    "duty": "占空比参数",
+    "atol": "绝对误差容限",
+    "rtol": "相对误差容限"
+  },
+  "perf_cases": [
+    {
+      "id": "perf_scalar",
+      "t_generator": {
+        "start": 0.0,
+        "stop": 62.83185307179586,
+        "count": 16777216,
+        "endpoint": false
+      },
+      "duty": 0.25,
+      "atol": 0.0,
+      "rtol": 0.0
+    },
+    {
+      "id": "perf_vector",
+      "t_generator": {
+        "start": 0.0,
+        "stop": 62.83185307179586,
+        "count": 16777216,
+        "endpoint": false
+      },
+      "duty": 0.75,
+      "atol": 0.0,
+      "rtol": 0.0
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "perf_cases": [
+    {
+      "id": "perf_calc_cov",
+      "x_shape": [
+        8,
+        64
+      ],
+      "sv_shape": [
+        8,
+        1
+      ],
+      "calc_cov": true,
+      "atol": 1e-10,
+      "rtol": 1e-10,
+      "x_generator": {
+        "kind": "complex_matrix_pattern",
+        "shape": [
+          8,
+          64
+        ],
+        "freq_row": 0.03,
+        "freq_col": 0.02,
+        "phase": 0.1,
+        "amplitude": 1.0
+      },
+      "sv_generator": {
+        "kind": "steering_vector",
+        "length": 8,
+        "phase_step": 0.14,
+        "phase": 0.05,
+        "column_vector": true
+      }
+    }
+  ]
+}

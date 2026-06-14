@@ -1,0 +1,53 @@
+{
+  "accuracy_cases": [
+    {
+      "id": "surface_auto",
+      "x_shape": [
+        16
+      ],
+      "x_file": "input/surface_auto_x.csv",
+      "fs": 8.0,
+      "prf": 2.0,
+      "cut": "2d",
+      "atol": 1e-10,
+      "rtol": 1e-10,
+      "expected_values_file": "expected/surface_auto_values.csv",
+      "expected_delay_axis_file": "expected/surface_auto_delay_axis.csv",
+      "expected_doppler_axis_file": "expected/surface_auto_doppler_axis.csv"
+    },
+    {
+      "id": "delay_cross",
+      "x_shape": [
+        16
+      ],
+      "x_file": "input/delay_cross_x.csv",
+      "y_shape": [
+        12
+      ],
+      "y_file": "input/delay_cross_y.csv",
+      "fs": 8.0,
+      "prf": 2.0,
+      "cut": "delay",
+      "cut_value": 0.25,
+      "atol": 1e-10,
+      "rtol": 1e-10,
+      "expected_values_file": "expected/delay_cross_values.csv",
+      "expected_axis_file": "expected/delay_cross_axis.csv"
+    },
+    {
+      "id": "doppler_auto",
+      "x_shape": [
+        16
+      ],
+      "x_file": "input/doppler_auto_x.csv",
+      "fs": 8.0,
+      "prf": 2.0,
+      "cut": "doppler",
+      "cut_value": 0.5,
+      "atol": 1e-10,
+      "rtol": 1e-10,
+      "expected_values_file": "expected/doppler_auto_values.csv",
+      "expected_axis_file": "expected/doppler_auto_axis.csv"
+    }
+  ]
+}

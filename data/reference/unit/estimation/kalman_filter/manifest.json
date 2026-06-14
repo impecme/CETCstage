@@ -1,0 +1,78 @@
+{
+  "accuracy_cases": [
+    {
+      "id": "defaults",
+      "scenario": "defaults",
+      "dim_x": 2,
+      "dim_z": 1,
+      "dim_u": 0,
+      "points": 1,
+      "dtype": "float32",
+      "expected_x_file": "expected/defaults__x.csv",
+      "expected_P_file": "expected/defaults__P.csv"
+    },
+    {
+      "id": "predict",
+      "scenario": "predict",
+      "dim_x": 2,
+      "dim_z": 1,
+      "dim_u": 0,
+      "points": 1,
+      "dtype": "float32",
+      "expected_x_file": "expected/predict__x.csv",
+      "expected_P_file": "expected/predict__P.csv"
+    },
+    {
+      "id": "predict_control",
+      "scenario": "predict_control",
+      "dim_x": 2,
+      "dim_z": 1,
+      "dim_u": 1,
+      "points": 1,
+      "dtype": "float32",
+      "expected_x_file": "expected/predict_control__x.csv",
+      "expected_P_file": "expected/predict_control__P.csv"
+    },
+    {
+      "id": "update",
+      "scenario": "update",
+      "dim_x": 2,
+      "dim_z": 1,
+      "dim_u": 0,
+      "points": 1,
+      "dtype": "float32",
+      "expected_x_file": "expected/update__x.csv",
+      "expected_P_file": "expected/update__P.csv"
+    },
+    {
+      "id": "invalid_dtype",
+      "scenario": "invalid_dtype",
+      "dim_x": 2,
+      "dim_z": 1,
+      "dim_u": 0,
+      "points": 1,
+      "dtype": "float32",
+      "expect_invalid_argument": true
+    },
+    {
+      "id": "invalid_control_shape",
+      "scenario": "invalid_control_shape",
+      "dim_x": 2,
+      "dim_z": 1,
+      "dim_u": 1,
+      "points": 1,
+      "dtype": "float32",
+      "expect_invalid_argument": true
+    },
+    {
+      "id": "invalid_measurement_shape",
+      "scenario": "invalid_measurement_shape",
+      "dim_x": 2,
+      "dim_z": 1,
+      "dim_u": 0,
+      "points": 1,
+      "dtype": "float32",
+      "expect_invalid_argument": true
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+build/
+third_party/python/
+third_party/fftw/dist/
+third_party/fftw/src/
+third_party/fftw/build/
+third_party/fftw/install/
+
+
+# Python cache files
+__pycache__/
+*.py[cod]
+
+# Unit-test generated debug samples. Manifests stay tracked; samples are regenerated.
+data/generated/unit/**/input/
+data/generated/unit/**/output_samples/

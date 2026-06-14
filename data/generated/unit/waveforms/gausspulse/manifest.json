@@ -1,0 +1,56 @@
+{
+  "__comment": "参数说明：以下为可修改参数的中文解释，仅当前文件实际出现的字段生效。",
+  "__comment_fields": {
+    "perf_cases": "性能测试用例列表",
+    "id": "测试用例 ID（建议唯一）",
+    "t_generator": "时间向量生成器",
+    "start": "生成器起点",
+    "stop": "生成器终点",
+    "count": "生成器采样点数",
+    "endpoint": "是否包含终点",
+    "fc": "中心频率",
+    "bw": "带宽参数",
+    "bwr": "带宽参考电平（dB）",
+    "tpr": "时间功率参考电平（dB）",
+    "retquad": "是否返回正交通道",
+    "retenv": "是否返回包络通道",
+    "atol": "绝对误差容限",
+    "rtol": "相对误差容限"
+  },
+  "perf_cases": [
+    {
+      "id": "perf_real",
+      "t_generator": {
+        "start": -1.0,
+        "stop": 1.0,
+        "count": 16777216,
+        "endpoint": false
+      },
+      "fc": 5.0,
+      "bw": 0.5,
+      "bwr": -6.0,
+      "tpr": -60.0,
+      "retquad": false,
+      "retenv": false,
+      "atol": 1e-12,
+      "rtol": 1e-12
+    },
+    {
+      "id": "perf_bundle",
+      "t_generator": {
+        "start": -1.0,
+        "stop": 1.0,
+        "count": 16777216,
+        "endpoint": false
+      },
+      "fc": 5.0,
+      "bw": 0.5,
+      "bwr": -6.0,
+      "tpr": -60.0,
+      "retquad": true,
+      "retenv": true,
+      "atol": 1e-12,
+      "rtol": 1e-12
+    }
+  ]
+}

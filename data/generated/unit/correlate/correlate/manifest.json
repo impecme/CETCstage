@@ -1,0 +1,19 @@
+{
+  "perf_cases": [
+    {
+      "id": "perf_real_auto",
+      "mode": "same",
+      "method": "auto",
+      "shape1": [
+        2048
+      ],
+      "shape2": [
+        257
+      ],
+      "in1_start": 0.0,
+      "in1_step": 0.01,
+      "in2_start": 0.0,
+      "in2_step": 0.02
+    }
+  ]
+}

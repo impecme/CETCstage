@@ -1,0 +1,42 @@
+{
+  "accuracy_cases": [
+    {
+      "id": "real_full_wrap",
+      "mode": "full",
+      "boundary": "wrap",
+      "is_complex": false,
+      "shape1": [
+        2,
+        2
+      ],
+      "shape2": [
+        2,
+        2
+      ],
+      "in1_file": "input/real_full_wrap__in1.csv",
+      "in2_file": "input/real_full_wrap__in2.csv",
+      "expected_values_file": "expected/real_full_wrap__values.csv",
+      "atol": 1e-06,
+      "rtol": 1e-06
+    },
+    {
+      "id": "complex_same_fill",
+      "mode": "same",
+      "boundary": "fill",
+      "is_complex": true,
+      "shape1": [
+        2,
+        2
+      ],
+      "shape2": [
+        2,
+        2
+      ],
+      "in1_file": "input/complex_same_fill__in1.csv",
+      "in2_file": "input/complex_same_fill__in2.csv",
+      "expected_values_file": "expected/complex_same_fill__values.csv",
+      "atol": 1e-06,
+      "rtol": 1e-06
+    }
+  ]
+}

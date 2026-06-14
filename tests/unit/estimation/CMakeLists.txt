@@ -1,0 +1,27 @@
+add_library(estimation_test_support STATIC
+    estimation_test_support.cu
+)
+target_link_libraries(estimation_test_support
+    PRIVATE
+        cusignal_cpu
+        cusignal_cuda
+)
+target_compile_features(estimation_test_support PUBLIC cxx_std_17)
+target_compile_definitions(estimation_test_support
+    PRIVATE
+        CUSIGNAL_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
+)
+set_target_properties(estimation_test_support PROPERTIES
+    CUDA_SEPARABLE_COMPILATION ON
+    POSITION_INDEPENDENT_CODE ON
+)
+
+add_executable(estimation_test_kalman_filter test_kalman_filter.cpp)
+target_link_libraries(estimation_test_kalman_filter
+    PRIVATE
+        estimation_test_support
+        cusignal_cpu
+        cusignal_cuda
+)
+target_compile_features(estimation_test_kalman_filter PRIVATE cxx_std_17)
+add_test(NAME estimation_test_kalman_filter COMMAND estimation_test_kalman_filter)

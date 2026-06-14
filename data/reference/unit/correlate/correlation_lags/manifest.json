@@ -1,0 +1,25 @@
+{
+  "accuracy_cases": [
+    {
+      "id": "full_case",
+      "in1_len": 5,
+      "in2_len": 3,
+      "mode": "full",
+      "expected_lags_file": "expected/full_case__lags.csv"
+    },
+    {
+      "id": "same_case",
+      "in1_len": 5,
+      "in2_len": 4,
+      "mode": "same",
+      "expected_lags_file": "expected/same_case__lags.csv"
+    },
+    {
+      "id": "valid_case",
+      "in1_len": 2,
+      "in2_len": 5,
+      "mode": "valid",
+      "expected_lags_file": "expected/valid_case__lags.csv"
+    }
+  ]
+}

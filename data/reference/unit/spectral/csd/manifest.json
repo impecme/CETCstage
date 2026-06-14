@@ -1,0 +1,28 @@
+{
+  "accuracy_cases": [
+    {
+      "id": "mean_hann",
+      "atol": 1e-10,
+      "rtol": 1e-10,
+      "fs": 800.0,
+      "window": {
+        "kind": "string",
+        "value": "hann"
+      },
+      "nperseg": 128,
+      "noverlap": 64,
+      "nfft": 128,
+      "average": "mean",
+      "x_shape": [
+        512
+      ],
+      "y_shape": [
+        512
+      ],
+      "x_file": "input/mean_hann__x.csv",
+      "y_file": "input/mean_hann__y.csv",
+      "expected_frequencies_file": "expected/mean_hann__frequencies.csv",
+      "expected_values_file": "expected/mean_hann__values.csv"
+    }
+  ]
+}

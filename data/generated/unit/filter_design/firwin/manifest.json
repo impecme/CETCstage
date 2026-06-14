@@ -1,0 +1,42 @@
+{
+  "__comment": "参数说明：以下为可修改参数的中文解释，仅当前文件实际出现的字段生效。",
+  "__comment_fields": {
+    "perf_cases": "性能测试用例列表",
+    "id": "测试用例 ID（建议唯一）",
+    "numtaps": "FIR taps 数量",
+    "cutoff": "截止频率参数",
+    "width": "过渡带宽度",
+    "window": "窗函数配置",
+    "kind": "参数类型/生成器类型",
+    "name": "参数名称",
+    "value": "参数数值",
+    "pass_zero": "通带设置参数",
+    "scale": "是否进行增益归一化",
+    "nyq": "Nyquist 频率（兼容参数）",
+    "fs": "采样频率",
+    "atol": "绝对误差容限",
+    "rtol": "相对误差容限"
+  },
+  "perf_cases": [
+    {
+      "id": "perf_lowpass_large",
+      "numtaps": 4097,
+      "cutoff": 0.2,
+      "width": 0.02,
+      "window": {
+        "kind": "named_float",
+        "name": "kaiser",
+        "value": 8.0
+      },
+      "pass_zero": {
+        "kind": "bool",
+        "value": true
+      },
+      "scale": true,
+      "nyq": -1.0,
+      "fs": 2.0,
+      "atol": 1e-10,
+      "rtol": 1e-10
+    }
+  ]
+}

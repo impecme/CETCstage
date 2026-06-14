@@ -1,0 +1,19 @@
+{
+  "perf_cases": [
+    {
+      "id": "perf_real2d_same",
+      "mode": "same",
+      "boundary": "fill",
+      "shape1": [
+        64,
+        64
+      ],
+      "shape2": [
+        7,
+        7
+      ],
+      "in1_step": 0.03,
+      "in2_step": 0.05
+    }
+  ]
+}

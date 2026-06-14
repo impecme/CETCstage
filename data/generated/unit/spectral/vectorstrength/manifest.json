@@ -1,0 +1,19 @@
+{
+  "perf_cases": [
+    {
+      "id": "perf_vector",
+      "events_generator": {
+        "kind": "real_linspace",
+        "start": 0.0,
+        "stop": 409.5,
+        "count": 1048576
+      },
+      "period_generator": {
+        "kind": "real_linspace",
+        "start": 0.75,
+        "stop": 2.25,
+        "count": 64
+      }
+    }
+  ]
+}

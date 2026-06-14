@@ -1,0 +1,15 @@
+{
+  "accuracy_cases": [
+    {
+      "id": "normalized_precentered",
+      "atol": 1e-10,
+      "rtol": 1e-10,
+      "precenter": true,
+      "normalize": true,
+      "x_file": "input/normalized_precentered__x.csv",
+      "y_file": "input/normalized_precentered__y.csv",
+      "freqs_file": "input/normalized_precentered__freqs.csv",
+      "expected_signal_file": "expected/normalized_precentered__signal.csv"
+    }
+  ]
+}

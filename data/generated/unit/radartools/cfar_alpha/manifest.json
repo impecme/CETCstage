@@ -1,0 +1,11 @@
+{
+  "perf_cases": [
+    {
+      "id": "perf_scalar",
+      "cells": 512,
+      "pfa": 0.0001,
+      "atol": 1e-14,
+      "rtol": 1e-14
+    }
+  ]
+}

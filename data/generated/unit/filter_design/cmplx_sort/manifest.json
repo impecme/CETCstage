@@ -1,0 +1,18 @@
+{
+  "__comment": "参数说明：以下为可修改参数的中文解释，仅当前文件实际出现的字段生效。",
+  "__comment_fields": {
+    "perf_cases": "性能测试用例列表",
+    "id": "测试用例 ID（建议唯一）",
+    "input_kind": "输入类型（如 real/complex）",
+    "atol": "绝对误差容限",
+    "rtol": "相对误差容限"
+  },
+  "perf_cases": [
+    {
+      "id": "perf_complex",
+      "input_kind": "complex",
+      "atol": 1e-12,
+      "rtol": 1e-12
+    }
+  ]
+}

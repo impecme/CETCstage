@@ -1,0 +1,27 @@
+{
+  "__comment": "参数说明：以下为可修改参数的中文解释，仅当前文件实际出现的字段生效。",
+  "__comment_fields": {
+    "accuracy_cases": "精度测试用例列表",
+    "id": "测试用例 ID（建议唯一）",
+    "attenuation": "衰减参数（dB）",
+    "atol": "绝对误差容限",
+    "rtol": "相对误差容限",
+    "expected_signal_file": "输入/输出数据文件路径"
+  },
+  "accuracy_cases": [
+    {
+      "id": "atten_20",
+      "attenuation": 20.0,
+      "atol": 1e-12,
+      "rtol": 1e-12,
+      "expected_signal_file": "expected/atten_20.csv"
+    },
+    {
+      "id": "atten_80",
+      "attenuation": 80.0,
+      "atol": 1e-12,
+      "rtol": 1e-12,
+      "expected_signal_file": "expected/atten_80.csv"
+    }
+  ]
+}

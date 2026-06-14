@@ -1,0 +1,31 @@
+{
+  "__comment": "参数说明：以下为可修改参数的中文解释，仅当前文件实际出现的字段生效。",
+  "__comment_fields": {
+    "accuracy_cases": "精度测试用例列表",
+    "id": "测试用例 ID（建议唯一）",
+    "t_file": "输入/输出数据文件路径",
+    "duty": "占空比参数",
+    "atol": "绝对误差容限",
+    "rtol": "相对误差容限",
+    "expected_signal_file": "输入/输出数据文件路径",
+    "duty_file": "占空比输入文件路径"
+  },
+  "accuracy_cases": [
+    {
+      "id": "scalar_duty",
+      "t_file": "input/scalar_t.csv",
+      "duty": 0.25,
+      "atol": 0.0,
+      "rtol": 0.0,
+      "expected_signal_file": "expected/scalar_duty.csv"
+    },
+    {
+      "id": "vector_duty",
+      "t_file": "input/vector_t.csv",
+      "duty_file": "input/vector_duty.csv",
+      "atol": 0.0,
+      "rtol": 0.0,
+      "expected_signal_file": "expected/vector_duty.csv"
+    }
+  ]
+}

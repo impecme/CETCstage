@@ -1,0 +1,22 @@
+{
+  "perf_cases": [
+    {
+      "id": "perf_surface",
+      "x_shape": [
+        8192
+      ],
+      "fs": 64.0,
+      "prf": 8.0,
+      "cut": "2d",
+      "atol": 1e-10,
+      "rtol": 1e-10,
+      "x_generator": {
+        "kind": "complex_signal_tone",
+        "length": 8192,
+        "freq": 0.021,
+        "phase": 0.3,
+        "amplitude": 1.0
+      }
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "perf_cases": [
+    {
+      "id": "perf_ricker_large",
+      "wavelet": "ricker",
+      "atol": 1e-11,
+      "rtol": 1e-11,
+      "data_start": -2.0,
+      "data_stop": 2.0,
+      "data_count": 1048576,
+      "widths_start": 1.0,
+      "widths_stop": 32.0,
+      "widths_count": 32
+    }
+  ]
+}

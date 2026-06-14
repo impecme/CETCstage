@@ -1,0 +1,33 @@
+{
+  "perf_cases": [
+    {
+      "id": "perf_large",
+      "precenter": true,
+      "normalize": true,
+      "x_generator": {
+        "kind": "irregular_times",
+        "count": 8192,
+        "start": 0.01,
+        "stop": 200.0,
+        "jitter": 0.005
+      },
+      "y_generator": {
+        "kind": "real_array_pattern",
+        "shape": [
+          8192
+        ],
+        "freq_row": 0.013,
+        "freq_col": 0.031,
+        "phase": 0.2,
+        "amplitude": 1.0,
+        "bias": 0.0
+      },
+      "freqs_generator": {
+        "kind": "real_linspace",
+        "start": 0.1,
+        "stop": 8.0,
+        "count": 16384
+      }
+    }
+  ]
+}
