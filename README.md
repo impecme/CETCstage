@@ -43,6 +43,117 @@
 
 默认 CUDA 架构为 `80`，适配 `sm80` GPU；当前验证设备为 A100-SXM4-40GB。可在构建前通过环境变量覆盖，例如 `CUDA_ARCH=86`。
 
+## 参赛者服务器与 Docker 环境
+
+参赛者服务器的使用链路为：
+
+```text
+Windows VPN -> SSH 登录服务器 -> 进入本队 docker -> 在 docker 内开发和调试
+```
+
+注意事项：
+
+- 当前项目记录的用户 ID 为 `usr_04`，UID 为 `1006`，当前主机名为 `supervisor-X7850H0`，项目路径为 `/home/usr_04/CETC`。
+- VPN 账号、服务器账号和 docker 均按参赛队分配；账号密码以赛方通知为准，不应写入仓库。
+- VPN 客户端当前仅支持 Windows；每天 `1:00-8:00` VPN 关闭，需提前保存代码。
+- 服务器宿主机只作为文件中转和容器入口；参赛文件应放在本队个人用户目录 `/home/usr_04`。
+- 严禁修改公共路径和其他参赛者用户目录。
+- 代码编译、运行和调试应在本队 docker 容器内完成。
+- docker 创建时使用 host network，容器与宿主机共用本机 IP、网卡和端口。
+
+服务器上查看和进入本队 docker：
+
+```bash
+sudo docker ps -a
+sudo docker ps
+sudo docker start docker_name
+sudo docker exec -it docker_name bash
+```
+
+退出容器：
+
+```bash
+exit
+```
+
+每次进入容器后，先初始化中科芯开发环境：
+
+```bash
+source /zq500/sdk/env.sh
+```
+
+查看绑定 GPU 设备状态：
+
+```bash
+dlsmi
+```
+
+中科芯 SDK 示例位于：
+
+```bash
+/zq500/sdk/samples/
+```
+
+支持函数头文件可参考：
+
+```bash
+/zq500/cuda11/include
+```
+
+复赛说明文件已整理到：
+
+```bash
+复赛说明文件/
+```
+
+其中 `CUDA 11.7 runtime API.xlsx`、`CUDA 11.7 driver api.xlsx` 和 `科学计算库实现列表.xlsx` 说明了中科芯平台的 CUDA runtime、driver API 和科学计算库支持范围。迁移摘要见 `docs/design/zhongkexin_rematch_notes.md`。当前迁移必须特别注意：
+
+- 不要假设中科芯平台完整支持 CUDA 11.7 全量 runtime/driver API。
+- cuFFT 点数仅支持 2 的整数次幂，不足需要补 0。
+- cuSOLVER LU 分解的 pivot 参数不能传入 `nullptr`。
+- event timing 和性能 gate 需要先在中科芯 docker 内实测稳定性。
+
+SDK 示例通常使用 CMake 构建：
+
+```bash
+mkdir build
+cd build
+cmake ..
+make
+./可执行测试用例名
+```
+
+文件传输：
+
+```bash
+# 本地 -> 服务器个人目录
+scp -r 本地路径 usr_04@10.110.12.10:/home/usr_04
+
+# 服务器宿主机 -> 容器
+sudo docker cp 宿主机路径 docker_name:/容器内路径
+
+# 容器 -> 服务器宿主机
+sudo docker cp docker_name:/容器内路径 宿主机路径
+```
+
+本项目迁移到中科芯平台时，建议在 docker 内执行：
+
+```bash
+source /zq500/sdk/env.sh
+scripts/platform/probe_zhongkexin.sh
+cmake -S . -B build-zx -DCUSIGNAL_PLATFORM=ZHONGKEXIN -DCMAKE_BUILD_TYPE=Release
+cmake --build build-zx --target cusignal_cpu cusignal_cuda task1_radar_demo task2_features_demo --parallel
+scripts/test/run_task_demos.sh --build-dir build-zx --no-build --repeat 3
+```
+
+也可以使用 V4.1 第一阶段统一验收入口：
+
+```bash
+scripts/platform/run_zhongkexin_stage1.sh
+```
+
+该脚本会自动初始化 SDK、检查 `dlsmi`、运行平台 probe、配置 `build-zx`、构建 `cusignal_cpu` / `cusignal_cuda` / 两个任务 demo，并执行 Task1/Task2 默认 correctness 验收。
+
 ## 精度约定
 
 当前主干采用统一单精度实现，面向当前 A100-SXM4-40GB 验证环境的吞吐特性做算子验证与性能对比。

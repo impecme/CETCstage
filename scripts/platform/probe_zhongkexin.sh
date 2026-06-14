@@ -7,6 +7,7 @@ BUILD_DIR="${PROJECT_ROOT}/build-zx-probe"
 CUDA_ARCH="${CUDA_ARCH:-80}"
 CXX_COMPILER="${CXX:-}"
 CUDA_COMPILER="${CUDACXX:-}"
+SKIP_ENV_CHECK="${CUSIGNAL_ZHONGKEXIN_SKIP_ENV_CHECK:-0}"
 
 usage() {
   cat <<'USAGE'
@@ -17,12 +18,14 @@ Options:
   --cuda-arch ARCH      CUDA architecture passed to CMake (default: CUDA_ARCH or 80)
   --cxx PATH            Optional C++ compiler
   --cuda PATH           Optional CUDA compiler
+  --skip-env-check      Skip Zhongkexin SDK preflight checks
   -h, --help            Show this help
 
 Environment:
   CUSIGNAL_ZHONGKEXIN_CUFFT_LIBRARY     Optional cuFFT-compatible library path
   CUSIGNAL_ZHONGKEXIN_CUBLAS_LIBRARY    Optional cuBLAS-compatible library path
   CUSIGNAL_ZHONGKEXIN_CUSOLVER_LIBRARY  Optional cuSOLVER-compatible library path
+  CUSIGNAL_ZHONGKEXIN_SKIP_ENV_CHECK=1  Skip SDK preflight checks
 USAGE
 }
 
@@ -43,6 +46,10 @@ while [[ $# -gt 0 ]]; do
     --cuda)
       CUDA_COMPILER="$2"
       shift 2
+      ;;
+    --skip-env-check)
+      SKIP_ENV_CHECK=1
+      shift
       ;;
     -h|--help)
       usage
@@ -65,6 +72,97 @@ REPORT="${BUILD_DIR}/probe_report.md"
 
 rm -rf "${BUILD_DIR}"
 mkdir -p "${SRC_DIR}"
+
+version_ge() {
+  local actual="$1"
+  local required="$2"
+  [[ "$(printf '%s\n%s\n' "${required}" "${actual}" | sort -V | head -n1)" == "${required}" ]]
+}
+
+write_preflight_report() {
+  local status="$1"
+  local details="$2"
+  {
+    echo "# Zhongkexin Platform Probe"
+    echo
+    echo "- build_dir: ${BUILD_DIR}"
+    echo "- cuda_arch: ${CUDA_ARCH}"
+    echo "- preflight: ${status}"
+    echo
+    echo '```text'
+    printf '%s\n' "${details}"
+    echo '```'
+  } >"${REPORT}"
+}
+
+run_preflight() {
+  if [[ "${SKIP_ENV_CHECK}" == "1" || "${SKIP_ENV_CHECK}" == "true" || "${SKIP_ENV_CHECK}" == "TRUE" ]]; then
+    echo "[zx-probe] preflight skipped"
+    return 0
+  fi
+
+  local failures=()
+  local details=()
+
+  if [[ -f /zq500/sdk/env.sh ]]; then
+    details+=("ok: /zq500/sdk/env.sh exists")
+  else
+    failures+=("missing /zq500/sdk/env.sh; enter the team docker and run source /zq500/sdk/env.sh before probing")
+  fi
+
+  if command -v dlsmi >/dev/null 2>&1; then
+    if dlsmi >/dev/null 2>&1; then
+      details+=("ok: dlsmi is available")
+    else
+      failures+=("dlsmi exists but failed to query devices")
+    fi
+  else
+    failures+=("missing dlsmi")
+  fi
+
+  if command -v cmake >/dev/null 2>&1; then
+    local cmake_version
+    cmake_version="$(cmake --version | sed -n '1s/.*version //p')"
+    details+=("cmake: ${cmake_version}")
+    if ! version_ge "${cmake_version}" "3.18"; then
+      failures+=("cmake ${cmake_version} is below required 3.18")
+    fi
+  else
+    failures+=("missing cmake")
+  fi
+
+  if [[ -n "${CUDA_COMPILER}" ]]; then
+    if [[ -x "${CUDA_COMPILER}" || -n "$(command -v "${CUDA_COMPILER}" 2>/dev/null)" ]]; then
+      details+=("cuda compiler: ${CUDA_COMPILER}")
+    else
+      failures+=("CUDACXX/CUDA compiler is set but not executable: ${CUDA_COMPILER}")
+    fi
+  elif command -v nvcc >/dev/null 2>&1; then
+    details+=("cuda compiler: $(command -v nvcc)")
+  elif command -v dlnvcc >/dev/null 2>&1; then
+    CUDA_COMPILER="$(command -v dlnvcc)"
+    details+=("cuda compiler: ${CUDA_COMPILER}")
+  elif command -v dlcc >/dev/null 2>&1; then
+    CUDA_COMPILER="$(command -v dlcc)"
+    details+=("cuda compiler: ${CUDA_COMPILER}")
+  else
+    failures+=("missing CUDA-compatible compiler: expected nvcc, dlnvcc, dlcc, or --cuda PATH")
+  fi
+
+  if ((${#failures[@]} != 0)); then
+    local text
+    text="$(printf 'fail: %s\n' "${failures[@]}"; printf '%s\n' "${details[@]}")"
+    write_preflight_report "failed" "${text}"
+    printf '[zx-probe] preflight failed:\n%s\n' "${text}" >&2
+    echo "[zx-probe] report: ${REPORT}" >&2
+    exit 2
+  fi
+
+  printf '[zx-probe] preflight passed:\n'
+  printf '  %s\n' "${details[@]}"
+}
+
+run_preflight
 
 cat >"${SRC_DIR}/CMakeLists.txt" <<'CMAKE'
 cmake_minimum_required(VERSION 3.18)
@@ -171,6 +269,20 @@ namespace
         float *device_values = nullptr;
         check(cudaMalloc(reinterpret_cast<void **>(&device_values), host.size() * sizeof(float)), "cudaMalloc");
         check(cudaMemcpy(device_values, host.data(), host.size() * sizeof(float), cudaMemcpyHostToDevice), "cudaMemcpy H2D");
+
+        float *zero_values = nullptr;
+        check(cudaMalloc(reinterpret_cast<void **>(&zero_values), host.size() * sizeof(float)), "cudaMalloc(zero)");
+        check(cudaMemset(zero_values, 0, host.size() * sizeof(float)), "cudaMemset(zero)");
+        std::vector<float> zero_host(host.size(), -1.0f);
+        check(cudaMemcpy(zero_host.data(), zero_values, zero_host.size() * sizeof(float), cudaMemcpyDeviceToHost), "cudaMemcpy zero D2H");
+        for (float value : zero_host)
+        {
+            if (value != 0.0f)
+            {
+                throw std::runtime_error("cudaMemset zero-fill mismatch");
+            }
+        }
+        check(cudaFree(zero_values), "cudaFree(zero)");
 
         cudaEvent_t start = nullptr;
         cudaEvent_t stop = nullptr;
@@ -349,6 +461,7 @@ echo "[zx-probe] running probe"
   echo "- build_dir: ${BUILD_DIR}"
   echo "- cuda_arch: ${CUDA_ARCH}"
   echo "- result: pass"
+  echo "- rematch_constraints: runtime/event/memory probe includes cudaMemset zero-fill; cuFFT probe uses power-of-two size; cuSOLVER probe uses non-null pivot"
   echo
   echo '```text'
   cat "${BUILD_DIR}/probe_stdout.txt"

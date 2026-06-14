@@ -69,6 +69,80 @@ scripts/test/run_task_demos.sh --build-dir build-zx --no-build --repeat 3
 ./scripts/build/install_fftw.sh
 ```
 
+## 参赛者服务器使用要点
+
+中科芯参赛环境的实际开发链路是：
+
+```text
+Windows VPN -> SSH 登录服务器 -> 进入本队 docker -> 在 docker 内开发和调试
+```
+
+协作时注意：
+
+- 当前项目记录的用户 ID 为 `usr_04`，UID 为 `1006`，当前主机名为 `supervisor-X7850H0`，项目路径为 `/home/usr_04/CETC`。
+- VPN、服务器账号和 docker 均按参赛队分配；不要把账号密码写入仓库或文档。
+- VPN 客户端当前仅支持 Windows，且每天 `1:00-8:00` 关闭。
+- 服务器宿主机只做文件中转和 docker 入口；项目代码应放在个人用户目录 `/home/usr_04`。
+- 严禁修改公共路径和其他参赛者用户目录。
+- 构建、运行、调试 `CETC` 项目应在本队 docker 内完成。
+
+常用容器命令：
+
+```bash
+sudo docker ps -a
+sudo docker ps
+sudo docker start docker_name
+sudo docker exec -it docker_name bash
+exit
+```
+
+每次进入 docker 后先初始化 SDK 环境：
+
+```bash
+source /zq500/sdk/env.sh
+```
+
+检查 GPU：
+
+```bash
+dlsmi
+```
+
+SDK 示例和头文件路径：
+
+```bash
+/zq500/sdk/samples/
+/zq500/cuda11/include
+```
+
+复赛说明文件位于 `复赛说明文件/`，迁移摘要位于 `docs/design/zhongkexin_rematch_notes.md`。迁移时必须把这些说明作为平台约束来源：
+
+- `CUDA 11.7 runtime API.xlsx`：runtime API 部分覆盖，不要引入未确认支持的 memory pool、stream ordered allocator、external memory、IPC event、NvSci、graph capture 等高级 API。
+- `CUDA 11.7 driver api.xlsx`：driver API 部分覆盖，第一阶段和第二阶段不要主动切到 driver API 实现 runtime 功能。
+- `科学计算库实现列表.xlsx`：cuFFT 仅支持 2 的整数次幂点数，不足需要补 0；cuSOLVER `getrf` 的 pivot 参数不能传入 `nullptr`；当前主路径优先关注 cuFFT、cuBLAS、cuSOLVER。
+- 任何因复赛说明引发的不兼容、待修改、fallback 或测试阈值调整，都必须记录到 `docs/design/zhongkexin_migration_change_log.md`。
+
+文件传输：
+
+```bash
+# 本地 -> 服务器个人目录
+scp -r 本地路径 usr_04@10.110.12.10:/home/usr_04
+
+# 服务器宿主机 -> 容器
+sudo docker cp 宿主机路径 docker_name:/容器内路径
+
+# 容器 -> 服务器宿主机
+sudo docker cp docker_name:/容器内路径 宿主机路径
+```
+
+V4.1 第一阶段统一验收入口：
+
+```bash
+scripts/platform/run_zhongkexin_stage1.sh
+```
+
+该脚本必须在本队 docker 内执行；它会自动 `source /zq500/sdk/env.sh`、检查 `dlsmi`、运行 `scripts/platform/probe_zhongkexin.sh`、配置 `build-zx`、构建 `cusignal_cpu` / `cusignal_cuda` / `task1_radar_demo` / `task2_features_demo`，最后运行 `scripts/test/run_task_demos.sh --build-dir build-zx --no-build --repeat 3`。
+
 ## 核心架构
 
 公开 API 位于 `include/cusignal`。
@@ -280,6 +354,38 @@ CUDA 代码约定：
 - 按需新增或更新 `tests/unit/<module>` 下的测试支撑。
 - 行为变化时同步更新 reference manifest/data。
 - 先跑最窄相关测试；涉及共享行为时再扩大测试范围。
+
+## 中科芯迁移记录硬规则
+
+中科芯迁移期间，AGENT 以本节为最高优先级迁移纪律之一执行。迁移过程中发现的不兼容点、需要修改点、已修改点、暂缓点和 fallback，必须全部记录到 `docs/design/zhongkexin_migration_change_log.md`。
+
+必须记录的情况：
+
+- 发现中科芯平台与 NVIDIA CUDA 在编译器、runtime、库 target、头文件、链接方式、数值结果、性能、工具链或运行行为上的差异。
+- 发现需要修改源码、CMake、脚本、测试、demo、报告或文档的地方。
+- 实施了任何中科芯相关修改。
+- 引入、保留或删除 fallback。
+- 调整 public API、报告字段、测试阈值、性能 gate、验证命令或构建入口。
+
+每条记录至少包含：
+
+- 编号。
+- 发现阶段。
+- 模块或文件。
+- 问题现象。
+- 原因判断。
+- 计划修改。
+- 实际修改。
+- 是否影响 NVIDIA 路径。
+- 验证命令和验证结果。
+- 当前状态和后续处理阶段。
+
+执行要求：
+
+- 即使暂时不修，也必须先记录。
+- 修改前记录“计划修改”，修改后补充“实际修改”和“验证结果”。
+- 每个阶段关闭前，必须核对台账，确认没有只存在于聊天记录或终端输出中的问题。
+- 更新 `docs/design/zhongkexin_migration_change_log.md` 后，同步检查 `docs/design/zhongkexin_migration_status.md` 是否需要更新。
 
 ## 项目注意事项
 
