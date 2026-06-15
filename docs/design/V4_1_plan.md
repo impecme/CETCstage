@@ -9,7 +9,7 @@
 ## 进入条件
 
 - 已确认当前操作是在本队中科芯 docker 内，或已明确当前只能做文档、静态检查和本地准备。
-- 已阅读参赛者服务器使用说明，并确认每次进入 docker 后需要执行 `source /zq500/sdk/env.sh`。
+- 已阅读参赛者服务器使用说明，并确认统一验收脚本会自动以兼容方式执行 `source /zq500/sdk/env.sh ""`。
 - 已阅读 `复赛说明文件/` 中的 runtime API、driver API 和科学计算库支持清单，或已阅读摘要 `docs/design/zhongkexin_rematch_notes.md`。
 - 已确认当前迁移按单会话串行推进，不使用多个 Codex 对话窗口并行修改公共入口。
 - 已建立 `docs/design/zhongkexin_migration_change_log.md`，后续发现项必须入账。
@@ -44,7 +44,7 @@
 ### 1. 环境确认
 
 - 确认当前 NVIDIA 路径仍可作为对照基线。
-- 确认中科芯服务器链路、docker、`source /zq500/sdk/env.sh` 和 `dlsmi` 可用。
+- 确认中科芯服务器链路、docker、SDK 初始化和 `dlsmi` 可用。
 - 记录当前用户、路径、SDK 环境、CMake/CUDA 编译器和库探测结果。
 - 更新 `docs/design/zhongkexin_migration_status.md`。
 
@@ -88,24 +88,47 @@
 
 ## Test Plan
 
-统一入口：
+容器内统一入口：
 
 ```bash
+cd /CETC
 scripts/platform/run_zhongkexin_stage1.sh
 ```
+
+如果当前在服务器宿主机上，先把项目完整复制进容器。该脚本会复制到容器中的全新 incoming 目录，并在终端打印容器端替换命令：
+
+```bash
+cd /home/usr_04/CETC
+./copy_to_container.sh gpu_04
+```
+
+进入容器后，先执行上一步打印的命令，例如：
+
+```bash
+/CETC.incoming.20260615124530/replace_container_project.sh /CETC
+```
+
+该命令会删除旧 `/CETC` 并移动 incoming 目录成为新的 `/CETC`，因此宿主机已删除的文件也会从容器项目中消失。替换完成后执行统一入口：
+
+```bash
+cd /CETC
+scripts/platform/run_zhongkexin_stage1.sh
+```
+
+统一入口会自动初始化 SDK、运行 probe、配置 `build-zx`、构建目标并运行 Task1/Task2 demo。当前中科芯路径默认使用 `CUDA_ARCH=OFF`，不要手动设置 `CUDA_ARCH=80`，否则 CMake 可能生成 NVIDIA 专用的 `sm_80` 参数。
 
 平台探测：
 
 ```bash
-source /zq500/sdk/env.sh
-dlsmi
 scripts/platform/probe_zhongkexin.sh
 ```
 
 构建：
 
 ```bash
-source /zq500/sdk/env.sh
+set +u
+source /zq500/sdk/env.sh ""
+set -u
 cmake -S . -B build-zx -DCUSIGNAL_PLATFORM=ZHONGKEXIN -DCMAKE_BUILD_TYPE=Release
 cmake --build build-zx --target cusignal_cpu cusignal_cuda task1_radar_demo task2_features_demo --parallel
 ```
@@ -126,7 +149,7 @@ scripts/test/run_task_demos.sh --build-dir build-zx --no-build --repeat 3
 
 ## 完成判定
 
-- 在中科芯 docker 内执行 `source /zq500/sdk/env.sh` 后，`dlsmi` 能看到可用设备。
+- 在中科芯 docker 内完成 SDK 初始化后，`dlsmi` 能看到可用设备。
 - `scripts/platform/probe_zhongkexin.sh` 通过，至少覆盖 runtime、kernel launch、event、FFT、BLAS、SOLVER 探测。
 - `build-zx` 能完成配置。
 - `cusignal_cpu`、`cusignal_cuda`、`task1_radar_demo`、`task2_features_demo` 能完成构建。

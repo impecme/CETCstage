@@ -66,8 +66,8 @@ Windows VPN -> SSH 登录服务器 -> 进入本队 docker -> 在 docker 内开�
 ```bash
 sudo docker ps -a
 sudo docker ps
-sudo docker start docker_name
-sudo docker exec -it docker_name bash
+sudo docker start gpu_04
+sudo docker exec -it gpu_04 bash
 ```
 
 退出容器：
@@ -80,6 +80,14 @@ exit
 
 ```bash
 source /zq500/sdk/env.sh
+```
+
+若当前 shell 因 SDK 脚本读取 `$1` 出现 `line 4: $1: unbound variable`，使用：
+
+```bash
+set +u
+source /zq500/sdk/env.sh ""
+set -u
 ```
 
 查看绑定 GPU 设备状态：
@@ -127,23 +135,20 @@ make
 
 ```bash
 # 本地 -> 服务器个人目录
-scp -r 本地路径 usr_04@10.110.12.10:/home/usr_04
+scp -r C:\Users\27412\Desktop\project usr_04@10.110.12.10:/home/usr_04
 
 # 服务器宿主机 -> 容器
-sudo docker cp 宿主机路径 docker_name:/容器内路径
+sudo docker cp /home/usr_04/CETC gpu_04:/root/CETC
 
 # 容器 -> 服务器宿主机
-sudo docker cp docker_name:/容器内路径 宿主机路径
+sudo docker cp gpu_04:/root/CETC /home/usr_04/CETC_from_container
 ```
 
 本项目迁移到中科芯平台时，建议在 docker 内执行：
 
 ```bash
-source /zq500/sdk/env.sh
-scripts/platform/probe_zhongkexin.sh
-cmake -S . -B build-zx -DCUSIGNAL_PLATFORM=ZHONGKEXIN -DCMAKE_BUILD_TYPE=Release
-cmake --build build-zx --target cusignal_cpu cusignal_cuda task1_radar_demo task2_features_demo --parallel
-scripts/test/run_task_demos.sh --build-dir build-zx --no-build --repeat 3
+cd /CETC
+scripts/platform/run_zhongkexin_stage1.sh
 ```
 
 也可以使用 V4.1 第一阶段统一验收入口：
@@ -152,7 +157,58 @@ scripts/test/run_task_demos.sh --build-dir build-zx --no-build --repeat 3
 scripts/platform/run_zhongkexin_stage1.sh
 ```
 
-该脚本会自动初始化 SDK、检查 `dlsmi`、运行平台 probe、配置 `build-zx`、构建 `cusignal_cpu` / `cusignal_cuda` / 两个任务 demo，并执行 Task1/Task2 默认 correctness 验收。
+该脚本会自动初始化 SDK、运行平台 probe、配置 `build-zx`、构建 `cusignal_cpu` / `cusignal_cuda` / 两个任务 demo，并执行 Task1/Task2 默认 correctness 验收。
+
+如果当前是在服务器宿主机上操作，而不是已经进入 docker，使用以下完整同步流程。该流程用于把宿主机项目完全替换到容器 `/CETC`，包括删除容器中已经不存在于宿主机项目里的旧文件。
+
+第一步在宿主机执行：
+
+```bash
+cd /home/usr_04/CETC
+./copy_to_container.sh gpu_04
+```
+
+`copy_to_container.sh` 会把当前项目复制到容器中的全新临时目录，并在终端打印一条容器端替换命令，例如：
+
+```bash
+/CETC.incoming.20260615124530/replace_container_project.sh /CETC
+```
+
+第二步进入容器，执行脚本打印的 `replace_container_project.sh` 命令。该命令会删除旧 `/CETC` 并将 incoming 目录替换为新的 `/CETC`：
+
+```bash
+/CETC.incoming.20260615124530/replace_container_project.sh /CETC
+```
+
+第三步在容器内执行第一阶段验证：
+
+```bash
+cd /CETC
+scripts/platform/run_zhongkexin_stage1.sh
+```
+
+如果需要把完整日志取回宿主机供 Codex 分析，容器内运行：
+
+```bash
+cd /CETC
+scripts/platform/run_zhongkexin_stage1.sh 2>&1 | tee stage1.log
+```
+
+运行结束后回到宿主机终端执行：
+
+```bash
+cd /home/usr_04/CETC
+sudo docker cp gpu_04:/CETC/stage1.log ./stage1.log
+```
+
+查看日志尾部或关键错误：
+
+```bash
+tail -n 200 stage1.log
+grep -nEi "error|failed|fatal|not found|undefined|file format" stage1.log
+```
+
+此统一脚本会用兼容方式初始化 SDK，不需要在执行前手动 `source /zq500/sdk/env.sh`。如需覆盖默认值，使用 `BUILD_DIR`、`CUDA_ARCH`、`REPEAT` 环境变量；当前中科芯路径默认使用 `CUDA_ARCH=OFF`，不要手动设置 `CUDA_ARCH=80`，否则 CMake 可能生成 NVIDIA 专用的 `sm_80` 参数。
 
 ## 精度约定
 

@@ -43,7 +43,7 @@
 ### 2. 操作流程固化
 
 - 固化从 Windows VPN 到 SSH、docker、SDK 初始化、构建、测试的完整链路。
-- 明确 `docker_name` 需要通过 `sudo docker ps -a` 获取。
+- 明确当前服务器本队容器名为 `gpu_04`，并保留 `sudo docker ps -a` 作为状态确认命令。
 - 明确每次进入 docker 必须执行 `source /zq500/sdk/env.sh`。
 - 明确宿主机只做文件中转，不在宿主机直接构建运行。
 

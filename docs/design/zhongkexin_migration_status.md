@@ -43,7 +43,7 @@
 - 参赛者服务器说明：已阅读并纳入 README、AGENT 和迁移计划。
 - 复赛说明文件：已阅读 runtime API、driver API、科学计算库实现列表，并纳入 README、AGENT、V4 计划和迁移台账。
 - 当前项目记录：用户 ID `usr_04`，UID `1006`，主机名 `supervisor-X7850H0`，项目路径 `/home/usr_04/CETC`。
-- 目标验证环境：必须在本队 docker 内执行，且每次进入容器后先执行 `source /zq500/sdk/env.sh`。
+- 目标验证环境：必须在本队 docker 内执行；统一验收脚本会自动用兼容方式执行 `source /zq500/sdk/env.sh ""`。
 
 ## 第一阶段小阶段状态
 
@@ -51,8 +51,8 @@
 
 | 小阶段 | 负责范围 | 当前状态 | 已有产出 | 下一步检查 |
 | --- | --- | --- | --- | --- |
-| A | 基线与环境确认 | 进行中 | README/AGENT 已纳入服务器说明和当前用户信息；当前 shell `dlsmi` 可见 ZQ500-Q 设备 | 在完整中科芯 SDK 环境内确认 `/zq500/sdk/env.sh`、CUDA 编译器、CMake >= 3.18 和库路径 |
-| B | 平台构建入口 | 脚手架已就绪，preflight 已验证当前环境不完整，待完整 SDK 环境验证 | `CUSIGNAL_PLATFORM`、`scripts/platform/probe_zhongkexin.sh`、`scripts/platform/run_zhongkexin_stage1.sh`；probe 已补充环境 preflight、`cudaMemset` zero-fill 和复赛约束报告；当前 `build-zx-probe/probe_report.md` 显示 SDK/CMake/CUDA 编译器缺失 | 在完整中科芯 docker/SDK 环境内运行 `scripts/platform/run_zhongkexin_stage1.sh` |
+| A | 基线与环境确认 | 进行中 | README/AGENT 已纳入服务器说明和当前用户信息；宿主机 shell `dlsmi` 可见 ZQ500-Q 设备；容器内已确认 `/zq500/sdk/env.sh` 和 `/zq500/sdk/bin/nvcc` 可用 | 继续在容器内确认库链接和最小 probe 运行结果 |
+| B | 平台构建入口 | 脚手架已就绪，待重新同步后验证 | `CUSIGNAL_PLATFORM`、`scripts/platform/probe_zhongkexin.sh`、`scripts/platform/run_zhongkexin_stage1.sh`、`copy_to_container.sh`；已处理 SDK `env.sh` `$1` 问题、CMake CUDA root 问题、`sm_80` NVIDIA 架构参数问题、CMake 空架构检查问题、CUDA host linker 空值问题、中科芯编译器选择问题、静态库 `ranlib` 空值问题和 CMake CUDA 自检问题；`dlcc/dlnvcc` Clang CUDA path/libdevice 与 `__CUDACC__` 方案暂缓 | 宿主机运行 `./copy_to_container.sh gpu_04` 复制项目，容器内替换 `/CETC` 后运行 `scripts/platform/run_zhongkexin_stage1.sh` |
 | C | 核心 runtime 兼容层 | 脚手架已就绪，待平台验证 | runtime compat 头、library compat 头、smoke 自检 | 在 NVIDIA 和中科芯 docker 内分别构建运行 `smoke_demo1` |
 | D | FFT/BLAS/SOLVER 重库依赖 | 待平台验证 | 库兼容挂点已提供 | 探测 cuFFT/cuBLAS/cuSOLVER 并编译 `spectral`、`radartools` |
 | E | 轻量 CUDA 模块 | 待平台编译 | 保留现有 CUDA 源码 | 在中科芯 docker 内逐模块编译 `.cu` 文件 |
@@ -63,7 +63,7 @@
 
 满足以下条件时，第一阶段才可标记为完成：
 
-- 在中科芯 docker 内执行 `source /zq500/sdk/env.sh` 后，`dlsmi` 能看到可用设备。
+- 在中科芯 docker 内完成 SDK 初始化后，`dlsmi` 能看到可用设备。
 - `scripts/platform/probe_zhongkexin.sh` 通过，至少覆盖 runtime、kernel launch、event、FFT、BLAS、SOLVER 探测。
 - `build-zx` 能完成配置。
 - `cusignal_cpu`、`cusignal_cuda`、`task1_radar_demo`、`task2_features_demo` 能完成构建。
@@ -93,12 +93,10 @@ cmake --build build --target smoke_demo1 --parallel
 ctest --test-dir build -R '^smoke_demo1$' --output-on-failure
 ```
 
-中科芯平台探测：
+中科芯平台探测在进入本队 docker 后执行：
 
 ```bash
-sudo docker exec -it docker_name bash
-source /zq500/sdk/env.sh
-dlsmi
+cd /CETC
 scripts/platform/probe_zhongkexin.sh
 ```
 
@@ -111,14 +109,40 @@ fail: missing CUDA-compatible compiler
 ok: dlsmi is available
 ```
 
-中科芯第一阶段验证：
+中科芯第一阶段验证在本队 docker 内执行：
 
 ```bash
-sudo docker exec -it docker_name bash
-source /zq500/sdk/env.sh
-dlsmi
+cd /CETC
 scripts/platform/run_zhongkexin_stage1.sh
 ```
+
+如果当前在服务器宿主机上，先执行项目同步：
+
+```bash
+cd /home/usr_04/CETC
+./copy_to_container.sh gpu_04
+```
+
+该命令会复制项目到容器中的全新临时目录，并打印容器端替换脚本命令，例如：
+
+```bash
+/CETC.incoming.20260615124530/replace_container_project.sh /CETC
+```
+
+进入容器后先执行打印的 `replace_container_project.sh` 命令，完成 `/CETC` 完全替换。例如：
+
+```bash
+/CETC.incoming.20260615124530/replace_container_project.sh /CETC
+```
+
+然后执行：
+
+```bash
+cd /CETC
+scripts/platform/run_zhongkexin_stage1.sh
+```
+
+统一验收脚本内部会兼容当前 SDK `env.sh` 的 `$1` 读取行为，运行前不需要手动 source。如需覆盖默认值，使用 `BUILD_DIR`、`CUDA_ARCH`、`REPEAT` 环境变量。当前中科芯路径默认使用 `CUDA_ARCH=OFF`，不要手动设置 `CUDA_ARCH=80`，否则 CMake 可能生成 NVIDIA 专用的 `sm_80` 参数。
 
 等价展开命令：
 
@@ -141,7 +165,7 @@ scripts/test/run_task_demos.sh --build-dir build-zx --no-build --repeat 3
 - 模板较重或使用 `thread_local` workspace 的代码可能暴露 CUDA 编译器兼容问题。
 - 中科芯平台可能没有 `compute-sanitizer`；如无等价工具，leak check 应记录为 skipped。
 - VPN 每天 `1:00-8:00` 关闭，长时间构建、benchmark 和 scale sweep 需要避开该时段。
-- 每次进入 docker 都必须重新执行 `source /zq500/sdk/env.sh`，否则编译器、库路径或 `dlsmi` 可能不可用。
+- 每次进入 docker 都需要初始化 SDK；当前统一验收脚本内部已用 `source /zq500/sdk/env.sh ""` 处理 `$1` 未绑定问题。
 - 服务器宿主机只做文件中转，不应在宿主机直接构建或运行本项目。
 
 ## 总体推进顺序

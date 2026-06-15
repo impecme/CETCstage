@@ -1,6 +1,5 @@
 #include "cusignal/peak_finding/peak_finding.hpp"
 
-#include <cub/cub.cuh>
 #include <cuda_runtime.h>
 
 #include <limits>
@@ -109,7 +108,6 @@ namespace
         CudaIndexSignal flat_hits_storage;
         std::vector<CudaIndexSignal> axis_outputs;
         DeviceBuffer<unsigned char> mask_storage;
-        DeviceBuffer<unsigned char> select_temp_storage;
         DeviceBuffer<int> hit_count_storage;
         DeviceBuffer<int *> axis_pointer_buffer;
         cusignal::core::Shape cached_shape;
@@ -239,6 +237,22 @@ namespace
             axis_outputs[dim][index] = coord;
         }
     }
+
+    __global__ void compact_flagged_indices_kernel(
+        const unsigned char *mask,
+        std::size_t total,
+        int *flat_indices,
+        int *hit_count)
+    {
+        const std::size_t index =
+            static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+        if (index >= total || mask[index] == 0)
+        {
+            return;
+        }
+        const int output_index = atomicAdd(hit_count, 1);
+        flat_indices[output_index] = static_cast<int>(index);
+    }
 } // namespace
 
 namespace cusignal
@@ -310,29 +324,15 @@ namespace cusignal
                     check_kernel_launch("extrema_mask_kernel");
 
                     g_workspace.flat_hits_storage.resize(total, false);
-                    cub::CountingInputIterator<int> counting_begin(0);
-                    std::size_t temp_storage_bytes = 0;
                     cusignal::core::throw_on_cuda_error(
-                        cub::DeviceSelect::Flagged(
-                            nullptr,
-                            temp_storage_bytes,
-                            counting_begin,
-                            g_workspace.mask_storage.get(),
-                            g_workspace.flat_hits_storage.data(),
-                            g_workspace.hit_count_storage.get(),
-                            static_cast<int>(total)),
-                        "cub::DeviceSelect::Flagged(size_query)");
-                    g_workspace.select_temp_storage.reserve(temp_storage_bytes);
-                    cusignal::core::throw_on_cuda_error(
-                        cub::DeviceSelect::Flagged(
-                            g_workspace.select_temp_storage.get(),
-                            temp_storage_bytes,
-                            counting_begin,
-                            g_workspace.mask_storage.get(),
-                            g_workspace.flat_hits_storage.data(),
-                            g_workspace.hit_count_storage.get(),
-                            static_cast<int>(total)),
-                        "cub::DeviceSelect::Flagged");
+                        cudaMemset(g_workspace.hit_count_storage.get(), 0, sizeof(int)),
+                        "cudaMemset hit_count");
+                    compact_flagged_indices_kernel<<<block_count(total), kThreadsPerBlock>>>(
+                        g_workspace.mask_storage.get(),
+                        total,
+                        g_workspace.flat_hits_storage.data(),
+                        g_workspace.hit_count_storage.get());
+                    check_kernel_launch("compact_flagged_indices_kernel");
                     int hit_count_device = 0;
                     cusignal::core::throw_on_cuda_error(
                         cudaMemcpy(

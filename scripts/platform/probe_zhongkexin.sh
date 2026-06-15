@@ -1,471 +1,258 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-BUILD_DIR="${PROJECT_ROOT}/build-zx-probe"
-CUDA_ARCH="${CUDA_ARCH:-80}"
-CXX_COMPILER="${CXX:-}"
-CUDA_COMPILER="${CUDACXX:-}"
-SKIP_ENV_CHECK="${CUSIGNAL_ZHONGKEXIN_SKIP_ENV_CHECK:-0}"
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+build="${BUILD_DIR:-${root}/build-zx-probe}"
+arch="${CUDA_ARCH:-OFF}"
+src="${build}/src"
 
-usage() {
-  cat <<'USAGE'
-Usage: scripts/platform/probe_zhongkexin.sh [options]
-
-Options:
-  --build-dir DIR       Probe build directory (default: build-zx-probe)
-  --cuda-arch ARCH      CUDA architecture passed to CMake (default: CUDA_ARCH or 80)
-  --cxx PATH            Optional C++ compiler
-  --cuda PATH           Optional CUDA compiler
-  --skip-env-check      Skip Zhongkexin SDK preflight checks
-  -h, --help            Show this help
-
-Environment:
-  CUSIGNAL_ZHONGKEXIN_CUFFT_LIBRARY     Optional cuFFT-compatible library path
-  CUSIGNAL_ZHONGKEXIN_CUBLAS_LIBRARY    Optional cuBLAS-compatible library path
-  CUSIGNAL_ZHONGKEXIN_CUSOLVER_LIBRARY  Optional cuSOLVER-compatible library path
-  CUSIGNAL_ZHONGKEXIN_SKIP_ENV_CHECK=1  Skip SDK preflight checks
-USAGE
+find_cuda_root() {
+  for dir in "${CUDA_ROOT:-}" "${CUDA_HOME:-}" "${CUDA_PATH:-}" /zq500/cuda11 /zq500/sdk /usr/local/cuda; do
+    [[ -n "${dir}" ]] || continue
+    [[ -d "${dir}/nvvm/libdevice" || -f "${dir}/include/cuda_runtime.h" ]] && printf '%s\n' "${dir}" && return
+  done
 }
 
-while [[ $# -gt 0 ]]; do
-  case "$1" in
-    --build-dir)
-      BUILD_DIR="$2"
-      shift 2
-      ;;
-    --cuda-arch)
-      CUDA_ARCH="$2"
-      shift 2
-      ;;
-    --cxx)
-      CXX_COMPILER="$2"
-      shift 2
-      ;;
-    --cuda)
-      CUDA_COMPILER="$2"
-      shift 2
-      ;;
-    --skip-env-check)
-      SKIP_ENV_CHECK=1
-      shift
-      ;;
-    -h|--help)
-      usage
-      exit 0
-      ;;
-    *)
-      echo "[zx-probe] unknown argument: $1" >&2
-      usage >&2
-      exit 2
-      ;;
-  esac
-done
+find_tool() {
+  local tool
+  local dir
+  for dir in "${real_cuda_compiler_dir:-}" /zq500/sdk/bin /zq500/cuda11/bin /usr/bin; do
+    [[ -n "${dir}" && -d "${dir}" ]] || continue
+    for tool in "$@"; do
+      [[ -x "${dir}/${tool}" ]] && printf '%s\n' "${dir}/${tool}" && return
+    done
+  done
+  for tool in "$@"; do
+    command -v "${tool}" 2>/dev/null && return
+  done
+}
 
-if [[ "${BUILD_DIR}" != /* ]]; then
-  BUILD_DIR="${PROJECT_ROOT}/${BUILD_DIR}"
+select_cuda_compiler() {
+  local probe_dir="${build}/compiler-probe"
+  local candidate
+  local flags
+  local output
+  local kind
+  local flags_file="${probe_dir}/selected_flags"
+  rm -rf "${probe_dir}"
+  mkdir -p "${probe_dir}"
+  cat >"${probe_dir}/probe.cu" <<'CU'
+#include <cuda_runtime.h>
+__global__ void probe_kernel(float *x) { x[threadIdx.x] = 1.0f; }
+CU
+
+  for candidate in "$@"; do
+    [[ -n "${candidate}" && -x "${candidate}" ]] || continue
+    for flags in \
+      "-std=c++17 -I/zq500/cuda11/include -I/zq500/sdk/include" \
+      "-std=c++17 --cuda-path=/zq500/cuda11 -I/zq500/cuda11/include -I/zq500/sdk/include" \
+      "-std=c++17 --cuda-path=/zq500/sdk -I/zq500/cuda11/include -I/zq500/sdk/include" \
+      "-std=c++17 --cuda-path=/zq500/cuda11 -nocudalib -I/zq500/cuda11/include -I/zq500/sdk/include" \
+      "-std=c++17 --cuda-path=/zq500/sdk -nocudalib -I/zq500/cuda11/include -I/zq500/sdk/include" \
+      "-std=c++17 --cuda-path=/zq500/sdk -nocudalib --cuda-host-only -I/zq500/cuda11/include -I/zq500/sdk/include" \
+      "-std=c++17 --cuda-path=/zq500/sdk -nocudalib --cuda-device-only -I/zq500/cuda11/include -I/zq500/sdk/include" \
+      "-std=c++17 --cuda-path=/zq500/sdk -nocudalib --cuda-gpu-arch=sm_80 -I/zq500/cuda11/include -I/zq500/sdk/include" \
+      "-std=c++17 --cuda-path=/zq500/sdk -nocudalib -allow-unsupported-compiler -I/zq500/cuda11/include -I/zq500/sdk/include" \
+      "-std=c++17 -nocudalib -nocudainc -I/zq500/cuda11/include -I/zq500/sdk/include" \
+      "-std=c++17 -D__CUDACC__ -nocudalib -nocudainc -I/zq500/cuda11/include -I/zq500/sdk/include"; do
+      output="${probe_dir}/$(basename "${candidate}").$(printf '%s' "${flags}" | tr -cs 'A-Za-z0-9_' '_').o"
+      echo "[zx-probe] probing CUDA compiler: ${candidate} ${flags}" >&2
+      # shellcheck disable=SC2086
+      if "${candidate}" ${flags} -c "${probe_dir}/probe.cu" -o "${output}" >/tmp/zx_cuda_compiler_probe.log 2>&1; then
+        kind="$(file -b "${output}" 2>/dev/null || true)"
+        echo "[zx-probe] compiler output: ${kind}" >&2
+        if [[ "${kind}" == *"ELF"* && "${kind}" == *"relocatable"* ]]; then
+          printf '%s\n' "${flags}" >"${flags_file}"
+          printf '%s\n' "${candidate}"
+          return 0
+        fi
+      else
+        sed -n '1,12p' /tmp/zx_cuda_compiler_probe.log >&2
+      fi
+    done
+  done
+
+  echo "[zx-probe] SDK compiler hint files" >&2
+  find /zq500/sdk/samples /zq500/cuda11 -maxdepth 4 -type f \
+    \( -name 'Makefile' -o -name 'CMakeLists.txt' -o -name '*.sh' \) 2>/dev/null | sed -n '1,40p' >&2 || true
+  echo "[zx-probe] SDK compiler command hints" >&2
+  find /zq500/sdk/samples /zq500/cuda11 -maxdepth 4 -type f \
+    \( -name 'Makefile' -o -name 'CMakeLists.txt' -o -name '*.sh' \) \
+    -exec grep -HnE 'dlcc|dlnvcc|nvcc|cuda-gpu-arch|cuda-path|nocudalib|nocudainc|arch' {} \; 2>/dev/null | sed -n '1,120p' >&2 || true
+  echo "[zx-probe] no CUDA compiler produced an ELF relocatable object" >&2
+  return 1
+}
+
+fill_cuda_compat_root() {
+  local dst="$1"
+  mkdir -p "${dst}/bin" "${dst}/lib64" "${dst}/nvvm/libdevice"
+  for dir in "${CUDA_ROOT:-}" "${CUDA_HOME:-}" "${CUDA_PATH:-}" /zq500/cuda11 /zq500/sdk /usr/local/cuda; do
+    [[ -n "${dir}" && -d "${dir}" ]] || continue
+    [[ -d "${dir}/include" && ! -e "${dst}/include" ]] && ln -sfn "${dir}/include" "${dst}/include"
+    for libdir in "${dir}/lib64" "${dir}/lib" "${dir}/lib/x86_64-linux-gnu"; do
+      [[ -d "${libdir}" ]] || continue
+      for lib in "${libdir}"/*; do
+        [[ -e "${lib}" ]] || continue
+        ln -sfn "${lib}" "${dst}/lib64/$(basename "${lib}")"
+      done
+    done
+  done
+}
+
+rm -rf "${build}"
+mkdir -p "${src}"
+
+mapfile -t cuda_compiler_candidates < <(
+  for tool in "${CUDACXX:-}" \
+      "$(command -v dlnvcc 2>/dev/null || true)" \
+      "$(command -v dlcc 2>/dev/null || true)" \
+      "$(command -v nvcc 2>/dev/null || true)"; do
+    [[ -n "${tool}" ]] && printf '%s\n' "${tool}"
+  done
+)
+real_cuda_compiler="$(select_cuda_compiler "${cuda_compiler_candidates[@]}")"
+real_cuda_compiler_dir=""
+[[ -n "${real_cuda_compiler}" ]] && real_cuda_compiler_dir="$(dirname "${real_cuda_compiler}")"
+cuda_compiler_flags=""
+[[ -f "${build}/compiler-probe/selected_flags" ]] && cuda_compiler_flags="$(<"${build}/compiler-probe/selected_flags")"
+archive_tool="${AR:-$(find_tool llvm-ar ar || true)}"
+ranlib_tool="${RANLIB:-$(find_tool llvm-ranlib ranlib || true)}"
+cuda_root="${build}/cuda-compat"
+fill_cuda_compat_root "${cuda_root}"
+cuda_compiler=""
+if [[ -n "${real_cuda_compiler}" ]]; then
+  cuda_compiler="${cuda_root}/bin/nvcc"
+  printf '#!/usr/bin/env bash\nexec %q %s "$@"\n' "${real_cuda_compiler}" "${cuda_compiler_flags}" >"${cuda_compiler}"
+  chmod +x "${cuda_compiler}"
 fi
 
-SRC_DIR="${BUILD_DIR}/src"
-REPORT="${BUILD_DIR}/probe_report.md"
-
-rm -rf "${BUILD_DIR}"
-mkdir -p "${SRC_DIR}"
-
-version_ge() {
-  local actual="$1"
-  local required="$2"
-  [[ "$(printf '%s\n%s\n' "${required}" "${actual}" | sort -V | head -n1)" == "${required}" ]]
-}
-
-write_preflight_report() {
-  local status="$1"
-  local details="$2"
-  {
-    echo "# Zhongkexin Platform Probe"
-    echo
-    echo "- build_dir: ${BUILD_DIR}"
-    echo "- cuda_arch: ${CUDA_ARCH}"
-    echo "- preflight: ${status}"
-    echo
-    echo '```text'
-    printf '%s\n' "${details}"
-    echo '```'
-  } >"${REPORT}"
-}
-
-run_preflight() {
-  if [[ "${SKIP_ENV_CHECK}" == "1" || "${SKIP_ENV_CHECK}" == "true" || "${SKIP_ENV_CHECK}" == "TRUE" ]]; then
-    echo "[zx-probe] preflight skipped"
-    return 0
-  fi
-
-  local failures=()
-  local details=()
-
-  if [[ -f /zq500/sdk/env.sh ]]; then
-    details+=("ok: /zq500/sdk/env.sh exists")
-  else
-    failures+=("missing /zq500/sdk/env.sh; enter the team docker and run source /zq500/sdk/env.sh before probing")
-  fi
-
-  if command -v dlsmi >/dev/null 2>&1; then
-    if dlsmi >/dev/null 2>&1; then
-      details+=("ok: dlsmi is available")
-    else
-      failures+=("dlsmi exists but failed to query devices")
-    fi
-  else
-    failures+=("missing dlsmi")
-  fi
-
-  if command -v cmake >/dev/null 2>&1; then
-    local cmake_version
-    cmake_version="$(cmake --version | sed -n '1s/.*version //p')"
-    details+=("cmake: ${cmake_version}")
-    if ! version_ge "${cmake_version}" "3.18"; then
-      failures+=("cmake ${cmake_version} is below required 3.18")
-    fi
-  else
-    failures+=("missing cmake")
-  fi
-
-  if [[ -n "${CUDA_COMPILER}" ]]; then
-    if [[ -x "${CUDA_COMPILER}" || -n "$(command -v "${CUDA_COMPILER}" 2>/dev/null)" ]]; then
-      details+=("cuda compiler: ${CUDA_COMPILER}")
-    else
-      failures+=("CUDACXX/CUDA compiler is set but not executable: ${CUDA_COMPILER}")
-    fi
-  elif command -v nvcc >/dev/null 2>&1; then
-    details+=("cuda compiler: $(command -v nvcc)")
-  elif command -v dlnvcc >/dev/null 2>&1; then
-    CUDA_COMPILER="$(command -v dlnvcc)"
-    details+=("cuda compiler: ${CUDA_COMPILER}")
-  elif command -v dlcc >/dev/null 2>&1; then
-    CUDA_COMPILER="$(command -v dlcc)"
-    details+=("cuda compiler: ${CUDA_COMPILER}")
-  else
-    failures+=("missing CUDA-compatible compiler: expected nvcc, dlnvcc, dlcc, or --cuda PATH")
-  fi
-
-  if ((${#failures[@]} != 0)); then
-    local text
-    text="$(printf 'fail: %s\n' "${failures[@]}"; printf '%s\n' "${details[@]}")"
-    write_preflight_report "failed" "${text}"
-    printf '[zx-probe] preflight failed:\n%s\n' "${text}" >&2
-    echo "[zx-probe] report: ${REPORT}" >&2
-    exit 2
-  fi
-
-  printf '[zx-probe] preflight passed:\n'
-  printf '  %s\n' "${details[@]}"
-}
-
-run_preflight
-
-cat >"${SRC_DIR}/CMakeLists.txt" <<'CMAKE'
+cat >"${src}/CMakeLists.txt" <<'CMAKE'
 cmake_minimum_required(VERSION 3.18)
-project(zhongkexin_cuda_probe LANGUAGES CXX CUDA)
+project(zhongkexin_probe LANGUAGES CXX CUDA)
 
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CUDA_STANDARD 17)
-set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 
-find_package(CUDAToolkit REQUIRED)
+find_package(CUDAToolkit QUIET)
+if(CUDAToolkit_FOUND)
+  set(ZX_CUDA_INCLUDE_DIRS ${CUDAToolkit_INCLUDE_DIRS})
+  set(ZX_CUDA_LIBS CUDA::cudart CUDA::cufft_static CUDA::cublas CUDA::cusolver)
+else()
+  find_path(
+    ZX_CUDA_INCLUDE_DIRS
+    NAMES cuda_runtime.h
+    PATHS
+      "$ENV{CUDA_ROOT}/include"
+      "$ENV{CUDA_HOME}/include"
+      "$ENV{CUDA_PATH}/include"
+      /zq500/cuda11/include
+      /zq500/sdk/include
+      /usr/local/cuda/include
+  )
+  if(NOT ZX_CUDA_INCLUDE_DIRS)
+    message(FATAL_ERROR "cuda_runtime.h was not found")
+  endif()
+  set(ZX_CUDA_LIBS "")
+endif()
 
-function(zx_probe_require_or_alias target_name cache_library label)
-    if(TARGET ${target_name})
-        return()
-    endif()
-    if(DEFINED ${cache_library} AND NOT "${${cache_library}}" STREQUAL "")
-        add_library(${target_name} UNKNOWN IMPORTED)
-        set_target_properties(${target_name} PROPERTIES
-            IMPORTED_LOCATION "${${cache_library}}"
-            INTERFACE_INCLUDE_DIRECTORIES "${CUDAToolkit_INCLUDE_DIRS}"
-        )
-        message(STATUS "Using ${label} compatibility library: ${${cache_library}}")
-        return()
-    endif()
-    message(FATAL_ERROR "${target_name} is unavailable. Set ${cache_library} if the compatibility library has a different CMake target name.")
-endfunction()
-
-zx_probe_require_or_alias(CUDA::cufft_static CUSIGNAL_ZHONGKEXIN_CUFFT_LIBRARY "cuFFT")
-zx_probe_require_or_alias(CUDA::cublas CUSIGNAL_ZHONGKEXIN_CUBLAS_LIBRARY "cuBLAS")
-zx_probe_require_or_alias(CUDA::cusolver CUSIGNAL_ZHONGKEXIN_CUSOLVER_LIBRARY "cuSOLVER")
-
-add_executable(zx_probe probe.cu)
-target_link_libraries(zx_probe PRIVATE CUDA::cudart CUDA::cufft_static CUDA::cublas CUDA::cusolver)
+add_library(zx_probe STATIC probe.cu)
+target_include_directories(zx_probe PRIVATE ${ZX_CUDA_INCLUDE_DIRS})
+target_link_libraries(zx_probe PRIVATE ${ZX_CUDA_LIBS})
 CMAKE
 
-cat >"${SRC_DIR}/probe.cu" <<'CU'
+cat >"${src}/probe.cu" <<'CU'
 #include <cuda_runtime.h>
 #include <cufft.h>
 #include <cublas_v2.h>
 #include <cusolverDn.h>
 
-#include <cmath>
-#include <complex>
-#include <iostream>
-#include <stdexcept>
-#include <string>
-#include <vector>
+#include <cstdio>
+#include <cstdlib>
 
-namespace
+__global__ void add_one(float *x) { x[threadIdx.x] += 1.0f; }
+
+void ok(bool v, const char *name)
 {
-    void check(cudaError_t status, const char *what)
+    if (!v)
     {
-        if (status != cudaSuccess)
-        {
-            throw std::runtime_error(std::string(what) + ": " + cudaGetErrorString(status));
-        }
-    }
-
-    void check(cufftResult status, const char *what)
-    {
-        if (status != CUFFT_SUCCESS)
-        {
-            throw std::runtime_error(std::string(what) + ": cuFFT error " + std::to_string(static_cast<int>(status)));
-        }
-    }
-
-    void check(cublasStatus_t status, const char *what)
-    {
-        if (status != CUBLAS_STATUS_SUCCESS)
-        {
-            throw std::runtime_error(std::string(what) + ": cuBLAS error " + std::to_string(static_cast<int>(status)));
-        }
-    }
-
-    void check(cusolverStatus_t status, const char *what)
-    {
-        if (status != CUSOLVER_STATUS_SUCCESS)
-        {
-            throw std::runtime_error(std::string(what) + ": cuSOLVER error " + std::to_string(static_cast<int>(status)));
-        }
-    }
-
-    __global__ void add_one_kernel(float *values, int count)
-    {
-        const int index = blockIdx.x * blockDim.x + threadIdx.x;
-        if (index < count)
-        {
-            values[index] += 1.0f;
-        }
-    }
-
-    void probe_runtime()
-    {
-        int device = -1;
-        check(cudaGetDevice(&device), "cudaGetDevice");
-        cudaDeviceProp prop{};
-        check(cudaGetDeviceProperties(&prop, device), "cudaGetDeviceProperties");
-        std::size_t free_bytes = 0;
-        std::size_t total_bytes = 0;
-        check(cudaMemGetInfo(&free_bytes, &total_bytes), "cudaMemGetInfo");
-
-        std::vector<float> host{0.0f, 1.0f, 2.0f, 3.0f};
-        float *device_values = nullptr;
-        check(cudaMalloc(reinterpret_cast<void **>(&device_values), host.size() * sizeof(float)), "cudaMalloc");
-        check(cudaMemcpy(device_values, host.data(), host.size() * sizeof(float), cudaMemcpyHostToDevice), "cudaMemcpy H2D");
-
-        float *zero_values = nullptr;
-        check(cudaMalloc(reinterpret_cast<void **>(&zero_values), host.size() * sizeof(float)), "cudaMalloc(zero)");
-        check(cudaMemset(zero_values, 0, host.size() * sizeof(float)), "cudaMemset(zero)");
-        std::vector<float> zero_host(host.size(), -1.0f);
-        check(cudaMemcpy(zero_host.data(), zero_values, zero_host.size() * sizeof(float), cudaMemcpyDeviceToHost), "cudaMemcpy zero D2H");
-        for (float value : zero_host)
-        {
-            if (value != 0.0f)
-            {
-                throw std::runtime_error("cudaMemset zero-fill mismatch");
-            }
-        }
-        check(cudaFree(zero_values), "cudaFree(zero)");
-
-        cudaEvent_t start = nullptr;
-        cudaEvent_t stop = nullptr;
-        check(cudaEventCreate(&start), "cudaEventCreate(start)");
-        check(cudaEventCreate(&stop), "cudaEventCreate(stop)");
-        check(cudaEventRecord(start), "cudaEventRecord(start)");
-        add_one_kernel<<<1, 32>>>(device_values, static_cast<int>(host.size()));
-        check(cudaGetLastError(), "add_one_kernel launch");
-        check(cudaEventRecord(stop), "cudaEventRecord(stop)");
-        check(cudaEventSynchronize(stop), "cudaEventSynchronize(stop)");
-        float elapsed_ms = 0.0f;
-        check(cudaEventElapsedTime(&elapsed_ms, start, stop), "cudaEventElapsedTime");
-
-        check(cudaMemcpy(host.data(), device_values, host.size() * sizeof(float), cudaMemcpyDeviceToHost), "cudaMemcpy D2H");
-        check(cudaFree(device_values), "cudaFree");
-        check(cudaEventDestroy(start), "cudaEventDestroy(start)");
-        check(cudaEventDestroy(stop), "cudaEventDestroy(stop)");
-
-        if (std::fabs(host[3] - 4.0f) > 1.0e-6f)
-        {
-            throw std::runtime_error("kernel result mismatch");
-        }
-
-        float2 complex_value{1.0f, -2.0f};
-        if (complex_value.x != 1.0f || complex_value.y != -2.0f)
-        {
-            throw std::runtime_error("float2 layout mismatch");
-        }
-
-        std::cout << "runtime: pass device=" << device
-                  << " name=\"" << prop.name << "\""
-                  << " free_mib=" << (free_bytes / 1048576.0)
-                  << " total_mib=" << (total_bytes / 1048576.0)
-                  << " event_ms=" << elapsed_ms << '\n';
-    }
-
-    void probe_cufft()
-    {
-        cufftHandle plan = 0;
-        check(cufftPlan1d(&plan, 4, CUFFT_C2C, 1), "cufftPlan1d");
-        cufftComplex *values = nullptr;
-        check(cudaMalloc(reinterpret_cast<void **>(&values), 4 * sizeof(cufftComplex)), "cudaMalloc(cufft)");
-        std::vector<cufftComplex> host(4);
-        host[0].x = 1.0f;
-        check(cudaMemcpy(values, host.data(), host.size() * sizeof(cufftComplex), cudaMemcpyHostToDevice), "cudaMemcpy(cufft)");
-        check(cufftExecC2C(plan, values, values, CUFFT_FORWARD), "cufftExecC2C");
-        check(cudaDeviceSynchronize(), "cudaDeviceSynchronize(cufft)");
-        check(cudaFree(values), "cudaFree(cufft)");
-        check(cufftDestroy(plan), "cufftDestroy");
-        std::cout << "cufft: pass\n";
-    }
-
-    void probe_cublas()
-    {
-        cublasHandle_t handle = nullptr;
-        check(cublasCreate(&handle), "cublasCreate");
-        const int n = 2;
-        cufftComplex host_a[n * n] = {{1.0f, 0.0f}, {0.0f, 0.0f}, {0.0f, 0.0f}, {1.0f, 0.0f}};
-        cufftComplex host_b[n * n] = {{2.0f, 0.0f}, {0.0f, 0.0f}, {0.0f, 0.0f}, {3.0f, 0.0f}};
-        cufftComplex *a = nullptr;
-        cufftComplex *b = nullptr;
-        cufftComplex *c = nullptr;
-        check(cudaMalloc(reinterpret_cast<void **>(&a), sizeof(host_a)), "cudaMalloc(a)");
-        check(cudaMalloc(reinterpret_cast<void **>(&b), sizeof(host_b)), "cudaMalloc(b)");
-        check(cudaMalloc(reinterpret_cast<void **>(&c), sizeof(host_b)), "cudaMalloc(c)");
-        check(cudaMemcpy(a, host_a, sizeof(host_a), cudaMemcpyHostToDevice), "cudaMemcpy(a)");
-        check(cudaMemcpy(b, host_b, sizeof(host_b), cudaMemcpyHostToDevice), "cudaMemcpy(b)");
-        const cufftComplex alpha{1.0f, 0.0f};
-        const cufftComplex beta{0.0f, 0.0f};
-        check(cublasCgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, n, n, n, &alpha, a, n, b, n, &beta, c, n), "cublasCgemm");
-        check(cudaFree(a), "cudaFree(a)");
-        check(cudaFree(b), "cudaFree(b)");
-        check(cudaFree(c), "cudaFree(c)");
-        check(cublasDestroy(handle), "cublasDestroy");
-        std::cout << "cublas: pass\n";
-    }
-
-    void probe_cusolver()
-    {
-        cusolverDnHandle_t handle = nullptr;
-        check(cusolverDnCreate(&handle), "cusolverDnCreate");
-        const int n = 2;
-        cufftComplex host_a[n * n] = {{4.0f, 0.0f}, {2.0f, 0.0f}, {1.0f, 0.0f}, {3.0f, 0.0f}};
-        cufftComplex host_b[n] = {{1.0f, 0.0f}, {1.0f, 0.0f}};
-        cufftComplex *a = nullptr;
-        cufftComplex *b = nullptr;
-        int *pivot = nullptr;
-        int *info_device = nullptr;
-        cufftComplex *workspace = nullptr;
-        int lwork = 0;
-        int info = 0;
-
-        check(cudaMalloc(reinterpret_cast<void **>(&a), sizeof(host_a)), "cudaMalloc(cusolver a)");
-        check(cudaMalloc(reinterpret_cast<void **>(&b), sizeof(host_b)), "cudaMalloc(cusolver b)");
-        check(cudaMalloc(reinterpret_cast<void **>(&pivot), n * sizeof(int)), "cudaMalloc(cusolver pivot)");
-        check(cudaMalloc(reinterpret_cast<void **>(&info_device), sizeof(int)), "cudaMalloc(cusolver info)");
-        check(cudaMemcpy(a, host_a, sizeof(host_a), cudaMemcpyHostToDevice), "cudaMemcpy(cusolver a)");
-        check(cudaMemcpy(b, host_b, sizeof(host_b), cudaMemcpyHostToDevice), "cudaMemcpy(cusolver b)");
-
-        check(cusolverDnCgetrf_bufferSize(handle, n, n, a, n, &lwork), "cusolverDnCgetrf_bufferSize");
-        check(cudaMalloc(reinterpret_cast<void **>(&workspace), static_cast<std::size_t>(lwork) * sizeof(cufftComplex)), "cudaMalloc(cusolver workspace)");
-        check(cusolverDnCgetrf(handle, n, n, a, n, workspace, pivot, info_device), "cusolverDnCgetrf");
-        check(cudaMemcpy(&info, info_device, sizeof(int), cudaMemcpyDeviceToHost), "cudaMemcpy(cusolver getrf info)");
-        if (info != 0)
-        {
-            throw std::runtime_error("cusolverDnCgetrf info=" + std::to_string(info));
-        }
-        check(cusolverDnCgetrs(handle, CUBLAS_OP_N, n, 1, a, n, pivot, b, n, info_device), "cusolverDnCgetrs");
-        check(cudaMemcpy(&info, info_device, sizeof(int), cudaMemcpyDeviceToHost), "cudaMemcpy(cusolver getrs info)");
-        if (info != 0)
-        {
-            throw std::runtime_error("cusolverDnCgetrs info=" + std::to_string(info));
-        }
-
-        check(cudaFree(a), "cudaFree(cusolver a)");
-        check(cudaFree(b), "cudaFree(cusolver b)");
-        check(cudaFree(pivot), "cudaFree(cusolver pivot)");
-        check(cudaFree(info_device), "cudaFree(cusolver info)");
-        check(cudaFree(workspace), "cudaFree(cusolver workspace)");
-        check(cusolverDnDestroy(handle), "cusolverDnDestroy");
-        std::cout << "cusolver: pass\n";
+        std::fprintf(stderr, "probe failed: %s\n", name);
+        std::exit(1);
     }
 }
 
 int main()
 {
-    try
-    {
-        probe_runtime();
-        probe_cufft();
-        probe_cublas();
-        probe_cusolver();
-    }
-    catch (const std::exception &error)
-    {
-        std::cerr << "probe failed: " << error.what() << '\n';
-        return 1;
-    }
+    int device = -1;
+    ok(cudaGetDevice(&device) == cudaSuccess, "cudaGetDevice");
+
+    float host[4] = {0, 1, 2, 3};
+    float *dev = nullptr;
+    ok(cudaMalloc(&dev, sizeof(host)) == cudaSuccess, "cudaMalloc");
+    ok(cudaMemcpy(dev, host, sizeof(host), cudaMemcpyHostToDevice) == cudaSuccess, "cudaMemcpy H2D");
+    add_one<<<1, 4>>>(dev);
+    ok(cudaDeviceSynchronize() == cudaSuccess, "kernel launch");
+    ok(cudaMemcpy(host, dev, sizeof(host), cudaMemcpyDeviceToHost) == cudaSuccess, "cudaMemcpy D2H");
+    ok(host[0] == 1.0f && host[3] == 4.0f, "kernel result");
+    ok(cudaMemset(dev, 0, sizeof(host)) == cudaSuccess, "cudaMemset");
+
+    cudaEvent_t start{}, stop{};
+    ok(cudaEventCreate(&start) == cudaSuccess, "cudaEventCreate start");
+    ok(cudaEventCreate(&stop) == cudaSuccess, "cudaEventCreate stop");
+    ok(cudaEventRecord(start) == cudaSuccess, "cudaEventRecord start");
+    ok(cudaEventRecord(stop) == cudaSuccess, "cudaEventRecord stop");
+    ok(cudaEventSynchronize(stop) == cudaSuccess, "cudaEventSynchronize");
+    float ms = 0.0f;
+    ok(cudaEventElapsedTime(&ms, start, stop) == cudaSuccess, "cudaEventElapsedTime");
+    cudaEventDestroy(start);
+    cudaEventDestroy(stop);
+    cudaFree(dev);
+
+    cufftHandle fft{};
+    ok(cufftPlan1d(&fft, 8, CUFFT_C2C, 1) == CUFFT_SUCCESS, "cufftPlan1d");
+    cufftDestroy(fft);
+
+    cublasHandle_t blas{};
+    ok(cublasCreate(&blas) == CUBLAS_STATUS_SUCCESS, "cublasCreate");
+    cublasDestroy(blas);
+
+    cusolverDnHandle_t solver{};
+    ok(cusolverDnCreate(&solver) == CUSOLVER_STATUS_SUCCESS, "cusolverDnCreate");
+    cusolverDnDestroy(solver);
+
+    std::puts("zhongkexin probe passed");
     return 0;
 }
 CU
 
-CMAKE_ARGS=(
-  -S "${SRC_DIR}"
-  -B "${BUILD_DIR}/build"
-  -DCMAKE_BUILD_TYPE=Release
-  -DCMAKE_CUDA_ARCHITECTURES="${CUDA_ARCH}"
+cmake_args=(
+  -S "${src}"
+  -B "${build}"
+  -DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY
+  -DCMAKE_CUDA_COMPILER_FORCED=ON
+  -DCMAKE_CUDA_COMPILER_WORKS=ON
+  -DCMAKE_CUDA_FLAGS=-std=c++17
 )
-
-if [[ -n "${CXX_COMPILER}" ]]; then
-  CMAKE_ARGS+=("-DCMAKE_CXX_COMPILER=${CXX_COMPILER}")
+cmake_args+=("-DCMAKE_CUDA_ARCHITECTURES=${arch}")
+if [[ -n "${cuda_root}" ]]; then
+  cmake_args+=(
+    "-DCUDAToolkit_ROOT=${cuda_root}"
+    "-DCUDA_TOOLKIT_ROOT_DIR=${cuda_root}"
+    "-DCMAKE_CUDA_COMPILER_TOOLKIT_ROOT=${cuda_root}"
+    "-DCMAKE_CUDA_COMPILER_LIBRARY_ROOT=${cuda_root}"
+  )
 fi
-if [[ -n "${CUDA_COMPILER}" ]]; then
-  CMAKE_ARGS+=("-DCMAKE_CUDA_COMPILER=${CUDA_COMPILER}")
+if [[ -n "${cuda_compiler}" ]]; then
+  cmake_args+=("-DCMAKE_CUDA_COMPILER=${cuda_compiler}")
+  cmake_args+=("-DCMAKE_CUDA_HOST_LINK_LAUNCHER=${cuda_compiler}")
 fi
-if [[ -n "${CUSIGNAL_ZHONGKEXIN_CUFFT_LIBRARY:-}" ]]; then
-  CMAKE_ARGS+=("-DCUSIGNAL_ZHONGKEXIN_CUFFT_LIBRARY=${CUSIGNAL_ZHONGKEXIN_CUFFT_LIBRARY}")
+if [[ -n "${archive_tool}" ]]; then
+  cmake_args+=("-DCMAKE_AR=${archive_tool}")
+  cmake_args+=("-DCMAKE_CUDA_COMPILER_AR=${archive_tool}")
 fi
-if [[ -n "${CUSIGNAL_ZHONGKEXIN_CUBLAS_LIBRARY:-}" ]]; then
-  CMAKE_ARGS+=("-DCUSIGNAL_ZHONGKEXIN_CUBLAS_LIBRARY=${CUSIGNAL_ZHONGKEXIN_CUBLAS_LIBRARY}")
-fi
-if [[ -n "${CUSIGNAL_ZHONGKEXIN_CUSOLVER_LIBRARY:-}" ]]; then
-  CMAKE_ARGS+=("-DCUSIGNAL_ZHONGKEXIN_CUSOLVER_LIBRARY=${CUSIGNAL_ZHONGKEXIN_CUSOLVER_LIBRARY}")
+if [[ -n "${ranlib_tool}" ]]; then
+  cmake_args+=("-DCMAKE_RANLIB=${ranlib_tool}")
+  cmake_args+=("-DCMAKE_CUDA_COMPILER_RANLIB=${ranlib_tool}")
 fi
 
-echo "[zx-probe] configure: ${CMAKE_ARGS[*]}"
-cmake "${CMAKE_ARGS[@]}"
-cmake --build "${BUILD_DIR}/build" --target zx_probe --parallel
-
-echo "[zx-probe] running probe"
-"${BUILD_DIR}/build/zx_probe" | tee "${BUILD_DIR}/probe_stdout.txt"
-
-{
-  echo "# Zhongkexin Platform Probe"
-  echo
-  echo "- build_dir: ${BUILD_DIR}"
-  echo "- cuda_arch: ${CUDA_ARCH}"
-  echo "- result: pass"
-  echo "- rematch_constraints: runtime/event/memory probe includes cudaMemset zero-fill; cuFFT probe uses power-of-two size; cuSOLVER probe uses non-null pivot"
-  echo
-  echo '```text'
-  cat "${BUILD_DIR}/probe_stdout.txt"
-  echo '```'
-} >"${REPORT}"
-
-echo "[zx-probe] report: ${REPORT}"
+cmake "${cmake_args[@]}"
+cmake --build "${build}" --target zx_probe --parallel

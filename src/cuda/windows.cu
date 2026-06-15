@@ -1,6 +1,5 @@
 #include "cusignal/windows/windows.hpp"
 
-#include <cub/cub.cuh>
 #include <cuda_runtime.h>
 #include <cufft.h>
 
@@ -141,7 +140,7 @@ namespace
         DeviceBuffer<float> output;
         DeviceBuffer<float> coefficients;
         DeviceBuffer<float> max_value;
-        DeviceBuffer<unsigned char> reduce_storage;
+        DeviceBuffer<float> reduce_block_max;
         DeviceBuffer<cufftComplex> spectrum;
         DeviceBuffer<cufftComplex> spectrum_template;
         DeviceBuffer<float> chebwin_final_template;
@@ -190,17 +189,10 @@ namespace
                 return;
             }
 
-            std::size_t required_bytes = 0;
-            throw_on_cuda_error(
-                cub::DeviceReduce::Max(
-                    nullptr,
-                    required_bytes,
-                    output.get(),
-                    max_value.get(),
-                    item_count),
-                "cub::DeviceReduce::Max(size_query)");
-            reduce_storage.reserve(required_bytes);
-            reduce_storage_bytes = required_bytes;
+            const std::size_t block_items =
+                item_count == 0 ? 0 : (item_count + kThreadsPerBlock - 1) / kThreadsPerBlock;
+            reduce_block_max.reserve(block_items);
+            reduce_storage_bytes = block_items * sizeof(float);
             reduce_item_count = item_count;
         }
     };
@@ -478,6 +470,76 @@ namespace
         values[index] /= scale;
     }
 
+    __global__ void reduce_max_stage1_kernel(
+        const float *values,
+        std::size_t size,
+        float *block_max)
+    {
+        __shared__ float shared[kThreadsPerBlock];
+        const unsigned int tid = threadIdx.x;
+        const std::size_t index =
+            static_cast<std::size_t>(blockIdx.x) * blockDim.x + tid;
+        shared[tid] = index < size ? values[index] : -3.402823466e+38F;
+        __syncthreads();
+
+        for (unsigned int stride = blockDim.x / 2; stride > 0; stride >>= 1)
+        {
+            if (tid < stride)
+            {
+                shared[tid] = fmaxf(shared[tid], shared[tid + stride]);
+            }
+            __syncthreads();
+        }
+        if (tid == 0)
+        {
+            block_max[blockIdx.x] = shared[0];
+        }
+    }
+
+    __global__ void reduce_max_stage2_kernel(
+        const float *block_max,
+        std::size_t block_count_value,
+        float *max_value)
+    {
+        __shared__ float shared[kThreadsPerBlock];
+        const unsigned int tid = threadIdx.x;
+        float value = -3.402823466e+38F;
+        for (std::size_t index = tid; index < block_count_value; index += blockDim.x)
+        {
+            value = fmaxf(value, block_max[index]);
+        }
+        shared[tid] = value;
+        __syncthreads();
+
+        for (unsigned int stride = blockDim.x / 2; stride > 0; stride >>= 1)
+        {
+            if (tid < stride)
+            {
+                shared[tid] = fmaxf(shared[tid], shared[tid + stride]);
+            }
+            __syncthreads();
+        }
+        if (tid == 0)
+        {
+            max_value[0] = shared[0];
+        }
+    }
+
+    void reduce_max_window(WindowWorkspace &workspace, std::size_t item_count)
+    {
+        const int blocks = block_count(item_count);
+        reduce_max_stage1_kernel<<<blocks, kThreadsPerBlock>>>(
+            workspace.output.get(),
+            item_count,
+            workspace.reduce_block_max.get());
+        check_kernel_launch("reduce_max_stage1_kernel");
+        reduce_max_stage2_kernel<<<1, kThreadsPerBlock>>>(
+            workspace.reduce_block_max.get(),
+            static_cast<std::size_t>(blocks),
+            workspace.max_value.get());
+        check_kernel_launch("reduce_max_stage2_kernel");
+    }
+
     CudaRealSignal make_trivial_window_signal(int size)
     {
         g_last_kernel_ms = 0.0;
@@ -727,14 +789,7 @@ namespace
                 workspace.output.get());
             check_kernel_launch("rebuild_chebwin_from_fft_kernel");
 
-            throw_on_cuda_error(
-                cub::DeviceReduce::Max(
-                    workspace.reduce_storage.get(),
-                    workspace.reduce_storage_bytes,
-                    workspace.output.get(),
-                    workspace.max_value.get(),
-                    static_cast<std::size_t>(extended.size)),
-                "cub::DeviceReduce::Max");
+            reduce_max_window(workspace, static_cast<std::size_t>(extended.size));
 
             normalize_window_kernel<<<block_count(static_cast<std::size_t>(extended.size)), kThreadsPerBlock>>>(
                 workspace.output.get(),
