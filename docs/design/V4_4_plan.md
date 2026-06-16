@@ -5,10 +5,11 @@
 - 本阶段在 correctness 和全量算子迁移基本稳定后进行。
 - 目标是让中科芯路径的性能、资源采样、event timing、报告和 benchmark 能长期稳定复现。
 - 第一阶段中被降级为记录项的性能 gate，应在本阶段恢复为正式验收项。
+- 本阶段范围内的全部功能必须闭环：Task1/Task2 sweep、全量算子 benchmark、resource/timing 报告、benchmark CSV/Markdown/JSON 和图件都要可复现。
 
 ## 进入条件
 
-- V4.3 已完成。
+- V4.3 完整功能闭环已完成。
 - 全量公开算子至少完成 smoke 覆盖，关键模块完成 accuracy 覆盖。
 - correctness 失败项已关闭，或已作为平台限制/暂缓项记录。
 - 当前报告字段结构已经稳定，后续只允许做兼容扩展。
@@ -21,6 +22,7 @@
 - CPU/GPU correctness 与 `mixed_error` 报告。
 - resource usage。
 - benchmark 输出。
+- benchmark 图件输出。
 - 长时间运行稳定性。
 - 不同规模 L1-L6 sweep。
 
@@ -48,6 +50,7 @@
 
 - 运行 Task1/Task2 L1-L6 sweep。
 - 对核心算子运行 benchmark。
+- 对核心算子运行 benchmark 并生成 `plot_all_ops_benchmark.py` 的 PNG/PDF/SVG 图件。
 - 建立中科芯 baseline，不直接套用 A100 阈值。
 - 将第一阶段记录项逐步恢复为正式性能 gate。
 
@@ -62,8 +65,8 @@
 任务级重复验证：
 
 ```bash
-scripts/test/run_task_demos.sh --build-dir build-zx --no-build --repeat 10
-scripts/test/run_task_demos.sh --build-dir build-zx --no-build --scale-sweep --repeat 5
+scripts/test/run_task_demos.sh --build-dir build-zx --no-build --repeat 10 --require-visualization-deps
+scripts/test/run_task_demos.sh --build-dir build-zx --no-build --scale-sweep --repeat 5 --require-visualization-deps
 ```
 
 全量测试：
@@ -76,6 +79,10 @@ benchmark：
 
 ```bash
 ./scripts/test/run_all_tests.sh --build-dir build-zx --case-set perf
+python3 scripts/test/plot_all_ops_benchmark.py \
+  --csv data/reports/unit/benchmarks/all_ops_large/latest_all_ops_scale_benchmark.csv \
+  --output-dir data/reports/unit/benchmarks/all_ops_large/figures \
+  --figure-set all --formats png,pdf,svg
 ```
 
 ## 完成判定
@@ -84,6 +91,7 @@ benchmark：
 - L1-L6 sweep 可复现。
 - resource 和 timing 报告字段结构稳定。
 - 中科芯性能 baseline 已记录。
+- 全量 benchmark CSV/JSON/Markdown 和图件均可复现。
 - 性能 gate 从记录项恢复为验收项，或明确记录平台限制和豁免范围。
 - 本阶段发现的所有不兼容点、需要修改点、已修改点和暂缓点均已记录到 `docs/design/zhongkexin_migration_change_log.md`。
 - `docs/design/zhongkexin_migration_status.md` 已更新到 V4.4 完成或明确阻塞状态。

@@ -11,10 +11,7 @@ target_compile_definitions(correlate_test_support
     PRIVATE
         CUSIGNAL_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
 )
-set_target_properties(correlate_test_support PROPERTIES
-    CUDA_SEPARABLE_COMPILATION ON
-    POSITION_INDEPENDENT_CODE ON
-)
+cusignal_configure_cuda_source_target(correlate_test_support)
 
 function(add_correlate_test target)
     string(REPLACE "correlate_test_" "" op "${target}")

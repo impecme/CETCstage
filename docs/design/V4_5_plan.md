@@ -4,10 +4,11 @@
 
 - 本阶段用于把已经完成的中科芯迁移固化成可交付、可复现、可维护的项目状态。
 - 目标是让新环境、新会话或新的维护者可以按文档从零完成配置、构建、测试和报告复现。
+- 本阶段必须固化全部项目功能，而不是只固化核心构建命令；从零复现应覆盖 demo、单测、数据生成、报告、图件、benchmark 和已知限制说明。
 
 ## 进入条件
 
-- V4.4 已完成。
+- V4.4 完整功能闭环已完成。
 - 中科芯 correctness、全量测试、性能/resource/timing 口径均已稳定，或剩余问题已经作为已知限制记录。
 - `docs/design/zhongkexin_migration_change_log.md` 中没有无归属的 `待确认` 或 `待修改` 项。
 
@@ -21,6 +22,7 @@
 - 迁移状态文档。
 - 平台操作说明。
 - 测试和报告复现说明。
+- Python 依赖、可视化图件和 benchmark 图件复现说明。
 - 最终风险清单和已知限制。
 
 ## Key Changes
@@ -53,6 +55,7 @@
 - 固化中科芯第一阶段验证。
 - 固化全量算子测试。
 - 固化 benchmark 和报告生成。
+- 固化 demo 可视化图件、scale 图件和全量 benchmark 图件生成。
 - 固化失败项记录格式。
 
 ### 4. 交付风险关闭
@@ -73,7 +76,11 @@ scripts/platform/probe_zhongkexin.sh
 cmake -S . -B build-zx -DCUSIGNAL_PLATFORM=ZHONGKEXIN -DCMAKE_BUILD_TYPE=Release
 cmake --build build-zx --parallel
 ./scripts/test/run_all_tests.sh --build-dir build-zx --case-set full
-scripts/test/run_task_demos.sh --build-dir build-zx --no-build --scale-sweep --repeat 3
+scripts/test/run_task_demos.sh --build-dir build-zx --no-build --scale-sweep --repeat 3 --require-visualization-deps
+python3 scripts/test/plot_all_ops_benchmark.py \
+  --csv data/reports/unit/benchmarks/all_ops_large/latest_all_ops_scale_benchmark.csv \
+  --output-dir data/reports/unit/benchmarks/all_ops_large/figures \
+  --figure-set all --formats png,pdf,svg
 ```
 
 NVIDIA 回归：
@@ -86,9 +93,10 @@ ctest --test-dir build --output-on-failure
 
 ## 完成判定
 
-- 新环境可以按 README/AGENT 完成构建与验证。
+- 新环境可以按 README/AGENT 完成构建、验证、报告和图件生成。
 - 总蓝图、阶段计划和状态文档一致。
 - 中科芯和 NVIDIA 两条路径都有明确回归命令。
 - 已知限制、跳过项和 fallback 都有记录。
+- Python 依赖准备、demo 图件、scale 图件和 benchmark 图件复现路径完整。
 - 项目可交付，无需依赖当前 Codex 会话上下文理解迁移状态。
 - `docs/design/zhongkexin_migration_change_log.md` 无遗漏项，所有记录都有状态和处理结论。

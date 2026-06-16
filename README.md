@@ -41,6 +41,12 @@
 - `matplotlib`
 - `scipy`：部分数据生成脚本会使用
 
+中科芯统一验收脚本会自动检查基础依赖、FFTW 和 Python 可视化依赖；已安装项会跳过，缺失项优先使用随项目同步的 `third_party/python_wheels/`。
+
+中科芯迁移各阶段都以该阶段范围内的全部功能闭环为完成标准。核心 demo 或 correctness 通过只是阶段证据的一部分；属于该阶段的报告、图件、数据生成、benchmark、边界输入和文档复现都必须可运行，或作为明确平台限制记录到迁移台账。
+
+每个中科芯迁移版本或阶段关闭时，必须同步产出交付文档，统一放在 `docs/submission/`。交付文档命名采用 `READMEV<major>_<minor>.md` 风格，并记录阶段目标、关键修改、验证命令、日志证据、产物路径、完成判定和遗留风险。
+
 默认 CUDA 架构为 `80`，适配 `sm80` GPU；当前验证设备为 A100-SXM4-40GB。可在构建前通过环境变量覆盖，例如 `CUDA_ARCH=86`。
 
 ## 参赛者服务器与 Docker 环境
@@ -61,11 +67,9 @@ Windows VPN -> SSH 登录服务器 -> 进入本队 docker -> 在 docker 内开�
 - 代码编译、运行和调试应在本队 docker 容器内完成。
 - docker 创建时使用 host network，容器与宿主机共用本机 IP、网卡和端口。
 
-服务器上查看和进入本队 docker：
+服务器上进入本队 docker：
 
 ```bash
-sudo docker ps -a
-sudo docker ps
 sudo docker start gpu_04
 sudo docker exec -it gpu_04 bash
 ```
@@ -74,20 +78,6 @@ sudo docker exec -it gpu_04 bash
 
 ```bash
 exit
-```
-
-每次进入容器后，先初始化中科芯开发环境：
-
-```bash
-source /zq500/sdk/env.sh
-```
-
-若当前 shell 因 SDK 脚本读取 `$1` 出现 `line 4: $1: unbound variable`，使用：
-
-```bash
-set +u
-source /zq500/sdk/env.sh ""
-set -u
 ```
 
 查看绑定 GPU 设备状态：
@@ -121,94 +111,27 @@ dlsmi
 - cuSOLVER LU 分解的 pivot 参数不能传入 `nullptr`。
 - event timing 和性能 gate 需要先在中科芯 docker 内实测稳定性。
 
-SDK 示例通常使用 CMake 构建：
-
-```bash
-mkdir build
-cd build
-cmake ..
-make
-./可执行测试用例名
-```
-
-文件传输：
-
-```bash
-# 本地 -> 服务器个人目录
-scp -r C:\Users\27412\Desktop\project usr_04@10.110.12.10:/home/usr_04
-
-# 服务器宿主机 -> 容器
-sudo docker cp /home/usr_04/CETC gpu_04:/root/CETC
-
-# 容器 -> 服务器宿主机
-sudo docker cp gpu_04:/root/CETC /home/usr_04/CETC_from_container
-```
-
-本项目迁移到中科芯平台时，建议在 docker 内执行：
-
-```bash
-cd /CETC
-scripts/platform/run_zhongkexin_stage1.sh
-```
-
-也可以使用 V4.1 第一阶段统一验收入口：
-
-```bash
-scripts/platform/run_zhongkexin_stage1.sh
-```
-
-该脚本会自动初始化 SDK、运行平台 probe、配置 `build-zx`、构建 `cusignal_cpu` / `cusignal_cuda` / 两个任务 demo，并执行 Task1/Task2 默认 correctness 验收。
-
-如果当前是在服务器宿主机上操作，而不是已经进入 docker，使用以下完整同步流程。该流程用于把宿主机项目完全替换到容器 `/CETC`，包括删除容器中已经不存在于宿主机项目里的旧文件。
-
-第一步在宿主机执行：
+当前推荐同步与验证流程如下。先在服务器宿主机执行：
 
 ```bash
 cd /home/usr_04/CETC
 ./copy_to_container.sh gpu_04
 ```
 
-`copy_to_container.sh` 会把当前项目复制到容器中的全新临时目录，并在终端打印一条容器端替换命令，例如：
+脚本会打印一条容器内替换命令。进入容器后执行打印出来的命令，例如：
 
 ```bash
 /CETC.incoming.20260615124530/replace_container_project.sh /CETC
 ```
 
-第二步进入容器，执行脚本打印的 `replace_container_project.sh` 命令。该命令会删除旧 `/CETC` 并将 incoming 目录替换为新的 `/CETC`：
-
-```bash
-/CETC.incoming.20260615124530/replace_container_project.sh /CETC
-```
-
-第三步在容器内执行第一阶段验证：
+然后在容器内执行当前阶段统一入口：
 
 ```bash
 cd /CETC
-scripts/platform/run_zhongkexin_stage1.sh
+scripts/platform/run_zhongkexin_stage2.sh 2>&1 | tee stage2.log
 ```
 
-如果需要把完整日志取回宿主机供 Codex 分析，容器内运行：
-
-```bash
-cd /CETC
-scripts/platform/run_zhongkexin_stage1.sh 2>&1 | tee stage1.log
-```
-
-运行结束后回到宿主机终端执行：
-
-```bash
-cd /home/usr_04/CETC
-sudo docker cp gpu_04:/CETC/stage1.log ./stage1.log
-```
-
-查看日志尾部或关键错误：
-
-```bash
-tail -n 200 stage1.log
-grep -nEi "error|failed|fatal|not found|undefined|file format" stage1.log
-```
-
-此统一脚本会用兼容方式初始化 SDK，不需要在执行前手动 `source /zq500/sdk/env.sh`。如需覆盖默认值，使用 `BUILD_DIR`、`CUDA_ARCH`、`REPEAT` 环境变量；当前中科芯路径默认使用 `CUDA_ARCH=OFF`，不要手动设置 `CUDA_ARCH=80`，否则 CMake 可能生成 NVIDIA 专用的 `sm_80` 参数。
+`run_zhongkexin_stage2.sh` 会自动检查依赖，按 `docs/design/zhongkexin_task_dependency_matrix.md` 批量运行 Task1/Task2 依赖算子 `accuracy`，生成 `data/reports/zhongkexin/stage2/latest_dependency_operator_report.*` 和逐算子日志。为降低中科芯 GPU 调试耗时，当前默认只运行 Task1/Task2 `L3` 一个规模的 scale 报告链路；单规模通过后再用 `STAGE2_SCALES=1,2,3,4,5,6` 打开全规模 sweep。历史阶段入口和展开命令保留在 `AGENT.md` 与 `docs/design/` 中。
 
 ## 精度约定
 
@@ -253,13 +176,13 @@ Task1/Task2 demo 已升级为任务级自验收入口。C++ demo 会在 `latest_
 统一验收入口：
 
 ```bash
-scripts/test/run_task_demos.sh --no-build --repeat 5
+scripts/test/run_task_demos.sh --no-build --repeat 5 --require-visualization-deps
 ```
 
 6 档任务规模扫测：
 
 ```bash
-scripts/test/run_task_demos.sh --no-build --scale-sweep --repeat 3
+scripts/test/run_task_demos.sh --no-build --scale-sweep --repeat 3 --require-visualization-deps
 ```
 
 任务级 6 档规模：

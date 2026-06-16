@@ -11,10 +11,7 @@ target_compile_definitions(peak_finding_test_support
     PRIVATE
         CUSIGNAL_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
 )
-set_target_properties(peak_finding_test_support PROPERTIES
-    CUDA_SEPARABLE_COMPILATION ON
-    POSITION_INDEPENDENT_CODE ON
-)
+cusignal_configure_cuda_source_target(peak_finding_test_support)
 
 function(add_peak_finding_test target)
     string(REPLACE "peak_finding_test_" "" op "${target}")

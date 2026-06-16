@@ -11,10 +11,7 @@ target_compile_definitions(windows_test_support
     PRIVATE
         CUSIGNAL_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
 )
-set_target_properties(windows_test_support PROPERTIES
-    CUDA_SEPARABLE_COMPILATION ON
-    POSITION_INDEPENDENT_CODE ON
-)
+cusignal_configure_cuda_source_target(windows_test_support)
 
 function(add_windows_test target)
     add_executable(${target} windows_test_main.cpp)

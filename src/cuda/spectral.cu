@@ -1966,7 +1966,12 @@ namespace cusignal
                 const std::size_t nseg =
                     1 + (line_len - static_cast<std::size_t>(config.nperseg)) / static_cast<std::size_t>(config.step);
                 const std::size_t total_fft = total_segments(line_count, nseg) * static_cast<std::size_t>(config.nfft);
-                const bool use_r2c_psd = return_onesided && normalized_mode == "psd";
+                bool use_r2c_psd = return_onesided && normalized_mode == "psd";
+#ifdef CUSIGNAL_PLATFORM_ZHONGKEXIN
+                // ZQ500 dlfft R2C spectrogram PSD currently diverges from the CPU/reference
+                // path, while the C2C spectrogram path matches within the existing tolerance.
+                use_r2c_psd = false;
+#endif
                 if (use_r2c_psd)
                 {
                     const std::size_t rfft_count =

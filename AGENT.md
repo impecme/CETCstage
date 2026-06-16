@@ -21,6 +21,19 @@
 
 不要把 IDE 当前打开的 Windows SSH 配置文件路径误认为项目根目录。
 
+严禁读取、搜索、索引或同步项目根目录下的错误 SDK 副本：
+
+```bash
+/home/usr_04/CETC/zq500_sdk_full
+/home/usr_04/CETC/.zq500_sdk_full.delete_me
+```
+
+这两个路径是多余且错误的目录，不属于项目输入，也不应作为中科芯 SDK 参考来源。当前因 sudoers 限制，隐藏目录 `.zq500_sdk_full.delete_me` 可能暂时无法删除；后续代理必须忽略它。需要参考从容器取出的 SDK 示例时，只能使用项目外部目录：
+
+```bash
+/home/usr_04/zq500_sdk_full
+```
+
 ## 构建系统
 
 顶层构建入口是 `CMakeLists.txt`。
@@ -66,6 +79,18 @@ scripts/platform/run_zhongkexin_stage1.sh
 ```bash
 ./scripts/build/install_fftw.sh
 ```
+
+中科芯容器内优先使用统一依赖准备脚本：
+
+```bash
+scripts/platform/prepare_zhongkexin_deps.sh --ensure-fftw
+```
+
+该脚本会检查 `python3`、`cmake >= 3.18`、`make`、`dlcc`、中科芯 SDK 头文件/库和 FFTW；缺少 FFTW 且启用 `--ensure-fftw` 时才要求 `tar`、`gcc`、`wget/curl`。Python 可视化/数据生成依赖来自 `scripts/platform/zhongkexin_python_requirements.txt`；完整迁移验收必须安装并验证 `numpy/matplotlib/scipy`，需要预下载 wheel 缓存时设置 `DOWNLOAD_PYTHON_WHEELS=1`，需要在容器内用户态安装时设置 `INSTALL_PYTHON_DEPS=1`。`scripts/platform/run_zhongkexin_stage1.sh` 默认会启用用户态 Python 依赖安装，并要求 demo 可视化依赖可用。
+
+中科芯迁移的所有阶段都按“该阶段范围内的全部项目功能”关闭。不能只以核心 correctness 或单条 demo 通过作为阶段完成；凡属于当前阶段范围的构建、运行、数据生成、数值验证、非法/边界输入、报告字段、可视化图件、benchmark 图件、文档复现和 NVIDIA 回归，都必须实现、验证或作为明确平台限制入账。缺依赖、缺图件、缺报告或静默跳过项不能作为阶段完成状态保留。
+
+每个中科芯迁移版本或阶段关闭时，必须在 `docs/submission/` 下新增或更新对应交付文档，命名采用 `READMEV<major>_<minor>.md` 风格，例如 `docs/submission/READMEV4_1.md`。交付文档至少包含阶段目标、关键修改、验证命令、日志证据、产物路径、完成判定和遗留风险；不能只更新设计文档或聊天记录。
 
 ## 参赛者服务器使用要点
 
@@ -147,7 +172,15 @@ V4.1 第一阶段统一验收入口：
 scripts/platform/run_zhongkexin_stage1.sh
 ```
 
-该脚本必须在本队 docker 内执行；它会自动 `source /zq500/sdk/env.sh`、运行 `scripts/platform/probe_zhongkexin.sh`、配置 `build-zx`、构建 `cusignal_cpu` / `cusignal_cuda` / `task1_radar_demo` / `task2_features_demo`，最后运行 `scripts/test/run_task_demos.sh --build-dir build-zx --no-build --repeat 3`。
+该脚本必须在本队 docker 内执行；它会自动 `source /zq500/sdk/env.sh`、运行 `scripts/platform/probe_zhongkexin.sh`、配置 `build-zx`、构建 `cusignal_cpu` / `cusignal_cuda` / `task1_radar_demo` / `task2_features_demo`，最后运行 `scripts/test/run_task_demos.sh --build-dir build-zx --no-build --repeat 3 --require-visualization-deps`。
+
+V4.2 第二阶段统一验收入口：
+
+```bash
+scripts/platform/run_zhongkexin_stage2.sh 2>&1 | tee stage2.log
+```
+
+该脚本必须在本队 docker 内执行；它会按 `docs/design/zhongkexin_task_dependency_matrix.md` 批量运行 Task1/Task2 依赖算子 `accuracy`，写出 `data/reports/zhongkexin/stage2/latest_dependency_operator_report.*` 和逐算子日志。当前调试默认只跑 Task1/Task2 `L3` 一个规模的 scale 报告链路，避免中科芯 GPU 调试耗时过长；单规模通过后用 `STAGE2_SCALES=1,2,3,4,5,6` 打开全规模 sweep。取回日志后优先查看 `stage2.log` 和 `data/reports/zhongkexin/stage2/operators/*.log`。
 
 如果当前只在服务器宿主机上，而用户可以在终端输入 sudo 密码，则使用宿主机同步入口。该流程用于把宿主机项目完全替换到容器 `/CETC`，包括删除容器中已经不存在于宿主机项目里的旧文件：
 
@@ -316,8 +349,8 @@ grep -nEi "error|failed|fatal|not found|undefined|file format" stage1.log
 任务级 demo 验证：
 
 ```bash
-scripts/test/run_task_demos.sh --no-build --repeat 5
-scripts/test/run_task_demos.sh --no-build --scale-sweep --repeat 3
+scripts/test/run_task_demos.sh --no-build --repeat 5 --require-visualization-deps
+scripts/test/run_task_demos.sh --no-build --scale-sweep --repeat 3 --require-visualization-deps
 scripts/test/run_task_demos.sh --no-build --repeat 2 --leak-check
 ```
 

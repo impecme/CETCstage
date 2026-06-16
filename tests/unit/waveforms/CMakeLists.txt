@@ -11,10 +11,7 @@ target_compile_definitions(waveforms_test_support
     PRIVATE
         CUSIGNAL_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
 )
-set_target_properties(waveforms_test_support PROPERTIES
-    CUDA_SEPARABLE_COMPILATION ON
-    POSITION_INDEPENDENT_CODE ON
-)
+cusignal_configure_cuda_source_target(waveforms_test_support)
 
 function(add_waveforms_test target source)
     add_executable(${target} ${source})

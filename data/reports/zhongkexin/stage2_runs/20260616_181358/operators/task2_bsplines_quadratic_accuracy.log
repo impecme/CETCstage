@@ -1,0 +1,37 @@
+[cusignal-test] timing       : warmup=1 repeat=3 (demo-fast)
+[cusignal-test] project root : /CETC
+[cusignal-test] build dir    : /CETC/build-zx
+[cusignal-test] build type   : Release
+[cusignal-test] platform     : ZHONGKEXIN
+[cusignal-test] cuda arch    : n/a (ZHONGKEXIN uses dlcc --cuda-gpu-arch=dlgput64)
+[cusignal-test] jobs         : 255
+[cusignal-test] cxx compiler : /zq500/sdk/bin/dlcc
+-- Using Zhongkexin CUDA headers without CUDAToolkit cudart target: /zq500/sdk/include
+-- CUSIGNAL_PLATFORM=ZHONGKEXIN
+-- Using Zhongkexin CUDA runtime compatibility library: /zq500/sdk/lib/libcurt.so
+-- Using Zhongkexin cuFFT compatibility library: /zq500/sdk/lib/libdlfft.so
+-- Using Zhongkexin cuBLAS compatibility library: /zq500/sdk/lib/libdlblas.so
+-- Using Zhongkexin cuSOLVER compatibility library: /zq500/sdk/lib/libdlsolver.so
+-- Using cuFFT compatibility library: /zq500/sdk/lib/libdlfft.so
+-- Using cuBLAS compatibility library: /zq500/sdk/lib/libdlblas.so
+-- Using cuSOLVER compatibility library: /zq500/sdk/lib/libdlsolver.so
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /CETC/build-zx
+Consolidate compiler generated dependencies of target cusignal_cpu
+[ 40%] Built target cusignal_cpu
+Consolidate compiler generated dependencies of target cusignal_cuda
+[ 86%] Built target cusignal_cuda
+Consolidate compiler generated dependencies of target bsplines_test_support
+[ 93%] Built target bsplines_test_support
+[100%] Building CXX object tests/unit/bsplines/CMakeFiles/bsplines_test_quadratic.dir/test_quadratic.cpp.o
+[100%] Linking CXX executable bsplines_test_quadratic
+[100%] Built target bsplines_test_quadratic
+[cusignal-test] running bsplines/quadratic
+[bsplines/quadratic] PASS  accuracy_cases=2  perf_cases=0
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=2.980232e-08  max_rel=9.126961e-07  rmse=1.335509e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/bsplines/quadratic/latest_summary.md
+[cusignal-test] summary: passed 1/1

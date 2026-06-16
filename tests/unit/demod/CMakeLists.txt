@@ -11,10 +11,7 @@ target_compile_definitions(demod_test_support
     PRIVATE
         CUSIGNAL_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
 )
-set_target_properties(demod_test_support PROPERTIES
-    CUDA_SEPARABLE_COMPILATION ON
-    POSITION_INDEPENDENT_CODE ON
-)
+cusignal_configure_cuda_source_target(demod_test_support)
 
 add_executable(demod_test_fm_demod test_fm_demod.cpp)
 target_link_libraries(demod_test_fm_demod

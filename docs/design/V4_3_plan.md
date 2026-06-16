@@ -4,11 +4,12 @@
 
 - 本阶段从 Task1/Task2 依赖范围扩展到整个 CETC 公开 CUDA 算子范围。
 - 目标是让中科芯路径覆盖所有公开 API 对应的 CUDA 实现，并逐模块通过 smoke、accuracy 和 full 测试。
+- 本阶段范围内的全部功能必须闭环：公开 API 对应的 CUDA 实现、测试数据生成、smoke/accuracy/full、报告输出、失败/跳过项处置和 NVIDIA 回归都要有证据。
 
 ## 进入条件
 
-- V4.2 已完成。
-- Task1/Task2 依赖矩阵完整，两个任务 L1-L6 sweep 可运行。
+- V4.2 完整功能闭环已完成。
+- Task1/Task2 依赖矩阵完整，两个任务 L1-L6 sweep、报告和图件可复现。
 - 仍未关闭的 fallback、跳过项和平台限制均已记录到 `docs/design/zhongkexin_migration_change_log.md`。
 - NVIDIA 路径至少完成一次配置和构建 sanity。
 
@@ -29,6 +30,8 @@
 - `wavelets`
 - `estimation`
 - core/device container 相关公共能力
+- `scripts/data/` 中各模块测试数据生成链路
+- `data/reports` 中单算子 metrics、summary 和 benchmark 输入输出结构
 
 ## Key Changes
 
@@ -43,6 +46,7 @@
 - 从 `include/cusignal`、`src/cuda`、`tests` 生成公开 API 与 CUDA 实现映射。
 - 标记每个模块的依赖类型：runtime-only、FFT-heavy、BLAS/SOLVER-heavy、mixed。
 - 为每个模块指定最低验证集：smoke、accuracy、edge cases、full。
+- 为每个模块指定数据生成入口、报告产物和允许的跳过项处置方式。
 
 ### 2. 编译兼容修复
 
@@ -61,6 +65,7 @@
 - 先 smoke，再 accuracy，再 full。
 - 一个模块通过后更新状态文档，再进入下一个模块。
 - 对不能通过的测试记录失败原因、阻塞条件和临时降级策略。
+- 对任何跳过的测试、缺失的数据生成脚本或缺失报告字段都必须入账，不能作为完成项。
 
 ## Test Plan
 
@@ -92,6 +97,7 @@
 - 全量模块至少通过 smoke。
 - 关键模块通过 accuracy。
 - full 测试中所有失败项都有明确处置：已修复、平台限制、暂缓项或跳过理由。
+- 各模块测试数据生成、metrics、summary 和报告字段均可复现；不存在未记录的缺依赖、缺数据或缺报告项。
 - NVIDIA 路径仍可配置和构建。
 - 本阶段发现的所有不兼容点、需要修改点、已修改点和暂缓点均已记录到 `docs/design/zhongkexin_migration_change_log.md`。
 - `docs/design/zhongkexin_migration_status.md` 已更新到 V4.3 完成或明确阻塞状态。

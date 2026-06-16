@@ -11,10 +11,7 @@ target_compile_definitions(estimation_test_support
     PRIVATE
         CUSIGNAL_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
 )
-set_target_properties(estimation_test_support PROPERTIES
-    CUDA_SEPARABLE_COMPILATION ON
-    POSITION_INDEPENDENT_CODE ON
-)
+cusignal_configure_cuda_source_target(estimation_test_support)
 
 add_executable(estimation_test_kalman_filter test_kalman_filter.cpp)
 target_link_libraries(estimation_test_kalman_filter

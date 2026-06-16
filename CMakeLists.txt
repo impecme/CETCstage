@@ -11,16 +11,11 @@ set(CUSIGNAL_PLATFORM "${CUSIGNAL_PLATFORM_UPPER}" CACHE STRING "Target GPU plat
 
 if(CUSIGNAL_PLATFORM STREQUAL "NVIDIA" AND NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
     set(CMAKE_CUDA_ARCHITECTURES 80 CACHE STRING "Default CUDA architecture" FORCE)
-elseif(CUSIGNAL_PLATFORM STREQUAL "ZHONGKEXIN" AND NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
-    set(CMAKE_CUDA_ARCHITECTURES OFF CACHE STRING "Disable NVIDIA CUDA architecture flags for Zhongkexin" FORCE)
-endif()
-if(CUSIGNAL_PLATFORM STREQUAL "ZHONGKEXIN" AND NOT DEFINED CMAKE_TRY_COMPILE_TARGET_TYPE)
-    set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY CACHE STRING "Avoid CUDA executable try-compile links on Zhongkexin" FORCE)
 endif()
 if(CUSIGNAL_PLATFORM STREQUAL "ZHONGKEXIN")
-    set(CMAKE_CUDA_COMPILER_FORCED ON CACHE BOOL "Skip CUDA compiler working test for Zhongkexin" FORCE)
-    set(CMAKE_CUDA_COMPILER_WORKS ON CACHE BOOL "Assume CUDA compiler works for Zhongkexin" FORCE)
-    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -std=c++17" CACHE STRING "CUDA flags for Zhongkexin" FORCE)
+    set(CUSIGNAL_ZHONGKEXIN_CXX_CUDA_FLAGS
+        "-fPIC;-x;cuda;--cuda-gpu-arch=dlgput64"
+        CACHE STRING "Compile flags used by dlcc when compiling .cu sources as CXX for Zhongkexin")
     if(NOT DEFINED CMAKE_AR)
         find_program(CUSIGNAL_ZHONGKEXIN_AR NAMES llvm-ar ar
             PATHS /zq500/sdk/bin /zq500/cuda11/bin
@@ -43,20 +38,16 @@ if(CUSIGNAL_PLATFORM STREQUAL "ZHONGKEXIN")
             set(CMAKE_RANLIB "${CUSIGNAL_ZHONGKEXIN_RANLIB_FALLBACK}" CACHE FILEPATH "Ranlib tool for Zhongkexin" FORCE)
         endif()
     endif()
-    if(CMAKE_AR)
-        set(CMAKE_CUDA_COMPILER_AR "${CMAKE_AR}" CACHE FILEPATH "CUDA archive tool for Zhongkexin" FORCE)
-    endif()
-    if(CMAKE_RANLIB)
-        set(CMAKE_CUDA_COMPILER_RANLIB "${CMAKE_RANLIB}" CACHE FILEPATH "CUDA ranlib tool for Zhongkexin" FORCE)
-    endif()
 endif()
 # V2.1 统一采用 C++17 / CUDA17，并以公开 API 对齐为本轮交付重点。
-project(cusignal_cpp_v2_1 LANGUAGES CXX CUDA)
+if(CUSIGNAL_PLATFORM STREQUAL "ZHONGKEXIN")
+    project(cusignal_cpp_v2_1 LANGUAGES CXX)
+else()
+    project(cusignal_cpp_v2_1 LANGUAGES CXX CUDA)
+endif()
 
 if(CUSIGNAL_PLATFORM STREQUAL "ZHONGKEXIN")
     if(CMAKE_AR)
-        set(CMAKE_CUDA_ARCHIVE_CREATE "\"${CMAKE_AR}\" rcs <TARGET> <LINK_FLAGS> <OBJECTS>")
-        set(CMAKE_CUDA_ARCHIVE_APPEND "\"${CMAKE_AR}\" rcs <TARGET> <LINK_FLAGS> <OBJECTS>")
         set(CMAKE_CXX_ARCHIVE_CREATE "\"${CMAKE_AR}\" rcs <TARGET> <LINK_FLAGS> <OBJECTS>")
         set(CMAKE_CXX_ARCHIVE_APPEND "\"${CMAKE_AR}\" rcs <TARGET> <LINK_FLAGS> <OBJECTS>")
     endif()
@@ -71,10 +62,8 @@ if(CUSIGNAL_PLATFORM STREQUAL "ZHONGKEXIN")
         set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=lld")
     endif()
     if(CMAKE_RANLIB)
-        set(CMAKE_CUDA_ARCHIVE_FINISH "\"${CMAKE_RANLIB}\" <TARGET>")
         set(CMAKE_CXX_ARCHIVE_FINISH "\"${CMAKE_RANLIB}\" <TARGET>")
     elseif(CMAKE_AR)
-        set(CMAKE_CUDA_ARCHIVE_FINISH "\"${CMAKE_AR}\" s <TARGET>")
         set(CMAKE_CXX_ARCHIVE_FINISH "\"${CMAKE_AR}\" s <TARGET>")
     endif()
 endif()
@@ -83,9 +72,11 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-set(CMAKE_CUDA_STANDARD 17)
-set(CMAKE_CUDA_STANDARD_REQUIRED ON)
-set(CMAKE_CUDA_EXTENSIONS OFF)
+if(NOT CUSIGNAL_PLATFORM STREQUAL "ZHONGKEXIN")
+    set(CMAKE_CUDA_STANDARD 17)
+    set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+    set(CMAKE_CUDA_EXTENSIONS OFF)
+endif()
 
 # 默认采用 Release，便于后续继续扩展性能测试时保持一个稳定起点。
 if(NOT CMAKE_BUILD_TYPE)
@@ -108,8 +99,8 @@ else()
                 "$ENV{CUDA_ROOT}/include"
                 "$ENV{CUDA_HOME}/include"
                 "$ENV{CUDA_PATH}/include"
-                /zq500/cuda11/include
                 /zq500/sdk/include
+                /zq500/cuda11/include
                 /usr/local/cuda/include
         )
         if(NOT CUSIGNAL_ZHONGKEXIN_CUDA_INCLUDE_DIR)
@@ -145,14 +136,76 @@ if(NOT FFTW3_INCLUDE_DIR OR NOT FFTW3_LIBRARY)
         "Run scripts/build/install_fftw.sh first.")
 endif()
 
+find_package(Threads REQUIRED)
+
 set(CUSIGNAL_CUDART_TARGET CUDA::cudart)
 set(CUSIGNAL_CUFFT_TARGET CUDA::cufft_static)
 set(CUSIGNAL_CUBLAS_TARGET CUDA::cublas)
 set(CUSIGNAL_CUSOLVER_TARGET CUDA::cusolver)
+set(CUSIGNAL_ZHONGKEXIN_EXTRA_LINK_LIBRARIES "")
 
+set(CUSIGNAL_ZHONGKEXIN_CUDART_LIBRARY "" CACHE FILEPATH "Optional Zhongkexin CUDA runtime-compatible library")
 set(CUSIGNAL_ZHONGKEXIN_CUFFT_LIBRARY "" CACHE FILEPATH "Optional Zhongkexin cuFFT-compatible library")
 set(CUSIGNAL_ZHONGKEXIN_CUBLAS_LIBRARY "" CACHE FILEPATH "Optional Zhongkexin cuBLAS-compatible library")
 set(CUSIGNAL_ZHONGKEXIN_CUSOLVER_LIBRARY "" CACHE FILEPATH "Optional Zhongkexin cuSOLVER-compatible library")
+set(CUSIGNAL_ZHONGKEXIN_DLEOL_LIBRARY "" CACHE FILEPATH "Optional Zhongkexin DLEOL support library")
+
+if(CUSIGNAL_PLATFORM STREQUAL "ZHONGKEXIN")
+    set(CUSIGNAL_ZHONGKEXIN_SDK_ROOT_CANDIDATES
+        "$ENV{SDK_DIR}"
+        /zq500/sdk
+        /zq500/cuda11
+        /usr/local/cuda
+    )
+    if(DEFINED ENV{DLICC_PATH})
+        list(APPEND CUSIGNAL_ZHONGKEXIN_SDK_ROOT_CANDIDATES "$ENV{DLICC_PATH}/..")
+    endif()
+    list(REMOVE_DUPLICATES CUSIGNAL_ZHONGKEXIN_SDK_ROOT_CANDIDATES)
+
+    function(cusignal_find_zhongkexin_library cache_library message_name)
+        if(DEFINED ${cache_library} AND NOT "${${cache_library}}" STREQUAL "")
+            return()
+        endif()
+
+        find_library(
+            CUSIGNAL_FOUND_ZHONGKEXIN_LIBRARY
+            NAMES ${ARGN}
+            PATHS ${CUSIGNAL_ZHONGKEXIN_SDK_ROOT_CANDIDATES}
+            PATH_SUFFIXES lib lib64
+            NO_DEFAULT_PATH
+        )
+        if(NOT CUSIGNAL_FOUND_ZHONGKEXIN_LIBRARY)
+            find_library(CUSIGNAL_FOUND_ZHONGKEXIN_LIBRARY NAMES ${ARGN})
+        endif()
+        if(NOT CUSIGNAL_FOUND_ZHONGKEXIN_LIBRARY)
+            message(FATAL_ERROR
+                "${message_name} compatibility library was not found. "
+                "Set ${cache_library} explicitly if the SDK uses a non-standard location.")
+        endif()
+        set(${cache_library} "${CUSIGNAL_FOUND_ZHONGKEXIN_LIBRARY}" CACHE FILEPATH
+            "Resolved ${message_name} compatibility library" FORCE)
+        unset(CUSIGNAL_FOUND_ZHONGKEXIN_LIBRARY CACHE)
+    endfunction()
+
+    cusignal_find_zhongkexin_library(CUSIGNAL_ZHONGKEXIN_CUDART_LIBRARY "CUDA runtime" curt)
+    cusignal_find_zhongkexin_library(CUSIGNAL_ZHONGKEXIN_CUFFT_LIBRARY "cuFFT" dlfft cufft)
+    cusignal_find_zhongkexin_library(CUSIGNAL_ZHONGKEXIN_CUBLAS_LIBRARY "cuBLAS" dlblas cublas)
+    cusignal_find_zhongkexin_library(CUSIGNAL_ZHONGKEXIN_CUSOLVER_LIBRARY "cuSOLVER" dlsolver cusolver)
+    cusignal_find_zhongkexin_library(CUSIGNAL_ZHONGKEXIN_DLEOL_LIBRARY "DLEOL" dleol)
+
+    set(CUSIGNAL_CUDART_TARGET "${CUSIGNAL_ZHONGKEXIN_CUDART_LIBRARY}")
+    set(CUSIGNAL_CUFFT_TARGET "${CUSIGNAL_ZHONGKEXIN_CUFFT_LIBRARY}")
+    set(CUSIGNAL_CUBLAS_TARGET "${CUSIGNAL_ZHONGKEXIN_CUBLAS_LIBRARY}")
+    set(CUSIGNAL_CUSOLVER_TARGET "${CUSIGNAL_ZHONGKEXIN_CUSOLVER_LIBRARY}")
+    set(CUSIGNAL_ZHONGKEXIN_EXTRA_LINK_LIBRARIES
+        "${CUSIGNAL_ZHONGKEXIN_DLEOL_LIBRARY}"
+        Threads::Threads
+    )
+    message(STATUS "Using Zhongkexin CUDA runtime compatibility library: ${CUSIGNAL_ZHONGKEXIN_CUDART_LIBRARY}")
+    message(STATUS "Using Zhongkexin cuFFT compatibility library: ${CUSIGNAL_ZHONGKEXIN_CUFFT_LIBRARY}")
+    message(STATUS "Using Zhongkexin cuBLAS compatibility library: ${CUSIGNAL_ZHONGKEXIN_CUBLAS_LIBRARY}")
+    message(STATUS "Using Zhongkexin cuSOLVER compatibility library: ${CUSIGNAL_ZHONGKEXIN_CUSOLVER_LIBRARY}")
+endif()
 
 function(cusignal_require_or_alias_cuda_library target_name cache_library message_name)
     if(TARGET ${target_name})
@@ -224,7 +277,30 @@ if(CUSIGNAL_PLATFORM STREQUAL "ZHONGKEXIN")
         demo/task1_radar/task1_radar_cuda.cu
         demo/task2_features/task2_features_cuda.cu
     )
+    set_source_files_properties(${CUSIGNAL_CUDA_SOURCES} PROPERTIES LANGUAGE CXX)
+    file(GLOB_RECURSE CUSIGNAL_UNIT_TEST_CUDA_SUPPORT_SOURCES CONFIGURE_DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/tests/unit/*/*_test_support.cu"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tests/unit/*/waveform_test_support.cu"
+    )
+    if(CUSIGNAL_UNIT_TEST_CUDA_SUPPORT_SOURCES)
+        set_source_files_properties(${CUSIGNAL_UNIT_TEST_CUDA_SUPPORT_SOURCES} PROPERTIES LANGUAGE CXX)
+    endif()
 endif()
+
+function(cusignal_configure_cuda_source_target target_name)
+    set_target_properties(${target_name} PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    if(CUSIGNAL_PLATFORM STREQUAL "ZHONGKEXIN")
+        get_target_property(cusignal_target_sources ${target_name} SOURCES)
+        foreach(cusignal_target_source IN LISTS cusignal_target_sources)
+            if(cusignal_target_source MATCHES "\\.cu$")
+                set_source_files_properties(${cusignal_target_source} PROPERTIES LANGUAGE CXX)
+            endif()
+        endforeach()
+        target_compile_options(${target_name} PRIVATE ${CUSIGNAL_ZHONGKEXIN_CXX_CUDA_FLAGS})
+    else()
+        set_target_properties(${target_name} PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+    endif()
+endfunction()
 
 add_library(cusignal_cpu STATIC ${CUSIGNAL_CPU_SOURCES})
 target_include_directories(cusignal_cpu PUBLIC ${CUSIGNAL_INCLUDE_DIR})
@@ -246,7 +322,7 @@ if(CUSIGNAL_PLATFORM STREQUAL "ZHONGKEXIN")
         ${CMAKE_CURRENT_SOURCE_DIR}/demo/task1_radar
         ${CMAKE_CURRENT_SOURCE_DIR}/demo/task2_features
     )
-    target_compile_options(cusignal_cuda PUBLIC $<$<COMPILE_LANGUAGE:CUDA>:-std=c++17>)
+    target_compile_options(cusignal_cuda PRIVATE ${CUSIGNAL_ZHONGKEXIN_CXX_CUDA_FLAGS})
 endif()
 target_link_libraries(cusignal_cuda PUBLIC cusignal_cpu)
 target_link_libraries(cusignal_cuda PRIVATE
@@ -254,13 +330,10 @@ target_link_libraries(cusignal_cuda PRIVATE
     ${CUSIGNAL_CUFFT_TARGET}
     ${CUSIGNAL_CUBLAS_TARGET}
     ${CUSIGNAL_CUSOLVER_TARGET}
+    ${CUSIGNAL_ZHONGKEXIN_EXTRA_LINK_LIBRARIES}
 )
-set_target_properties(cusignal_cuda PROPERTIES
-    CUDA_SEPARABLE_COMPILATION ON
-    POSITION_INDEPENDENT_CODE ON
-)
+set_target_properties(cusignal_cuda PROPERTIES POSITION_INDEPENDENT_CODE ON)
 if(CUSIGNAL_PLATFORM STREQUAL "ZHONGKEXIN")
-    set_target_properties(cusignal_cuda PROPERTIES LINKER_LANGUAGE CUDA)
     if(CMAKE_RANLIB)
         add_custom_command(
             TARGET cusignal_cuda
@@ -278,6 +351,8 @@ if(CUSIGNAL_PLATFORM STREQUAL "ZHONGKEXIN")
             VERBATIM
         )
     endif()
+else()
+    set_target_properties(cusignal_cuda PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 endif()
 
 add_subdirectory(demo/task1_radar)

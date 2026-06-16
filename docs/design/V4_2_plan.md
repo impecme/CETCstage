@@ -4,12 +4,14 @@
 
 - 本阶段承接第一阶段，目标是把 Task1/Task2 直接依赖的算子从“demo 能跑”推进到“依赖算子可解释、可测试、可回归”。
 - 本阶段仍不要求全项目所有算子完成迁移，但要求两个任务链路涉及的核心模块具备 smoke、accuracy 和 scale sweep 证据。
+- 调试期间默认只运行一个任务规模，避免中科芯 GPU 调试耗时过长；一个规模跑通后再打开 L1-L6 全规模 sweep。
+- 本阶段范围内的全部功能必须闭环：Task1/Task2 依赖算子的构建、运行、accuracy、边界输入、L1-L6 sweep、报告字段和任务级图件都不能因缺依赖或 fallback 被静默跳过。单规模调试通过不等于 V4.2 阶段关闭。
 
 ## 进入条件
 
-- V4.1 已完成。
+- V4.1 完整功能闭环已完成。
 - `scripts/platform/probe_zhongkexin.sh` 已在中科芯 docker 内通过，或所有失败项已记录到 `docs/design/zhongkexin_migration_change_log.md` 并有明确处置。
-- `task1_radar_demo` 和 `task2_features_demo` 在 L3 默认规模下 `validation.pass=true`。
+- `task1_radar_demo` 和 `task2_features_demo` 在 L3 默认规模下 `validation.pass=true`，且 demo 可视化图件已生成。
 - V4.1 发现的不兼容点、修改点、fallback 和暂缓项均已入账。
 
 ## Scope
@@ -19,6 +21,7 @@
 - Task1：`radartools`、`spectral`、FFT-heavy `filtering`、FFT-heavy `filter_design`、必要 `windows`。
 - Task2：`waveforms`、`filter_design`、`filtering`、`bsplines`、`correlate`、`demod`、`spectral`、`wavelets`、`peak_finding`、`estimation`。
 - 共享基础：device container、runtime compat、FFT/BLAS/SOLVER compat、报告输出。
+- Python 数据生成、任务级可视化和 scale benchmark 图件。
 
 ## Key Changes
 
@@ -42,11 +45,13 @@
 - 对 cuSOLVER LU 路径检查 pivot buffer，确认没有 `nullptr` pivot。
 - 对轻量 kernel 路径优先验证边界输入、空输入、异常输入和 CPU/GPU 误差。
 
-### 3. L1-L6 sweep
+### 3. 单规模调试与 L1-L6 sweep
 
-- 在第一阶段 L3 默认规模通过后，运行 L1-L6 sweep。
-- 记录每个规模的 `validation.pass`、`mixed_error`、stage timings 和 resource usage。
+- 在第一阶段 L3 默认规模通过后，先运行 L3 单规模 sweep，确认构建、报告和图件链路可用。
+- 单规模通过后，运行 L1-L6 sweep。
+- 记录每个规模的 `validation.pass`、`mixed_error`、stage timings、resource usage 和图件产物。
 - 如果 event timing 不稳定，保留 correctness 强制，性能指标继续作为记录项。
+- scale sweep 结束后必须生成 `latest_task_demo_scale_report.*` 和 Task1/Task2 L1-L6 图件。
 
 ### 4. fallback 清理
 
@@ -55,6 +60,15 @@
 - 对暂时保留的 fallback 标记原因、影响范围、替换条件和风险。
 
 ## Test Plan
+
+统一入口：
+
+```bash
+cd /CETC
+scripts/platform/run_zhongkexin_stage2.sh 2>&1 | tee stage2.log
+```
+
+该脚本会按 `docs/design/zhongkexin_task_dependency_matrix.md` 执行依赖算子 `accuracy`，生成 `data/reports/zhongkexin/stage2/latest_dependency_operator_report.*`。为降低中科芯 GPU 调试耗时，当前默认只执行 Task1/Task2 L3 单规模 sweep 并强制检查可视化图件；单规模通过后再通过 `STAGE2_SCALES=1,2,3,4,5,6` 执行全规模 sweep。
 
 Task1 依赖算子：
 
@@ -78,14 +92,22 @@ Task2 依赖算子：
 任务级 sweep：
 
 ```bash
-scripts/test/run_task_demos.sh --build-dir build-zx --no-build --scale-sweep --repeat 3
+scripts/test/run_task_demos.sh --build-dir build-zx --no-build --scale-sweep --scales 3 --repeat 3 --require-visualization-deps
+```
+
+全规模关闭验证：
+
+```bash
+STAGE2_SCALES=1,2,3,4,5,6 scripts/platform/run_zhongkexin_stage2.sh 2>&1 | tee stage2_full.log
 ```
 
 ## 完成判定
 
 - Task1/Task2 依赖矩阵完整。
-- 两个任务依赖的核心算子 smoke/accuracy 通过。
-- L1-L6 sweep 可运行，默认规模继续 `validation.pass=true`。
+- 两个任务依赖的核心算子 smoke/accuracy 通过，边界输入和非法输入检查有结果。
+- 默认 L3 单规模 sweep 可运行，且全规模关闭验证中 L1-L6 sweep 可运行。
+- Task1/Task2 scale 报告、CSV、JSON、Markdown 和 L1-L6 图件均已生成。
+- Python 数据生成/可视化依赖已纳入容器准备流程，无静默跳过项。
 - fallback 清单已更新，NVIDIA 路径行为不受影响。
 - 本阶段发现的所有不兼容点、需要修改点、已修改点和暂缓点均已记录到 `docs/design/zhongkexin_migration_change_log.md`。
 - `docs/design/zhongkexin_migration_status.md` 已更新到 V4.2 完成或明确阻塞状态。

@@ -4,7 +4,8 @@
 
 - 本阶段是全项目中科芯迁移的第一阶段，不代表整个项目完全迁移成功。
 - 目标是证明中科芯平台路径可以被配置、编译、运行，并且 `task1_radar_demo`、`task2_features_demo` 的默认规模 correctness 能通过。
-- 本阶段完成后，状态应更新为“第一阶段完成，进入第二阶段 Task1/Task2 依赖算子闭环”。
+- 本阶段关闭前必须完成本阶段范围内的全部功能闭环：构建、Task1/Task2 L3 correctness、Python 依赖、报告输出和 demo 可视化图件都要可复现。
+- 本阶段完成后，状态应更新为“第一阶段完整功能闭环完成，进入第二阶段 Task1/Task2 依赖算子闭环”。
 
 ## 进入条件
 
@@ -22,13 +23,13 @@
 - `CUSIGNAL_PLATFORM=ZHONGKEXIN` 构建入口。
 - 平台探测脚本。
 - runtime 和库 compat 骨架。
-- Task1/Task2 demo 构建、运行和报告验证。
+- Task1/Task2 demo 构建、运行、报告验证和可视化图件生成。
 - Task1/Task2 直接依赖模块的最小 smoke/accuracy 外延检查。
 
 本阶段不要求：
 
 - 全部 80+ operator 一次性通过。
-- 全量 benchmark 完成。
+- 全量 benchmark 完成；但本阶段范围内的 demo 可视化和报告不能跳过。
 - 性能 gate 达到最终阈值。
 - 重命名或重构公开 API。
 
@@ -136,7 +137,7 @@ cmake --build build-zx --target cusignal_cpu cusignal_cuda task1_radar_demo task
 任务级 demo：
 
 ```bash
-scripts/test/run_task_demos.sh --build-dir build-zx --no-build --repeat 3
+scripts/test/run_task_demos.sh --build-dir build-zx --no-build --repeat 3 --require-visualization-deps
 ```
 
 聚焦单元测试外延：
@@ -153,6 +154,7 @@ scripts/test/run_task_demos.sh --build-dir build-zx --no-build --repeat 3
 - `scripts/platform/probe_zhongkexin.sh` 通过，至少覆盖 runtime、kernel launch、event、FFT、BLAS、SOLVER 探测。
 - `build-zx` 能完成配置。
 - `cusignal_cpu`、`cusignal_cuda`、`task1_radar_demo`、`task2_features_demo` 能完成构建。
-- `scripts/test/run_task_demos.sh --build-dir build-zx --no-build --repeat 3` 能运行完成。
+- `scripts/test/run_task_demos.sh --build-dir build-zx --no-build --repeat 3 --require-visualization-deps` 能运行完成。
 - Task1/Task2 默认 L3 规模报告中 `validation.pass=true`。
+- `numpy/matplotlib/scipy` 均可 import，Task1/Task2 的 `figures/*.png` 和 `figures/README.md` 已生成。
 - 本阶段发现的所有不兼容点、需要修改点、已修改点和暂缓点均已记录到 `docs/design/zhongkexin_migration_change_log.md`。

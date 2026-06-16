@@ -7,6 +7,7 @@ REPEAT=5
 LEAK_CHECK=0
 SCALE_SWEEP=0
 SCALES="1,2,3,4,5,6"
+REQUIRE_VISUALIZATION_DEPS=0
 
 usage() {
   cat <<'USAGE'
@@ -20,6 +21,8 @@ Options:
   --scale-sweep         Run Task1/Task2 across scale levels and write scale reports
   --scales LIST         Comma-separated scale levels for --scale-sweep (default: 1,2,3,4,5,6)
   --leak-check          Also run compute-sanitizer memcheck when available
+  --require-visualization-deps
+                        Fail instead of skipping when numpy/matplotlib/scipy are missing
   -h, --help            Show this help
 USAGE
 }
@@ -52,6 +55,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --leak-check)
       LEAK_CHECK=1
+      shift
+      ;;
+    --require-visualization-deps)
+      REQUIRE_VISUALIZATION_DEPS=1
       shift
       ;;
     -h|--help)
@@ -100,6 +107,46 @@ fi
 
 TASK1_EXE="${BUILD_PATH}/demo/task1_radar/task1_radar_demo"
 TASK2_EXE="${BUILD_PATH}/demo/task2_features/task2_features_demo"
+VISUALIZATION_DEPS_STATUS="unknown"
+
+has_visualization_deps() {
+  python3 - <<'PY' >/dev/null 2>&1
+import matplotlib
+import numpy
+import scipy
+PY
+}
+
+run_visualization() {
+  local name="$1"
+  local viz="$2"
+  if [[ "${VISUALIZATION_DEPS_STATUS}" == "unknown" ]]; then
+    if has_visualization_deps; then
+      VISUALIZATION_DEPS_STATUS="available"
+    else
+      VISUALIZATION_DEPS_STATUS="missing"
+    fi
+  fi
+
+  if [[ "${VISUALIZATION_DEPS_STATUS}" == "missing" ]]; then
+    if [[ "${REQUIRE_VISUALIZATION_DEPS}" -eq 1 ]]; then
+      echo "[task-demos] error: ${name} visualization requires python numpy/matplotlib/scipy" >&2
+      exit 2
+    fi
+    echo "[task-demos] skipping ${name} visualization: python numpy/matplotlib/scipy not available"
+    return
+  fi
+
+  echo "[task-demos] visualizing ${name}: ${viz}"
+  python3 "${viz}"
+  if [[ "${REQUIRE_VISUALIZATION_DEPS}" -eq 1 ]]; then
+    local figure_dir="${REPORT_ROOT}/${name}/figures"
+    if ! compgen -G "${figure_dir}/*.png" >/dev/null || [[ ! -f "${figure_dir}/README.md" ]]; then
+      echo "[task-demos] error: ${name} visualization did not produce expected figures under ${figure_dir}" >&2
+      exit 2
+    fi
+  fi
+}
 
 run_demo() {
   local name="$1"
@@ -112,8 +159,7 @@ run_demo() {
   fi
   echo "[task-demos] running ${name}: ${exe} ${args[*]}"
   "${exe}" "${args[@]}"
-  echo "[task-demos] visualizing ${name}: ${viz}"
-  python3 "${viz}"
+  run_visualization "${name}" "${viz}"
 }
 
 run_scale_case() {
@@ -183,6 +229,7 @@ TASK_DEMO_SCALE_SWEEP="${SCALE_SWEEP}" \
 TASK_DEMO_SCALES="${SCALES}" \
 TASK_DEMO_COMPUTE_SANITIZER_STATUS="${COMPUTE_SANITIZER_STATUS}" \
 TASK_DEMO_ASAN_STATUS="${ASAN_STATUS}" \
+TASK_DEMO_VISUALIZATION_STATUS="${VISUALIZATION_DEPS_STATUS}" \
 python3 - <<'PY'
 import csv
 import json
@@ -305,6 +352,7 @@ payload = {
     "repeat": int(os.environ.get("TASK_DEMO_REPEAT", "0")),
     "tasks": tasks,
     "leak_check": leak,
+    "visualization": os.environ.get("TASK_DEMO_VISUALIZATION_STATUS", "unknown"),
 }
 
 json_path = report_root / "latest_task_demo_report.json"
@@ -316,6 +364,7 @@ lines.append(f"- pass: `{str(overall_pass).lower()}`")
 lines.append(f"- repeat: `{payload['repeat']}`")
 lines.append(f"- compute_sanitizer: `{leak['compute_sanitizer']}`")
 lines.append(f"- asan_lsan: `{leak['asan_lsan']}`")
+lines.append(f"- visualization: `{payload['visualization']}`")
 lines.append("")
 lines.append("| task | scale | validation | gpu_ms | cpu_ms | speedup | max_mixed_error | failed_checks |")
 lines.append("| --- | ---: | --- | ---: | ---: | ---: | ---: | --- |")
@@ -412,7 +461,28 @@ if not overall_pass or not scale_pass:
 PY
 
 if [[ "${SCALE_SWEEP}" -eq 1 ]]; then
-  python3 "${SCRIPT_DIR}/plot_task_demo_scale_benchmark.py" \
-    --csv "${REPORT_ROOT}/latest_task_demo_scale_benchmark.csv" \
-    --output-root "${REPORT_ROOT}"
+  if [[ "${VISUALIZATION_DEPS_STATUS}" == "unknown" ]]; then
+    if has_visualization_deps; then
+      VISUALIZATION_DEPS_STATUS="available"
+    else
+      VISUALIZATION_DEPS_STATUS="missing"
+    fi
+  fi
+  if [[ "${VISUALIZATION_DEPS_STATUS}" == "missing" ]]; then
+    if [[ "${REQUIRE_VISUALIZATION_DEPS}" -eq 1 ]]; then
+      echo "[task-demos] error: scale visualization requires python numpy/matplotlib/scipy" >&2
+      exit 2
+    fi
+    echo "[task-demos] skipping scale visualization: python numpy/matplotlib/scipy not available"
+  else
+    python3 "${SCRIPT_DIR}/plot_task_demo_scale_benchmark.py" \
+      --csv "${REPORT_ROOT}/latest_task_demo_scale_benchmark.csv" \
+      --output-root "${REPORT_ROOT}"
+    if [[ "${REQUIRE_VISUALIZATION_DEPS}" -eq 1 ]] && \
+        [[ ! -f "${REPORT_ROOT}/task1_radar/task1_l1_l6_scale_performance.png" ||
+           ! -f "${REPORT_ROOT}/task2_multidomain_l1_l6_scale_performance.png" ]]; then
+      echo "[task-demos] error: scale visualization did not produce expected figures under ${REPORT_ROOT}" >&2
+      exit 2
+    fi
+  fi
 fi
