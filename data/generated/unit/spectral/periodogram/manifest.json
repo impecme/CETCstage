@@ -11,7 +11,7 @@
       "x_generator": {
         "kind": "real_array_pattern",
         "shape": [
-          4096
+          32768
         ],
         "freq_row": 0.009,
         "freq_col": 0.021,

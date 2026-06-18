@@ -1,0 +1,46 @@
+[zx-stage4] script version: diagnostics-20260617-stage4-perf-full-v4
+[zx-stage4] build dir: build-zx
+[zx-stage4] task scales: 3
+[zx-stage4] run task sweep: 0
+[zx-stage4] benchmark modules: windows,filter_design,filtering,radartools,spectral,correlate,peak_finding
+[zx-stage4] benchmark operators: chebwin,kaiser_beta,kaiser_atten,cmplx_sort,firwin2,lfilter,firfilter_zi,filtfilt,mvdr,periodogram,welch,coherence,correlation_lags,argrelmin,argrelmax
+[zx-stage4] benchmark scale levels: 1,2,3,4,5,6
+[zx-stage4] report root: data/reports/zhongkexin/stage4
+Activate Release Package @ /zq500/sdk
+[zx-deps] cmake: 3.22.1
+[zx-deps] dlcc: /zq500/sdk/bin/dlcc
+[zx-deps] sdk env: /zq500/sdk/env.sh
+[zx-deps] sdk headers/libs: ok
+[zx-deps] fftw: already installed
+[zx-deps] python modules: already installed
+[zx-deps] dependency preparation complete
+[zx-stage4] configuring build dir: /CETC/build-zx
+-- The CXX compiler identification is Clang 15.0.6
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /zq500/sdk/bin/dlcc - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Using Zhongkexin CUDA headers without CUDAToolkit cudart target: /zq500/sdk/include
+-- CUSIGNAL_PLATFORM=ZHONGKEXIN
+-- Looking for C++ include pthread.h
+-- Looking for C++ include pthread.h - found
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+-- Found Threads: TRUE  
+-- Using Zhongkexin CUDA runtime compatibility library: /zq500/sdk/lib/libcurt.so
+-- Using Zhongkexin cuFFT compatibility library: /zq500/sdk/lib/libdlfft.so
+-- Using Zhongkexin cuBLAS compatibility library: /zq500/sdk/lib/libdlblas.so
+-- Using Zhongkexin cuSOLVER compatibility library: /zq500/sdk/lib/libdlsolver.so
+-- Using cuFFT compatibility library: /zq500/sdk/lib/libdlfft.so
+-- Using cuBLAS compatibility library: /zq500/sdk/lib/libdlblas.so
+-- Using cuSOLVER compatibility library: /zq500/sdk/lib/libdlsolver.so
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /CETC/build-zx
+[zx-stage4] skipping Task1/Task2 scale sweep
+[zx-stage4] running operator benchmark pilot
+[zx-stage4] plotting operator benchmark
+[zx-stage4] wrote data/reports/zhongkexin/stage4/latest_stage4_summary.json
+[zx-stage4] wrote data/reports/zhongkexin/stage4/latest_stage4_summary.md
+[zx-stage4] PASS

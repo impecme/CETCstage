@@ -1744,7 +1744,13 @@ namespace cusignal
                     1 + (line_len - static_cast<std::size_t>(config.nperseg)) / static_cast<std::size_t>(config.step);
                 const std::size_t total_fft = total_segments(line_count, nseg) * static_cast<std::size_t>(config.nfft);
                 const std::size_t freq_count = detail::frequency_count(config.nfft, return_onesided);
-                const bool use_r2c = return_onesided;
+                bool use_r2c = return_onesided;
+#ifdef CUSIGNAL_PLATFORM_ZHONGKEXIN
+                // ZQ500 dlfft R2C CSD currently diverges from the CPU/reference
+                // path. The C2C path keeps correctness and still returns the
+                // requested one-sided bins through average_cross_kernel.
+                use_r2c = false;
+#endif
                 if (use_r2c)
                 {
                     const std::size_t rfft_count =

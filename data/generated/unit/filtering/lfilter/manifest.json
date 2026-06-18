@@ -18,7 +18,7 @@
       "a_file": "input/a.csv",
       "x_file": "input/x.csv",
       "x_shape": [
-        8192
+        32768
       ],
       "axis": -1,
       "atol": 1e-11,

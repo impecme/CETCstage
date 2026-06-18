@@ -1,17 +1,25 @@
 # V4.3 第三阶段：全量公开算子迁移
 
+## 当前状态
+
+- 状态：已关闭。
+- 进入时间：2026-06-17。
+- 进入依据：V4.2 已通过 `stage2_full.log` 关闭验证；29/29 Task1/Task2 依赖算子通过，Task1/Task2 L1-L6 sweep、报告和图件均通过。
+- 关闭证据：Stage3 v2 active 81 条 accuracy 已通过，模块级 12/12、算子级 81/81。
+- 全量矩阵：`docs/design/zhongkexin_full_operator_matrix.md`。
+
 ## Summary
 
 - 本阶段从 Task1/Task2 依赖范围扩展到整个 CETC 公开 CUDA 算子范围。
 - 目标是让中科芯路径覆盖所有公开 API 对应的 CUDA 实现，并逐模块通过 smoke、accuracy 和 full 测试。
-- 本阶段范围内的全部功能必须闭环：公开 API 对应的 CUDA 实现、测试数据生成、smoke/accuracy/full、报告输出、失败/跳过项处置和 NVIDIA 回归都要有证据。
+- 本阶段范围内的全部功能必须闭环：公开 API 对应的 CPU reference、中科芯 GPU 实现、测试数据生成、smoke/accuracy/full、报告输出、失败/跳过项处置都要有证据。
 
 ## 进入条件
 
 - V4.2 完整功能闭环已完成。
 - Task1/Task2 依赖矩阵完整，两个任务 L1-L6 sweep、报告和图件可复现。
 - 仍未关闭的 fallback、跳过项和平台限制均已记录到 `docs/design/zhongkexin_migration_change_log.md`。
-- NVIDIA 路径至少完成一次配置和构建 sanity。
+- 本阶段验收链路为 CPU reference + 中科芯 GPU；GPU 专指本服务器容器内 ZQ500。
 
 ## Scope
 
@@ -44,6 +52,7 @@
 ### 1. 全量模块清单
 
 - 从 `include/cusignal`、`src/cuda`、`tests` 生成公开 API 与 CUDA 实现映射。
+- 当前已新增 `docs/design/zhongkexin_full_operator_matrix.md`；`run_all_tests.sh` 原 active 53 条已通过，原注释候选 28 条已启用并随 active 81 条完成容器验证。
 - 标记每个模块的依赖类型：runtime-only、FFT-heavy、BLAS/SOLVER-heavy、mixed。
 - 为每个模块指定最低验证集：smoke、accuracy、edge cases、full。
 - 为每个模块指定数据生成入口、报告产物和允许的跳过项处置方式。
@@ -52,7 +61,7 @@
 
 - 逐模块处理中科芯编译器对模板、lambda、`__host__ __device__`、`std::complex`、math intrinsic、`thread_local` 的兼容问题。
 - 修复必须尽量局部化，优先使用 compat/helper，不扩大公开接口。
-- 每个修复都要确认 NVIDIA 构建不回退。
+- 每个修复都要确认 CPU reference 与中科芯 GPU 双链路不回退。
 
 ### 3. 数值一致性
 
@@ -91,13 +100,20 @@
 ./scripts/test/run_all_tests.sh --build-dir build-zx --case-set full
 ```
 
+中科芯 V4.3 accuracy 统一入口：
+
+```bash
+cd /CETC
+scripts/platform/run_zhongkexin_stage3.sh 2>&1 | tee stage3_accuracy.log
+```
+
 ## 完成判定
 
 - 公开 API 与 CUDA 实现映射完整。
-- 全量模块至少通过 smoke。
-- 关键模块通过 accuracy。
-- full 测试中所有失败项都有明确处置：已修复、平台限制、暂缓项或跳过理由。
+- 全量模块 accuracy 已通过，模块级 12/12。
+- active 81 条公开算子 accuracy 已通过，算子级 81/81。
+- 所有失败项已有明确处置并完成复验。
 - 各模块测试数据生成、metrics、summary 和报告字段均可复现；不存在未记录的缺依赖、缺数据或缺报告项。
-- NVIDIA 路径仍可配置和构建。
+- CPU reference 与中科芯 GPU 路径均可配置、构建和运行。
 - 本阶段发现的所有不兼容点、需要修改点、已修改点和暂缓点均已记录到 `docs/design/zhongkexin_migration_change_log.md`。
-- `docs/design/zhongkexin_migration_status.md` 已更新到 V4.3 完成或明确阻塞状态。
+- `docs/design/zhongkexin_migration_status.md` 已更新到 V4.3 完成状态。

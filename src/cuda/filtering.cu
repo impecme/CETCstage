@@ -863,8 +863,9 @@ namespace
             sum_sq += value * value;
 
             done = true;
-            for (std::size_t dim = rank; dim-- > 0;)
+            for (int dim_signed = static_cast<int>(rank) - 1; dim_signed >= 0; --dim_signed)
             {
+                const std::size_t dim = static_cast<std::size_t>(dim_signed);
                 if (coords[dim] < stop[dim])
                 {
                     ++coords[dim];
@@ -3623,6 +3624,7 @@ namespace cusignal
                         g_workspace.real_array_c.data());
                     check_kernel_launch("wiener_local_stats_kernel");
 
+                    float resolved_noise = noise;
                     if (noise < 0.0)
                     {
                         const int variance_blocks = block_count(image_device.size());
@@ -3637,8 +3639,29 @@ namespace cusignal
                             static_cast<std::size_t>(variance_blocks),
                             g_workspace.scalar_buffer_a.get());
                         check_kernel_launch("sum_values_finalize_kernel(wiener)");
+#ifdef CUSIGNAL_PLATFORM_ZHONGKEXIN
+                        float variance_sum = 0.0f;
+                        throw_on_cuda_error(
+                            cudaMemcpy(
+                                &variance_sum,
+                                g_workspace.scalar_buffer_a.get(),
+                                sizeof(float),
+                                cudaMemcpyDeviceToHost),
+                            "cudaMemcpy D2H(wiener noise)");
+                        resolved_noise = variance_sum / static_cast<float>(image_device.size());
+#endif
                     }
 
+#ifdef CUSIGNAL_PLATFORM_ZHONGKEXIN
+                    wiener_apply_kernel<<<block_count(image_device.size()), kThreadsPerBlock>>>(
+                        image_device.data(),
+                        g_workspace.real_array_b.data(),
+                        g_workspace.real_array_c.data(),
+                        output.data(),
+                        image_device.size(),
+                        resolved_noise);
+                    check_kernel_launch("wiener_apply_kernel(auto-noise)");
+#else
                     if (noise < 0.0)
                     {
                         wiener_apply_auto_noise_kernel<<<block_count(image_device.size()), kThreadsPerBlock>>>(
@@ -3661,6 +3684,7 @@ namespace cusignal
                             noise);
                         check_kernel_launch("wiener_apply_kernel");
                     }
+#endif
                 }));
                 return output;
             }

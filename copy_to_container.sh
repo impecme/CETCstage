@@ -21,6 +21,11 @@ rsync -a \
   --exclude '/__cmake_systeminformation/' \
   --exclude '/stage1.log' \
   --exclude '/stage2.log' \
+  --exclude '/stage2_full.log' \
+  --exclude '/stage3_accuracy.log' \
+  --exclude '/stage4.log' \
+  --exclude '/stage4_pilot.log' \
+  --exclude '/stage4_full.log' \
   "${root}/" "${tmp}/project/"
 
 wheel_count="$(find "${root}/third_party/python_wheels" -maxdepth 1 -type f -name '*.whl' 2>/dev/null | wc -l || true)"

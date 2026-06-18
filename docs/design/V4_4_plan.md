@@ -1,5 +1,13 @@
 # V4.4 第四阶段：性能、资源与稳定性收敛
 
+## 当前状态
+
+- 状态：已完成。
+- 进入时间：2026-06-17。
+- 进入依据：V4.3 Stage3 v2 active 81 条 accuracy 已关闭，模块级 12/12、算子级 81/81。
+- 当前首要任务：已完成 Stage4 full，下一步进入 V4.5 交付固化。
+- 统一入口：`scripts/platform/run_zhongkexin_stage4.sh`。
+
 ## Summary
 
 - 本阶段在 correctness 和全量算子迁移基本稳定后进行。
@@ -62,6 +70,29 @@
 
 ## Test Plan
 
+已通过的 pilot 验证：
+
+```bash
+scripts/platform/run_zhongkexin_stage4.sh 2>&1 | tee stage4_pilot.log
+```
+
+- 脚本版本：`diagnostics-20260617-stage4-perf-pilot-v2`。
+- Task1/Task2 L3 scale sweep 通过。
+- `waveforms` L3 benchmark 5/5 通过。
+- benchmark CSV、Markdown 和 PNG 图件均已生成。
+- 证据归档：`data/reports/zhongkexin/stage4_runs/20260617_pilot_v2/`。
+
+full sweep 首次展开记录：
+
+- full 命令已进入 `TASK_SCALES=1,2,3,4,5,6`，但在 Task2 L1 timing gate 处停止。
+- 失败值为 `gpu_total_ms=37.6259`，旧中科芯有效限制为 `37.5ms`。
+- 已将 Task2 中科芯 L1/L2 timing gate 校准为 ZQ500 平台阈值，并把 Stage4 入口升级为失败时打印内层日志尾部。
+- 第二次 full 命令已完成 Task1/Task2 L1-L6，并完成 81 个算子、6 档、共 486 行 benchmark CSV；401 行通过，85 行失败。
+- 85 行失败中，78 行是 benchmark scale mapping 未覆盖，7 行是 `windows/chebwin` 和 `filter_design/firwin2` 在中科芯默认规模下触发资源限制或 OOM。
+- 已补齐缺失 scale mapping，并为中科芯 `chebwin`、`firwin2` 设置保守规模族。
+- 失败算子子集复验已通过：15 个算子、90 行 benchmark 全部通过，图件生成通过。
+- Stage4 full 最终通过：Task1/Task2 L1-L6 12/12 行通过，81 个算子、486/486 行 benchmark 通过，生成 87 个 benchmark 图件文件。
+
 任务级重复验证：
 
 ```bash
@@ -78,11 +109,32 @@ scripts/test/run_task_demos.sh --build-dir build-zx --no-build --scale-sweep --r
 benchmark：
 
 ```bash
-./scripts/test/run_all_tests.sh --build-dir build-zx --case-set perf
+python3 scripts/test/benchmark_all_ops_scales.py \
+  --platform ZHONGKEXIN \
+  --build-dir build-zx \
+  --modules waveforms \
+  --scale-levels 3 \
+  --warmup 1 --repeat 3 \
+  --build \
+  --output-dir data/reports/unit/benchmarks/zhongkexin_stage4_pilot \
+  --report-mode concise
 python3 scripts/test/plot_all_ops_benchmark.py \
-  --csv data/reports/unit/benchmarks/all_ops_large/latest_all_ops_scale_benchmark.csv \
-  --output-dir data/reports/unit/benchmarks/all_ops_large/figures \
-  --figure-set all --formats png,pdf,svg
+  --csv data/reports/unit/benchmarks/zhongkexin_stage4_pilot/latest_all_ops_scale_benchmark.csv \
+  --output-dir data/reports/unit/benchmarks/zhongkexin_stage4_pilot/figures \
+  --figure-set all --formats png
+```
+
+pilot 通过后的全量展开：
+
+```bash
+TASK_SCALES=1,2,3,4,5,6 \
+BENCH_MODULES=all \
+BENCH_SCALE_LEVELS=1,2,3,4,5,6 \
+BENCH_WARMUP=5 \
+BENCH_REPEAT=30 \
+BENCH_REPORT_MODE=full \
+BENCH_OUTPUT_DIR=data/reports/unit/benchmarks/zhongkexin_stage4_full \
+scripts/platform/run_zhongkexin_stage4.sh 2>&1 | tee stage4_full.log
 ```
 
 ## 完成判定

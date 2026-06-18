@@ -1,5 +1,13 @@
 # V4.2 第二阶段：Task1/Task2 依赖算子闭环
 
+## 当前状态
+
+- 状态：已完成。
+- 关闭时间：2026-06-17。
+- 关闭证据：`stage2_full.log` 显示 `diagnostics-20260616-stage2-deps-v5` 通过；29/29 依赖算子 accuracy 通过；Task1/Task2 L1-L6 全规模 sweep 全部通过；报告和图件已生成。
+- 证据归档：`data/reports/zhongkexin/stage2_runs/20260617_full/`、`data/reports/demo/stage2_full_20260617/`。
+- 后续阶段：进入 `docs/design/V4_3_plan.md`，推进全量公开算子迁移。
+
 ## Summary
 
 - 本阶段承接第一阶段，目标是把 Task1/Task2 直接依赖的算子从“demo 能跑”推进到“依赖算子可解释、可测试、可回归”。

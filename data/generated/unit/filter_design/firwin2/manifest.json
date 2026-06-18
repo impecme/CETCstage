@@ -19,7 +19,7 @@
   "perf_cases": [
     {
       "id": "perf_multiband_large",
-      "numtaps": 4097,
+      "numtaps": 1025,
       "freq": [
         0.0,
         0.15,
@@ -40,7 +40,7 @@
         0.0,
         0.0
       ],
-      "nfreqs": 8195,
+      "nfreqs": 2051,
       "window": {
         "kind": "string",
         "value": "hamming"

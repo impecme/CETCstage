@@ -2,8 +2,8 @@
   "perf_cases": [
     {
       "id": "perf_lags",
-      "in1_len": 4096,
-      "in2_len": 1025,
+      "in1_len": 8192,
+      "in2_len": 2049,
       "mode": "full"
     }
   ]

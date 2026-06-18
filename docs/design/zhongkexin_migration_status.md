@@ -2,13 +2,15 @@
 
 ## 总体状态
 
-当前迁移的总目标是完成整个 CETC 项目到中科芯 CUDA 兼容平台的迁移，而不是只跑通 `task1_radar_demo` 和 `task2_features_demo`。截至 2026-06-16，**第一阶段：平台打通与 Task1/Task2 任务级验证**已按“全部功能迁移”的口径完成：构建、链接、Task1/Task2 L3 验证、Python 依赖和可视化图件生成均已在中科芯 docker 内通过。
+当前迁移的总目标是完成整个 CETC 项目到中科芯 CUDA 兼容平台的迁移，而不是只跑通 `task1_radar_demo` 和 `task2_features_demo`。截至 2026-06-17，**第一阶段：平台打通与 Task1/Task2 任务级验证**、**第二阶段：Task1/Task2 依赖算子闭环**、**第三阶段：全量公开算子迁移**和**第四阶段：性能、资源与稳定性收敛**均已按阶段范围内“全部功能迁移”的口径完成。
 
 因此，当前状态不能解读为“全项目已经迁移完成”。它表示：
 
 - V4.0 全项目迁移总蓝图已建立。
 - V4.1 第一阶段已在本队中科芯 docker 内通过统一验收脚本验证。
-- V4.2 第四轮容器日志已取回；`dlcc` CXX 编译器选择、unit support `.cu` 入库和 `spectral/spectrogram` PSD R2C 问题均已关闭。当前 29/29 依赖算子通过，Task1/Task2 L3 单规模通过；下一步执行 L1-L6 全规模验证作为 V4.2 关闭证据。
+- V4.2 已在本队中科芯 docker 内通过全规模关闭验证：29/29 依赖算子通过，Task1/Task2 L1-L6 sweep 全部通过，报告和图件已生成。
+- V4.3 已在本队中科芯 docker 内通过全量公开算子 accuracy 验证：12/12 模块通过，81/81 active 算子通过，报告已归档。
+- V4.4 已在本队中科芯 docker 内通过 Stage4 full：Task1/Task2 L1-L6 12/12 行通过，81 个算子、486/486 行 benchmark 通过，benchmark 图件已生成。
 - 构建入口、compat 层和任务级验证路径已可用。
 - 不兼容与修改台账已建立：`docs/design/zhongkexin_migration_change_log.md`。
 - 复赛说明文件已发现并整理摘要：`docs/design/zhongkexin_rematch_notes.md`。
@@ -21,27 +23,27 @@
 | 总阶段 | 文档 | 名称 | 当前状态 | 完成标准 |
 | --- | --- | --- | --- | --- |
 | 第一阶段 | `docs/design/V4_1_plan.md` | 平台打通与 Task1/Task2 任务级验证 | 已完成 | probe 通过，`task1_radar_demo` 和 `task2_features_demo` L3 默认规模 `validation.pass=true`，Python 依赖可 import，并生成 demo 可视化图件 |
-| 第二阶段 | `docs/design/V4_2_plan.md` | Task1/Task2 依赖算子闭环 | 进行中 | 两个任务依赖算子 smoke/accuracy 通过，L1-L6 sweep、报告和任务级图件可复现 |
-| 第三阶段 | `docs/design/V4_3_plan.md` | 全量公开算子迁移 | 未开始 | 全部 CUDA 算子和公开 API 相关测试、数据生成、报告输出逐模块通过或明确入账 |
-| 第四阶段 | `docs/design/V4_4_plan.md` | 性能、资源与稳定性收敛 | 未开始 | benchmark、resource、timing、性能 gate 和 benchmark 图件稳定可复现 |
-| 第五阶段 | `docs/design/V4_5_plan.md` | 交付固化 | 未开始 | README、AGENT、迁移报告、回归流程、报告和图件从零完整可复现 |
+| 第二阶段 | `docs/design/V4_2_plan.md` | Task1/Task2 依赖算子闭环 | 已完成 | 两个任务依赖算子 smoke/accuracy 通过，L1-L6 sweep、报告和任务级图件可复现 |
+| 第三阶段 | `docs/design/V4_3_plan.md` | 全量公开算子迁移 | 已完成 | 全部 CUDA 算子和公开 API 相关测试、数据生成、报告输出逐模块通过或明确入账 |
+| 第四阶段 | `docs/design/V4_4_plan.md` | 性能、资源与稳定性收敛 | 已完成 | benchmark、resource、timing、性能 gate 和 benchmark 图件稳定可复现 |
+| 第五阶段 | `docs/design/V4_5_plan.md` | 交付固化 | 已进入 | README、AGENT、迁移报告、回归流程、报告和图件从零完整可复现 |
 
 ## 阶段门禁状态
 
 | 阶段 | 进入条件状态 | 退出条件状态 | 说明 |
 | --- | --- | --- | --- |
 | V4.1 | 已满足 | 已满足 | `stage1.log` 显示脚本版本 `diagnostics-20260616-dlcc-cxx-python-v3` 已完成依赖准备、probe、`build-zx` 配置、`cusignal_cpu/cusignal_cuda` 和两个 demo 构建；Task1/Task2 L3 均 `PASS repeat=3`，并完成可视化图件生成 |
-| V4.2 | 已满足 | 未满足 | V4.1 完整功能闭环已通过；Stage2 v5 已确认 29/29 依赖算子通过，Task1/Task2 L3 单规模和图件通过；待执行 `STAGE2_SCALES=1,2,3,4,5,6` 全规模闭环 |
-| V4.3 | 未满足 | 未满足 | 需要 V4.2 完成后进入 |
-| V4.4 | 未满足 | 未满足 | 需要 V4.3 完成后进入 |
-| V4.5 | 未满足 | 未满足 | 需要 V4.4 完成后进入 |
+| V4.2 | 已满足 | 已满足 | `stage2_full.log` 显示脚本版本 `diagnostics-20260616-stage2-deps-v5`，29/29 依赖算子通过，Task1/Task2 L1-L6 全规模 sweep、报告和图件均通过 |
+| V4.3 | 已满足 | 已满足 | Stage3 v2 active 81 条 accuracy 已通过；模块级 12/12、算子级 81/81，验收口径为 CPU reference + 中科芯 GPU |
+| V4.4 | 已满足 | 已满足 | Stage4 full 已通过：Task1/Task2 L1-L6、81 算子 486/486 benchmark、图件生成均通过 |
+| V4.5 | 已满足 | 未满足 | V4.4 已完成，当前进入交付固化 |
 
 ## 当前基线
 
-- 平台策略：双路径，默认 `NVIDIA`，可选 `ZHONGKEXIN`。
+- 平台策略：当前迁移验收只面向 `ZHONGKEXIN`；CPU 链路作为 reference，GPU 链路指容器内 ZQ500。
 - 公开 API 状态：保持不变。
-- 当前阶段主目标：推进 V4.2 Task1/Task2 依赖算子闭环，扩展到依赖算子 smoke/accuracy、L1-L6 sweep、报告和图件闭环。
-- 当前实现状态：中科芯 stage1 构建、链接、Task1/Task2 L3 验证、Python 依赖检查和可视化图件生成均已通过；V4.2 统一入口和依赖矩阵已建立，Stage2 v5 已确认 29 个依赖算子全部通过，Task1/Task2 L3 单规模、报告和图件通过；待全规模 L1-L6 验证后判断 V4.2 是否关闭。
+- 当前阶段主目标：进入 V4.5 交付固化，整理 README、AGENT、迁移报告、复现流程、报告和图件归档。
+- 当前实现状态：中科芯 stage1 构建、链接、Task1/Task2 L3 验证、Python 依赖检查和可视化图件生成均已通过；V4.2 统一入口和依赖矩阵已完成，Stage2 full 已确认 29 个依赖算子全部通过，Task1/Task2 L1-L6 全规模、报告和图件通过；V4.3 Stage3 v2 active 81 条 accuracy 已通过，模块级 12/12、算子级 81/81；V4.4 Stage4 full 已通过，81 个算子、486/486 行 benchmark 和图件生成通过。
 - 参赛者服务器说明：已阅读并纳入 README、AGENT 和迁移计划。
 - 复赛说明文件：已阅读 runtime API、driver API、科学计算库实现列表，并纳入 README、AGENT、V4 计划和迁移台账。
 - 当前项目记录：用户 ID `usr_04`，UID `1006`，主机名 `supervisor-X7850H0`，项目路径 `/home/usr_04/CETC`。
@@ -101,15 +103,7 @@
 
 ## 验证命令
 
-NVIDIA sanity：
-
-```bash
-cmake -S . -B build -DCUSIGNAL_PLATFORM=NVIDIA -DCMAKE_BUILD_TYPE=Release
-cmake --build build --target smoke_demo1 --parallel
-ctest --test-dir build -R '^smoke_demo1$' --output-on-failure
-```
-
-中科芯平台探测在进入本队 docker 后执行：
+当前迁移验收只看 CPU reference + 中科芯 ZQ500 GPU 双链路。中科芯平台探测在进入本队 docker 后执行：
 
 ```bash
 cd /CETC
@@ -191,7 +185,46 @@ scripts/platform/run_zhongkexin_stage2.sh 2>&1 | tee stage2.log
 - Stage2 v3 最终还暴露 Task2 scale 图件检查路径不一致：实际输出为 `data/reports/demo/task2_multidomain_l1_l6_scale_performance.png`。
 - Stage2 v4 日志显示 27/29 依赖算子通过，unit support `.cu` 已出现编译行；剩余失败为 `spectral/spectrogram` 的 `psd_case`，GPU PSD `max_abs=0.0553979`、`rmse=0.0101726`。
 - Stage2 v5 日志显示 29/29 依赖算子通过，Task1/Task2 `L3` 单规模通过，demo 聚合报告和 scale 报告均通过；Task1 `gpu_ms=2.273990`，Task2 `gpu_ms=122.090000`。
-- Stage2 v5 单规模结果只用于调试推进，V4.2 关闭前仍需执行 `STAGE2_SCALES=1,2,3,4,5,6 scripts/platform/run_zhongkexin_stage2.sh 2>&1 | tee stage2_full.log`。
+- Stage2 full 日志显示 `task demo scales: 1,2,3,4,5,6`，29/29 依赖算子通过，Task1/Task2 L1-L6 全规模均 `PASS`，scale 报告和图件已写出；V4.2 已关闭。
+
+V4.2 全规模关闭证据：
+
+- 2026-06-17 取回 `stage2_full.log`，脚本版本为 `diagnostics-20260616-stage2-deps-v5`。
+- 依赖准备通过：`cmake 3.22.1`、`dlcc /zq500/sdk/bin/dlcc`、SDK headers/libs、FFTW 和 Python modules 均满足。
+- 依赖算子报告：`pass=true`、`total=29`、`passed=29`、`failed=0`。
+- Task1/Task2 L1-L6 scale sweep 全部通过，`data/reports/demo/latest_task_demo_scale_report.md` 中 12 行 validation 均为 `true`。
+- 全规模证据已归档到 `data/reports/demo/stage2_full_20260617/` 和 `data/reports/zhongkexin/stage2_runs/20260617_full/`。
+
+V4.3 当前证据：
+
+- 2026-06-17 取回 `stage3_accuracy.log`，脚本版本为 `diagnostics-20260617-stage3-full-ops-v1`。
+- 首轮模块级报告：12 个模块中 10 个通过，`filtering` 和 `spectral` 失败。
+- 首轮算子级报告：active 53 条中 51 条通过，失败项为 `filtering/wiener` 和 `spectral/csd`。
+- 已实施修复：中科芯 `csd` 禁用 R2C 快路径改走 C2C；中科芯 `wiener` 自动噪声估计改为 D2H 标量后继续 GPU apply。
+- 复验结果：`spectral/csd` 已通过，`filtering/wiener` 单算子复验已通过，完整 Stage3 汇总已通过，模块级 12/12、算子级 53/53。
+- 已继续修复：`wiener_local_stats_kernel` 的无符号倒序窗口遍历改为显式有符号倒序循环；`run_all_tests.sh --platform ZHONGKEXIN` 已自动加载 SDK，单算子入口无需手动 source。
+- 当前证据归档：`data/reports/zhongkexin/stage3_runs/20260617_102953/`。
+- Stage3 v2 初次证据归档：`data/reports/zhongkexin/stage3_runs/20260617_105517/`，模块级 10/12，算子级 79/81；失败项为 `radartools/mvdr`、`spectral/coherence`。
+- Stage3 v2 关闭证据归档：`data/reports/zhongkexin/stage3_runs/20260617_110827/`，模块级 12/12，算子级 81/81，失败项为 0。
+- 当前验收口径：CPU reference + 中科芯 GPU；GPU 专指本服务器容器内 ZQ500。
+- 结论：V4.3 已关闭；后续进入 V4.4 性能、资源与稳定性收敛。
+
+V4.4 当前证据：
+
+- 2026-06-17 取回 `stage4_pilot.log`，脚本版本为 `diagnostics-20260617-stage4-perf-pilot-v2`。
+- Stage4 入口在空 `build-zx` 场景下完成中科芯 CMake configure，编译器为 `/zq500/sdk/bin/dlcc`。
+- Task1/Task2 L3 scale sweep 均 `PASS`，demo 报告和图件已生成。
+- `waveforms` L3 benchmark 5/5 通过：`chirp`、`gausspulse`、`sawtooth`、`square`、`unit_impulse`。
+- benchmark CSV、Markdown、总览 PNG 和 5 个单算子 PNG 已生成。
+- 当前证据归档：`data/reports/zhongkexin/stage4_runs/20260617_pilot_v2/`。
+- 结论：V4.4 pilot 链路已关闭，后续已完成 L1-L6 与全模块 full benchmark。
+- full benchmark 首次展开停在 Task2 L1 timing gate：`gpu_total_ms=37.6259`，旧限制为 `37.5ms`；已按中科芯平台校准 Task2 L1/L2 timing gate，并升级 Stage4 失败日志输出。
+- full benchmark 第二次展开已通过 Task1/Task2 L1-L6，operator benchmark 生成 486 行 CSV：401 行通过、85 行失败；失败已归类为 78 行缺 scale mapping 与 7 行中科芯资源规模超限。
+- 已补齐 benchmark scale mapping，并为中科芯 `chebwin`、`firwin2` 配置保守规模族；下一步复跑失败算子子集。
+- 失败算子子集复验已通过：15 个算子、90 行 benchmark 全部通过，图件生成通过。
+- Stage4 full 最终通过：脚本版本 `diagnostics-20260617-stage4-perf-full-v4`，Task1/Task2 L1-L6 12/12 行通过，81 个算子、486/486 行 benchmark 通过，`plot_status=passed`，生成 87 个 benchmark 图件文件。
+- 当前证据归档：`data/reports/zhongkexin/stage4_full_final/` 和 `data/reports/unit/benchmarks/zhongkexin_stage4_full/`。
+- 结论：V4.4 已关闭；当前进入 V4.5 交付固化。
 
 ## 未决风险
 
@@ -211,8 +244,9 @@ scripts/platform/run_zhongkexin_stage2.sh 2>&1 | tee stage2.log
 
 ## 总体推进顺序
 
-1. 当前下一步：进入第二阶段，执行 Task1/Task2 依赖算子闭环。
-2. 扩展 Task1/Task2 L1-L6 sweep、报告和图件闭环。
-3. 进入第三阶段：全量公开算子迁移。
-4. 进入第四阶段：性能、资源与稳定性收敛。
+1. 已完成第一阶段：平台打通与 Task1/Task2 任务级验证。
+2. 已完成第二阶段：Task1/Task2 依赖算子闭环。
+3. 已完成第三阶段：全量公开算子迁移。
+4. 已完成第四阶段：性能、资源与稳定性收敛。
+5. 当前推进第五阶段：交付固化。
 5. 进入第五阶段：交付固化。

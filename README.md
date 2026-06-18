@@ -28,8 +28,8 @@
 
 工程环境如下：
 
-- 当前验证 GPU：`2 x NVIDIA A100-SXM4-40GB`
-- CUDA：`11.7`
+- 当前迁移验证 GPU：本服务器容器内中科芯 ZQ500
+- 历史 CUDA 基线：`2 x NVIDIA A100-SXM4-40GB` / CUDA `11.7`
 - 构建系统：`CMake >= 3.18`，当前验证版本为 `3.22.1`
 - 语言标准：`C++17` / `CUDA17`
 - 本地依赖：`FFTW` 通过 `./scripts/build/install_fftw.sh` 安装到 `third_party/fftw/install`
@@ -45,9 +45,9 @@
 
 中科芯迁移各阶段都以该阶段范围内的全部功能闭环为完成标准。核心 demo 或 correctness 通过只是阶段证据的一部分；属于该阶段的报告、图件、数据生成、benchmark、边界输入和文档复现都必须可运行，或作为明确平台限制记录到迁移台账。
 
-每个中科芯迁移版本或阶段关闭时，必须同步产出交付文档，统一放在 `docs/submission/`。交付文档命名采用 `READMEV<major>_<minor>.md` 风格，并记录阶段目标、关键修改、验证命令、日志证据、产物路径、完成判定和遗留风险。
+每个中科芯迁移版本或阶段关闭时，必须同步产出交付文档，统一放在 `docs/submission/`。交付文档命名采用 `READMEV<major>_<minor>.md` 风格，并按版本交付口径组织：版本目标、核心改动、解决的问题、验证结果、交付产物、完成判定和遗留风险。不要把交付文档写成“第几轮容器验证”的流水账；容器日志轮次只作为证据摘要或进入迁移台账。
 
-默认 CUDA 架构为 `80`，适配 `sm80` GPU；当前验证设备为 A100-SXM4-40GB。可在构建前通过环境变量覆盖，例如 `CUDA_ARCH=86`。
+历史 NVIDIA CUDA 基线默认架构为 `80`，适配 `sm80` GPU；当前中科芯迁移入口不要手动设置 `CUDA_ARCH=80`，统一由平台脚本使用 ZQ500 对应的 `dlcc --cuda-gpu-arch=dlgput64` 参数。
 
 ## 参赛者服务器与 Docker 环境
 
@@ -128,14 +128,21 @@ cd /home/usr_04/CETC
 
 ```bash
 cd /CETC
-scripts/platform/run_zhongkexin_stage2.sh 2>&1 | tee stage2.log
+TASK_SCALES=1,2,3,4,5,6 \
+BENCH_MODULES=all \
+BENCH_SCALE_LEVELS=1,2,3,4,5,6 \
+BENCH_WARMUP=5 \
+BENCH_REPEAT=30 \
+BENCH_REPORT_MODE=full \
+BENCH_OUTPUT_DIR=data/reports/unit/benchmarks/zhongkexin_stage4_full \
+scripts/platform/run_zhongkexin_stage4.sh 2>&1 | tee stage4_full.log
 ```
 
-`run_zhongkexin_stage2.sh` 会自动检查依赖，按 `docs/design/zhongkexin_task_dependency_matrix.md` 批量运行 Task1/Task2 依赖算子 `accuracy`，生成 `data/reports/zhongkexin/stage2/latest_dependency_operator_report.*` 和逐算子日志。为降低中科芯 GPU 调试耗时，当前默认只运行 Task1/Task2 `L3` 一个规模的 scale 报告链路；单规模通过后再用 `STAGE2_SCALES=1,2,3,4,5,6` 打开全规模 sweep。历史阶段入口和展开命令保留在 `AGENT.md` 与 `docs/design/` 中。
+`run_zhongkexin_stage4.sh` 会自动检查依赖、配置中科芯 `build-zx`、运行 Task1/Task2 L1-L6 scale sweep、执行全量算子多规模 benchmark，并生成报告和图件。当前交付验收只面向 CPU reference + 容器内 ZQ500 GPU。
 
 ## 精度约定
 
-当前主干采用统一单精度实现，面向当前 A100-SXM4-40GB 验证环境的吞吐特性做算子验证与性能对比。
+当前主干采用统一单精度实现；中科芯迁移阶段以 CPU reference 与容器内 ZQ500 GPU 的数值一致性和任务闭环为验收口径。
 
 - 公共接口保留 `dtype` 参数以降低接口破坏面，但默认值和校验口径已收敛到 `float32`。
 - CPU 与 CUDA 对照均按单精度实现；单算子 metrics 保留 `max_abs_error`、`max_rel_error`、`rmse`，全量 benchmark 主表使用 `mixed_error` 展示近零保护后的主误差。
@@ -146,17 +153,9 @@ scripts/platform/run_zhongkexin_stage2.sh 2>&1 | tee stage2.log
 
 ## 快速开始
 
-```bash
-./scripts/build/build_v1.sh
-```
+中科芯当前推荐入口是上文的 `scripts/platform/run_zhongkexin_stage4.sh` 全量命令；它会覆盖依赖检查、构建配置、任务 demo、benchmark、报告和图件生成。
 
-显式指定 CUDA 架构
-
-```bash
-CUDA_ARCH=80 ./scripts/build/build_v1.sh
-```
-
-完成构建后，可以直接运行两个任务级 demo：
+完成构建后，也可以直接运行两个任务级 demo：
 
 ```bash
 ./build/demo/task1_radar/task1_radar_demo
@@ -218,7 +217,7 @@ scripts/test/run_task_demos.sh --no-build --repeat 2 --leak-check
 
 汇总报告会写到 `data/reports/demo/latest_task_demo_report.md` 和 `data/reports/demo/latest_task_demo_report.json`。
 规模扫测会额外写出 `data/reports/demo/latest_task_demo_scale_benchmark.csv`、`latest_task_demo_scale_report.json` 和 `latest_task_demo_scale_report.md`，并将每档产物归档到 `data/reports/demo/<task>/scales/L<N>/`。扫测结束后 latest 与可视化默认恢复为 L3 兼容场景。
-多卡机器上如需避开被占用的 GPU，可在命令前临时指定 `CUDA_VISIBLE_DEVICES=<id>`；本轮最终复测使用空闲的 A100 GPU。
+在中科芯容器内如需避开被占用的设备，可按平台环境支持设置设备可见性变量；当前迁移复测以容器内 ZQ500 为准。
 
 ## 编译
 
@@ -338,31 +337,28 @@ ctest --test-dir build -R '^smoke_demo1$' --output-on-failure
 
 ## 全量 Benchmark 与作图
 
-全量 53 个算子 × 6 个规模点复测：
+当前中科芯全量 benchmark 与作图由统一 Stage4 入口执行：
 
 ```bash
-scripts/test/benchmark_all_ops_scales.py \
-  --build --build-dir build \
-  --warmup 5 --repeat 30 \
-  --output-dir data/reports/unit/benchmarks/all_ops
+cd /CETC
+TASK_SCALES=1,2,3,4,5,6 \
+BENCH_MODULES=all \
+BENCH_SCALE_LEVELS=1,2,3,4,5,6 \
+BENCH_WARMUP=5 \
+BENCH_REPEAT=30 \
+BENCH_REPORT_MODE=full \
+BENCH_OUTPUT_DIR=data/reports/unit/benchmarks/zhongkexin_stage4_full \
+scripts/platform/run_zhongkexin_stage4.sh 2>&1 | tee stage4_full.log
 ```
 
-大规模 GPU profile：
+该入口会生成 `data/reports/unit/benchmarks/zhongkexin_stage4_full/latest_all_ops_scale_benchmark.csv` 和 `figures/` 下的 benchmark 图件。
 
-```bash
-scripts/test/benchmark_all_ops_scales.py \
-  --build --build-dir build \
-  --scale-profile large-gpu \
-  --warmup 5 --repeat 30 \
-  --output-dir data/reports/unit/benchmarks/all_ops_large
-```
-
-论文风格作图：
+如需单独重生成论文风格图件：
 
 ```bash
 python3 scripts/test/plot_all_ops_benchmark.py \
-  --csv data/reports/unit/benchmarks/all_ops_large/latest_all_ops_scale_benchmark.csv \
-  --output-dir data/reports/unit/benchmarks/all_ops_large/figures \
+  --csv data/reports/unit/benchmarks/zhongkexin_stage4_full/latest_all_ops_scale_benchmark.csv \
+  --output-dir data/reports/unit/benchmarks/zhongkexin_stage4_full/figures \
   --figure-set all \
   --dpi 450
 ```
@@ -377,7 +373,7 @@ python3 scripts/test/plot_all_ops_benchmark.py \
 - `figures/figure_5_largest_scale_speedup_rank.png`
 - `figures/operator_figures/<module>__<operator>.png`
 
-默认只保留全量 benchmark CSV。CSV 追加包含 `cpu_median_ms`、`gpu_e2e_median_ms`、`gpu_kernel_median_ms`、`gpu_e2e_min_ms`、`gpu_e2e_max_ms`，用于直接绘制 CPU/GPU 耗时与加速比图。`figure_1` 到 `figure_5` 是全局总览图，行/点代表算子、列代表 L1-L6 或最大规模；每个算子的独立性能图在 `figures/operator_figures/` 下，上半部分是 CPU/GPU e2e median 耗时，下半部分是 e2e/kernel speedup。需要 Markdown 简表时，在 benchmark 命令中增加 `--report-mode concise`；需要时间戳归档、分模块 CSV 或候选细表时增加 `--report-mode full`；需要图件时再单独运行 plot 脚本。
+默认保留全量 benchmark CSV 和图件。CSV 追加包含 `cpu_median_ms`、`gpu_e2e_median_ms`、`gpu_kernel_median_ms`、`gpu_e2e_min_ms`、`gpu_e2e_max_ms`，用于直接绘制 CPU/GPU 耗时与加速比图。`figure_1` 到 `figure_5` 是全局总览图，行/点代表算子、列代表 L1-L6 或最大规模；每个算子的独立性能图在 `figures/operator_figures/` 下，上半部分是 CPU/GPU e2e median 耗时，下半部分是 e2e/kernel speedup。
 
 测试脚本、规模策略、性能图生成方式和任务级验收口径已在本文档中统一说明。提交技术文档如需引用工程说明，统一引用本文件。
 
@@ -394,8 +390,8 @@ python3 scripts/test/plot_all_ops_benchmark.py \
 | Task1 阶段耗时 | `data/reports/demo/task1_radar/latest_stage_timings.csv` | Task1 分阶段 CPU/GPU 耗时 |
 | Task2 metrics | `data/reports/demo/task2_features/latest_metrics.json` | Task2 轨迹、误差、资源与稳定性 |
 | Task2 阶段耗时 | `data/reports/demo/task2_features/latest_stage_timings.csv` | Task2 分阶段 CPU/GPU 耗时 |
-| 53 算子 benchmark | `data/reports/unit/benchmarks/all_ops_large/latest_all_ops_scale_benchmark.csv` | 53 个核心算子 L1-L6 性能与精度 |
-| 全量算子图件 | `data/reports/unit/benchmarks/all_ops_large/figures/` | benchmark 总览图与算子图 |
+| 81 算子 benchmark | `data/reports/unit/benchmarks/zhongkexin_stage4_full/latest_all_ops_scale_benchmark.csv` | 81 个迁移算子 L1-L6 性能与精度 |
+| 全量算子图件 | `data/reports/unit/benchmarks/zhongkexin_stage4_full/figures/` | benchmark 总览图与算子图 |
 | 单元测试入口 | `tests/unit/` | 81 个已迁移算子的测试覆盖 |
 | 公开接口 | `include/cusignal/` | 库函数头文件与公开 API |
 | CUDA 实现 | `src/cuda/` | GPU 加速实现源码 |

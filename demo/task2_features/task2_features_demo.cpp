@@ -257,7 +257,17 @@ namespace cusignal_demo::task2_features
             throw std::invalid_argument("scale_level must be in [1, 6]");
         }
 #if defined(CUSIGNAL_PLATFORM_ZHONGKEXIN)
-        if (scale_level == 3)
+        if (scale_level == 1)
+        {
+            thresholds.gpu_total_baseline_ms = 40.0f;
+            thresholds.gpu_total_hard_limit_ms = 50.0f;
+        }
+        else if (scale_level == 2)
+        {
+            thresholds.gpu_total_baseline_ms = 70.0f;
+            thresholds.gpu_total_hard_limit_ms = 90.0f;
+        }
+        else if (scale_level == 3)
         {
             thresholds.gpu_total_baseline_ms = 120.0f;
             thresholds.gpu_total_hard_limit_ms = 150.0f;

@@ -1,0 +1,59 @@
+{
+  "module": "spectral",
+  "operator": "coherence",
+  "generated_at": "2026-06-17 02:43:30",
+  "git_commit": "",
+  "gpu_name": "ZQ500-Q QUAD-0",
+  "compile_config": {
+    "cxx_standard": 201703,
+    "cudart_version": 11070
+  },
+  "summary": {
+    "pass": false,
+    "accuracy_cases": 1,
+    "perf_cases": 0,
+    "max_abs_error": 0.0475829,
+    "max_rel_error": 0.0507401,
+    "mixed_error": 0.0482898,
+    "rmse": 0.007193,
+    "gpu_e2e_speedup": 0,
+    "gpu_kernel_speedup": 0
+  },
+  "cases": [
+    {
+      "case_id": "hann_mean",
+      "category": "accuracy",
+      "samples": 65,
+      "pass": false,
+      "cpu_gpu_error": {
+        "max_abs_error": 0.0475829,
+        "max_rel_error": 0.0507401,
+        "mixed_error": 0.0482898,
+        "rmse": 0.007193,
+        "l2_error": 0.0579919,
+        "exact_match": false,
+        "first_mismatch_index": 0
+      },
+      "cpu_reference_error": {
+        "max_abs_error": 0.00768536,
+        "max_rel_error": 0.00798836,
+        "mixed_error": 0.00792505,
+        "rmse": 0.0010037,
+        "l2_error": 0.00809208,
+        "exact_match": false,
+        "first_mismatch_index": 0
+      },
+      "gpu_reference_error": {
+        "max_abs_error": 0.0497106,
+        "max_rel_error": 0.0503404,
+        "mixed_error": 0.0530089,
+        "rmse": 0.00703596,
+        "l2_error": 0.0567257,
+        "exact_match": false,
+        "first_mismatch_index": 0
+      },
+      "artifacts": [
+      ]
+    }
+  ]
+}

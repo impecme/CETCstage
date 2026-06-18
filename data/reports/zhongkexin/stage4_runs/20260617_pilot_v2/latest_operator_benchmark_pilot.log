@@ -1,0 +1,123 @@
+-- Using Zhongkexin CUDA headers without CUDAToolkit cudart target: /zq500/sdk/include
+-- CUSIGNAL_PLATFORM=ZHONGKEXIN
+-- Using Zhongkexin CUDA runtime compatibility library: /zq500/sdk/lib/libcurt.so
+-- Using Zhongkexin cuFFT compatibility library: /zq500/sdk/lib/libdlfft.so
+-- Using Zhongkexin cuBLAS compatibility library: /zq500/sdk/lib/libdlblas.so
+-- Using Zhongkexin cuSOLVER compatibility library: /zq500/sdk/lib/libdlsolver.so
+-- Using cuFFT compatibility library: /zq500/sdk/lib/libdlfft.so
+-- Using cuBLAS compatibility library: /zq500/sdk/lib/libdlblas.so
+-- Using cuSOLVER compatibility library: /zq500/sdk/lib/libdlsolver.so
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /CETC/build-zx
+Consolidate compiler generated dependencies of target cusignal_cpu
+[ 40%] Built target cusignal_cpu
+Consolidate compiler generated dependencies of target cusignal_cuda
+[ 86%] Built target cusignal_cuda
+[ 93%] Building CXX object tests/unit/waveforms/CMakeFiles/waveforms_test_support.dir/waveform_test_support.cu.o
+/CETC/tests/unit/waveforms/waveform_test_support.cu:2411:61: warning: 'cudaDeviceSynchronize' is deprecated: Use of cudaDeviceSynchronize from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING. [-Wdeprecated-declarations]
+                        cusignal::core::throw_on_cuda_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
+                                                            ^
+/zq500/sdk/include/cuda_device_runtime_api.h:142:38: note: 'cudaDeviceSynchronize' has been explicitly marked deprecated here
+extern __device__ __cudart_builtin__ __CDPRT_DEPRECATED(cudaDeviceSynchronize) cudaError_t CUDARTAPI cudaDeviceSynchronize(void);
+                                     ^
+/zq500/sdk/include/cuda_device_runtime_api.h:120:40: note: expanded from macro '__CDPRT_DEPRECATED'
+# define __CDPRT_DEPRECATED(func_name) __DEPRECATED__("Use of "#func_name" from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING.")
+                                       ^
+/zq500/sdk/include/cuda_device_runtime_api.h:116:45: note: expanded from macro '__DEPRECATED__'
+# define __DEPRECATED__(msg) __attribute__((deprecated(msg)))
+                                            ^
+1 warning generated when compiling for dlgput64r1.
+[ 93%] Linking CXX static library libwaveforms_test_support.a
+[ 93%] Built target waveforms_test_support
+[ 93%] Building CXX object tests/unit/waveforms/CMakeFiles/waveforms_test_chirp.dir/test_chirp.cpp.o
+[100%] Linking CXX executable waveforms_test_chirp
+[100%] Built target waveforms_test_chirp
+[ 40%] Built target cusignal_cpu
+[ 86%] Built target cusignal_cuda
+Consolidate compiler generated dependencies of target waveforms_test_support
+[ 93%] Built target waveforms_test_support
+[ 93%] Building CXX object tests/unit/waveforms/CMakeFiles/waveforms_test_gausspulse.dir/test_gausspulse.cpp.o
+[100%] Linking CXX executable waveforms_test_gausspulse
+[100%] Built target waveforms_test_gausspulse
+[ 40%] Built target cusignal_cpu
+[ 86%] Built target cusignal_cuda
+[ 93%] Built target waveforms_test_support
+[ 93%] Building CXX object tests/unit/waveforms/CMakeFiles/waveforms_test_sawtooth.dir/test_sawtooth.cpp.o
+[100%] Linking CXX executable waveforms_test_sawtooth
+[100%] Built target waveforms_test_sawtooth
+[ 42%] Built target cusignal_cpu
+[ 92%] Built target cusignal_cuda
+[100%] Built target waveforms_test_support
+[100%] Building CXX object tests/unit/waveforms/CMakeFiles/waveforms_test_square.dir/test_square.cpp.o
+[100%] Linking CXX executable waveforms_test_square
+[100%] Built target waveforms_test_square
+[ 40%] Built target cusignal_cpu
+[ 86%] Built target cusignal_cuda
+[ 93%] Built target waveforms_test_support
+[100%] Building CXX object tests/unit/waveforms/CMakeFiles/waveforms_test_unit_impulse.dir/test_unit_impulse.cpp.o
+[100%] Linking CXX executable waveforms_test_unit_impulse
+[100%] Built target waveforms_test_unit_impulse
+[all-ops-bench] selected operators: 5
+[all-ops-bench] build mode: build
+[all-ops-bench] platform: ZHONGKEXIN
+[all-ops-bench] scale profile: default
+[all-ops-bench] scale levels: 3
+[all-ops-bench] report mode: concise
+[all-ops-bench] timing: warmup=1 repeat=3
+[all-ops-bench] building selected targets once: 5 targets, platform=ZHONGKEXIN, build_type=Release, cuda_arch=n/a, jobs=255
+[all-ops-bench] backed up manifests
+[all-ops-bench] [1/5 L3] waveforms/chirp scale=16384
+[all-ops-bench] running waveforms/chirp: /CETC/scripts/test/run_all_tests.sh --module waveforms --operator chirp --case-set perf --emit-report --warmup 1 --repeat 3 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=1 repeat=3
+[cusignal-test] running waveforms/chirp
+[waveforms/chirp] PASS  accuracy_cases=0  perf_cases=2
+cpu_gpu_error : max_abs=3.885747e-06  max_rel=3.885747e-06  mixed=3.885747e-06  rmse=1.330872e-06
+cpu_perf_ms   : median=0.323  mean=0.260  p95=0.323
+gpu_perf_ms   : e2e_median=0.069  kernel_median=0.033  p95=0.069  e2e_speedup=4.697x  kernel_speedup=9.657x
+reports       : data/reports/unit/waveforms/chirp/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [2/5 L3] waveforms/gausspulse scale=16384
+[all-ops-bench] running waveforms/gausspulse: /CETC/scripts/test/run_all_tests.sh --module waveforms --operator gausspulse --case-set perf --emit-report --warmup 1 --repeat 3 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=1 repeat=3
+[cusignal-test] running waveforms/gausspulse
+[waveforms/gausspulse] PASS  accuracy_cases=0  perf_cases=2
+cpu_gpu_error : max_abs=1.788139e-07  max_rel=3.274681e-07  mixed=3.274681e-07  rmse=1.658829e-08
+cpu_perf_ms   : median=0.400  mean=0.284  p95=0.400
+gpu_perf_ms   : e2e_median=0.066  kernel_median=0.036  p95=0.066  e2e_speedup=6.024x  kernel_speedup=11.254x
+reports       : data/reports/unit/waveforms/gausspulse/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [3/5 L3] waveforms/sawtooth scale=16384
+[all-ops-bench] running waveforms/sawtooth: /CETC/scripts/test/run_all_tests.sh --module waveforms --operator sawtooth --case-set perf --emit-report --warmup 1 --repeat 3 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=1 repeat=3
+[cusignal-test] running waveforms/sawtooth
+[waveforms/sawtooth] PASS  accuracy_cases=0  perf_cases=2
+cpu_gpu_error : max_abs=2.384186e-07  max_rel=3.750000e-01  mixed=2.384186e-07  rmse=1.142578e-07
+cpu_perf_ms   : median=0.143  mean=0.142  p95=0.143
+gpu_perf_ms   : e2e_median=0.063  kernel_median=0.031  p95=0.063  e2e_speedup=2.270x  kernel_speedup=4.669x
+reports       : data/reports/unit/waveforms/sawtooth/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [4/5 L3] waveforms/square scale=16384
+[all-ops-bench] running waveforms/square: /CETC/scripts/test/run_all_tests.sh --module waveforms --operator square --case-set perf --emit-report --warmup 1 --repeat 3 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=1 repeat=3
+[cusignal-test] running waveforms/square
+[waveforms/square] PASS  accuracy_cases=0  perf_cases=2
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  mixed=0.000000e+00  rmse=0.000000e+00
+cpu_perf_ms   : median=0.138  mean=0.138  p95=0.138
+gpu_perf_ms   : e2e_median=0.060  kernel_median=0.030  p95=0.060  e2e_speedup=2.282x  kernel_speedup=4.651x
+reports       : data/reports/unit/waveforms/square/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [5/5 L3] waveforms/unit_impulse scale=16384
+[all-ops-bench] running waveforms/unit_impulse: /CETC/scripts/test/run_all_tests.sh --module waveforms --operator unit_impulse --case-set perf --emit-report --warmup 1 --repeat 3 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=1 repeat=3
+[cusignal-test] running waveforms/unit_impulse
+[waveforms/unit_impulse] PASS  accuracy_cases=0  perf_cases=2
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  mixed=0.000000e+00  rmse=0.000000e+00
+cpu_perf_ms   : median=0.006  mean=0.006  p95=0.006
+gpu_perf_ms   : e2e_median=0.108  kernel_median=0.026  p95=0.108  e2e_speedup=0.057x  kernel_speedup=0.234x
+reports       : data/reports/unit/waveforms/unit_impulse/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] restoring original manifests
+[all-ops-bench] updated /CETC/data/reports/unit/benchmarks/zhongkexin_stage4_pilot/latest_all_ops_scale_benchmark.csv
+[all-ops-bench] updated /CETC/data/reports/unit/benchmarks/zhongkexin_stage4_pilot/latest_report.md
+[all-ops-bench] rows=5

@@ -22,7 +22,7 @@
       "a_file": "input/a.csv",
       "x_file": "input/x.csv",
       "x_shape": [
-        4096
+        32768
       ],
       "axis": -1,
       "padtype": "even",

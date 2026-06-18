@@ -1,0 +1,104 @@
+[cusignal-test] timing       : warmup=1 repeat=3 (demo-fast)
+[cusignal-test] project root : /CETC
+[cusignal-test] build dir    : /CETC/build-zx
+[cusignal-test] build type   : Release
+[cusignal-test] platform     : ZHONGKEXIN
+[cusignal-test] cuda arch    : n/a (ZHONGKEXIN uses dlcc --cuda-gpu-arch=dlgput64)
+[cusignal-test] jobs         : 255
+[cusignal-test] cxx compiler : /zq500/sdk/bin/dlcc
+-- Using Zhongkexin CUDA headers without CUDAToolkit cudart target: /zq500/sdk/include
+-- CUSIGNAL_PLATFORM=ZHONGKEXIN
+-- Using Zhongkexin CUDA runtime compatibility library: /zq500/sdk/lib/libcurt.so
+-- Using Zhongkexin cuFFT compatibility library: /zq500/sdk/lib/libdlfft.so
+-- Using Zhongkexin cuBLAS compatibility library: /zq500/sdk/lib/libdlblas.so
+-- Using Zhongkexin cuSOLVER compatibility library: /zq500/sdk/lib/libdlsolver.so
+-- Using cuFFT compatibility library: /zq500/sdk/lib/libdlfft.so
+-- Using cuBLAS compatibility library: /zq500/sdk/lib/libdlblas.so
+-- Using cuSOLVER compatibility library: /zq500/sdk/lib/libdlsolver.so
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /CETC/build-zx
+Consolidate compiler generated dependencies of target cusignal_cpu
+[ 40%] Built target cusignal_cpu
+Consolidate compiler generated dependencies of target cusignal_cuda
+[ 86%] Built target cusignal_cuda
+[ 86%] Building CXX object tests/unit/filter_design/CMakeFiles/filter_design_test_support.dir/filter_design_test_support.cu.o
+/CETC/tests/unit/filter_design/filter_design_test_support.cu:1766:94: warning: 'cudaDeviceSynchronize' is deprecated: Use of cudaDeviceSynchronize from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING. [-Wdeprecated-declarations]
+                                                         cusignal::core::throw_on_cuda_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
+                                                                                             ^
+/zq500/sdk/include/cuda_device_runtime_api.h:142:38: note: 'cudaDeviceSynchronize' has been explicitly marked deprecated here
+extern __device__ __cudart_builtin__ __CDPRT_DEPRECATED(cudaDeviceSynchronize) cudaError_t CUDARTAPI cudaDeviceSynchronize(void);
+                                     ^
+/zq500/sdk/include/cuda_device_runtime_api.h:120:40: note: expanded from macro '__CDPRT_DEPRECATED'
+# define __CDPRT_DEPRECATED(func_name) __DEPRECATED__("Use of "#func_name" from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING.")
+                                       ^
+/zq500/sdk/include/cuda_device_runtime_api.h:116:45: note: expanded from macro '__DEPRECATED__'
+# define __DEPRECATED__(msg) __attribute__((deprecated(msg)))
+                                            ^
+1 warning generated when compiling for dlgput64r1.
+[ 93%] Linking CXX static library libfilter_design_test_support.a
+[ 93%] Built target filter_design_test_support
+[ 93%] Building CXX object tests/unit/filter_design/CMakeFiles/filter_design_test_kaiser_beta.dir/test_kaiser_beta.cpp.o
+[100%] Linking CXX executable filter_design_test_kaiser_beta
+[100%] Built target filter_design_test_kaiser_beta
+[ 40%] Built target cusignal_cpu
+[ 86%] Built target cusignal_cuda
+Consolidate compiler generated dependencies of target filter_design_test_support
+[ 93%] Built target filter_design_test_support
+[ 93%] Building CXX object tests/unit/filter_design/CMakeFiles/filter_design_test_kaiser_atten.dir/test_kaiser_atten.cpp.o
+[100%] Linking CXX executable filter_design_test_kaiser_atten
+[100%] Built target filter_design_test_kaiser_atten
+[ 40%] Built target cusignal_cpu
+[ 86%] Built target cusignal_cuda
+[ 93%] Built target filter_design_test_support
+[100%] Building CXX object tests/unit/filter_design/CMakeFiles/filter_design_test_cmplx_sort.dir/test_cmplx_sort.cpp.o
+[100%] Linking CXX executable filter_design_test_cmplx_sort
+[100%] Built target filter_design_test_cmplx_sort
+[ 40%] Built target cusignal_cpu
+[ 86%] Built target cusignal_cuda
+[ 93%] Built target filter_design_test_support
+[100%] Building CXX object tests/unit/filter_design/CMakeFiles/filter_design_test_firwin.dir/test_firwin.cpp.o
+[100%] Linking CXX executable filter_design_test_firwin
+[100%] Built target filter_design_test_firwin
+[ 40%] Built target cusignal_cpu
+[ 86%] Built target cusignal_cuda
+[ 93%] Built target filter_design_test_support
+[ 93%] Building CXX object tests/unit/filter_design/CMakeFiles/filter_design_test_firwin2.dir/test_firwin2.cpp.o
+[100%] Linking CXX executable filter_design_test_firwin2
+[100%] Built target filter_design_test_firwin2
+[cusignal-test] running filter_design/kaiser_beta
+[filter_design/kaiser_beta] PASS  accuracy_cases=2  perf_cases=0
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/filter_design/kaiser_beta/latest_summary.md
+[cusignal-test] running filter_design/kaiser_atten
+[filter_design/kaiser_atten] PASS  accuracy_cases=2  perf_cases=0
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/filter_design/kaiser_atten/latest_summary.md
+[cusignal-test] running filter_design/cmplx_sort
+[filter_design/cmplx_sort] PASS  accuracy_cases=2  perf_cases=0
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/filter_design/cmplx_sort/latest_summary.md
+[cusignal-test] running filter_design/firwin
+[filter_design/firwin] PASS  accuracy_cases=3  perf_cases=0
+cpu_gpu_error : max_abs=2.980232e-08  max_rel=7.720236e-02  rmse=1.451616e-08
+reference_error : max_abs=2.980232e-08  max_rel=6.808744e+06  rmse=1.215270e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/filter_design/firwin/latest_summary.md
+[cusignal-test] running filter_design/firwin2
+[filter_design/firwin2] PASS  accuracy_cases=2  perf_cases=0
+cpu_gpu_error : max_abs=5.960464e-08  max_rel=1.712178e-02  rmse=1.657217e-08
+reference_error : max_abs=4.842877e-08  max_rel=8.448582e+05  rmse=2.173017e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/filter_design/firwin2/latest_summary.md
+[cusignal-test] summary: passed 5/5

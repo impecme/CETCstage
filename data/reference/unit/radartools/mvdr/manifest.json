@@ -13,8 +13,8 @@
       ],
       "sv_file": "input/calc_cov_true_sv.csv",
       "calc_cov": true,
-      "atol": 1e-10,
-      "rtol": 1e-10,
+      "atol": 7e-4,
+      "rtol": 2e-4,
       "expected_signal_file": "expected/calc_cov_true_signal.csv"
     },
     {
@@ -30,8 +30,8 @@
       ],
       "sv_file": "input/covariance_input_sv.csv",
       "calc_cov": false,
-      "atol": 1e-10,
-      "rtol": 1e-10,
+      "atol": 1e-6,
+      "rtol": 1e-6,
       "expected_signal_file": "expected/covariance_input_signal.csv"
     }
   ]

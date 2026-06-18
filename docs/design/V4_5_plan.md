@@ -51,7 +51,6 @@
 
 ### 3. 验证流程固化
 
-- 固化 NVIDIA sanity。
 - 固化中科芯第一阶段验证。
 - 固化全量算子测试。
 - 固化 benchmark 和报告生成。
@@ -70,32 +69,22 @@
 从零复现：
 
 ```bash
-source /zq500/sdk/env.sh
-dlsmi
-scripts/platform/probe_zhongkexin.sh
-cmake -S . -B build-zx -DCUSIGNAL_PLATFORM=ZHONGKEXIN -DCMAKE_BUILD_TYPE=Release
-cmake --build build-zx --parallel
-./scripts/test/run_all_tests.sh --build-dir build-zx --case-set full
-scripts/test/run_task_demos.sh --build-dir build-zx --no-build --scale-sweep --repeat 3 --require-visualization-deps
-python3 scripts/test/plot_all_ops_benchmark.py \
-  --csv data/reports/unit/benchmarks/all_ops_large/latest_all_ops_scale_benchmark.csv \
-  --output-dir data/reports/unit/benchmarks/all_ops_large/figures \
-  --figure-set all --formats png,pdf,svg
-```
-
-NVIDIA 回归：
-
-```bash
-cmake -S . -B build -DCUSIGNAL_PLATFORM=NVIDIA -DCMAKE_BUILD_TYPE=Release
-cmake --build build --parallel
-ctest --test-dir build --output-on-failure
+cd /CETC
+TASK_SCALES=1,2,3,4,5,6 \
+BENCH_MODULES=all \
+BENCH_SCALE_LEVELS=1,2,3,4,5,6 \
+BENCH_WARMUP=5 \
+BENCH_REPEAT=30 \
+BENCH_REPORT_MODE=full \
+BENCH_OUTPUT_DIR=data/reports/unit/benchmarks/zhongkexin_stage4_full \
+scripts/platform/run_zhongkexin_stage4.sh 2>&1 | tee stage4_full.log
 ```
 
 ## 完成判定
 
 - 新环境可以按 README/AGENT 完成构建、验证、报告和图件生成。
 - 总蓝图、阶段计划和状态文档一致。
-- 中科芯和 NVIDIA 两条路径都有明确回归命令。
+- 中科芯路径有明确回归命令；CPU reference + 容器内 ZQ500 GPU 为当前交付验收口径。
 - 已知限制、跳过项和 fallback 都有记录。
 - Python 依赖准备、demo 图件、scale 图件和 benchmark 图件复现路径完整。
 - 项目可交付，无需依赖当前 Codex 会话上下文理解迁移状态。

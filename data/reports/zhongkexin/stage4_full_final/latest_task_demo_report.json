@@ -1,0 +1,136 @@
+{
+  "pass": true,
+  "repeat": 3,
+  "tasks": [
+    {
+      "name": "task1_radar",
+      "scale_level": 3,
+      "scale_value": 16384,
+      "metrics_path": "data/reports/demo/task1_radar/latest_metrics.json",
+      "summary_path": "data/reports/demo/task1_radar/latest_summary.md",
+      "validation_pass": true,
+      "failed_checks": [],
+      "cpu_total_ms": 5.31023,
+      "gpu_total_ms": 2.24099,
+      "speedup": 2.3695911182111478,
+      "max_mixed_error": 0.00248718,
+      "resource_usage": {
+        "before": {
+          "rss_current_mib": 143.66,
+          "rss_peak_mib": 143.66,
+          "cuda_free_mib": 16090.8,
+          "cuda_total_mib": 16384,
+          "cuda_device": 0,
+          "cuda_device_name": "ZQ500-Q QUAD-0"
+        },
+        "after": {
+          "rss_current_mib": 505.25,
+          "rss_peak_mib": 505.25,
+          "cuda_free_mib": 15978.8,
+          "cuda_total_mib": 16384,
+          "cuda_device": 0,
+          "cuda_device_name": "ZQ500-Q QUAD-0"
+        },
+        "cuda_free_delta_mib": -112,
+        "rss_current_delta_mib": 361.59
+      },
+      "repeat_runs": [
+        {
+          "index": 1,
+          "pass": true,
+          "business_numeric_pass": true,
+          "cpu_total_ms": 5.43795,
+          "gpu_total_ms": 2.61376,
+          "cuda_free_mib": 15978.8,
+          "rss_current_mib": 505.25
+        },
+        {
+          "index": 2,
+          "pass": true,
+          "business_numeric_pass": true,
+          "cpu_total_ms": 5.28211,
+          "gpu_total_ms": 2.24099,
+          "cuda_free_mib": 15978.8,
+          "rss_current_mib": 505.25
+        },
+        {
+          "index": 3,
+          "pass": true,
+          "business_numeric_pass": true,
+          "cpu_total_ms": 5.31023,
+          "gpu_total_ms": 2.17958,
+          "cuda_free_mib": 15978.8,
+          "rss_current_mib": 505.25
+        }
+      ]
+    },
+    {
+      "name": "task2_features",
+      "scale_level": 3,
+      "scale_value": 49152,
+      "metrics_path": "data/reports/demo/task2_features/latest_metrics.json",
+      "summary_path": "data/reports/demo/task2_features/latest_summary.md",
+      "validation_pass": true,
+      "failed_checks": [],
+      "cpu_total_ms": 879.742,
+      "gpu_total_ms": 122.416,
+      "speedup": 7.18649522938178,
+      "max_mixed_error": 0.0031292,
+      "resource_usage": {
+        "before": {
+          "rss_current_mib": 144.082,
+          "rss_peak_mib": 144.082,
+          "cuda_free_mib": 16090.8,
+          "cuda_total_mib": 16384,
+          "cuda_device": 0,
+          "cuda_device_name": "ZQ500-Q QUAD-0"
+        },
+        "after": {
+          "rss_current_mib": 509.07,
+          "rss_peak_mib": 509.074,
+          "cuda_free_mib": 16042.8,
+          "cuda_total_mib": 16384,
+          "cuda_device": 0,
+          "cuda_device_name": "ZQ500-Q QUAD-0"
+        },
+        "cuda_free_delta_mib": -48,
+        "rss_current_delta_mib": 364.988
+      },
+      "repeat_runs": [
+        {
+          "index": 1,
+          "pass": false,
+          "business_numeric_pass": true,
+          "cpu_total_ms": 880.382,
+          "gpu_total_ms": 3532.24,
+          "cuda_free_mib": 16042.8,
+          "rss_current_mib": 508.73
+        },
+        {
+          "index": 2,
+          "pass": true,
+          "business_numeric_pass": true,
+          "cpu_total_ms": 879.351,
+          "gpu_total_ms": 122.416,
+          "cuda_free_mib": 16042.8,
+          "rss_current_mib": 509.074
+        },
+        {
+          "index": 3,
+          "pass": true,
+          "business_numeric_pass": true,
+          "cpu_total_ms": 879.742,
+          "gpu_total_ms": 121.631,
+          "cuda_free_mib": 16042.8,
+          "rss_current_mib": 509.07
+        }
+      ]
+    }
+  ],
+  "leak_check": {
+    "requested": false,
+    "compute_sanitizer": "not_requested",
+    "asan_lsan": "not_requested"
+  },
+  "visualization": "available"
+}

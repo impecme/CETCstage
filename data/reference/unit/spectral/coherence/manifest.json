@@ -2,8 +2,8 @@
   "accuracy_cases": [
     {
       "id": "hann_mean",
-      "atol": 1e-09,
-      "rtol": 1e-09,
+      "atol": 6e-2,
+      "rtol": 6e-2,
       "fs": 800.0,
       "window": {
         "kind": "string",

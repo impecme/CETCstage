@@ -4,7 +4,7 @@
       "id": "perf_calc_cov",
       "x_shape": [
         8,
-        64
+        131072
       ],
       "sv_shape": [
         8,
@@ -17,7 +17,7 @@
         "kind": "complex_matrix_pattern",
         "shape": [
           8,
-          64
+          131072
         ],
         "freq_row": 0.03,
         "freq_col": 0.02,

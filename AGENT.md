@@ -51,23 +51,13 @@
 
 - CMake >= 3.18
 - C++17 / CUDA17
-- CUDA Toolkit
-- cuFFT static libraries
+- 中科芯 ZQ500 SDK 与 `dlcc`
+- 中科芯 CUDA runtime/FFT/BLAS/SOLVER 兼容库
 - cuBLAS
 - cuSOLVER
 - 安装在 `third_party/fftw/install` 下的 FFTW3
 
-默认 CUDA 架构是 `80`。需要时可通过 `CUDA_ARCH=...` 覆盖。
-
-常用 NVIDIA/CUDA 构建命令：
-
-```bash
-./scripts/build/build_v1.sh
-cmake --build build --target cusignal_cpu cusignal_cuda --parallel
-cmake --build build --target smoke_demo1 --parallel
-```
-
-中科芯 CUDA 兼容平台命令：
+当前交付验收不再以 NVIDIA 路径为阶段关闭条件。中科芯 CUDA 兼容平台命令：
 
 ```bash
 cd /CETC
@@ -88,9 +78,9 @@ scripts/platform/prepare_zhongkexin_deps.sh --ensure-fftw
 
 该脚本会检查 `python3`、`cmake >= 3.18`、`make`、`dlcc`、中科芯 SDK 头文件/库和 FFTW；缺少 FFTW 且启用 `--ensure-fftw` 时才要求 `tar`、`gcc`、`wget/curl`。Python 可视化/数据生成依赖来自 `scripts/platform/zhongkexin_python_requirements.txt`；完整迁移验收必须安装并验证 `numpy/matplotlib/scipy`，需要预下载 wheel 缓存时设置 `DOWNLOAD_PYTHON_WHEELS=1`，需要在容器内用户态安装时设置 `INSTALL_PYTHON_DEPS=1`。`scripts/platform/run_zhongkexin_stage1.sh` 默认会启用用户态 Python 依赖安装，并要求 demo 可视化依赖可用。
 
-中科芯迁移的所有阶段都按“该阶段范围内的全部项目功能”关闭。不能只以核心 correctness 或单条 demo 通过作为阶段完成；凡属于当前阶段范围的构建、运行、数据生成、数值验证、非法/边界输入、报告字段、可视化图件、benchmark 图件、文档复现和 NVIDIA 回归，都必须实现、验证或作为明确平台限制入账。缺依赖、缺图件、缺报告或静默跳过项不能作为阶段完成状态保留。
+中科芯迁移的所有阶段都按“该阶段范围内的全部项目功能”关闭。不能只以核心 correctness 或单条 demo 通过作为阶段完成；凡属于当前阶段范围的构建、运行、数据生成、数值验证、非法/边界输入、报告字段、可视化图件、benchmark 图件和文档复现都必须实现、验证或作为明确平台限制入账。验收链路为 CPU reference + 中科芯 GPU，GPU 专指本服务器容器内 ZQ500；NVIDIA 路径不再作为阶段关闭条件。缺依赖、缺图件、缺报告或静默跳过项不能作为阶段完成状态保留。
 
-每个中科芯迁移版本或阶段关闭时，必须在 `docs/submission/` 下新增或更新对应交付文档，命名采用 `READMEV<major>_<minor>.md` 风格，例如 `docs/submission/READMEV4_1.md`。交付文档至少包含阶段目标、关键修改、验证命令、日志证据、产物路径、完成判定和遗留风险；不能只更新设计文档或聊天记录。
+每个中科芯迁移版本或阶段关闭时，必须在 `docs/submission/` 下新增或更新对应交付文档，命名采用 `READMEV<major>_<minor>.md` 风格，例如 `docs/submission/READMEV4_1.md`。交付文档必须按版本交付口径组织，至少包含版本目标、核心改动、解决的问题、验证结果、交付产物、完成判定和遗留风险；不能只更新设计文档或聊天记录。不要把交付文档写成“第几轮容器验证”的流水账，容器运行轮次只能作为证据摘要或进入迁移台账。
 
 ## 参赛者服务器使用要点
 
@@ -208,24 +198,33 @@ scripts/platform/run_zhongkexin_stage1.sh
 
 ```bash
 cd /CETC
-scripts/platform/run_zhongkexin_stage1.sh 2>&1 | tee stage1.log
+TASK_SCALES=1,2,3,4,5,6 \
+BENCH_MODULES=all \
+BENCH_SCALE_LEVELS=1,2,3,4,5,6 \
+BENCH_WARMUP=5 \
+BENCH_REPEAT=30 \
+BENCH_REPORT_MODE=full \
+BENCH_OUTPUT_DIR=data/reports/unit/benchmarks/zhongkexin_stage4_full \
+scripts/platform/run_zhongkexin_stage4.sh 2>&1 | tee stage4_full.log
 ```
 
 运行结束后回到宿主机终端执行：
 
 ```bash
 cd /home/usr_04/CETC
-sudo docker cp gpu_04:/CETC/stage1.log ./stage1.log
+sudo docker cp gpu_04:/CETC/stage4_full.log ./stage4_full.log
+sudo docker cp gpu_04:/CETC/data/reports/zhongkexin/stage4 ./data/reports/zhongkexin/stage4_full_final
+sudo docker cp gpu_04:/CETC/data/reports/unit/benchmarks/zhongkexin_stage4_full ./data/reports/unit/benchmarks/zhongkexin_stage4_full
 ```
 
 常用日志查看命令：
 
 ```bash
-tail -n 200 stage1.log
-grep -nEi "error|failed|fatal|not found|undefined|file format" stage1.log
+tail -n 200 stage4_full.log
+grep -nEi "error|failed|fatal|not found|undefined|file format" stage4_full.log
 ```
 
-运行该统一脚本前不要再手动 source SDK；脚本内部已经用 `source /zq500/sdk/env.sh ""` 兼容当前容器环境。如需覆盖默认值，使用 `BUILD_DIR`、`CUDA_ARCH`、`REPEAT` 环境变量。当前中科芯路径默认使用 `CUDA_ARCH=OFF`，不要手动设置 `CUDA_ARCH=80`，否则 CMake 可能生成 NVIDIA 专用的 `sm_80` 参数。
+运行该统一脚本前不要再手动 source SDK；脚本内部已经用 `source /zq500/sdk/env.sh ""` 兼容当前容器环境。如需覆盖默认值，使用 `BUILD_DIR`、`TASK_SCALES`、`RUN_TASK_SWEEP`、`BENCH_MODULES`、`BENCH_OPERATORS`、`BENCH_SCALE_LEVELS`、`BENCH_WARMUP`、`BENCH_REPEAT` 环境变量。当前中科芯路径不要手动设置 `CUDA_ARCH=80`，否则 CMake 可能生成 NVIDIA 专用的 `sm_80` 参数。
 
 ## 核心架构
 
@@ -243,7 +242,7 @@ grep -nEi "error|failed|fatal|not found|undefined|file format" stage1.log
 - `cusignal::cuda_backend::<module>`：CUDA 后端实现。
 - `cusignal::core`：共享标量、张量和 device 容器类型。
 
-第一阶段中科芯迁移会继续保留 `cuda_backend` 命名空间。平台选择由 `CUSIGNAL_PLATFORM=NVIDIA|ZHONGKEXIN` 控制；兼容差异应集中放在 `include/cusignal/core/platform_cuda_compat.hpp` 或 `include/cusignal/core/platform_cuda_libraries.hpp`，不要通过修改公开 API 解决。
+中科芯迁移继续保留 `cuda_backend` 命名空间。当前交付路径使用 `CUSIGNAL_PLATFORM=ZHONGKEXIN`；兼容差异应集中放在 `include/cusignal/core/platform_cuda_compat.hpp` 或 `include/cusignal/core/platform_cuda_libraries.hpp`，不要通过修改公开 API 解决。
 
 项目采用统一单精度口径：
 
@@ -360,31 +359,26 @@ scripts/test/run_task_demos.sh --no-build --repeat 2 --leak-check
 ctest --test-dir build -R '^smoke_demo1$' --output-on-failure
 ```
 
-全量 benchmark：
+当前中科芯全量 benchmark 与作图统一使用 Stage4 入口：
 
 ```bash
-scripts/test/benchmark_all_ops_scales.py \
-  --build --build-dir build \
-  --warmup 5 --repeat 30 \
-  --output-dir data/reports/unit/benchmarks/all_ops
+cd /CETC
+TASK_SCALES=1,2,3,4,5,6 \
+BENCH_MODULES=all \
+BENCH_SCALE_LEVELS=1,2,3,4,5,6 \
+BENCH_WARMUP=5 \
+BENCH_REPEAT=30 \
+BENCH_REPORT_MODE=full \
+BENCH_OUTPUT_DIR=data/reports/unit/benchmarks/zhongkexin_stage4_full \
+scripts/platform/run_zhongkexin_stage4.sh 2>&1 | tee stage4_full.log
 ```
 
-大规模 GPU profile：
-
-```bash
-scripts/test/benchmark_all_ops_scales.py \
-  --build --build-dir build \
-  --scale-profile large-gpu \
-  --warmup 5 --repeat 30 \
-  --output-dir data/reports/unit/benchmarks/all_ops_large
-```
-
-生成 benchmark 图件：
+如需单独重生成 benchmark 图件：
 
 ```bash
 python3 scripts/test/plot_all_ops_benchmark.py \
-  --csv data/reports/unit/benchmarks/all_ops_large/latest_all_ops_scale_benchmark.csv \
-  --output-dir data/reports/unit/benchmarks/all_ops_large/figures \
+  --csv data/reports/unit/benchmarks/zhongkexin_stage4_full/latest_all_ops_scale_benchmark.csv \
+  --output-dir data/reports/unit/benchmarks/zhongkexin_stage4_full/figures \
   --figure-set all \
   --dpi 450
 ```
@@ -445,7 +439,7 @@ CUDA 代码约定：
 
 必须记录的情况：
 
-- 发现中科芯平台与 NVIDIA CUDA 在编译器、runtime、库 target、头文件、链接方式、数值结果、性能、工具链或运行行为上的差异。
+- 发现中科芯平台与既有 CUDA 代码、SDK 示例、runtime、库 target、头文件、链接方式、数值结果、性能、工具链或运行行为上的差异。
 - 发现需要修改源码、CMake、脚本、测试、demo、报告或文档的地方。
 - 实施了任何中科芯相关修改。
 - 引入、保留或删除 fallback。
@@ -460,7 +454,7 @@ CUDA 代码约定：
 - 原因判断。
 - 计划修改。
 - 实际修改。
-- 是否影响 NVIDIA 路径。
+- 对 CPU reference 与中科芯 ZQ500 GPU 链路的影响范围。
 - 验证命令和验证结果。
 - 当前状态和后续处理阶段。
 

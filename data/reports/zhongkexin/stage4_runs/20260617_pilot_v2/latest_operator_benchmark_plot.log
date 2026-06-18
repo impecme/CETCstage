@@ -1,0 +1,12 @@
+[all-ops-plot] rows=5 operators=5
+[all-ops-plot] wrote /CETC/data/reports/unit/benchmarks/zhongkexin_stage4_pilot/figures/latest_all_ops_plot_summary.csv
+[all-ops-plot] wrote /CETC/data/reports/unit/benchmarks/zhongkexin_stage4_pilot/figures/figure_1_accuracy_performance_overview.png
+[all-ops-plot] wrote /CETC/data/reports/unit/benchmarks/zhongkexin_stage4_pilot/figures/figure_2_cpu_gpu_e2e_time_heatmaps.png
+[all-ops-plot] wrote /CETC/data/reports/unit/benchmarks/zhongkexin_stage4_pilot/figures/figure_3_e2e_speedup_heatmap.png
+[all-ops-plot] wrote /CETC/data/reports/unit/benchmarks/zhongkexin_stage4_pilot/figures/figure_4_largest_scale_cpu_vs_gpu_scatter.png
+[all-ops-plot] wrote /CETC/data/reports/unit/benchmarks/zhongkexin_stage4_pilot/figures/figure_5_largest_scale_speedup_rank.png
+[all-ops-plot] wrote /CETC/data/reports/unit/benchmarks/zhongkexin_stage4_pilot/figures/operator_figures/waveforms__chirp.png
+[all-ops-plot] wrote /CETC/data/reports/unit/benchmarks/zhongkexin_stage4_pilot/figures/operator_figures/waveforms__gausspulse.png
+[all-ops-plot] wrote /CETC/data/reports/unit/benchmarks/zhongkexin_stage4_pilot/figures/operator_figures/waveforms__sawtooth.png
+[all-ops-plot] wrote /CETC/data/reports/unit/benchmarks/zhongkexin_stage4_pilot/figures/operator_figures/waveforms__square.png
+[all-ops-plot] wrote /CETC/data/reports/unit/benchmarks/zhongkexin_stage4_pilot/figures/operator_figures/waveforms__unit_impulse.png

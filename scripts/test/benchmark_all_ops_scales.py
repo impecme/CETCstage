@@ -38,6 +38,8 @@ DEFAULT_SCALE_FAMILIES: dict[str, tuple[int, ...]] = {
     "small_state": (16, 32, 64, 128, 256, 512),
     "kalman_points": (16, 32, 64, 128, 256, 512),
     "istft_frames": (9, 17, 33, 65, 129, 257),
+    "zhongkexin_chebwin_points": (128, 256, 512, 768, 1024, 1536),
+    "zhongkexin_firwin2_taps": (65, 129, 257, 513, 769, 1025),
 }
 
 LARGE_GPU_SCALE_FAMILIES: dict[str, tuple[int, ...]] = {
@@ -165,6 +167,11 @@ def create_argument_parser() -> argparse.ArgumentParser:
         help="Number of scale levels. Currently fixed at 6.",
     )
     parser.add_argument(
+        "--scale-levels",
+        default="1,2,3,4,5,6",
+        help="Comma-separated scale levels to run, each in 1..6 (default: 1,2,3,4,5,6)",
+    )
+    parser.add_argument(
         "--scale-profile",
         choices=sorted(SCALE_PROFILES),
         default="default",
@@ -191,6 +198,12 @@ def create_argument_parser() -> argparse.ArgumentParser:
     )
     parser.set_defaults(do_build=False)
     parser.add_argument("--build-dir", default="build", help="Build directory (default: build)")
+    parser.add_argument(
+        "--platform",
+        choices=("NVIDIA", "ZHONGKEXIN"),
+        default=os.environ.get("CUSIGNAL_PLATFORM", "NVIDIA").upper(),
+        help="CUSIGNAL platform passed to run_all_tests.sh (default: CUSIGNAL_PLATFORM or NVIDIA)",
+    )
     parser.add_argument(
         "--output-dir",
         default="data/reports/unit/benchmarks/all_ops",
@@ -255,8 +268,16 @@ def create_argument_parser() -> argparse.ArgumentParser:
 def parse_args() -> argparse.Namespace:
     parser = create_argument_parser()
     args = parser.parse_args()
+    args.platform = args.platform.upper()
     if args.scale_count != 6:
         parser.error("--scale-count is currently fixed at 6")
+    try:
+        scale_levels = [int(item.strip()) for item in args.scale_levels.split(",") if item.strip()]
+    except ValueError:
+        parser.error("--scale-levels must contain comma-separated integers")
+    if not scale_levels or any(level < 1 or level > 6 for level in scale_levels):
+        parser.error("--scale-levels must contain only levels 1..6")
+    args.scale_levels = sorted(set(scale_levels))
     if args.warmup is None:
         args.warmup = 1 if args.demo_fast else 5
     if args.repeat is None:
@@ -278,9 +299,9 @@ def resolve_path(repo_root: Path, value: str) -> Path:
     return path if path.is_absolute() else repo_root / path
 
 
-def load_enabled_entries(runner_script: Path, build_dir: Path) -> list[tuple[str, str, str]]:
+def load_enabled_entries(runner_script: Path, build_dir: Path, platform: str) -> list[tuple[str, str, str]]:
     completed = subprocess.run(
-        [str(runner_script), "--list", "--build-dir", str(build_dir)],
+        [str(runner_script), "--list", "--build-dir", str(build_dir), "--platform", platform],
         capture_output=True,
         text=True,
         check=False,
@@ -333,7 +354,7 @@ def filter_entries(
     return filtered
 
 
-def build_selected_targets(repo_root: Path, build_dir: Path, target_names: list[str]) -> None:
+def build_selected_targets(repo_root: Path, build_dir: Path, target_names: list[str], platform: str) -> None:
     unique_targets = sorted(set(target_names))
     if not unique_targets:
         return
@@ -348,8 +369,15 @@ def build_selected_targets(repo_root: Path, build_dir: Path, target_names: list[
         "-B",
         str(build_dir),
         f"-DCMAKE_BUILD_TYPE={build_type}",
-        f"-DCMAKE_CUDA_ARCHITECTURES={cuda_arch}",
+        f"-DCUSIGNAL_PLATFORM={platform}",
     ]
+    if platform == "NVIDIA":
+        configure_cmd.append(f"-DCMAKE_CUDA_ARCHITECTURES={cuda_arch}")
+    else:
+        zhongkexin_cxx = os.environ.get("ZHONGKEXIN_CXX_COMPILER") or shutil.which("dlcc")
+        if not zhongkexin_cxx:
+            raise RuntimeError("dlcc was not found for ZHONGKEXIN build")
+        configure_cmd.append(f"-DCMAKE_CXX_COMPILER={zhongkexin_cxx}")
     build_cmd = [
         "cmake",
         "--build",
@@ -362,7 +390,8 @@ def build_selected_targets(repo_root: Path, build_dir: Path, target_names: list[
 
     log(
         "building selected targets once: "
-        f"{len(unique_targets)} targets, build_type={build_type}, cuda_arch={cuda_arch}, jobs={jobs}"
+        f"{len(unique_targets)} targets, platform={platform}, build_type={build_type}, "
+        f"cuda_arch={'n/a' if platform == 'ZHONGKEXIN' else cuda_arch}, jobs={jobs}"
     )
     subprocess.run(configure_cmd, cwd=repo_root, check=True)
     subprocess.run(build_cmd, cwd=repo_root, check=True)
@@ -377,7 +406,17 @@ def make_target(repo_root: Path, module: str, operator: str) -> Target:
     )
 
 
-def scale_family_for(module: str, operator: str, scale_profile: str = "default") -> str:
+def scale_family_for(
+    module: str,
+    operator: str,
+    scale_profile: str = "default",
+    platform: str = "NVIDIA",
+) -> str:
+    if platform == "ZHONGKEXIN":
+        if module == "windows" and operator == "chebwin":
+            return "zhongkexin_chebwin_points"
+        if module == "filter_design" and operator == "firwin2":
+            return "zhongkexin_firwin2_taps"
     if module in {"bsplines", "windows"}:
         return "linear_points"
     if module == "waveforms":
@@ -550,6 +589,15 @@ def apply_scale_mapping(module: str, operator: str, case: dict[str, Any], scale:
             events_generator = require_dict(case.get("events_generator"), "events_generator")
             events_generator["count"] = scale
             return f"events_count={scale}"
+        if operator in {"periodogram", "welch", "coherence"}:
+            x_generator = require_dict(case.get("x_generator"), "x_generator")
+            x_shape = update_first_shape_dim(x_generator, scale, "x_generator.shape")
+            note = f"x_shape={x_shape}"
+            if operator == "coherence":
+                y_generator = require_dict(case.get("y_generator"), "y_generator")
+                y_shape = update_first_shape_dim(y_generator, scale, "y_generator.shape")
+                note += f"; y_shape={y_shape}"
+            return note
         if operator == "istft":
             zxx_generator = require_dict(case.get("zxx_generator"), "zxx_generator")
             shape = parse_shape(zxx_generator.get("shape"), "zxx_generator.shape")
@@ -581,6 +629,13 @@ def apply_scale_mapping(module: str, operator: str, case: dict[str, Any], scale:
                     case["num"] = max(1, int(round(float(old_num) * new_count / old_count)))
                     note += f"; num={case['num']}"
             return note
+        if operator in {"lfilter", "filtfilt"}:
+            shape = resize_shape_keep_ratio(parse_shape(case.get("x_shape"), "x_shape"), scale)
+            case["x_shape"] = shape
+            return f"x_shape={shape}"
+        if operator == "firfilter_zi":
+            case["filter_order"] = max(1, int(scale))
+            return f"filter_order={case['filter_order']} (fixed generated FIR taps)"
         if operator == "lfilter_zi":
             case["filter_order"] = scale
             return f"filter_order={scale}"
@@ -592,6 +647,15 @@ def apply_scale_mapping(module: str, operator: str, case: dict[str, Any], scale:
             return f"x_count={scale}; h_count={h_count}; n_chans={n_chans}"
 
     if module == "filter_design":
+        if operator == "kaiser_beta":
+            attenuation = min(140.0, 20.0 + math.log2(max(scale, 2)) * 8.0)
+            case["attenuation"] = attenuation
+            return f"attenuation={attenuation:.3f}"
+        if operator == "kaiser_atten":
+            case["numtaps"] = scale
+            return f"numtaps={scale}; width={case.get('width')}"
+        if operator == "cmplx_sort":
+            return f"input_kind={case.get('input_kind', 'real')} (fixed cmplx_sort fixture)"
         if operator == "firwin":
             case["numtaps"] = scale
             return f"numtaps={scale}"
@@ -616,6 +680,18 @@ def apply_scale_mapping(module: str, operator: str, case: dict[str, Any], scale:
             update_generator_shape(generator, shape)
             set_spike_inside(generator, shape)
             return f"x_shape={shape}"
+        if operator == "mvdr":
+            rows = 8
+            cols = max(1, int(math.ceil(scale / rows)))
+            x_shape = [rows, cols]
+            case["x_shape"] = x_shape
+            case["sv_shape"] = [rows, 1]
+            x_generator = require_dict(case.get("x_generator"), "x_generator")
+            sv_generator = require_dict(case.get("sv_generator"), "sv_generator")
+            update_generator_shape(x_generator, x_shape)
+            sv_generator["length"] = rows
+            sv_generator["column_vector"] = True
+            return f"x_shape={x_shape}; sv_shape={[rows, 1]}"
         if operator in {"pulse_compression", "pulse_doppler"}:
             old_shape = parse_shape(case.get("x_shape"), "x_shape")
             cols = old_shape[1] if len(old_shape) > 1 else old_shape[0]
@@ -636,6 +712,12 @@ def apply_scale_mapping(module: str, operator: str, case: dict[str, Any], scale:
             shape = resize_shape_keep_ratio(parse_shape(case.get("shape1"), "shape1"), scale)
             case["shape1"] = shape
             return f"shape1={shape}; shape2={case.get('shape2')}"
+        if operator == "correlation_lags":
+            in1_len = max(2, int(scale))
+            in2_len = max(1, min(in1_len, int(scale // 4) + 1))
+            case["in1_len"] = in1_len
+            case["in2_len"] = in2_len
+            return f"in1_len={in1_len}; in2_len={in2_len}"
 
     if module == "demod" and operator == "fm_demod":
         rows = 64
@@ -647,7 +729,7 @@ def apply_scale_mapping(module: str, operator: str, case: dict[str, Any], scale:
         case["points"] = scale
         return f"points={scale}"
 
-    if module == "peak_finding" and operator == "argrelextrema":
+    if module == "peak_finding" and operator in {"argrelextrema", "argrelmin", "argrelmax"}:
         shape = resize_shape_keep_ratio(parse_shape(case.get("shape"), "shape"), scale)
         case["shape"] = shape
         return f"shape={shape}"
@@ -1136,6 +1218,7 @@ def run_operator(
     do_build: bool,
     keep_generated_samples: bool,
     demo_fast: bool,
+    platform: str,
 ) -> tuple[int, RunMetrics | None, str]:
     return_code, payload, issue = run_operator_payload(
         repo_root,
@@ -1148,6 +1231,7 @@ def run_operator(
         keep_generated_samples,
         gpu_only_perf=False,
         demo_fast=demo_fast,
+        platform=platform,
     )
     return return_code, metrics_from_payload(payload) if payload is not None else None, issue
 
@@ -1163,6 +1247,7 @@ def run_operator_payload(
     keep_generated_samples: bool,
     gpu_only_perf: bool,
     demo_fast: bool,
+    platform: str,
 ) -> tuple[int, dict[str, Any] | None, str]:
     old_mtime = target.metrics_path.stat().st_mtime_ns if target.metrics_path.exists() else None
     cmd = [
@@ -1180,6 +1265,8 @@ def run_operator_payload(
         str(repeat),
         "--build-dir",
         str(build_dir),
+        "--platform",
+        platform,
     ]
     if gpu_only_perf:
         cmd.append("--gpu-only-perf")
@@ -1617,7 +1704,7 @@ def main() -> int:
         else default_baseline_file(repo_root, args.scale_profile)
     )
 
-    entries = load_enabled_entries(runner_script, build_dir)
+    entries = load_enabled_entries(runner_script, build_dir, args.platform)
     filtered_entries = filter_entries(entries, args.modules, args.operators)
     target_names = [target_name for _module, _operator, target_name in filtered_entries]
     targets = [
@@ -1643,7 +1730,9 @@ def main() -> int:
     backups = backup_manifests(targets)
     log(f"selected operators: {len(targets)}")
     log(f"build mode: {'build' if args.do_build else 'no-build'}")
+    log(f"platform: {args.platform}")
     log(f"scale profile: {args.scale_profile}")
+    log(f"scale levels: {','.join(str(level) for level in args.scale_levels)}")
     log(f"report mode: {args.report_mode}")
     if args.gpu_only:
         log(f"gpu-only mode: enabled")
@@ -1654,16 +1743,17 @@ def main() -> int:
         f"{' (demo-fast)' if args.demo_fast else ''}"
     )
     if args.do_build:
-        build_selected_targets(repo_root, build_dir, target_names)
+        build_selected_targets(repo_root, build_dir, target_names, args.platform)
         args.do_build = False
     log("backed up manifests")
 
     try:
         for target_index, target in enumerate(targets, start=1):
-            family = scale_family_for(target.module, target.operator, args.scale_profile)
+            family = scale_family_for(target.module, target.operator, args.scale_profile, args.platform)
             scales = scale_values_for(args.scale_profile, family)
             original_text = backups[target.manifest_path]
-            for scale_index, scale_value in enumerate(scales, start=1):
+            for scale_index in args.scale_levels:
+                scale_value = scales[scale_index - 1]
                 log(
                     f"[{target_index}/{len(targets)} L{scale_index}] "
                     f"{target.module}/{target.operator} scale={scale_value}"
@@ -1696,6 +1786,7 @@ def main() -> int:
                             args.do_build,
                             args.keep_generated_samples,
                             demo_fast=args.demo_fast,
+                            platform=args.platform,
                         )
                     else:
                         if baseline is None:
@@ -1729,6 +1820,7 @@ def main() -> int:
                                 args.keep_generated_samples,
                                 gpu_only_perf=False,
                                 demo_fast=args.demo_fast,
+                                platform=args.platform,
                             )
                             if payload is not None:
                                 metrics = metrics_from_payload(payload)
@@ -1761,6 +1853,7 @@ def main() -> int:
                                 args.keep_generated_samples,
                                 gpu_only_perf=True,
                                 demo_fast=args.demo_fast,
+                                platform=args.platform,
                             )
                             if payload is not None:
                                 merged = merge_gpu_with_baseline(payload, cached_entry, key, target.metrics_path)

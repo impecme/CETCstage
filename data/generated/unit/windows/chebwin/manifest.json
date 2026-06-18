@@ -12,7 +12,7 @@
   "perf_cases": [
     {
       "id": "perf_large",
-      "size": 16777216,
+      "size": 1536,
       "sym": false,
       "param0": 100.0,
       "atol": 1e-10,

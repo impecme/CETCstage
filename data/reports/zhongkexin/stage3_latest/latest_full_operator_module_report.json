@@ -1,0 +1,92 @@
+{
+  "pass": false,
+  "total": 12,
+  "passed": 10,
+  "failed": 2,
+  "rows": [
+    {
+      "module": "waveforms",
+      "case_set": "accuracy",
+      "active_count": "5",
+      "status": "passed",
+      "log_path": "data/reports/zhongkexin/stage3/modules/waveforms_accuracy.log"
+    },
+    {
+      "module": "bsplines",
+      "case_set": "accuracy",
+      "active_count": "3",
+      "status": "passed",
+      "log_path": "data/reports/zhongkexin/stage3/modules/bsplines_accuracy.log"
+    },
+    {
+      "module": "windows",
+      "case_set": "accuracy",
+      "active_count": "8",
+      "status": "passed",
+      "log_path": "data/reports/zhongkexin/stage3/modules/windows_accuracy.log"
+    },
+    {
+      "module": "filter_design",
+      "case_set": "accuracy",
+      "active_count": "2",
+      "status": "passed",
+      "log_path": "data/reports/zhongkexin/stage3/modules/filter_design_accuracy.log"
+    },
+    {
+      "module": "filtering",
+      "case_set": "accuracy",
+      "active_count": "14",
+      "status": "failed",
+      "log_path": "data/reports/zhongkexin/stage3/modules/filtering_accuracy.log"
+    },
+    {
+      "module": "radartools",
+      "case_set": "accuracy",
+      "active_count": "5",
+      "status": "passed",
+      "log_path": "data/reports/zhongkexin/stage3/modules/radartools_accuracy.log"
+    },
+    {
+      "module": "spectral",
+      "case_set": "accuracy",
+      "active_count": "6",
+      "status": "failed",
+      "log_path": "data/reports/zhongkexin/stage3/modules/spectral_accuracy.log"
+    },
+    {
+      "module": "wavelets",
+      "case_set": "accuracy",
+      "active_count": "5",
+      "status": "passed",
+      "log_path": "data/reports/zhongkexin/stage3/modules/wavelets_accuracy.log"
+    },
+    {
+      "module": "correlate",
+      "case_set": "accuracy",
+      "active_count": "2",
+      "status": "passed",
+      "log_path": "data/reports/zhongkexin/stage3/modules/correlate_accuracy.log"
+    },
+    {
+      "module": "demod",
+      "case_set": "accuracy",
+      "active_count": "1",
+      "status": "passed",
+      "log_path": "data/reports/zhongkexin/stage3/modules/demod_accuracy.log"
+    },
+    {
+      "module": "estimation",
+      "case_set": "accuracy",
+      "active_count": "1",
+      "status": "passed",
+      "log_path": "data/reports/zhongkexin/stage3/modules/estimation_accuracy.log"
+    },
+    {
+      "module": "peak_finding",
+      "case_set": "accuracy",
+      "active_count": "1",
+      "status": "passed",
+      "log_path": "data/reports/zhongkexin/stage3/modules/peak_finding_accuracy.log"
+    }
+  ]
+}

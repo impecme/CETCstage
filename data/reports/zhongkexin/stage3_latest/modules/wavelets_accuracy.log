@@ -1,0 +1,104 @@
+[cusignal-test] timing       : warmup=1 repeat=3 (demo-fast)
+[cusignal-test] project root : /CETC
+[cusignal-test] build dir    : /CETC/build-zx
+[cusignal-test] build type   : Release
+[cusignal-test] platform     : ZHONGKEXIN
+[cusignal-test] cuda arch    : n/a (ZHONGKEXIN uses dlcc --cuda-gpu-arch=dlgput64)
+[cusignal-test] jobs         : 255
+[cusignal-test] cxx compiler : /zq500/sdk/bin/dlcc
+-- Using Zhongkexin CUDA headers without CUDAToolkit cudart target: /zq500/sdk/include
+-- CUSIGNAL_PLATFORM=ZHONGKEXIN
+-- Using Zhongkexin CUDA runtime compatibility library: /zq500/sdk/lib/libcurt.so
+-- Using Zhongkexin cuFFT compatibility library: /zq500/sdk/lib/libdlfft.so
+-- Using Zhongkexin cuBLAS compatibility library: /zq500/sdk/lib/libdlblas.so
+-- Using Zhongkexin cuSOLVER compatibility library: /zq500/sdk/lib/libdlsolver.so
+-- Using cuFFT compatibility library: /zq500/sdk/lib/libdlfft.so
+-- Using cuBLAS compatibility library: /zq500/sdk/lib/libdlblas.so
+-- Using cuSOLVER compatibility library: /zq500/sdk/lib/libdlsolver.so
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /CETC/build-zx
+Consolidate compiler generated dependencies of target cusignal_cpu
+[ 40%] Built target cusignal_cpu
+Consolidate compiler generated dependencies of target cusignal_cuda
+[ 86%] Built target cusignal_cuda
+[ 86%] Building CXX object tests/unit/wavelets/CMakeFiles/wavelets_test_support.dir/wavelets_test_support.cu.o
+/CETC/tests/unit/wavelets/wavelets_test_support.cu:1397:49: warning: 'cudaDeviceSynchronize' is deprecated: Use of cudaDeviceSynchronize from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING. [-Wdeprecated-declarations]
+            cusignal::core::throw_on_cuda_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
+                                                ^
+/zq500/sdk/include/cuda_device_runtime_api.h:142:38: note: 'cudaDeviceSynchronize' has been explicitly marked deprecated here
+extern __device__ __cudart_builtin__ __CDPRT_DEPRECATED(cudaDeviceSynchronize) cudaError_t CUDARTAPI cudaDeviceSynchronize(void);
+                                     ^
+/zq500/sdk/include/cuda_device_runtime_api.h:120:40: note: expanded from macro '__CDPRT_DEPRECATED'
+# define __CDPRT_DEPRECATED(func_name) __DEPRECATED__("Use of "#func_name" from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING.")
+                                       ^
+/zq500/sdk/include/cuda_device_runtime_api.h:116:45: note: expanded from macro '__DEPRECATED__'
+# define __DEPRECATED__(msg) __attribute__((deprecated(msg)))
+                                            ^
+1 warning generated when compiling for dlgput64r1.
+[ 93%] Linking CXX static library libwavelets_test_support.a
+[ 93%] Built target wavelets_test_support
+[ 93%] Building CXX object tests/unit/wavelets/CMakeFiles/wavelets_test_qmf.dir/test_qmf.cpp.o
+[100%] Linking CXX executable wavelets_test_qmf
+[100%] Built target wavelets_test_qmf
+[ 40%] Built target cusignal_cpu
+[ 86%] Built target cusignal_cuda
+Consolidate compiler generated dependencies of target wavelets_test_support
+[ 93%] Built target wavelets_test_support
+[100%] Building CXX object tests/unit/wavelets/CMakeFiles/wavelets_test_morlet.dir/test_morlet.cpp.o
+[100%] Linking CXX executable wavelets_test_morlet
+[100%] Built target wavelets_test_morlet
+[ 40%] Built target cusignal_cpu
+[ 86%] Built target cusignal_cuda
+[ 93%] Built target wavelets_test_support
+[ 93%] Building CXX object tests/unit/wavelets/CMakeFiles/wavelets_test_ricker.dir/test_ricker.cpp.o
+[100%] Linking CXX executable wavelets_test_ricker
+[100%] Built target wavelets_test_ricker
+[ 40%] Built target cusignal_cpu
+[ 86%] Built target cusignal_cuda
+[ 93%] Built target wavelets_test_support
+[100%] Building CXX object tests/unit/wavelets/CMakeFiles/wavelets_test_morlet2.dir/test_morlet2.cpp.o
+[100%] Linking CXX executable wavelets_test_morlet2
+[100%] Built target wavelets_test_morlet2
+[ 40%] Built target cusignal_cpu
+[ 86%] Built target cusignal_cuda
+[ 93%] Built target wavelets_test_support
+[100%] Building CXX object tests/unit/wavelets/CMakeFiles/wavelets_test_cwt.dir/test_cwt.cpp.o
+[100%] Linking CXX executable wavelets_test_cwt
+[100%] Built target wavelets_test_cwt
+[cusignal-test] running wavelets/qmf
+[wavelets/qmf] PASS  accuracy_cases=3  perf_cases=0
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/wavelets/qmf/latest_summary.md
+[cusignal-test] running wavelets/morlet
+[wavelets/morlet] PASS  accuracy_cases=5  perf_cases=0
+cpu_gpu_error : max_abs=5.960464e-08  max_rel=9.297084e-08  rmse=2.107342e-08
+reference_error : max_abs=1.464873e-07  max_rel=1.057987e-05  rmse=5.063695e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/wavelets/morlet/latest_summary.md
+[cusignal-test] running wavelets/ricker
+[wavelets/ricker] PASS  accuracy_cases=3  perf_cases=0
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=2.980232e-08  max_rel=1.693439e-07  rmse=1.142867e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/wavelets/ricker/latest_summary.md
+[cusignal-test] running wavelets/morlet2
+[wavelets/morlet2] PASS  accuracy_cases=3  perf_cases=0
+cpu_gpu_error : max_abs=1.490116e-08  max_rel=1.021131e-07  rmse=5.890201e-09
+reference_error : max_abs=4.712161e-08  max_rel=1.980636e-07  rmse=2.704517e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/wavelets/morlet2/latest_summary.md
+[cusignal-test] running wavelets/cwt
+[wavelets/cwt] PASS  accuracy_cases=5  perf_cases=0
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=7.152557e-07  max_rel=1.129918e-04  rmse=1.354194e-07
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/wavelets/cwt/latest_summary.md
+[cusignal-test] summary: passed 5/5
