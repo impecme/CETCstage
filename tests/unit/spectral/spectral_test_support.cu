@@ -27,13 +27,13 @@ namespace fs = std::filesystem;
 
 namespace cusignal
 {
-    namespace cuda_backend
+    namespace zx_gpu_backend
     {
         namespace spectral_test_hooks
         {
             float consume_last_kernel_ms();
         }
-    } // namespace cuda_backend
+    } // namespace zx_gpu_backend
 } // namespace cusignal
 
 namespace
@@ -43,11 +43,11 @@ namespace
     using cusignal::core::ComplexArray;
     using cusignal::core::ComplexArrayLike;
     using cusignal::core::ComplexSignal;
-    using cusignal::core::CudaComplexArray;
-    using cusignal::core::CudaComplexSignal;
-    using cusignal::core::CudaRealArray;
-    using cusignal::core::CudaRealSignal;
-    using cusignal::core::CudaWindowSpec;
+    using cusignal::core::ZxGpuComplexArray;
+    using cusignal::core::ZxGpuComplexSignal;
+    using cusignal::core::ZxGpuRealArray;
+    using cusignal::core::ZxGpuRealSignal;
+    using cusignal::core::ZxGpuWindowSpec;
     using cusignal::core::DetrendSpec;
     using cusignal::core::NamedFloatPairParameter;
     using cusignal::core::NamedFloatParameter;
@@ -153,9 +153,9 @@ namespace
         std::string name;
         FieldKind kind = FieldKind::RealSignal;
         Shape shape;
-        CudaRealSignal real_signal;
-        CudaRealArray real_array;
-        CudaComplexArray complex_array;
+        ZxGpuRealSignal real_signal;
+        ZxGpuRealArray real_array;
+        ZxGpuComplexArray complex_array;
     };
 
     struct OutputBundle
@@ -402,11 +402,11 @@ namespace
         throw std::runtime_error("unsupported window spec kind");
     }
 
-    CudaWindowSpec to_cuda_window_spec(const WindowSpec &spec)
+    ZxGpuWindowSpec to_zx_gpu_window_spec(const WindowSpec &spec)
     {
         return std::visit(
-            [](const auto &value) -> CudaWindowSpec {
-                return CudaWindowSpec{value};
+            [](const auto &value) -> ZxGpuWindowSpec {
+                return ZxGpuWindowSpec{value};
             },
             spec);
     }
@@ -942,7 +942,7 @@ namespace
         return bundle;
     }
 
-    DeviceOutputBundle make_device_bundle(const CudaRealSignal &values, const std::string &name = "signal")
+    DeviceOutputBundle make_device_bundle(const ZxGpuRealSignal &values, const std::string &name = "signal")
     {
         DeviceOutputBundle bundle;
         DeviceOutputField field;
@@ -954,7 +954,7 @@ namespace
         return bundle;
     }
 
-    DeviceOutputBundle make_device_bundle(const spectral_api::CudaRealSpectrumResult &result)
+    DeviceOutputBundle make_device_bundle(const spectral_api::ZxGpuRealSpectrumResult &result)
     {
         DeviceOutputBundle bundle;
         DeviceOutputField freq_field;
@@ -972,7 +972,7 @@ namespace
         return bundle;
     }
 
-    DeviceOutputBundle make_device_bundle(const spectral_api::CudaComplexSpectrumResult &result)
+    DeviceOutputBundle make_device_bundle(const spectral_api::ZxGpuComplexSpectrumResult &result)
     {
         DeviceOutputBundle bundle;
         DeviceOutputField freq_field;
@@ -990,7 +990,7 @@ namespace
         return bundle;
     }
 
-    DeviceOutputBundle make_device_bundle(const spectral_api::CudaSpectrogramResult &result)
+    DeviceOutputBundle make_device_bundle(const spectral_api::ZxGpuSpectrogramResult &result)
     {
         DeviceOutputBundle bundle;
         DeviceOutputField freq_field;
@@ -1010,7 +1010,7 @@ namespace
                 using T = std::decay_t<decltype(value)>;
                 DeviceOutputField values_field;
                 values_field.name = "values";
-                if constexpr (std::is_same_v<T, CudaRealArray>)
+                if constexpr (std::is_same_v<T, ZxGpuRealArray>)
                 {
                     values_field.kind = FieldKind::RealArray;
                     values_field.shape = value.shape();
@@ -1028,7 +1028,7 @@ namespace
         return bundle;
     }
 
-    DeviceOutputBundle make_device_bundle(const spectral_api::CudaStftResult &result)
+    DeviceOutputBundle make_device_bundle(const spectral_api::ZxGpuStftResult &result)
     {
         DeviceOutputBundle bundle;
         DeviceOutputField freq_field;
@@ -1052,7 +1052,7 @@ namespace
         return bundle;
     }
 
-    DeviceOutputBundle make_device_bundle(const spectral_api::CudaIstftResult &result)
+    DeviceOutputBundle make_device_bundle(const spectral_api::ZxGpuIstftResult &result)
     {
         DeviceOutputBundle bundle;
         DeviceOutputField time_field;
@@ -1070,7 +1070,7 @@ namespace
         return bundle;
     }
 
-    DeviceOutputBundle make_device_bundle(const spectral_api::CudaVectorStrengthResult &result)
+    DeviceOutputBundle make_device_bundle(const spectral_api::ZxGpuVectorStrengthResult &result)
     {
         DeviceOutputBundle bundle;
         DeviceOutputField strength_field;
@@ -1394,14 +1394,14 @@ namespace
         for (int warmup = 0; warmup < options.warmup; ++warmup)
         {
             callable();
-            (void)cusignal::cuda_backend::spectral_test_hooks::consume_last_kernel_ms();
+            (void)cusignal::zx_gpu_backend::spectral_test_hooks::consume_last_kernel_ms();
         }
         std::vector<float> durations;
         durations.reserve(static_cast<std::size_t>(options.repeat));
         for (int repeat = 0; repeat < options.repeat; ++repeat)
         {
             callable();
-            durations.push_back(cusignal::cuda_backend::spectral_test_hooks::consume_last_kernel_ms());
+            durations.push_back(cusignal::zx_gpu_backend::spectral_test_hooks::consume_last_kernel_ms());
         }
         return compute_timing_stats(durations);
     }
@@ -1575,7 +1575,7 @@ namespace
                         test_case.normalize));
                 },
                 [](const SpectralCase &test_case) {
-                    return make_device_bundle(cusignal::cuda_backend::spectral::lombscargle(
+                    return make_device_bundle(cusignal::zx_gpu_backend::spectral::lombscargle(
                         load_x_signal(test_case),
                         load_y_signal(test_case),
                         load_freqs(test_case),
@@ -1598,10 +1598,10 @@ namespace
                         test_case.axis));
                 },
                 [](const SpectralCase &test_case) {
-                    return make_device_bundle(cusignal::cuda_backend::spectral::periodogram(
+                    return make_device_bundle(cusignal::zx_gpu_backend::spectral::periodogram(
                         load_x_array(test_case),
                         test_case.fs,
-                        to_cuda_window_spec(test_case.window),
+                        to_zx_gpu_window_spec(test_case.window),
                         test_case.nfft,
                         test_case.detrend,
                         test_case.return_onesided,
@@ -1627,10 +1627,10 @@ namespace
                         test_case.average));
                 },
                 [](const SpectralCase &test_case) {
-                    return make_device_bundle(cusignal::cuda_backend::spectral::welch(
+                    return make_device_bundle(cusignal::zx_gpu_backend::spectral::welch(
                         load_x_array(test_case),
                         test_case.fs,
-                        to_cuda_window_spec(test_case.window),
+                        to_zx_gpu_window_spec(test_case.window),
                         test_case.nperseg,
                         test_case.noverlap,
                         test_case.nfft,
@@ -1660,11 +1660,11 @@ namespace
                         test_case.average));
                 },
                 [](const SpectralCase &test_case) {
-                    return make_device_bundle(cusignal::cuda_backend::spectral::csd(
+                    return make_device_bundle(cusignal::zx_gpu_backend::spectral::csd(
                         load_x_array(test_case),
                         load_y_array(test_case),
                         test_case.fs,
-                        to_cuda_window_spec(test_case.window),
+                        to_zx_gpu_window_spec(test_case.window),
                         test_case.nperseg,
                         test_case.noverlap,
                         test_case.nfft,
@@ -1693,10 +1693,10 @@ namespace
                         test_case.mode));
                 },
                 [](const SpectralCase &test_case) {
-                    return make_device_bundle(cusignal::cuda_backend::spectral::spectrogram(
+                    return make_device_bundle(cusignal::zx_gpu_backend::spectral::spectrogram(
                         load_x_array(test_case),
                         test_case.fs,
-                        to_cuda_window_spec(test_case.window),
+                        to_zx_gpu_window_spec(test_case.window),
                         test_case.nperseg,
                         test_case.noverlap,
                         test_case.nfft,
@@ -1725,10 +1725,10 @@ namespace
                         test_case.axis));
                 },
                 [](const SpectralCase &test_case) {
-                    return make_device_bundle(cusignal::cuda_backend::spectral::stft(
+                    return make_device_bundle(cusignal::zx_gpu_backend::spectral::stft(
                         load_x_array(test_case),
                         test_case.fs,
-                        to_cuda_window_spec(test_case.window),
+                        to_zx_gpu_window_spec(test_case.window),
                         test_case.nperseg,
                         test_case.noverlap,
                         test_case.nfft,
@@ -1756,10 +1756,10 @@ namespace
                         test_case.freq_axis));
                 },
                 [](const SpectralCase &test_case) {
-                    return make_device_bundle(cusignal::cuda_backend::spectral::istft(
+                    return make_device_bundle(cusignal::zx_gpu_backend::spectral::istft(
                         load_zxx(test_case),
                         test_case.fs,
-                        to_cuda_window_spec(test_case.window),
+                        to_zx_gpu_window_spec(test_case.window),
                         test_case.nperseg,
                         test_case.noverlap,
                         test_case.nfft,
@@ -1785,11 +1785,11 @@ namespace
                         test_case.axis));
                 },
                 [](const SpectralCase &test_case) {
-                    return make_device_bundle(cusignal::cuda_backend::spectral::coherence(
+                    return make_device_bundle(cusignal::zx_gpu_backend::spectral::coherence(
                         load_x_array(test_case),
                         load_y_array(test_case),
                         test_case.fs,
-                        to_cuda_window_spec(test_case.window),
+                        to_zx_gpu_window_spec(test_case.window),
                         test_case.nperseg,
                         test_case.noverlap,
                         test_case.nfft,
@@ -1814,11 +1814,11 @@ namespace
                 [](const SpectralCase &test_case) {
                     if (test_case.period_scalar > 0.0)
                     {
-                        return make_device_bundle(cusignal::cuda_backend::spectral::vectorstrength(
+                        return make_device_bundle(cusignal::zx_gpu_backend::spectral::vectorstrength(
                             load_events(test_case),
                             test_case.period_scalar));
                     }
-                    return make_device_bundle(cusignal::cuda_backend::spectral::vectorstrength(
+                    return make_device_bundle(cusignal::zx_gpu_backend::spectral::vectorstrength(
                         load_events(test_case),
                         load_periods(test_case)));
                 }};
@@ -2255,27 +2255,27 @@ namespace
         report.case_id = test_case.id;
         report.category = test_case.category;
 
-        std::optional<CudaRealArray> csd_x;
-        std::optional<CudaRealArray> csd_y;
+        std::optional<ZxGpuRealArray> csd_x;
+        std::optional<ZxGpuRealArray> csd_y;
         if (op == "csd")
         {
-            csd_x.emplace(CudaRealArray::from_host(load_x_array(test_case)));
-            csd_y.emplace(CudaRealArray::from_host(load_y_array(test_case)));
+            csd_x.emplace(ZxGpuRealArray::from_host(load_x_array(test_case)));
+            csd_y.emplace(ZxGpuRealArray::from_host(load_y_array(test_case)));
         }
-        std::optional<CudaRealArray> spectral_x;
+        std::optional<ZxGpuRealArray> spectral_x;
         if (op == "spectrogram" || op == "stft")
         {
             const RealArray x = load_x_array(test_case);
             report.samples = x.values.size();
-            spectral_x.emplace(CudaRealArray::from_host(x));
+            spectral_x.emplace(ZxGpuRealArray::from_host(x));
         }
-        std::optional<CudaRealSignal> vectorstrength_events;
+        std::optional<ZxGpuRealSignal> vectorstrength_events;
         std::optional<RealSignal> vectorstrength_periods;
         if (op == "vectorstrength")
         {
             const RealSignal events = load_events(test_case);
             report.samples = events.size();
-            vectorstrength_events.emplace(CudaRealSignal::from_host(events));
+            vectorstrength_events.emplace(ZxGpuRealSignal::from_host(events));
             if (!(test_case.period_scalar > 0.0))
             {
                 vectorstrength_periods.emplace(load_periods(test_case));
@@ -2284,11 +2284,11 @@ namespace
         auto run_gpu_perf = [&]() -> DeviceOutputBundle {
             if (csd_x.has_value() && csd_y.has_value())
             {
-                return make_device_bundle(cusignal::cuda_backend::spectral::csd(
+                return make_device_bundle(cusignal::zx_gpu_backend::spectral::csd(
                     *csd_x,
                     *csd_y,
                     test_case.fs,
-                    to_cuda_window_spec(test_case.window),
+                    to_zx_gpu_window_spec(test_case.window),
                     test_case.nperseg,
                     test_case.noverlap,
                     test_case.nfft,
@@ -2302,20 +2302,20 @@ namespace
             {
                 if (test_case.period_scalar > 0.0)
                 {
-                    return make_device_bundle(cusignal::cuda_backend::spectral::vectorstrength(
+                    return make_device_bundle(cusignal::zx_gpu_backend::spectral::vectorstrength(
                         *vectorstrength_events,
                         test_case.period_scalar));
                 }
-                return make_device_bundle(cusignal::cuda_backend::spectral::vectorstrength(
+                return make_device_bundle(cusignal::zx_gpu_backend::spectral::vectorstrength(
                     *vectorstrength_events,
                     *vectorstrength_periods));
             }
             if (op == "spectrogram" && spectral_x.has_value())
             {
-                return make_device_bundle(cusignal::cuda_backend::spectral::spectrogram(
+                return make_device_bundle(cusignal::zx_gpu_backend::spectral::spectrogram(
                     *spectral_x,
                     test_case.fs,
-                    to_cuda_window_spec(test_case.window),
+                    to_zx_gpu_window_spec(test_case.window),
                     test_case.nperseg,
                     test_case.noverlap,
                     test_case.nfft,
@@ -2327,10 +2327,10 @@ namespace
             }
             if (op == "stft" && spectral_x.has_value())
             {
-                return make_device_bundle(cusignal::cuda_backend::spectral::stft(
+                return make_device_bundle(cusignal::zx_gpu_backend::spectral::stft(
                     *spectral_x,
                     test_case.fs,
-                    to_cuda_window_spec(test_case.window),
+                    to_zx_gpu_window_spec(test_case.window),
                     test_case.nperseg,
                     test_case.noverlap,
                     test_case.nfft,
@@ -2366,7 +2366,7 @@ namespace
         }
         report.gpu_e2e_perf = benchmark_host_latency(options, [&]() {
             (void)run_gpu_perf();
-            cusignal::core::throw_on_cuda_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
+            cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
         });
         report.gpu_kernel_perf = benchmark_gpu_kernel_latency(options, [&]() { (void)run_gpu_perf(); });
 

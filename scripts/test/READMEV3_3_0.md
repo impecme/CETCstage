@@ -100,7 +100,7 @@ scripts/test/benchmark_all_ops_scales.py \
 
 原计划中的 `16,32,64,128,256,512` 在第一次 `--no-build` 冒烟中看起来可以跑，是因为当时复用了旧二进制。旧二进制还没有编译进 `filter_order` 解析逻辑，所以脚本虽然改写了 manifest，但测试程序没有读取这个新字段，实际仍在跑原来的固定小阶数默认用例。
 
-带 `--build` 重新编译后，新二进制开始读取 `filter_order`，于是 `256/512` 会触发旧 CUDA 实现里的 `kMaxFilterOrder=128` 边界，并报错 `filter order exceeds CUDA zi solver limit`。V3.3.0 已将 `lfilter_zi` 求解器上限单独提高到 `512`，普通 `lfilter` 的每线程状态上限仍保持 `128`，因此 `lfilter_zi` 继续使用原计划的 `16,32,64,128,256,512`。
+带 `--build` 重新编译后，新二进制开始读取 `filter_order`，于是 `256/512` 会触发旧 ZQ500 GPU 实现里的 `kMaxFilterOrder=128` 边界，并报错 `filter order exceeds CUDA zi solver limit`。V3.3.0 已将 `lfilter_zi` 求解器上限单独提高到 `512`，普通 `lfilter` 的每线程状态上限仍保持 `128`，因此 `lfilter_zi` 继续使用原计划的 `16,32,64,128,256,512`。
 
 注意：当前 `lfilter_zi` CUDA 求解器仍是单 kernel 单线程高斯消元，高阶性能会明显变慢。实测 `filter_order=512` 的 GPU kernel 单次约 `6551 ms`，该数据可用于展示实现瓶颈，但不代表并行优化后的最终性能。
 

@@ -2,7 +2,7 @@
 
 ## Summary
 
-- 本轮只实现 `windows` 模块，先把 `filter_design` / `filtering` 的前置基础做实；交付标准继续对齐 `V2.2 waveforms`：真实 CPU/CUDA 实现、unit runner、accuracy/perf、`data/reference` / `data/generated` / `data/reports`、一键脚本接入。
+- 本轮只实现 `windows` 模块，先把 `filter_design` / `filtering` 的前置基础做实；交付标准继续对齐 `V2.2 waveforms`：真实 CPU/ZQ500 GPU 实现、unit runner、accuracy/perf、`data/reference` / `data/generated` / `data/reports`、一键脚本接入。
 - 迁移性策略现在明确为：
   - `FFTW` 放到 `third_party`，因为它不是 CUDA 环境的天然组成部分。
   - `cuFFT` 不放到 `third_party`，直接使用系统 CUDA Toolkit 提供的库和头文件即可。
@@ -30,7 +30,7 @@
   - CMake 依赖策略固定为：
     - `FFTW` 只从 `third_party/fftw/install` 查找
     - `cuFFT` 通过 `find_package(CUDAToolkit REQUIRED)` 获取
-    - CUDA 侧优先链接 `CUDA::cufft_static`；若该 target 在目标环境不可用，则配置阶段失败，不做 `third_party` fallback
+    - ZQ500 GPU 侧优先链接 `CUDA::cufft_static`；若该 target 在目标环境不可用，则配置阶段失败，不做 `third_party` fallback
   - 不引入 `third_party/cuda/`，也不复制 `libcufft*`、`libculibos`、`libcudart_static`
 
 - 公开接口与类型：
@@ -63,7 +63,7 @@
   - FFT 路径实现：
     - CPU `chebwin` 用 FFTW
     - CUDA `chebwin` 用 `cuFFT`
-  - CUDA 侧除 `chebwin` 外，优先用 pointwise kernel + host wrapper；必要时复用 device buffer，避免 perf 被重复分配污染
+  - ZQ500 GPU 侧除 `chebwin` 外，优先用 pointwise kernel + host wrapper；必要时复用 device buffer，避免 perf 被重复分配污染
 
 - 测试与报告链路：
   - 新增 `tests/unit/windows/`
@@ -99,7 +99,7 @@
     - `third_party/fftw/install/lib/libfftw3.a`
 - 构建：
   - `cmake -S . -B build`
-  - `cmake --build build --target cusignal_cpu cusignal_cuda --parallel`
+  - `cmake --build build --target cusignal_cpu cusignal_zx_gpu --parallel`
   - `cmake --build build --target` 全部 `windows_*` runner
 - accuracy：
   - 每个窗覆盖 `sym=true/false`、奇偶长度、长度 `0/1`、非法参数

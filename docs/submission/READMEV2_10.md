@@ -14,7 +14,7 @@
 
 - `radartools`
   - CPU 实现：`pulse_compression`、`pulse_doppler`、`ambgfun`、`cfar_alpha`、`ca_cfar`、`mvdr`
-  - CUDA 实现：`cuFFT`、`cuBLAS`、`cuSOLVER` 路径与 device-native 输出
+  - ZQ500 GPU 实现：`cuFFT`、`cuBLAS`、`cuSOLVER` 路径与 device-native 输出
   - 公共实现：`src/common/radartools_detail.hpp`
   - CUDA 计时：`radartools_test_hooks::consume_last_kernel_ms()`
 - unit 测试
@@ -77,5 +77,5 @@
 - `pulse_compression` 与 `pulse_doppler` 使用 FFTW / `cuFFT`
 - `ambgfun` 保持 Python 的 `2d` / `delay` / `doppler` 数值路径
 - `ca_cfar` 同时覆盖 1D / 2D
-- `mvdr` 的 CUDA 路径新增 `cuBLAS` / `cuSOLVER` 依赖
+- `mvdr` 的 ZQ500 GPU 路径新增 `cuBLAS` / `cuSOLVER` 依赖
 - `radartools` 的 generated sample 命名继续遵守当前 canonical schema，CPU/GPU 两套样本都会落盘

@@ -10,7 +10,7 @@
 - 约束保持不变：
   - 不改公开函数签名和接口模式。
   - `cpu::*` 继续 host in/out。
-  - `cuda_backend::*` 继续 host/device 双输入、device 输出。
+  - `zx_gpu_backend::*` 继续 host/device 双输入、device 输出。
   - `include/` 注释块结构和风格保留，只删除“占位返回零张量”之类已失真描述。
   - 测试、数据、报告组织对齐当前 canonical unit schema。
 
@@ -18,7 +18,7 @@
 
 ### 1. 实现层
 
-- 重写 `src/cpu/radartools.cpp` 和 `src/cuda/radartools.cu`，完整实现以下公开 API：
+- 重写 `src/cpu/radartools.cpp` 和 `src/zhongkexin/radartools.cu`，完整实现以下公开 API：
   - `pulse_compression`
   - `pulse_doppler`
   - `ambgfun` 两个重载
@@ -53,7 +53,7 @@
   - 1D / 2D 都按 Python 版 CA-CFAR 语义实现。
   - CPU 使用前缀和 / 积分图。
   - CUDA 使用 device-native prefix-sum / integral-image 路径和阈值 kernel。
-  - `threshold` 与 `detections` 均返回 `RealArray` / `CudaRealArray`；`detections` 固定写 `0.0 / 1.0`。
+  - `threshold` 与 `detections` 均返回 `RealArray` / `ZxGpuRealArray`；`detections` 固定写 `0.0 / 1.0`。
   - 2D 参考单元计数按 Python 公式，不沿用当前 placeholder 的错误计数。
 - `mvdr`
   - CPU：
@@ -68,9 +68,9 @@
     - `calc_cov=false`：`x` 为方形协方差矩阵
     - `sv` 的元素数必须等于 `num_sensors`
 
-### 2. CUDA 实现与显存复用
+### 2. ZQ500 GPU 实现与显存复用
 
-- `src/cuda/radartools.cu` 引入 `thread_local RadartoolsWorkspace`，按算子族拆分 scratch：
+- `src/zhongkexin/radartools.cu` 引入 `thread_local RadartoolsWorkspace`，按算子族拆分 scratch：
   - `PulseWorkspace`：窗口、模板频谱、批量 FFT 输入输出、转置缓冲、`cuFFT` plan
   - `AmbgfunWorkspace`：归一化输入、移位矩阵、频谱缓冲、轴缓冲、`cuFFT` plan
   - `CfarWorkspace`：prefix-sum / integral-image 缓冲、阈值缓冲、检测缓冲
@@ -86,7 +86,7 @@
 ### 3. 构建、测试、数据与脚本
 
 - 构建层：
-  - `cusignal_cuda` 新增链接 `CUDA::cublas` 和 `CUDA::cusolver`。
+  - `cusignal_zx_gpu` 新增链接 `CUDA::cublas` 和 `CUDA::cusolver`。
   - 若当前 Toolkit 缺少这两个 target，则配置阶段直接失败。
 - 新增 `tests/unit/radartools/`，每个公开 API 一个 runner：
   - `pulse_compression`
@@ -131,7 +131,7 @@
   - 去掉 placeholder/零张量描述
   - 保留原注释块结构和风格
 - 构建接口变化仅一项：
-  - `cusignal_cuda` 额外依赖 `CUDA::cublas` 与 `CUDA::cusolver`
+  - `cusignal_zx_gpu` 额外依赖 `CUDA::cublas` 与 `CUDA::cusolver`
 
 ## Test Plan
 
@@ -165,4 +165,4 @@
   2. 仓内 Python `test_radartools.py`
   3. 已提交的 reference 数据
 - `ambgfun` 保持 Python 数值路径，因此 `prf` 仅保留 API 兼容与参数校验，不额外引入偏离 Python 的数值分支。
-- `mvdr` 的 CUDA 路径允许新增 `cuBLAS/cuSOLVER` 构建依赖；这是本轮唯一新增的 CUDA 数值依赖。
+- `mvdr` 的 ZQ500 GPU 路径允许新增 `cuBLAS/cuSOLVER` 构建依赖；这是本轮唯一新增的 CUDA 数值依赖。

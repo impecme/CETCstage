@@ -5,7 +5,7 @@
 - 现在 `data/generated` 组织不一致的原因已经确认：
   - `waveforms` 的 `emit_report` 会同时写 `cpu` 和 `gpu` 两套样本。
   - `windows`、`filter_design`、`filtering` 的 `emit_report` 目前只写了 `gpu` 样本，所以目录和文件命名都更简化。
-  - `filtering` 的 CUDA 后端当前基本仍是 `to_host_* -> cpu::filtering::* -> from_host(...)` 的 hybrid 路径，所以 `gpu_kernel_perf` 经常是 `0.000`，这也和 `waveforms/windows` 的真实 GPU 实现不一致。
+  - `filtering` 的 ZQ500 GPU 后端当前基本仍是 `to_host_* -> cpu::filtering::* -> from_host(...)` 的 hybrid 路径，所以 `gpu_kernel_perf` 经常是 `0.000`，这也和 `waveforms/windows` 的真实 GPU 实现不一致。
 - 本轮版本继续算 `V2.6.x`，不新开 `V2.7`。
 - 本轮目标分两部分一起完成：
   - 把 `windows`、`filter_design`、`filtering` 的 `generated/output_samples` 全部对齐到 `waveforms` 风格。
@@ -36,10 +36,10 @@
   - 把 `waveforms` 的 backend-tagged sample writer 抽成可复用工具。
   - `windows`、`filter_design`、`filtering` 的 test support 改为共用这套命名和写盘逻辑，避免以后再次分叉。
 
-### 2. `filtering` CUDA 后端改为真实 device-native
+### 2. `filtering` ZQ500 GPU 后端改为真实 device-native
 
 - 公开 API、`include/` 注释、`cpu::*` 路径全部保持现状，不改签名。
-- `src/cuda/filtering.cu` 不再允许“完整 CPU 计算后再上传”：
+- `src/zhongkexin/filtering.cu` 不再允许“完整 CPU 计算后再上传”：
   - 禁止对完整输入执行 `get()` 后交给 `cpu::filtering::*`
   - 禁止对完整输出走 `from_host(...)`
   - 只允许 `gust` 的初值求解在 host 侧完成，随后立即上传小状态向量，主滤波仍在 GPU
@@ -53,8 +53,8 @@
 ### 3. `filtering` GPU 实现分组方案
 
 - 公共基础：
-  - 在 `src/cuda/filtering.cu` 内按算子族引入 `thread_local` workspace。
-  - 缓存中间 `CudaRealArray/CudaComplexArray`、系数缓冲、反转缓冲、平方缓冲、polyphase 系数缓冲、FFT 频谱缓冲和 `cuFFT` plan。
+  - 在 `src/zhongkexin/filtering.cu` 内按算子族引入 `thread_local` workspace。
+  - 缓存中间 `ZxGpuRealArray/ZxGpuComplexArray`、系数缓冲、反转缓冲、平方缓冲、polyphase 系数缓冲、FFT 频谱缓冲和 `cuFFT` plan。
   - 返回值始终是独立 device 对象；workspace 只复用 scratch，不把内部存储别名暴露给调用方。
   - `g_last_kernel_ms` 改为真实统计整个 GPU 计算阶段；多 kernel / `cuFFT` 的算子要累计总 GPU 时长。
 
@@ -90,7 +90,7 @@
     - 频域 mask 和重建全部在 device 上完成。
   - `resample`：
     - `domain="time"` 与 `domain="freq"` 都走 `cuFFT` 路径。
-    - 窗函数调用 `cuda_backend::windows::get_window(...)`，频域加窗在 device 上完成。
+    - 窗函数调用 `zx_gpu_backend::windows::get_window(...)`，频域加窗在 device 上完成。
     - 带 `t` 的版本在 GPU 生成重采样时间轴。
   - `channelize_poly`：
     - 先做 polyphase FIR，再用 batched `cuFFT` 生成每个 channel 的频域输出。
@@ -129,7 +129,7 @@
 - 不改 `include/` 中任何 API 注释块的结构和语义。
 - 变更仅体现在：
   - `generated/output_samples` 的文件组织与命名统一
-  - `filtering` 的 CUDA 实现从 hybrid 改为 device-native
+  - `filtering` 的 ZQ500 GPU 实现从 hybrid 改为 device-native
   - `gpu_kernel_perf` 从大量 `0.000` 变为真实 GPU 计算时间
 
 ## Test Plan
@@ -155,7 +155,7 @@
   - `gpu_kernel_perf` 不再系统性为 `0.000`
   - `gpu_e2e_perf` 继续不包含 `get()`
   - device 输入串联调用时不发生额外 H2D
-  - 用静态搜索确认 `src/cuda/filtering.cu` 不再存在把完整输入/输出回落到 `cpu::filtering::*` 的路径
+  - 用静态搜索确认 `src/zhongkexin/filtering.cu` 不再存在把完整输入/输出回落到 `cpu::filtering::*` 的路径
 
 - 全量回归：
   - `./scripts/test/run_all_tests.sh --emit-report`

@@ -4,7 +4,7 @@
 
 本文档是中科芯平台迁移计划的入口索引。完整迁移计划已经按新的 V4 大版本拆分为一个总蓝图和五个阶段计划。
 
-当前迁移不是只完成 `task1_radar_demo` 和 `task2_features_demo`，而是以整个 CETC 项目完整迁移到中科芯 CUDA 兼容平台为总目标。当前正在推进的是 V4.1 第一阶段。
+当前迁移不是只完成 `task1_radar_demo` 和 `task2_features_demo`，而是以整个 CETC 项目完整迁移到中科芯 ZQ500 兼容平台为总目标。当前正在推进的是 V4.1 第一阶段。
 
 ## V4 文档结构
 
@@ -29,7 +29,7 @@ source /zq500/sdk/env.sh
 dlsmi
 scripts/platform/probe_zhongkexin.sh
 cmake -S . -B build-zx -DCUSIGNAL_PLATFORM=ZHONGKEXIN -DCMAKE_BUILD_TYPE=Release
-cmake --build build-zx --target cusignal_cpu cusignal_cuda task1_radar_demo task2_features_demo --parallel
+cmake --build build-zx --target cusignal_cpu cusignal_zx_gpu task1_radar_demo task2_features_demo --parallel
 scripts/test/run_task_demos.sh --build-dir build-zx --no-build --repeat 3
 ```
 

@@ -2,7 +2,7 @@
 
 ## Summary
 
-- 本阶段用于把已经完成的中科芯迁移固化成可交付、可复现、可维护的项目状态。
+- 本阶段已把已经完成的中科芯迁移固化成可交付、可复现、可维护的项目状态。
 - 目标是让新环境、新会话或新的维护者可以按文档从零完成配置、构建、测试和报告复现。
 - 本阶段必须固化全部项目功能，而不是只固化核心构建命令；从零复现应覆盖 demo、单测、数据生成、报告、图件、benchmark 和已知限制说明。
 
@@ -46,7 +46,7 @@
 
 - 固化从 Windows VPN 到 SSH、docker、SDK 初始化、构建、测试的完整链路。
 - 明确当前服务器本队容器名为 `gpu_04`，并保留 `sudo docker ps -a` 作为状态确认命令。
-- 明确每次进入 docker 必须执行 `source /zq500/sdk/env.sh`。
+- 明确统一平台脚本会自动执行兼容形式的 SDK 初始化；运行脚本前不要手动 source SDK。
 - 明确宿主机只做文件中转，不在宿主机直接构建运行。
 
 ### 3. 验证流程固化
@@ -82,10 +82,10 @@ scripts/platform/run_zhongkexin_stage4.sh 2>&1 | tee stage4_full.log
 
 ## 完成判定
 
-- 新环境可以按 README/AGENT 完成构建、验证、报告和图件生成。
-- 总蓝图、阶段计划和状态文档一致。
-- 中科芯路径有明确回归命令；CPU reference + 容器内 ZQ500 GPU 为当前交付验收口径。
-- 已知限制、跳过项和 fallback 都有记录。
-- Python 依赖准备、demo 图件、scale 图件和 benchmark 图件复现路径完整。
-- 项目可交付，无需依赖当前 Codex 会话上下文理解迁移状态。
-- `docs/design/zhongkexin_migration_change_log.md` 无遗漏项，所有记录都有状态和处理结论。
+- 已满足。新环境可以按 README/AGENT 完成构建、验证、报告和图件生成。
+- 已满足。总蓝图、阶段计划和状态文档一致。
+- 已满足。中科芯路径有明确回归命令；CPU reference + 容器内 ZQ500 GPU 为当前交付验收口径。
+- 已满足。已知限制、跳过项和 fallback 都有记录。
+- 已满足。Python 依赖准备、demo 图件、scale 图件和 benchmark 图件复现路径完整。
+- 已满足。项目可交付，无需依赖当前 Codex 会话上下文理解迁移状态。
+- 已满足。`docs/design/zhongkexin_migration_change_log.md` 无遗漏项，所有记录都有状态和处理结论。

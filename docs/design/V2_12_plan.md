@@ -2,9 +2,9 @@
 
 ## Summary
 
-- 当前 `wavelets` 现状很明确：头文件已定义接口，但 [src/cpu/wavelets.cpp](/home/ziheng/CETC/src/cpu/wavelets.cpp) 和 [src/cuda/wavelets.cu](/home/ziheng/CETC/src/cuda/wavelets.cu) 仍是占位实现；`tests/unit`、`data/reference`、`data/generated`、`run_all_tests.sh` 里都还没有 `wavelets` 链路。
+- 当前 `wavelets` 现状很明确：头文件已定义接口，但 [src/cpu/wavelets.cpp](/home/ziheng/CETC/src/cpu/wavelets.cpp) 和 [src/zhongkexin/wavelets.cu](/home/ziheng/CETC/src/zhongkexin/wavelets.cu) 仍是占位实现；`tests/unit`、`data/reference`、`data/generated`、`run_all_tests.sh` 里都还没有 `wavelets` 链路。
 - 本轮版本定为 `V2.12`，按和 `bsplines / radartools / spectral` 相同的模式，把 `wavelets` 完整接入：
-  - 真实 CPU/CUDA 实现
+  - 真实 CPU/ZQ500 GPU 实现
   - 单算子单入口 unit tests
   - canonical data/report schema
   - 一键测试与版本文档接入
@@ -14,7 +14,7 @@
 
 ### 1. 实现层
 
-- 重写 [src/cpu/wavelets.cpp](/home/ziheng/CETC/src/cpu/wavelets.cpp) 和 [src/cuda/wavelets.cu](/home/ziheng/CETC/src/cuda/wavelets.cu)，完整实现：
+- 重写 [src/cpu/wavelets.cpp](/home/ziheng/CETC/src/cpu/wavelets.cpp) 和 [src/zhongkexin/wavelets.cu](/home/ziheng/CETC/src/zhongkexin/wavelets.cu)，完整实现：
   - `qmf`
   - `morlet`
   - `ricker`
@@ -40,20 +40,20 @@
     - `conj(...)[::-1]`
     - 与输入做一维 `same` 卷积
   - 不依赖当前 `correlate` 模块，`wavelets` 内部自带一维 `same` 卷积实现。
-  - 返回类型保持 `ComplexArray` / `CudaComplexArray`；`ricker` 路径虚部为 0。
+  - 返回类型保持 `ComplexArray` / `ZxGpuComplexArray`；`ricker` 路径虚部为 0。
 - 新增 `src/common/wavelets_detail.hpp`，承接公共公式、参数校验、采样坐标和 `cwt` 的共享辅助，避免 CPU/CUDA 分叉。
 
-### 2. CUDA 实现与复用
+### 2. ZQ500 GPU 实现与复用
 
-- `cuda_backend::*` 保持现有 host/device 双输入、device 输出模式，不改签名。
-- 在 [src/cuda/wavelets.cu](/home/ziheng/CETC/src/cuda/wavelets.cu) 引入 `thread_local WaveletsWorkspace`，至少复用：
+- `zx_gpu_backend::*` 保持现有 host/device 双输入、device 输出模式，不改签名。
+- 在 [src/zhongkexin/wavelets.cu](/home/ziheng/CETC/src/zhongkexin/wavelets.cu) 引入 `thread_local WaveletsWorkspace`，至少复用：
   - host 输入归一化 scratch
   - `widths` 上传缓冲
   - `cwt` 中间输出/临时卷积缓冲
   - 必要的参数缓冲
 - 返回值始终是独立 device 对象；workspace 只复用内部 scratch，不暴露别名。
 - 增加 `wavelets_test_hooks::consume_last_kernel_ms()`，并让 `g_last_kernel_ms` 统计真实 GPU 计算阶段；`gpu_kernel_perf` 不允许系统性 `0.000`。
-- CUDA 路径固定为：
+- ZQ500 GPU 路径固定为：
   - `qmf / morlet / ricker / morlet2`：逐元素 kernel
   - `cwt`：按尺度逐行并行的 direct-convolution kernel
   - 禁止完整输入/输出回退 CPU
@@ -113,7 +113,7 @@
 - perf 重点：
   - 每个 operator 至少 1 个 perf case
   - `gpu_e2e_perf` 保持 host 输入 + H2D + GPU 计算，不包含 `get()`
-  - `gpu_kernel_perf` 对全部 CUDA 算子为真实非零时间
+  - `gpu_kernel_perf` 对全部 ZQ500 GPU 算子为真实非零时间
   - `--emit-report` 后确认 `generated/input` 与 `output_samples` 都落盘，且 CPU/GPU 两套样本齐全
 - 全量回归：
   - `./scripts/test/run_all_tests.sh --emit-report`

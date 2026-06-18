@@ -27,9 +27,9 @@ namespace cusignal
         using IqWaveform = IqWaveformTemplate<core::RealSignal>;
 
         /**
-         * @brief CUDA 高斯脉冲的 IQ 双路返回结果。
+         * @brief ZQ500 GPU 高斯脉冲的 IQ 双路返回结果。
          */
-        using CudaIqWaveform = IqWaveformTemplate<core::CudaRealSignal>;
+        using ZxGpuIqWaveform = IqWaveformTemplate<core::ZxGpuRealSignal>;
 
         /**
          * @brief 高斯脉冲的信号与包络双路返回结果。
@@ -47,9 +47,9 @@ namespace cusignal
         using IEnvWaveform = IEnvWaveformTemplate<core::RealSignal>;
 
         /**
-         * @brief CUDA 高斯脉冲的信号与包络双路返回结果。
+         * @brief ZQ500 GPU 高斯脉冲的信号与包络双路返回结果。
          */
-        using CudaIEnvWaveform = IEnvWaveformTemplate<core::CudaRealSignal>;
+        using ZxGpuIEnvWaveform = IEnvWaveformTemplate<core::ZxGpuRealSignal>;
 
         /**
          * @brief N 维单位冲激结果。
@@ -67,9 +67,9 @@ namespace cusignal
         using NdRealSignal = NdRealSignalTemplate<core::RealSignal>;
 
         /**
-         * @brief CUDA N 维单位冲激结果。
+         * @brief ZQ500 GPU N 维单位冲激结果。
          */
-        using CudaNdRealSignal = NdRealSignalTemplate<core::CudaRealSignal>;
+        using ZxGpuNdRealSignal = NdRealSignalTemplate<core::ZxGpuRealSignal>;
 
         /**
          * @brief chirp 的返回类型。
@@ -79,12 +79,12 @@ namespace cusignal
         using ChirpResult = std::variant<core::RealSignal, core::ComplexSignal>;
 
         /**
-         * @brief CUDA chirp 的返回类型。
+         * @brief ZQ500 GPU chirp 的返回类型。
          *
          * `type="real"` 时返回实数波形，`type="complex"` 时返回复数波形。
          */
-        using CudaChirpResult =
-            std::variant<core::CudaRealSignal, core::CudaComplexSignal>;
+        using ZxGpuChirpResult =
+            std::variant<core::ZxGpuRealSignal, core::ZxGpuComplexSignal>;
 
         /**
          * @brief gausspulse 的返回类型。
@@ -95,16 +95,16 @@ namespace cusignal
             std::variant<core::RealSignal, IqWaveform, IEnvWaveform, core::WaveformBundle>;
 
         /**
-         * @brief CUDA gausspulse 的返回类型。
+         * @brief ZQ500 GPU gausspulse 的返回类型。
          *
          * 默认返回单路实数信号；当 `retquad/retenv` 打开时返回双路或三路结果。
          */
-        using CudaGausspulseResult =
+        using ZxGpuGausspulseResult =
             std::variant<
-                core::CudaRealSignal,
-                CudaIqWaveform,
-                CudaIEnvWaveform,
-                core::CudaWaveformBundle>;
+                core::ZxGpuRealSignal,
+                ZxGpuIqWaveform,
+                ZxGpuIEnvWaveform,
+                core::ZxGpuWaveformBundle>;
 
     } // namespace waveforms_api
 
@@ -306,7 +306,7 @@ namespace cusignal
         } // namespace waveforms
     } // namespace cpu
 
-    namespace cuda_backend
+    namespace zx_gpu_backend
     {
         namespace waveforms
         {
@@ -325,7 +325,7 @@ namespace cusignal
              * @return 当 `type="real"` 返回实数波形；当 `type="complex"` 返回复数波形。
              * @throws std::invalid_argument 当方法、类型或数值参数不合法时抛出异常。
              */
-            waveforms_api::CudaChirpResult chirp(
+            waveforms_api::ZxGpuChirpResult chirp(
                 const core::RealSignalLike &t,
                 float f0,
                 float t1,
@@ -348,7 +348,7 @@ namespace cusignal
              * @return 根据 `retquad/retenv` 返回单路、双路或三路波形结果。
              * @throws std::invalid_argument 当频率或带宽参数不合法时抛出异常。
              */
-            waveforms_api::CudaGausspulseResult gausspulse(
+            waveforms_api::ZxGpuGausspulseResult gausspulse(
                 const core::RealSignalLike &t,
                 float fc = 1000.0,
                 float bw = 0.5,
@@ -383,7 +383,7 @@ namespace cusignal
              * @return 与 `t` 等长的锯齿波序列。
              * @throws std::invalid_argument 当 `width` 不在 `[0,1]` 内时抛出异常。
              */
-            core::CudaRealSignal sawtooth(const core::RealSignalLike &t, float width = 1.0);
+            core::ZxGpuRealSignal sawtooth(const core::RealSignalLike &t, float width = 1.0);
 
             /**
              * @brief 生成锯齿波，宽度参数按采样点逐点给定。
@@ -393,7 +393,7 @@ namespace cusignal
              * @return 与 `t` 等长的锯齿波序列。
              * @throws std::invalid_argument 当长度不匹配或参数越界时抛出异常。
              */
-            core::CudaRealSignal sawtooth(
+            core::ZxGpuRealSignal sawtooth(
                 const core::RealSignalLike &t,
                 const core::RealSignalLike &width);
 
@@ -405,7 +405,7 @@ namespace cusignal
              * @return 与 `t` 等长的方波序列。
              * @throws std::invalid_argument 当 `duty` 不在 `[0,1]` 内时抛出异常。
              */
-            core::CudaRealSignal square(const core::RealSignalLike &t, float duty = 0.5);
+            core::ZxGpuRealSignal square(const core::RealSignalLike &t, float duty = 0.5);
 
             /**
              * @brief 生成方波，占空比参数按采样点逐点给定。
@@ -415,7 +415,7 @@ namespace cusignal
              * @return 与 `t` 等长的方波序列。
              * @throws std::invalid_argument 当长度不匹配或参数越界时抛出异常。
              */
-            core::CudaRealSignal square(
+            core::ZxGpuRealSignal square(
                 const core::RealSignalLike &t,
                 const core::RealSignalLike &duty);
 
@@ -428,7 +428,7 @@ namespace cusignal
              * @return 长度为 `size` 的单位冲激序列。
              * @throws std::invalid_argument 或 std::logic_error 当索引或 dtype 非法时抛出异常。
              */
-            core::CudaRealSignal unit_impulse(
+            core::ZxGpuRealSignal unit_impulse(
                 std::size_t size,
                 std::size_t index = 0,
                 const std::string &dtype = "float32");
@@ -442,7 +442,7 @@ namespace cusignal
              * @return 长度为 `size` 的单位冲激序列。
              * @throws std::invalid_argument 或 std::logic_error 当索引规格或 dtype 非法时抛出异常。
              */
-            core::CudaRealSignal unit_impulse(
+            core::ZxGpuRealSignal unit_impulse(
                 std::size_t size,
                 const std::string &index_spec,
                 const std::string &dtype = "float32");
@@ -455,7 +455,7 @@ namespace cusignal
              * @return 包含 `shape` 与展平值数组的 N 维单位冲激结果。
              * @throws std::logic_error 当 dtype 非法时抛出异常。
              */
-            waveforms_api::CudaNdRealSignal unit_impulse(
+            waveforms_api::ZxGpuNdRealSignal unit_impulse(
                 const core::Shape &shape,
                 const std::string &dtype = "float32");
 
@@ -468,7 +468,7 @@ namespace cusignal
              * @return 包含 `shape` 与展平值数组的 N 维单位冲激结果。
              * @throws std::out_of_range 或 std::logic_error 当索引或 dtype 非法时抛出异常。
              */
-            waveforms_api::CudaNdRealSignal unit_impulse(
+            waveforms_api::ZxGpuNdRealSignal unit_impulse(
                 const core::Shape &shape,
                 std::size_t index,
                 const std::string &dtype = "float32");
@@ -482,7 +482,7 @@ namespace cusignal
              * @return 包含 `shape` 与展平值数组的 N 维单位冲激结果。
              * @throws std::invalid_argument、std::out_of_range 或 std::logic_error 当索引或 dtype 非法时抛出异常。
              */
-            waveforms_api::CudaNdRealSignal unit_impulse(
+            waveforms_api::ZxGpuNdRealSignal unit_impulse(
                 const core::Shape &shape,
                 const core::Shape &index,
                 const std::string &dtype = "float32");
@@ -496,11 +496,11 @@ namespace cusignal
              * @return 包含 `shape` 与展平值数组的 N 维单位冲激结果。
              * @throws std::invalid_argument 或 std::logic_error 当索引规格或 dtype 非法时抛出异常。
              */
-            waveforms_api::CudaNdRealSignal unit_impulse(
+            waveforms_api::ZxGpuNdRealSignal unit_impulse(
                 const core::Shape &shape,
                 const char *index_spec,
                 const std::string &dtype = "float32");
 
         } // namespace waveforms
-    } // namespace cuda_backend
+    } // namespace zx_gpu_backend
 } // namespace cusignal

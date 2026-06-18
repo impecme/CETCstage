@@ -144,7 +144,7 @@ def plot_task_scale(rows: list[dict[str, str]], title: str) -> plt.Figure:
     speedup = numeric(rows, "speedup")
     error = np.maximum(numeric(rows, "max_mixed_error"), 1.0e-12)
     jitter = numeric(rows, "gpu_total_jitter")
-    cuda_drift = np.abs(numeric(rows, "cuda_free_drift_mib"))
+    gpu_drift = np.abs(numeric(rows, "gpu_free_drift_mib"))
     rss_drift = np.abs(numeric(rows, "rss_current_drift_mib"))
     status = np.array([1.0 if bool_pass(row) else 0.0 for row in rows], dtype=float)
 
@@ -170,7 +170,7 @@ def plot_task_scale(rows: list[dict[str, str]], title: str) -> plt.Figure:
     ax_error.grid(True, which="both", alpha=0.28)
 
     ax_health.plot(x, jitter, marker="o", label="GPU jitter")
-    ax_health.plot(x, cuda_drift, marker="s", label="CUDA drift MiB")
+    ax_health.plot(x, gpu_drift, marker="s", label="GPU drift MiB")
     ax_health.plot(x, rss_drift, marker="^", label="RSS drift MiB")
     for row_x, ok in zip(x, status):
         ax_health.scatter(row_x, 0.0, marker="s", s=46, color=("#2ca02c" if ok else "#d62728"))

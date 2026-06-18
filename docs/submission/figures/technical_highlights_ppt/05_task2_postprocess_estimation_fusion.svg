@@ -1314,7 +1314,7 @@ z
     <text style="font-size: 13.5px; font-family: 'Droid Sans Fallback', 'DejaVu Sans'; text-anchor: middle; fill: #243238" x="1064.52" y="525.005156" transform="rotate(-0 1064.52 525.005156)">JSON</text>
    </g>
    <g id="text_22">
-    <text style="font-size: 11.5px; font-family: 'Droid Sans Fallback', 'DejaVu Sans'; text-anchor: end; fill: #607d8b" x="1105.2" y="617.928516" transform="rotate(-0 1105.2 617.928516)">demo/task2_features/task2_features_cuda.cu | src/cuda/peak_finding.cu | src/cuda/estimation.cu</text>
+    <text style="font-size: 11.5px; font-family: 'Droid Sans Fallback', 'DejaVu Sans'; text-anchor: end; fill: #607d8b" x="1105.2" y="617.928516" transform="rotate(-0 1105.2 617.928516)">demo/task2_features/task2_features_zx_gpu.cu | src/zhongkexin/peak_finding.cu | src/zhongkexin/estimation.cu</text>
    </g>
   </g>
  </g>

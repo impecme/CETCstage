@@ -1570,7 +1570,7 @@ z
     <text style="font-size: 6.2px; font-family: 'Droid Sans Fallback', 'DejaVu Sans'; text-anchor: middle; fill: #263238" x="851.904" y="437.166812" transform="rotate(-0 851.904 437.166812)">JSON</text>
    </g>
    <g id="text_29">
-    <text style="font-size: 7.2px; font-family: 'Droid Sans Fallback', 'DejaVu Sans'; text-anchor: end; fill: #607d8b" x="895.68" y="497.118375" transform="rotate(-0 895.68 497.118375)">src/cuda/spectral.cu | scripts/test/READMEV3_8_4.md</text>
+    <text style="font-size: 7.2px; font-family: 'Droid Sans Fallback', 'DejaVu Sans'; text-anchor: end; fill: #607d8b" x="895.68" y="497.118375" transform="rotate(-0 895.68 497.118375)">src/zhongkexin/spectral.cu | scripts/test/READMEV3_8_4.md</text>
    </g>
   </g>
  </g>

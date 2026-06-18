@@ -20,12 +20,12 @@ namespace cusignal
         };
 
         /**
-         * @brief CUDA 一维模糊函数切片结果。
+         * @brief ZQ500 GPU 一维模糊函数切片结果。
          */
-        struct CudaAmbgfunCutResult
+        struct ZxGpuAmbgfunCutResult
         {
-            core::CudaRealSignal values;
-            core::CudaRealSignal axis;
+            core::ZxGpuRealSignal values;
+            core::ZxGpuRealSignal axis;
         };
 
         /**
@@ -39,13 +39,13 @@ namespace cusignal
         };
 
         /**
-         * @brief CUDA 二维模糊函数结果。
+         * @brief ZQ500 GPU 二维模糊函数结果。
          */
-        struct CudaAmbgfunSurfaceResult
+        struct ZxGpuAmbgfunSurfaceResult
         {
-            core::CudaRealArray values;
-            core::CudaRealSignal delay_axis;
-            core::CudaRealSignal doppler_axis;
+            core::ZxGpuRealArray values;
+            core::ZxGpuRealSignal delay_axis;
+            core::ZxGpuRealSignal doppler_axis;
         };
 
         /**
@@ -54,9 +54,9 @@ namespace cusignal
         using AmbgfunResult = std::variant<AmbgfunCutResult, AmbgfunSurfaceResult>;
 
         /**
-         * @brief CUDA 模糊函数总返回类型。
+         * @brief ZQ500 GPU 模糊函数总返回类型。
          */
-        using CudaAmbgfunResult = std::variant<CudaAmbgfunCutResult, CudaAmbgfunSurfaceResult>;
+        using ZxGpuAmbgfunResult = std::variant<ZxGpuAmbgfunCutResult, ZxGpuAmbgfunSurfaceResult>;
 
         /**
          * @brief CA-CFAR 返回结果。
@@ -68,12 +68,12 @@ namespace cusignal
         };
 
         /**
-         * @brief CUDA CA-CFAR 返回结果。
+         * @brief ZQ500 GPU CA-CFAR 返回结果。
          */
-        struct CudaCfarResult
+        struct ZxGpuCfarResult
         {
-            core::CudaRealArray threshold;
-            core::CudaRealArray detections;
+            core::ZxGpuRealArray threshold;
+            core::ZxGpuRealArray detections;
         };
 
     } // namespace radartools_api
@@ -214,7 +214,7 @@ namespace cusignal
         } // namespace radartools
     } // namespace cpu
 
-    namespace cuda_backend
+    namespace zx_gpu_backend
     {
         namespace radartools
         {
@@ -231,11 +231,11 @@ namespace cusignal
              * @throws std::invalid_argument 当输入 rank 非法时抛出异常。
              * @note Python callable window 本轮暂不支持。
              */
-            core::CudaComplexArray pulse_compression(
+            core::ZxGpuComplexArray pulse_compression(
                 const core::ComplexArrayLike &x,
                 const core::ComplexSignalLike &templ,
                 bool normalize = false,
-                core::CudaWindowSpec window = std::string(),
+                core::ZxGpuWindowSpec window = std::string(),
                 int nfft = 0);
 
             /**
@@ -248,9 +248,9 @@ namespace cusignal
              * @throws std::invalid_argument 当输入 rank 非法时抛出异常。
              * @note Python callable window 本轮暂不支持。
              */
-            core::CudaComplexArray pulse_doppler(
+            core::ZxGpuComplexArray pulse_doppler(
                 const core::ComplexArrayLike &x,
-                core::CudaWindowSpec window = std::string(),
+                core::ZxGpuWindowSpec window = std::string(),
                 int nfft = 0);
 
             /**
@@ -264,7 +264,7 @@ namespace cusignal
              * @return 当 `cut="2d"` 返回二维结果，否则返回一维切片结果。
              * @throws std::invalid_argument 当 `cut` 非法或采样参数非正时抛出异常。
              */
-            radartools_api::CudaAmbgfunResult ambgfun(
+            radartools_api::ZxGpuAmbgfunResult ambgfun(
                 const core::ComplexSignalLike &x,
                 float fs,
                 float prf,
@@ -283,7 +283,7 @@ namespace cusignal
              * @return 当 `cut="2d"` 返回二维结果，否则返回一维切片结果。
              * @throws std::invalid_argument 当 `cut` 非法、长度为空或采样参数非正时抛出异常。
              */
-            radartools_api::CudaAmbgfunResult ambgfun(
+            radartools_api::ZxGpuAmbgfunResult ambgfun(
                 const core::ComplexSignalLike &x,
                 const core::ComplexSignalLike &y,
                 float fs,
@@ -311,7 +311,7 @@ namespace cusignal
              * @return 阈值张量和检测结果张量。
              * @throws std::invalid_argument 当窗口配置与输入长度不匹配时抛出异常。
              */
-            radartools_api::CudaCfarResult ca_cfar(
+            radartools_api::ZxGpuCfarResult ca_cfar(
                 const core::RealArrayLike &array,
                 int guard_cells,
                 int reference_cells,
@@ -327,7 +327,7 @@ namespace cusignal
              * @return 阈值张量和检测结果张量。
              * @throws std::invalid_argument 当输入不是二维或窗口配置不合法时抛出异常。
              */
-            radartools_api::CudaCfarResult ca_cfar(
+            radartools_api::ZxGpuCfarResult ca_cfar(
                 const core::RealArrayLike &array,
                 const core::Shape &guard_cells,
                 const core::Shape &reference_cells,
@@ -342,11 +342,11 @@ namespace cusignal
              * @return 长度与 `sv` 相匹配的复数权重张量。
              * @throws std::invalid_argument 当输入维度不匹配时抛出异常。
              */
-            core::CudaComplexArray mvdr(
+            core::ZxGpuComplexArray mvdr(
                 const core::ComplexArrayLike &x,
                 const core::ComplexArrayLike &sv,
                 bool calc_cov = true);
 
         } // namespace radartools
-    } // namespace cuda_backend
+    } // namespace zx_gpu_backend
 } // namespace cusignal

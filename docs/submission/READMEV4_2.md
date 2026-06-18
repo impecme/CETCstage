@@ -30,7 +30,7 @@ V4.2 承接 V4.1，把 Task1/Task2 从“任务级 demo 可运行”推进到“
 - 顶层 CMake 新增 `cusignal_configure_cuda_source_target`，统一处理 unit test support `.cu` 在 NVIDIA CUDA language 与中科芯 `dlcc -x cuda` CXX 编译模型下的差异。
 - 所有 `tests/unit/*/*_test_support.cu` 目标改为复用平台感知 helper，避免中科芯路径 support 静态库缺对象。
 - `scripts/test/run_task_demos.sh` 修正 Task2 scale 图件检查路径，按绘图脚本实际输出检查 `data/reports/demo/task2_multidomain_l1_l6_scale_performance.png`。
-- `src/cuda/spectral.cu` 在 `CUSIGNAL_PLATFORM_ZHONGKEXIN` 下禁用 spectrogram PSD 的 R2C 快路径，改走已验证通过的 C2C 后处理路径；NVIDIA 默认路径不变。
+- `src/zhongkexin/spectral.cu` 在 `CUSIGNAL_PLATFORM_ZHONGKEXIN` 下禁用 spectrogram PSD 的 R2C 快路径，改走已验证通过的 C2C 后处理路径；NVIDIA 默认路径不变。
 - Stage2 默认只运行 L3 单规模调试，保留 `STAGE2_SCALES=1,2,3,4,5,6` 作为阶段关闭全规模入口，避免中间调试过度占用中科芯 GPU。
 - Stage2 在依赖算子失败时默认跳过 scale sweep，避免前置失败后继续占用 GPU；如需强制运行可设置 `RUN_SCALE_ON_OPERATOR_FAILURE=1`。
 - `copy_to_container.sh` 和 `replace_container_project.sh` 增加版本核对与旧日志排除，降低宿主机/容器同步误判风险。

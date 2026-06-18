@@ -42,7 +42,7 @@
 ### 1. 依赖清单冻结
 
 - 从 `demo/task1_radar` 和 `demo/task2_features` 反向整理算子调用链。
-- 建立 Task1/Task2 依赖矩阵，记录 CPU 路径、CUDA 路径、中科芯路径的覆盖状态。
+- 建立 Task1/Task2 依赖矩阵，记录 CPU 路径、ZQ500 GPU 路径、中科芯路径的覆盖状态。
 - 对每个算子记录输入规模、容差、报告字段和现有测试入口。
 
 ### 2. 算子级 smoke 与 accuracy

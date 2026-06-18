@@ -20,12 +20,12 @@ namespace cusignal
         };
 
         /**
-         * @brief CUDA 实数谱估计结果。
+         * @brief ZQ500 GPU 实数谱估计结果。
          */
-        struct CudaRealSpectrumResult
+        struct ZxGpuRealSpectrumResult
         {
-            core::CudaRealSignal frequencies;
-            core::CudaRealArray values;
+            core::ZxGpuRealSignal frequencies;
+            core::ZxGpuRealArray values;
         };
 
         /**
@@ -38,12 +38,12 @@ namespace cusignal
         };
 
         /**
-         * @brief CUDA 复数谱估计结果。
+         * @brief ZQ500 GPU 复数谱估计结果。
          */
-        struct CudaComplexSpectrumResult
+        struct ZxGpuComplexSpectrumResult
         {
-            core::CudaRealSignal frequencies;
-            core::CudaComplexArray values;
+            core::ZxGpuRealSignal frequencies;
+            core::ZxGpuComplexArray values;
         };
 
         /**
@@ -57,13 +57,13 @@ namespace cusignal
         };
 
         /**
-         * @brief CUDA spectrogram 返回结果。
+         * @brief ZQ500 GPU spectrogram 返回结果。
          */
-        struct CudaSpectrogramResult
+        struct ZxGpuSpectrogramResult
         {
-            core::CudaRealSignal frequencies;
-            core::CudaRealSignal times;
-            std::variant<core::CudaRealArray, core::CudaComplexArray> values;
+            core::ZxGpuRealSignal frequencies;
+            core::ZxGpuRealSignal times;
+            std::variant<core::ZxGpuRealArray, core::ZxGpuComplexArray> values;
         };
 
         /**
@@ -77,13 +77,13 @@ namespace cusignal
         };
 
         /**
-         * @brief CUDA STFT 返回结果。
+         * @brief ZQ500 GPU STFT 返回结果。
          */
-        struct CudaStftResult
+        struct ZxGpuStftResult
         {
-            core::CudaRealSignal frequencies;
-            core::CudaRealSignal times;
-            core::CudaComplexArray values;
+            core::ZxGpuRealSignal frequencies;
+            core::ZxGpuRealSignal times;
+            core::ZxGpuComplexArray values;
         };
 
         /**
@@ -96,12 +96,12 @@ namespace cusignal
         };
 
         /**
-         * @brief CUDA iSTFT 返回结果。
+         * @brief ZQ500 GPU iSTFT 返回结果。
          */
-        struct CudaIstftResult
+        struct ZxGpuIstftResult
         {
-            core::CudaRealSignal times;
-            core::CudaRealArray signal;
+            core::ZxGpuRealSignal times;
+            core::ZxGpuRealArray signal;
         };
 
         /**
@@ -114,12 +114,12 @@ namespace cusignal
         };
 
         /**
-         * @brief CUDA 向量强度分析返回结果。
+         * @brief ZQ500 GPU 向量强度分析返回结果。
          */
-        struct CudaVectorStrengthResult
+        struct ZxGpuVectorStrengthResult
         {
-            core::CudaRealSignal strength;
-            core::CudaRealSignal phase;
+            core::ZxGpuRealSignal strength;
+            core::ZxGpuRealSignal phase;
         };
 
     } // namespace spectral_api
@@ -379,7 +379,7 @@ namespace cusignal
         } // namespace spectral
     } // namespace cpu
 
-    namespace cuda_backend
+    namespace zx_gpu_backend
     {
         namespace spectral
         {
@@ -395,7 +395,7 @@ namespace cusignal
              * @return 与 `freqs` 等长的周期图序列。
              * @throws std::invalid_argument 当输入长度不一致时抛出异常。
              */
-            core::CudaRealSignal lombscargle(
+            core::ZxGpuRealSignal lombscargle(
                 const core::RealSignalLike &x,
                 const core::RealSignalLike &y,
                 const core::RealSignalLike &freqs,
@@ -417,10 +417,10 @@ namespace cusignal
              * @throws std::invalid_argument 当 `scaling` 非法时抛出异常。
              * @note Python callable detrend 本轮暂不支持。
              */
-            spectral_api::CudaRealSpectrumResult periodogram(
+            spectral_api::ZxGpuRealSpectrumResult periodogram(
                 const core::RealArrayLike &x,
                 float fs = 1.0,
-                core::CudaWindowSpec window = std::string("boxcar"),
+                core::ZxGpuWindowSpec window = std::string("boxcar"),
                 int nfft = 0,
                 core::DetrendSpec detrend = std::string("constant"),
                 bool return_onesided = true,
@@ -445,10 +445,10 @@ namespace cusignal
              * @throws std::invalid_argument 当字符串模式非法时抛出异常。
              * @note Python callable detrend 本轮暂不支持。
              */
-            spectral_api::CudaRealSpectrumResult welch(
+            spectral_api::ZxGpuRealSpectrumResult welch(
                 const core::RealArrayLike &x,
                 float fs = 1.0,
-                core::CudaWindowSpec window = std::string("hann"),
+                core::ZxGpuWindowSpec window = std::string("hann"),
                 int nperseg = 0,
                 int noverlap = -1,
                 int nfft = 0,
@@ -477,11 +477,11 @@ namespace cusignal
              * @throws std::invalid_argument 当输入形状、字符串模式或轴不合法时抛出异常。
              * @note Python callable detrend 本轮暂不支持。
              */
-            spectral_api::CudaComplexSpectrumResult csd(
+            spectral_api::ZxGpuComplexSpectrumResult csd(
                 const core::RealArrayLike &x,
                 const core::RealArrayLike &y,
                 float fs = 1.0,
-                core::CudaWindowSpec window = std::string("hann"),
+                core::ZxGpuWindowSpec window = std::string("hann"),
                 int nperseg = 0,
                 int noverlap = -1,
                 int nfft = 0,
@@ -509,10 +509,10 @@ namespace cusignal
              * @throws std::invalid_argument 当字符串模式非法时抛出异常。
              * @note Python callable detrend 本轮暂不支持。
              */
-            spectral_api::CudaSpectrogramResult spectrogram(
+            spectral_api::ZxGpuSpectrogramResult spectrogram(
                 const core::RealArrayLike &x,
                 float fs = 1.0,
-                core::CudaWindowSpec window = core::NamedFloatParameter{"tukey", 0.25},
+                core::ZxGpuWindowSpec window = core::NamedFloatParameter{"tukey", 0.25},
                 int nperseg = 0,
                 int noverlap = -1,
                 int nfft = 0,
@@ -540,10 +540,10 @@ namespace cusignal
              * @throws std::invalid_argument 当字符串模式非法时抛出异常。
              * @note Python callable detrend 本轮暂不支持。
              */
-            spectral_api::CudaStftResult stft(
+            spectral_api::ZxGpuStftResult stft(
                 const core::RealArrayLike &x,
                 float fs = 1.0,
-                core::CudaWindowSpec window = std::string("hann"),
+                core::ZxGpuWindowSpec window = std::string("hann"),
                 int nperseg = 256,
                 int noverlap = -1,
                 int nfft = 0,
@@ -568,10 +568,10 @@ namespace cusignal
              * @param freq_axis 频率轴位置。
              * @return 重建信号及时间轴。
              */
-            spectral_api::CudaIstftResult istft(
+            spectral_api::ZxGpuIstftResult istft(
                 const core::ComplexArrayLike &zxx,
                 float fs = 1.0,
-                core::CudaWindowSpec window = std::string("hann"),
+                core::ZxGpuWindowSpec window = std::string("hann"),
                 int nperseg = 0,
                 int noverlap = -1,
                 int nfft = 0,
@@ -596,11 +596,11 @@ namespace cusignal
              * @throws std::invalid_argument 当输入形状、字符串模式或轴不合法时抛出异常。
              * @note Python callable detrend 本轮暂不支持。
              */
-            spectral_api::CudaRealSpectrumResult coherence(
+            spectral_api::ZxGpuRealSpectrumResult coherence(
                 const core::RealArrayLike &x,
                 const core::RealArrayLike &y,
                 float fs = 1.0,
-                core::CudaWindowSpec window = std::string("hann"),
+                core::ZxGpuWindowSpec window = std::string("hann"),
                 int nperseg = 0,
                 int noverlap = -1,
                 int nfft = 0,
@@ -615,7 +615,7 @@ namespace cusignal
              * @return 长度为 1 的向量强度与相位结果。
              * @throws std::invalid_argument 当 `period <= 0` 时抛出异常。
              */
-            spectral_api::CudaVectorStrengthResult vectorstrength(
+            spectral_api::ZxGpuVectorStrengthResult vectorstrength(
                 const core::RealSignalLike &events,
                 float period);
 
@@ -627,10 +627,10 @@ namespace cusignal
              * @return 与 `period` 等长的向量强度与相位结果。
              * @throws std::invalid_argument 当 `period` 为空或含非正值时抛出异常。
              */
-            spectral_api::CudaVectorStrengthResult vectorstrength(
+            spectral_api::ZxGpuVectorStrengthResult vectorstrength(
                 const core::RealSignalLike &events,
                 const core::RealSignalLike &period);
 
         } // namespace spectral
-    } // namespace cuda_backend
+    } // namespace zx_gpu_backend
 } // namespace cusignal

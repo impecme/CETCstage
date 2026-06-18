@@ -64,12 +64,12 @@ mixed_error = max(sample_error)
 
 涉及文件：
 
-- `src/cuda/filtering.cu`
+- `src/zhongkexin/filtering.cu`
 
 问题来源：
 
 - `noise < 0` 时需要从局部方差估计全局噪声。
-- 旧 CUDA 路径使用全局累加，线程调度顺序会改变浮点求和顺序。
+- 旧 ZQ500 GPU 路径使用全局累加，线程调度顺序会改变浮点求和顺序。
 - 单精度下不同累加顺序会使小幅值输出的误差放大。
 
 优化方式：
@@ -92,7 +92,7 @@ mixed_error = max(sample_error)
 涉及文件：
 
 - `src/cpu/filtering.cpp`
-- `src/cuda/filtering.cu`
+- `src/zhongkexin/filtering.cu`
 
 问题来源：
 
@@ -118,7 +118,7 @@ mixed_error = max(sample_error)
 
 涉及文件：
 
-- `src/cuda/filtering.cu`
+- `src/zhongkexin/filtering.cu`
 
 问题来源：
 
@@ -129,7 +129,7 @@ mixed_error = max(sample_error)
 优化方式：
 
 - 保持 GPU block-per-output 的并行结构。
-- 在 CUDA kernel 内统一单精度 round-nearest 风格的乘加累积。
+- 在 ZQ500 GPU kernel 内统一单精度 round-nearest 风格的乘加累积。
 - taps、twiddle 和每通道输出使用固定顺序，减少调度导致的误差漂移。
 
 效果：

@@ -23,7 +23,7 @@ namespace fs = std::filesystem;
 
 namespace cusignal
 {
-    namespace cuda_backend
+    namespace zx_gpu_backend
     {
         namespace correlate_test_hooks
         {
@@ -37,9 +37,9 @@ namespace
     using cusignal::core::Complex;
     using cusignal::core::ComplexArray;
     using cusignal::core::ComplexSignal;
-    using cusignal::core::CudaComplexArray;
-    using cusignal::core::CudaIndexSignal;
-    using cusignal::core::CudaRealArray;
+    using cusignal::core::ZxGpuComplexArray;
+    using cusignal::core::ZxGpuIndexSignal;
+    using cusignal::core::ZxGpuRealArray;
     using cusignal::core::IndexVector;
     using cusignal::core::RealArray;
     using cusignal::core::RealSignal;
@@ -593,8 +593,8 @@ namespace
                 const RealArray cpu =
                     cusignal::cpu::correlate::correlate(
                         test_case.in1_real, test_case.in2_real, test_case.mode, test_case.method);
-                const CudaRealArray gpu =
-                    cusignal::cuda_backend::correlate::correlate(
+                const ZxGpuRealArray gpu =
+                    cusignal::zx_gpu_backend::correlate::correlate(
                         test_case.in1_real, test_case.in2_real, test_case.mode, test_case.method);
                 const RealArray gpu_host = gpu.get();
                 const ErrorMetrics cpu_gpu = compare_real(cpu.values, gpu_host.values);
@@ -621,8 +621,8 @@ namespace
                 const ComplexArray cpu =
                     cusignal::cpu::correlate::correlate(
                         test_case.in1_complex, test_case.in2_complex, test_case.mode, test_case.method);
-                const CudaComplexArray gpu =
-                    cusignal::cuda_backend::correlate::correlate(
+                const ZxGpuComplexArray gpu =
+                    cusignal::zx_gpu_backend::correlate::correlate(
                         test_case.in1_complex, test_case.in2_complex, test_case.mode, test_case.method);
                 const ComplexArray gpu_host = gpu.get();
                 const ErrorMetrics cpu_gpu = compare_complex(cpu.values, gpu_host.values);
@@ -658,10 +658,10 @@ namespace
             }
             std::vector<float> kernel_samples;
             summary.gpu_e2e_perf = measure_timing(options.warmup, options.repeat, [&]() {
-                (void)cusignal::cuda_backend::correlate_test_hooks::consume_last_kernel_ms();
-                (void)cusignal::cuda_backend::correlate::correlate(perf.in1_real, perf.in2_real, perf.mode, perf.method);
-                cusignal::core::throw_on_cuda_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
-                kernel_samples.push_back(cusignal::cuda_backend::correlate_test_hooks::consume_last_kernel_ms());
+                (void)cusignal::zx_gpu_backend::correlate_test_hooks::consume_last_kernel_ms();
+                (void)cusignal::zx_gpu_backend::correlate::correlate(perf.in1_real, perf.in2_real, perf.mode, perf.method);
+                cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
+                kernel_samples.push_back(cusignal::zx_gpu_backend::correlate_test_hooks::consume_last_kernel_ms());
             });
             summary.gpu_kernel_perf = summarize_timings(std::move(kernel_samples));
 
@@ -673,7 +673,7 @@ namespace
                     write_real_csv(gen / "input" / (perf.id + "__in1.csv"), perf.in1_real.values);
                     write_real_csv(gen / "input" / (perf.id + "__in2.csv"), perf.in2_real.values);
                     const RealArray gpu =
-                        cusignal::cuda_backend::correlate::correlate(perf.in1_real, perf.in2_real, perf.mode, perf.method).get();
+                        cusignal::zx_gpu_backend::correlate::correlate(perf.in1_real, perf.in2_real, perf.mode, perf.method).get();
                     const RealArray cpu =
                         cusignal::cpu::correlate::correlate(perf.in1_real, perf.in2_real, perf.mode, perf.method);
                     write_real_csv(gen / "output_samples" / (perf.id + "__cpu__values.csv"), cpu.values);
@@ -695,8 +695,8 @@ namespace
                 const RealArray cpu =
                     cusignal::cpu::correlate::correlate2d(
                         test_case.in1_real, test_case.in2_real, test_case.mode, "wrap", 0.0f);
-                const CudaRealArray gpu =
-                    cusignal::cuda_backend::correlate::correlate2d(
+                const ZxGpuRealArray gpu =
+                    cusignal::zx_gpu_backend::correlate::correlate2d(
                         test_case.in1_real, test_case.in2_real, test_case.mode, "wrap", 0.0f);
                 const RealArray gpu_host = gpu.get();
                 const ErrorMetrics cpu_gpu = compare_real(cpu.values, gpu_host.values);
@@ -723,8 +723,8 @@ namespace
                 const ComplexArray cpu =
                     cusignal::cpu::correlate::correlate2d(
                         test_case.in1_complex, test_case.in2_complex, test_case.mode, "fill", 0.0f);
-                const CudaComplexArray gpu =
-                    cusignal::cuda_backend::correlate::correlate2d(
+                const ZxGpuComplexArray gpu =
+                    cusignal::zx_gpu_backend::correlate::correlate2d(
                         test_case.in1_complex, test_case.in2_complex, test_case.mode, "fill", 0.0f);
                 const ComplexArray gpu_host = gpu.get();
                 const ErrorMetrics cpu_gpu = compare_complex(cpu.values, gpu_host.values);
@@ -760,10 +760,10 @@ namespace
             }
             std::vector<float> kernel_samples;
             summary.gpu_e2e_perf = measure_timing(options.warmup, options.repeat, [&]() {
-                (void)cusignal::cuda_backend::correlate_test_hooks::consume_last_kernel_ms();
-                (void)cusignal::cuda_backend::correlate::correlate2d(perf.in1_real, perf.in2_real, perf.mode, "fill", 0.0f);
-                cusignal::core::throw_on_cuda_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
-                kernel_samples.push_back(cusignal::cuda_backend::correlate_test_hooks::consume_last_kernel_ms());
+                (void)cusignal::zx_gpu_backend::correlate_test_hooks::consume_last_kernel_ms();
+                (void)cusignal::zx_gpu_backend::correlate::correlate2d(perf.in1_real, perf.in2_real, perf.mode, "fill", 0.0f);
+                cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
+                kernel_samples.push_back(cusignal::zx_gpu_backend::correlate_test_hooks::consume_last_kernel_ms());
             });
             summary.gpu_kernel_perf = summarize_timings(std::move(kernel_samples));
 
@@ -775,7 +775,7 @@ namespace
                     write_real_csv(gen / "input" / (perf.id + "__in1.csv"), perf.in1_real.values);
                     write_real_csv(gen / "input" / (perf.id + "__in2.csv"), perf.in2_real.values);
                     const RealArray gpu =
-                        cusignal::cuda_backend::correlate::correlate2d(perf.in1_real, perf.in2_real, perf.mode, "fill", 0.0f).get();
+                        cusignal::zx_gpu_backend::correlate::correlate2d(perf.in1_real, perf.in2_real, perf.mode, "fill", 0.0f).get();
                     const RealArray cpu =
                         cusignal::cpu::correlate::correlate2d(perf.in1_real, perf.in2_real, perf.mode, "fill", 0.0f);
                     write_real_csv(gen / "output_samples" / (perf.id + "__cpu__values.csv"), cpu.values);
@@ -795,7 +795,7 @@ namespace
             const IndexVector cpu =
                 cusignal::cpu::correlate::correlation_lags(test_case.in1_len, test_case.in2_len, test_case.mode);
             const IndexVector gpu =
-                cusignal::cuda_backend::correlate::correlation_lags(test_case.in1_len, test_case.in2_len, test_case.mode).get();
+                cusignal::zx_gpu_backend::correlate::correlation_lags(test_case.in1_len, test_case.in2_len, test_case.mode).get();
             const ErrorMetrics cpu_gpu = compare_index(cpu, gpu);
             const ErrorMetrics cpu_ref = compare_index(cpu, test_case.expected);
             const ErrorMetrics gpu_ref = compare_index(gpu, test_case.expected);
@@ -820,10 +820,10 @@ namespace
             }
             std::vector<float> kernel_samples;
             summary.gpu_e2e_perf = measure_timing(options.warmup, options.repeat, [&]() {
-                (void)cusignal::cuda_backend::correlate_test_hooks::consume_last_kernel_ms();
-                (void)cusignal::cuda_backend::correlate::correlation_lags(perf.in1_len, perf.in2_len, perf.mode);
-                cusignal::core::throw_on_cuda_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
-                kernel_samples.push_back(cusignal::cuda_backend::correlate_test_hooks::consume_last_kernel_ms());
+                (void)cusignal::zx_gpu_backend::correlate_test_hooks::consume_last_kernel_ms();
+                (void)cusignal::zx_gpu_backend::correlate::correlation_lags(perf.in1_len, perf.in2_len, perf.mode);
+                cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
+                kernel_samples.push_back(cusignal::zx_gpu_backend::correlate_test_hooks::consume_last_kernel_ms());
             });
             summary.gpu_kernel_perf = summarize_timings(std::move(kernel_samples));
             if (options.emit_report)
@@ -833,7 +833,7 @@ namespace
                     const fs::path gen = generated_root("correlation_lags");
                     write_index_csv(gen / "input" / (perf.id + "__lengths.csv"), {perf.in1_len, perf.in2_len});
                     const IndexVector gpu =
-                        cusignal::cuda_backend::correlate::correlation_lags(perf.in1_len, perf.in2_len, perf.mode).get();
+                        cusignal::zx_gpu_backend::correlate::correlation_lags(perf.in1_len, perf.in2_len, perf.mode).get();
                     const IndexVector cpu =
                         cusignal::cpu::correlate::correlation_lags(perf.in1_len, perf.in2_len, perf.mode);
                     write_index_csv(gen / "output_samples" / (perf.id + "__cpu__lags.csv"), cpu);

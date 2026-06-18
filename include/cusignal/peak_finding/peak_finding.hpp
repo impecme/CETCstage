@@ -18,9 +18,9 @@ namespace cusignal
         };
 
         /**
-         * @brief CUDA 极值索引结果，按轴返回 device 索引数组。
+         * @brief ZQ500 GPU 极值索引结果，按轴返回 device 索引数组。
          */
-        struct CudaExtremaResult
+        struct ZxGpuExtremaResult
         {
             core::DeviceAxisIndices indices;
         };
@@ -86,7 +86,7 @@ namespace cusignal
         } // namespace peak_finding
     } // namespace cpu
 
-    namespace cuda_backend
+    namespace zx_gpu_backend
     {
         namespace peak_finding
         {
@@ -103,7 +103,7 @@ namespace cusignal
              * @throws std::invalid_argument 当比较器、`order` 或 `mode` 非法时抛出异常。
              * @note Python callable comparator 本轮暂不支持。
              */
-            peak_finding_api::CudaExtremaResult argrelextrema(
+            peak_finding_api::ZxGpuExtremaResult argrelextrema(
                 const core::RealArrayLike &data,
                 const std::string &comparator,
                 int axis = 0,
@@ -120,7 +120,7 @@ namespace cusignal
              * @return 按轴组织的最小值索引结果。
              * @throws std::invalid_argument 当 `order` 或 `mode` 非法时抛出异常。
              */
-            peak_finding_api::CudaExtremaResult argrelmin(
+            peak_finding_api::ZxGpuExtremaResult argrelmin(
                 const core::RealArrayLike &data,
                 int axis = 0,
                 int order = 1,
@@ -136,12 +136,12 @@ namespace cusignal
              * @return 按轴组织的最大值索引结果。
              * @throws std::invalid_argument 当 `order` 或 `mode` 非法时抛出异常。
              */
-            peak_finding_api::CudaExtremaResult argrelmax(
+            peak_finding_api::ZxGpuExtremaResult argrelmax(
                 const core::RealArrayLike &data,
                 int axis = 0,
                 int order = 1,
                 const std::string &mode = "clip");
 
         } // namespace peak_finding
-    } // namespace cuda_backend
+    } // namespace zx_gpu_backend
 } // namespace cusignal

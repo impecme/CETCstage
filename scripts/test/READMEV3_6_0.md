@@ -52,7 +52,7 @@
 构建与脚本检查：
 
 ```bash
-cmake --build build --target cusignal_cpu cusignal_cuda
+cmake --build build --target cusignal_cpu cusignal_zx_gpu
 python3 -m py_compile scripts/data/generate_*.py scripts/test/*.py
 git diff --check -- include src tests scripts demo data/reference data/generated README.md
 ```
@@ -81,7 +81,7 @@ scripts/test/benchmark_all_ops_scales.py \
 ## 验收结果
 
 - 静态显式高精度类型检索：无命中。
-- `cusignal_cpu` / `cusignal_cuda`：构建通过。
+- `cusignal_cpu` / `cusignal_zx_gpu`：构建通过。
 - 数据生成脚本与测试脚本 py_compile：通过。
 - 定向 CTest：`11/11` 通过。
 - 采样 large-gpu benchmark：`54/54` 行全部 `passed`。

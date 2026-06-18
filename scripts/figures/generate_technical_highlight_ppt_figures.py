@@ -46,14 +46,14 @@ class PptFigure:
 PPT_FIGURES: tuple[PptFigure, ...] = (
     PptFigure(
         "01_parallel_operator_fusion",
-        "把递推、归约、相位差等串行瓶颈合并讲成一条 CUDA 并行化方法论。",
+        "把递推、归约、相位差等串行瓶颈合并讲成一条 ZQ500 并行化方法论。",
         (
             "sosfilt prefix-scan",
             "detrend two-stage reduction + Kahan",
             "vectorstrength / lombscargle reduction",
             "fm_demod phase-difference fusion",
         ),
-        ("src/cuda/filtering.cu", "src/cuda/spectral.cu", "src/cuda/demod.cu"),
+        ("src/zhongkexin/filtering.cu", "src/zhongkexin/spectral.cu", "src/zhongkexin/demod.cu"),
     ),
     PptFigure(
         "02_frequency_radar_operator_fusion",
@@ -65,7 +65,7 @@ PPT_FIGURES: tuple[PptFigure, ...] = (
             "ambgfun tile FFT",
             "MVDR cuBLAS/cuSOLVER path",
         ),
-        ("src/cuda/radartools.cu", "tests/unit/radartools/", "scripts/test/READMEV3_8_4.md"),
+        ("src/zhongkexin/radartools.cu", "tests/unit/radartools/", "scripts/test/READMEV3_8_4.md"),
     ),
     PptFigure(
         "03_workspace_cache_fusion",
@@ -77,7 +77,7 @@ PPT_FIGURES: tuple[PptFigure, ...] = (
             "SpectralWorkspace plan reuse",
             "firwin2 / chebwin / CWT cache",
         ),
-        ("include/cusignal/core/types.hpp", "src/cuda/filtering.cu", "src/cuda/spectral.cu", "src/cuda/windows.cu"),
+        ("include/cusignal/core/types.hpp", "src/zhongkexin/filtering.cu", "src/zhongkexin/spectral.cu", "src/zhongkexin/windows.cu"),
     ),
     PptFigure(
         "04_task_pipeline_fusion",
@@ -100,7 +100,7 @@ PPT_FIGURES: tuple[PptFigure, ...] = (
             "Kalman points-batched fast path",
             "device-side score / track",
         ),
-        ("demo/task2_features/task2_features_cuda.cu", "src/cuda/peak_finding.cu", "src/cuda/estimation.cu"),
+        ("demo/task2_features/task2_features_zx_gpu.cu", "src/zhongkexin/peak_finding.cu", "src/zhongkexin/estimation.cu"),
     ),
     PptFigure(
         "06_validation_benchmark_evidence_fusion",
@@ -315,7 +315,7 @@ def chip_row(
 def draw_parallel_operator_fusion(figinfo: PptFigure) -> plt.Figure:
     fig, ax = new_canvas()
     panel(ax, 0.45, 0.78, 4.7, 7.65, "A. 串行瓶颈")
-    panel(ax, 5.38, 0.78, 5.15, 7.65, "B. CUDA 并行策略")
+    panel(ax, 5.38, 0.78, 5.15, 7.65, "B. ZQ500 并行策略")
     panel(ax, 10.75, 0.78, 4.8, 7.65, "C. 统一收益")
 
     serial = (("sosfilt", "递推依赖"), ("detrend", "全轴求和"), ("periodogram", "逐频循环"), ("fm_demod", "相位/差分"))
@@ -546,7 +546,7 @@ def draw_performance_precision_gate_fusion(figinfo: PptFigure) -> plt.Figure:
     panel(ax, 10.8, 0.78, 4.75, 7.65, "C. 复测与业务 gate")
 
     box(ax, 0.92, 6.66, 3.78, 0.78, "e2e speedup\n含 H2D/D2H/准备", face=COLORS["value"], fontsize=15.5, weight="bold", limit=16)
-    box(ax, 0.92, 5.36, 3.78, 0.78, "kernel speedup\n只看 CUDA Kernel", face=COLORS["solution"], fontsize=15.5, weight="bold", limit=16)
+    box(ax, 0.92, 5.36, 3.78, 0.78, "kernel speedup\n只看 ZQ500 GPU Kernel", face=COLORS["solution"], fontsize=15.5, weight="bold", limit=16)
     bars(ax, 1.08, 3.45, 3.3, 1.1, ("CPU", "e2e", "Kernel"), (1.0, 0.55, 0.22), color=COLORS["accent2"])
     ax.text(1.08, 2.85, "小规模 copy-bound，大规模吞吐更明显", fontsize=14, color=COLORS["muted"])
     chip_row(ax, 1.05, 1.48, ("L1-L6", "repeat", "CSV"), face="#eef4f7")

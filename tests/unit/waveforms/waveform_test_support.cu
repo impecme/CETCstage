@@ -32,19 +32,19 @@ namespace fs = std::filesystem;
 namespace
 {
     using cusignal::core::ComplexSignal;
-    using cusignal::core::CudaComplexSignal;
-    using cusignal::core::CudaRealSignal;
+    using cusignal::core::ZxGpuComplexSignal;
+    using cusignal::core::ZxGpuRealSignal;
     using cusignal::core::RealSignal;
     using cusignal::core::Shape;
     using cusignal::waveforms_api::ChirpResult;
-    using cusignal::waveforms_api::CudaChirpResult;
-    using cusignal::waveforms_api::CudaGausspulseResult;
-    using cusignal::waveforms_api::CudaNdRealSignal;
+    using cusignal::waveforms_api::ZxGpuChirpResult;
+    using cusignal::waveforms_api::ZxGpuGausspulseResult;
+    using cusignal::waveforms_api::ZxGpuNdRealSignal;
     using cusignal::waveforms_api::GausspulseResult;
     using cusignal::waveforms_api::NdRealSignal;
-    using CudaUnitImpulseResult = std::variant<CudaRealSignal, CudaNdRealSignal>;
+    using ZxGpuUnitImpulseResult = std::variant<ZxGpuRealSignal, ZxGpuNdRealSignal>;
 
-    constexpr int kThreadsPerBlock = 256; // 辅助 CUDA kernel 的启动配置
+    constexpr int kThreadsPerBlock = 256; // 辅助 ZQ500 GPU kernel 的启动配置
 
     struct CliOptions
     {
@@ -635,7 +635,7 @@ namespace
         return compute_timing_stats(durations);
     }
 
-    void throw_on_cuda_error(cudaError_t status, const char *what)
+    void throw_on_zx_gpu_error(cudaError_t status, const char *what)
     {
         if (status != cudaSuccess)
         {
@@ -653,7 +653,7 @@ namespace
             {
                 return;
             }
-            throw_on_cuda_error(cudaMalloc(&data_, size * sizeof(T)), "cudaMalloc");
+            throw_on_zx_gpu_error(cudaMalloc(&data_, size * sizeof(T)), "cudaMalloc");
             size_ = size;
         }
 
@@ -678,7 +678,7 @@ namespace
             {
                 return;
             }
-            throw_on_cuda_error(
+            throw_on_zx_gpu_error(
                 cudaMemcpy(data_, host, count * sizeof(T), cudaMemcpyHostToDevice),
                 what);
         }
@@ -879,25 +879,25 @@ namespace
     {
         cudaEvent_t start {};
         cudaEvent_t stop {};
-        throw_on_cuda_error(cudaEventCreate(&start), "cudaEventCreate start");
-        throw_on_cuda_error(cudaEventCreate(&stop), "cudaEventCreate stop");
+        throw_on_zx_gpu_error(cudaEventCreate(&start), "cudaEventCreate start");
+        throw_on_zx_gpu_error(cudaEventCreate(&stop), "cudaEventCreate stop");
 
         for (int warmup = 0; warmup < options.warmup; ++warmup)
         {
             launch();
         }
-        throw_on_cuda_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize warmup");
+        throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize warmup");
 
         std::vector<float> samples;
         samples.reserve(static_cast<std::size_t>(options.repeat));
         for (int repeat = 0; repeat < options.repeat; ++repeat)
         {
-            throw_on_cuda_error(cudaEventRecord(start), "cudaEventRecord start");
+            throw_on_zx_gpu_error(cudaEventRecord(start), "cudaEventRecord start");
             launch();
-            throw_on_cuda_error(cudaEventRecord(stop), "cudaEventRecord stop");
-            throw_on_cuda_error(cudaEventSynchronize(stop), "cudaEventSynchronize stop");
+            throw_on_zx_gpu_error(cudaEventRecord(stop), "cudaEventRecord stop");
+            throw_on_zx_gpu_error(cudaEventSynchronize(stop), "cudaEventSynchronize stop");
             float elapsed = 0.0f;
-            throw_on_cuda_error(cudaEventElapsedTime(&elapsed, start, stop), "cudaEventElapsedTime");
+            throw_on_zx_gpu_error(cudaEventElapsedTime(&elapsed, start, stop), "cudaEventElapsedTime");
             samples.push_back(static_cast<float>(elapsed));
         }
 
@@ -940,13 +940,13 @@ namespace
         return make_complex_bundle(std::get<ComplexSignal>(result));
     }
 
-    OutputBundle to_output_bundle(const CudaChirpResult &result)
+    OutputBundle to_output_bundle(const ZxGpuChirpResult &result)
     {
-        if (std::holds_alternative<CudaRealSignal>(result))
+        if (std::holds_alternative<ZxGpuRealSignal>(result))
         {
-            return make_real_bundle("real", std::get<CudaRealSignal>(result).get());
+            return make_real_bundle("real", std::get<ZxGpuRealSignal>(result).get());
         }
-        return make_complex_bundle(std::get<CudaComplexSignal>(result).get());
+        return make_complex_bundle(std::get<ZxGpuComplexSignal>(result).get());
     }
 
     OutputBundle to_output_bundle(const GausspulseResult &result)
@@ -984,15 +984,15 @@ namespace
              ChannelData{"envelope", {value.envelope.size()}, value.envelope, {}, false}}};
     }
 
-    OutputBundle to_output_bundle(const CudaGausspulseResult &result)
+    OutputBundle to_output_bundle(const ZxGpuGausspulseResult &result)
     {
-        if (std::holds_alternative<CudaRealSignal>(result))
+        if (std::holds_alternative<ZxGpuRealSignal>(result))
         {
-            return make_real_bundle("real", std::get<CudaRealSignal>(result).get());
+            return make_real_bundle("real", std::get<ZxGpuRealSignal>(result).get());
         }
-        if (std::holds_alternative<cusignal::waveforms_api::CudaIqWaveform>(result))
+        if (std::holds_alternative<cusignal::waveforms_api::ZxGpuIqWaveform>(result))
         {
-            const auto &value = std::get<cusignal::waveforms_api::CudaIqWaveform>(result);
+            const auto &value = std::get<cusignal::waveforms_api::ZxGpuIqWaveform>(result);
             return OutputBundle{
                 "iq",
                 {ChannelData{"signal", {value.signal.size()}, value.signal.get(), {}, false},
@@ -1002,16 +1002,16 @@ namespace
                              {},
                              false}}};
         }
-        if (std::holds_alternative<cusignal::waveforms_api::CudaIEnvWaveform>(result))
+        if (std::holds_alternative<cusignal::waveforms_api::ZxGpuIEnvWaveform>(result))
         {
-            const auto &value = std::get<cusignal::waveforms_api::CudaIEnvWaveform>(result);
+            const auto &value = std::get<cusignal::waveforms_api::ZxGpuIEnvWaveform>(result);
             return OutputBundle{
                 "ienv",
                 {ChannelData{"signal", {value.signal.size()}, value.signal.get(), {}, false},
                  ChannelData{"envelope", {value.envelope.size()}, value.envelope.get(), {}, false}}};
         }
 
-        const auto &value = std::get<cusignal::core::CudaWaveformBundle>(result);
+        const auto &value = std::get<cusignal::core::ZxGpuWaveformBundle>(result);
         return OutputBundle{
             "bundle",
             {ChannelData{"signal", {value.signal.size()}, value.signal.get(), {}, false},
@@ -1024,7 +1024,7 @@ namespace
         return make_real_bundle("real", result);
     }
 
-    OutputBundle to_output_bundle(const CudaRealSignal &result)
+    OutputBundle to_output_bundle(const ZxGpuRealSignal &result)
     {
         return make_real_bundle("real", result.get());
     }
@@ -1038,7 +1038,7 @@ namespace
         return OutputBundle{"ndreal", {channel}};
     }
 
-    OutputBundle to_output_bundle(const CudaNdRealSignal &result)
+    OutputBundle to_output_bundle(const ZxGpuNdRealSignal &result)
     {
         ChannelData channel;
         channel.name = "signal";
@@ -1047,13 +1047,13 @@ namespace
         return OutputBundle{"ndreal", {channel}};
     }
 
-    OutputBundle to_output_bundle(const CudaUnitImpulseResult &result)
+    OutputBundle to_output_bundle(const ZxGpuUnitImpulseResult &result)
     {
-        if (std::holds_alternative<CudaRealSignal>(result))
+        if (std::holds_alternative<ZxGpuRealSignal>(result))
         {
-            return to_output_bundle(std::get<CudaRealSignal>(result));
+            return to_output_bundle(std::get<ZxGpuRealSignal>(result));
         }
-        return to_output_bundle(std::get<CudaNdRealSignal>(result));
+        return to_output_bundle(std::get<ZxGpuNdRealSignal>(result));
     }
 
     OutputBundle to_output_bundle(const OutputBundle &result)
@@ -1706,9 +1706,9 @@ namespace
             test_case.type);
     }
 
-    CudaChirpResult run_gpu(const ChirpCase &test_case)
+    ZxGpuChirpResult run_gpu(const ChirpCase &test_case)
     {
-        return cusignal::cuda_backend::waveforms::chirp(
+        return cusignal::zx_gpu_backend::waveforms::chirp(
             test_case.t,
             test_case.f0,
             test_case.t1,
@@ -1719,9 +1719,9 @@ namespace
             test_case.type);
     }
 
-    CudaChirpResult run_gpu(const ChirpCase &test_case, const CudaRealSignal &device_t)
+    ZxGpuChirpResult run_gpu(const ChirpCase &test_case, const ZxGpuRealSignal &device_t)
     {
-        return cusignal::cuda_backend::waveforms::chirp(
+        return cusignal::zx_gpu_backend::waveforms::chirp(
             device_t,
             test_case.f0,
             test_case.t1,
@@ -1744,9 +1744,9 @@ namespace
             test_case.retenv);
     }
 
-    CudaGausspulseResult run_gpu(const GausspulseCase &test_case)
+    ZxGpuGausspulseResult run_gpu(const GausspulseCase &test_case)
     {
-        return cusignal::cuda_backend::waveforms::gausspulse(
+        return cusignal::zx_gpu_backend::waveforms::gausspulse(
             test_case.t,
             test_case.fc,
             test_case.bw,
@@ -1756,9 +1756,9 @@ namespace
             test_case.retenv);
     }
 
-    CudaGausspulseResult run_gpu(const GausspulseCase &test_case, const CudaRealSignal &device_t)
+    ZxGpuGausspulseResult run_gpu(const GausspulseCase &test_case, const ZxGpuRealSignal &device_t)
     {
-        return cusignal::cuda_backend::waveforms::gausspulse(
+        return cusignal::zx_gpu_backend::waveforms::gausspulse(
             device_t,
             test_case.fc,
             test_case.bw,
@@ -1775,21 +1775,21 @@ namespace
                    : cusignal::cpu::waveforms::sawtooth(test_case.t, test_case.width_scalar);
     }
 
-    CudaRealSignal run_gpu(const SawtoothCase &test_case)
+    ZxGpuRealSignal run_gpu(const SawtoothCase &test_case)
     {
         return test_case.width_is_vector
-                   ? cusignal::cuda_backend::waveforms::sawtooth(test_case.t, test_case.width_values)
-                   : cusignal::cuda_backend::waveforms::sawtooth(test_case.t, test_case.width_scalar);
+                   ? cusignal::zx_gpu_backend::waveforms::sawtooth(test_case.t, test_case.width_values)
+                   : cusignal::zx_gpu_backend::waveforms::sawtooth(test_case.t, test_case.width_scalar);
     }
 
-    CudaRealSignal run_gpu(
+    ZxGpuRealSignal run_gpu(
         const SawtoothCase &test_case,
-        const CudaRealSignal &device_t,
-        const CudaRealSignal *device_width)
+        const ZxGpuRealSignal &device_t,
+        const ZxGpuRealSignal *device_width)
     {
         return test_case.width_is_vector
-                   ? cusignal::cuda_backend::waveforms::sawtooth(device_t, *device_width)
-                   : cusignal::cuda_backend::waveforms::sawtooth(device_t, test_case.width_scalar);
+                   ? cusignal::zx_gpu_backend::waveforms::sawtooth(device_t, *device_width)
+                   : cusignal::zx_gpu_backend::waveforms::sawtooth(device_t, test_case.width_scalar);
     }
 
     RealSignal run_cpu(const SquareCase &test_case)
@@ -1799,21 +1799,21 @@ namespace
                    : cusignal::cpu::waveforms::square(test_case.t, test_case.duty_scalar);
     }
 
-    CudaRealSignal run_gpu(const SquareCase &test_case)
+    ZxGpuRealSignal run_gpu(const SquareCase &test_case)
     {
         return test_case.duty_is_vector
-                   ? cusignal::cuda_backend::waveforms::square(test_case.t, test_case.duty_values)
-                   : cusignal::cuda_backend::waveforms::square(test_case.t, test_case.duty_scalar);
+                   ? cusignal::zx_gpu_backend::waveforms::square(test_case.t, test_case.duty_values)
+                   : cusignal::zx_gpu_backend::waveforms::square(test_case.t, test_case.duty_scalar);
     }
 
-    CudaRealSignal run_gpu(
+    ZxGpuRealSignal run_gpu(
         const SquareCase &test_case,
-        const CudaRealSignal &device_t,
-        const CudaRealSignal *device_duty)
+        const ZxGpuRealSignal &device_t,
+        const ZxGpuRealSignal *device_duty)
     {
         return test_case.duty_is_vector
-                   ? cusignal::cuda_backend::waveforms::square(device_t, *device_duty)
-                   : cusignal::cuda_backend::waveforms::square(device_t, test_case.duty_scalar);
+                   ? cusignal::zx_gpu_backend::waveforms::square(device_t, *device_duty)
+                   : cusignal::zx_gpu_backend::waveforms::square(device_t, test_case.duty_scalar);
     }
 
     OutputBundle run_cpu(const UnitImpulseCase &test_case)
@@ -1852,40 +1852,40 @@ namespace
         return to_output_bundle(cusignal::cpu::waveforms::unit_impulse(test_case.shape, test_case.dtype));
     }
 
-    CudaUnitImpulseResult run_gpu(const UnitImpulseCase &test_case)
+    ZxGpuUnitImpulseResult run_gpu(const UnitImpulseCase &test_case)
     {
         if (!test_case.is_nd)
         {
             if (test_case.index_mode == "mid")
             {
-                return cusignal::cuda_backend::waveforms::unit_impulse(
+                return cusignal::zx_gpu_backend::waveforms::unit_impulse(
                     test_case.size, std::string("mid"), test_case.dtype);
             }
             if (test_case.index_mode == "scalar")
             {
-                return cusignal::cuda_backend::waveforms::unit_impulse(
+                return cusignal::zx_gpu_backend::waveforms::unit_impulse(
                     test_case.size, test_case.scalar_index, test_case.dtype);
             }
-            return cusignal::cuda_backend::waveforms::unit_impulse(
+            return cusignal::zx_gpu_backend::waveforms::unit_impulse(
                 test_case.size, 0, test_case.dtype);
         }
 
         if (test_case.index_mode == "mid")
         {
-            return cusignal::cuda_backend::waveforms::unit_impulse(
+            return cusignal::zx_gpu_backend::waveforms::unit_impulse(
                 test_case.shape, "mid", test_case.dtype);
         }
         if (test_case.index_mode == "shape")
         {
-            return cusignal::cuda_backend::waveforms::unit_impulse(
+            return cusignal::zx_gpu_backend::waveforms::unit_impulse(
                 test_case.shape, test_case.shape_index, test_case.dtype);
         }
         if (test_case.index_mode == "scalar")
         {
-            return cusignal::cuda_backend::waveforms::unit_impulse(
+            return cusignal::zx_gpu_backend::waveforms::unit_impulse(
                 test_case.shape, test_case.scalar_index, test_case.dtype);
         }
-        return cusignal::cuda_backend::waveforms::unit_impulse(test_case.shape, test_case.dtype);
+        return cusignal::zx_gpu_backend::waveforms::unit_impulse(test_case.shape, test_case.dtype);
     }
 
     TimingStats benchmark_kernel(const ChirpCase &test_case, const CliOptions &options)
@@ -2068,7 +2068,7 @@ namespace
         }
 
         DeviceBuffer<float> output(size);
-        throw_on_cuda_error(cudaMemset(output.get(), 0, size * sizeof(float)), "cudaMemset impulse kernel");
+        throw_on_zx_gpu_error(cudaMemset(output.get(), 0, size * sizeof(float)), "cudaMemset impulse kernel");
         std::size_t flat_index = 0;
         if (!test_case.is_nd)
         {
@@ -2123,7 +2123,7 @@ namespace
         threw = false;
         try
         {
-            (void)cusignal::cuda_backend::waveforms::chirp(
+            (void)cusignal::zx_gpu_backend::waveforms::chirp(
                 t, 0.0, 1.0, 2.0, "logarithmic", 0.0, true, "real");
         }
         catch (const std::invalid_argument &)
@@ -2150,7 +2150,7 @@ namespace
         threw = false;
         try
         {
-            (void)cusignal::cuda_backend::waveforms::gausspulse("bad");
+            (void)cusignal::zx_gpu_backend::waveforms::gausspulse("bad");
         }
         catch (const std::invalid_argument &)
         {
@@ -2176,7 +2176,7 @@ namespace
         threw = false;
         try
         {
-            (void)cusignal::cuda_backend::waveforms::sawtooth(t, RealSignal{0.5});
+            (void)cusignal::zx_gpu_backend::waveforms::sawtooth(t, RealSignal{0.5});
         }
         catch (const std::invalid_argument &)
         {
@@ -2202,7 +2202,7 @@ namespace
         threw = false;
         try
         {
-            (void)cusignal::cuda_backend::waveforms::square(t, RealSignal{0.5});
+            (void)cusignal::zx_gpu_backend::waveforms::square(t, RealSignal{0.5});
         }
         catch (const std::invalid_argument &)
         {
@@ -2227,7 +2227,7 @@ namespace
         threw = false;
         try
         {
-            (void)cusignal::cuda_backend::waveforms::unit_impulse(Shape{2, 3}, Shape{2, 0});
+            (void)cusignal::zx_gpu_backend::waveforms::unit_impulse(Shape{2, 3}, Shape{2, 0});
         }
         catch (const std::out_of_range &)
         {
@@ -2241,13 +2241,13 @@ namespace
     {
         if constexpr (std::is_same_v<CaseType, ChirpCase>)
         {
-            return [test_case, device_t = CudaRealSignal::from_host(test_case.t)]() mutable {
+            return [test_case, device_t = ZxGpuRealSignal::from_host(test_case.t)]() mutable {
                 return run_gpu(test_case, device_t);
             };
         }
         else if constexpr (std::is_same_v<CaseType, GausspulseCase>)
         {
-            return [test_case, device_t = CudaRealSignal::from_host(test_case.t)]() mutable {
+            return [test_case, device_t = ZxGpuRealSignal::from_host(test_case.t)]() mutable {
                 return run_gpu(test_case, device_t);
             };
         }
@@ -2255,10 +2255,10 @@ namespace
         {
             return [
                 test_case,
-                device_t = CudaRealSignal::from_host(test_case.t),
+                device_t = ZxGpuRealSignal::from_host(test_case.t),
                 device_width = test_case.width_is_vector
-                                   ? CudaRealSignal::from_host(test_case.width_values)
-                                   : CudaRealSignal{}]() mutable {
+                                   ? ZxGpuRealSignal::from_host(test_case.width_values)
+                                   : ZxGpuRealSignal{}]() mutable {
                 return run_gpu(
                     test_case,
                     device_t,
@@ -2269,10 +2269,10 @@ namespace
         {
             return [
                 test_case,
-                device_t = CudaRealSignal::from_host(test_case.t),
+                device_t = ZxGpuRealSignal::from_host(test_case.t),
                 device_duty = test_case.duty_is_vector
-                                  ? CudaRealSignal::from_host(test_case.duty_values)
-                                  : CudaRealSignal{}]() mutable {
+                                  ? ZxGpuRealSignal::from_host(test_case.duty_values)
+                                  : ZxGpuRealSignal{}]() mutable {
                 return run_gpu(
                     test_case,
                     device_t,
@@ -2408,7 +2408,7 @@ namespace
                 report.gpu_e2e_perf =
                     benchmark_host_latency(options, [&]() {
                         (void)gpu_perf_runner();
-                        cusignal::core::throw_on_cuda_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
+                        cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
                     });
                 report.gpu_kernel_perf = kernel_bench(test_case, options);
 
@@ -2520,7 +2520,7 @@ int run_gausspulse_tests(int argc, char **argv)
         // 额外的标量 cutoff 参考值校验。
         const float cutoff_cpu = cusignal::cpu::waveforms::gausspulse("cutoff", 5.0, 0.5, -6.0, -60.0);
         const float cutoff_gpu =
-            cusignal::cuda_backend::waveforms::gausspulse("cutoff", 5.0, 0.5, -6.0, -60.0);
+            cusignal::zx_gpu_backend::waveforms::gausspulse("cutoff", 5.0, 0.5, -6.0, -60.0);
         assert_condition(
             std::fabs(cutoff_cpu - 0.5562590089628512f) < 1.0e-6f,
             "cpu gausspulse cutoff mismatch");

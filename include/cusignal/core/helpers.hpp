@@ -151,13 +151,13 @@ namespace cusignal
          * @param value 初始值。
          * @return 长度为 size 的 device 实数信号。
          */
-        inline CudaRealSignal make_cuda_real_signal(std::size_t size, Scalar value = 0.0f)
+        inline ZxGpuRealSignal make_zx_gpu_real_signal(std::size_t size, Scalar value = 0.0f)
         {
             if (value == 0.0f)
             {
-                return CudaRealSignal(size, true);
+                return ZxGpuRealSignal(size, true);
             }
-            return CudaRealSignal::from_host(make_real_signal(size, value));
+            return ZxGpuRealSignal::from_host(make_real_signal(size, value));
         }
 
         /**
@@ -167,15 +167,15 @@ namespace cusignal
          * @param value 初始值。
          * @return 长度为 size 的 device 复数信号。
          */
-        inline CudaComplexSignal make_cuda_complex_signal(
+        inline ZxGpuComplexSignal make_zx_gpu_complex_signal(
             std::size_t size,
             const Complex &value = Complex(0.0f, 0.0f))
         {
             if (value == Complex(0.0f, 0.0f))
             {
-                return CudaComplexSignal(size, true);
+                return ZxGpuComplexSignal(size, true);
             }
-            return CudaComplexSignal::from_host(make_complex_signal(size, value));
+            return ZxGpuComplexSignal::from_host(make_complex_signal(size, value));
         }
 
         /**
@@ -185,13 +185,13 @@ namespace cusignal
          * @param value 初始值。
          * @return 长度为 size 的 device 整型信号。
          */
-        inline CudaIndexSignal make_cuda_index_signal(std::size_t size, int value = 0)
+        inline ZxGpuIndexSignal make_zx_gpu_index_signal(std::size_t size, int value = 0)
         {
             if (value == 0)
             {
-                return CudaIndexSignal(size, true);
+                return ZxGpuIndexSignal(size, true);
             }
-            return CudaIndexSignal::from_host(IndexVector(size, value));
+            return ZxGpuIndexSignal::from_host(IndexVector(size, value));
         }
 
         /**
@@ -201,13 +201,13 @@ namespace cusignal
          * @param value 初始值。
          * @return 实数 device 张量。
          */
-        inline CudaRealArray make_cuda_real_array(const Shape &shape, Scalar value = 0.0f)
+        inline ZxGpuRealArray make_zx_gpu_real_array(const Shape &shape, Scalar value = 0.0f)
         {
             if (value == 0.0f)
             {
-                return CudaRealArray(shape, true);
+                return ZxGpuRealArray(shape, true);
             }
-            return CudaRealArray::from_host(make_real_array(shape, value));
+            return ZxGpuRealArray::from_host(make_real_array(shape, value));
         }
 
         /**
@@ -217,15 +217,15 @@ namespace cusignal
          * @param value 初始值。
          * @return 复数 device 张量。
          */
-        inline CudaComplexArray make_cuda_complex_array(
+        inline ZxGpuComplexArray make_zx_gpu_complex_array(
             const Shape &shape,
             const Complex &value = Complex(0.0f, 0.0f))
         {
             if (value == Complex(0.0f, 0.0f))
             {
-                return CudaComplexArray(shape, true);
+                return ZxGpuComplexArray(shape, true);
             }
-            return CudaComplexArray::from_host(make_complex_array(shape, value));
+            return ZxGpuComplexArray::from_host(make_complex_array(shape, value));
         }
 
         /**
@@ -235,13 +235,13 @@ namespace cusignal
          * @param value 初始值。
          * @return 整型 device 张量。
          */
-        inline CudaIndexArray make_cuda_index_array(const Shape &shape, int value = 0)
+        inline ZxGpuIndexArray make_zx_gpu_index_array(const Shape &shape, int value = 0)
         {
             if (value == 0)
             {
-                return CudaIndexArray(shape, true);
+                return ZxGpuIndexArray(shape, true);
             }
-            return CudaIndexArray::from_host(make_index_array(shape, value));
+            return ZxGpuIndexArray::from_host(make_index_array(shape, value));
         }
 
         /**
@@ -316,9 +316,9 @@ namespace cusignal
          * @param signal 参考信号。
          * @return 同长度的 device 实数信号。
          */
-        inline CudaRealSignal make_cuda_real_like(const CudaRealSignal &signal)
+        inline ZxGpuRealSignal make_zx_gpu_real_like(const ZxGpuRealSignal &signal)
         {
-            return make_cuda_real_signal(signal.size());
+            return make_zx_gpu_real_signal(signal.size());
         }
 
         /**
@@ -327,9 +327,9 @@ namespace cusignal
          * @param signal 参考信号。
          * @return 同长度的 device 复数信号。
          */
-        inline CudaComplexSignal make_cuda_complex_like(const CudaComplexSignal &signal)
+        inline ZxGpuComplexSignal make_zx_gpu_complex_like(const ZxGpuComplexSignal &signal)
         {
-            return make_cuda_complex_signal(signal.size());
+            return make_zx_gpu_complex_signal(signal.size());
         }
 
         /**
@@ -338,9 +338,9 @@ namespace cusignal
          * @param signal 参考信号。
          * @return 同长度的 device 整型信号。
          */
-        inline CudaIndexSignal make_cuda_index_like(const CudaIndexSignal &signal)
+        inline ZxGpuIndexSignal make_zx_gpu_index_like(const ZxGpuIndexSignal &signal)
         {
-            return make_cuda_index_signal(signal.size());
+            return make_zx_gpu_index_signal(signal.size());
         }
 
         /**
@@ -406,9 +406,9 @@ namespace cusignal
          * @param tensor 参考张量。
          * @return 同形状 device 实数张量。
          */
-        inline CudaRealArray make_cuda_real_array_like(const CudaRealArray &tensor)
+        inline ZxGpuRealArray make_zx_gpu_real_array_like(const ZxGpuRealArray &tensor)
         {
-            return make_cuda_real_array(tensor.shape());
+            return make_zx_gpu_real_array(tensor.shape());
         }
 
         /**
@@ -417,9 +417,9 @@ namespace cusignal
          * @param tensor 参考张量。
          * @return 同形状 device 复数张量。
          */
-        inline CudaComplexArray make_cuda_complex_array_like(const CudaComplexArray &tensor)
+        inline ZxGpuComplexArray make_zx_gpu_complex_array_like(const ZxGpuComplexArray &tensor)
         {
-            return make_cuda_complex_array(tensor.shape());
+            return make_zx_gpu_complex_array(tensor.shape());
         }
 
         /**
@@ -428,9 +428,9 @@ namespace cusignal
          * @param tensor 参考张量。
          * @return 同形状 device 整型张量。
          */
-        inline CudaIndexArray make_cuda_index_array_like(const CudaIndexArray &tensor)
+        inline ZxGpuIndexArray make_zx_gpu_index_array_like(const ZxGpuIndexArray &tensor)
         {
-            return make_cuda_index_array(tensor.shape());
+            return make_zx_gpu_index_array(tensor.shape());
         }
 
         /**
@@ -533,13 +533,13 @@ namespace cusignal
          *
          * @param signal 输入规格。
          * @param storage 当输入为 host 时用于承接上传后的临时 device 信号。
-         * @return 可直接参与 CUDA 计算的 device 信号引用。
+         * @return 可直接参与 ZQ500 GPU 计算的 device 信号引用。
          */
-        inline const CudaRealSignal &as_device_signal(
+        inline const ZxGpuRealSignal &as_device_signal(
             const RealSignalLike &signal,
-            CudaRealSignal &storage)
+            ZxGpuRealSignal &storage)
         {
-            if (const auto *device = std::get_if<CudaRealSignal>(&signal))
+            if (const auto *device = std::get_if<ZxGpuRealSignal>(&signal))
             {
                 return *device;
             }
@@ -552,13 +552,13 @@ namespace cusignal
          *
          * @param signal 输入规格。
          * @param storage 当输入为 host 时用于承接上传后的临时 device 信号。
-         * @return 可直接参与 CUDA 计算的 device 信号引用。
+         * @return 可直接参与 ZQ500 GPU 计算的 device 信号引用。
          */
-        inline const CudaComplexSignal &as_device_signal(
+        inline const ZxGpuComplexSignal &as_device_signal(
             const ComplexSignalLike &signal,
-            CudaComplexSignal &storage)
+            ZxGpuComplexSignal &storage)
         {
-            if (const auto *device = std::get_if<CudaComplexSignal>(&signal))
+            if (const auto *device = std::get_if<ZxGpuComplexSignal>(&signal))
             {
                 return *device;
             }
@@ -571,13 +571,13 @@ namespace cusignal
          *
          * @param signal 输入规格。
          * @param storage 当输入为 host 时用于承接上传后的临时 device 信号。
-         * @return 可直接参与 CUDA 计算的 device 信号引用。
+         * @return 可直接参与 ZQ500 GPU 计算的 device 信号引用。
          */
-        inline const CudaIndexSignal &as_device_signal(
+        inline const ZxGpuIndexSignal &as_device_signal(
             const IndexSignalLike &signal,
-            CudaIndexSignal &storage)
+            ZxGpuIndexSignal &storage)
         {
-            if (const auto *device = std::get_if<CudaIndexSignal>(&signal))
+            if (const auto *device = std::get_if<ZxGpuIndexSignal>(&signal))
             {
                 return *device;
             }
@@ -590,13 +590,13 @@ namespace cusignal
          *
          * @param tensor 输入规格。
          * @param storage 当输入为 host 时用于承接上传后的临时 device 张量。
-         * @return 可直接参与 CUDA 计算的 device 张量引用。
+         * @return 可直接参与 ZQ500 GPU 计算的 device 张量引用。
          */
-        inline const CudaRealArray &as_device_array(
+        inline const ZxGpuRealArray &as_device_array(
             const RealArrayLike &tensor,
-            CudaRealArray &storage)
+            ZxGpuRealArray &storage)
         {
-            if (const auto *device = std::get_if<CudaRealArray>(&tensor))
+            if (const auto *device = std::get_if<ZxGpuRealArray>(&tensor))
             {
                 return *device;
             }
@@ -609,13 +609,13 @@ namespace cusignal
          *
          * @param tensor 输入规格。
          * @param storage 当输入为 host 时用于承接上传后的临时 device 张量。
-         * @return 可直接参与 CUDA 计算的 device 张量引用。
+         * @return 可直接参与 ZQ500 GPU 计算的 device 张量引用。
          */
-        inline const CudaComplexArray &as_device_array(
+        inline const ZxGpuComplexArray &as_device_array(
             const ComplexArrayLike &tensor,
-            CudaComplexArray &storage)
+            ZxGpuComplexArray &storage)
         {
-            if (const auto *device = std::get_if<CudaComplexArray>(&tensor))
+            if (const auto *device = std::get_if<ZxGpuComplexArray>(&tensor))
             {
                 return *device;
             }
@@ -628,13 +628,13 @@ namespace cusignal
          *
          * @param tensor 输入规格。
          * @param storage 当输入为 host 时用于承接上传后的临时 device 张量。
-         * @return 可直接参与 CUDA 计算的 device 张量引用。
+         * @return 可直接参与 ZQ500 GPU 计算的 device 张量引用。
          */
-        inline const CudaIndexArray &as_device_array(
+        inline const ZxGpuIndexArray &as_device_array(
             const IndexArrayLike &tensor,
-            CudaIndexArray &storage)
+            ZxGpuIndexArray &storage)
         {
-            if (const auto *device = std::get_if<CudaIndexArray>(&tensor))
+            if (const auto *device = std::get_if<ZxGpuIndexArray>(&tensor))
             {
                 return *device;
             }

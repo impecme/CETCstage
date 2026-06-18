@@ -59,7 +59,7 @@ HIGHLIGHTS: tuple[Highlight, ...] = (
         ("sample dependency", "serial state", "long sequence"),
         ("tile transform", "prefix scan", "apply initials"),
         ("parallel state propagation", "large-N throughput"),
-        ("src/cuda/filtering.cu", "tests/unit/filtering/test_sosfilt.cpp"),
+        ("src/zhongkexin/filtering.cu", "tests/unit/filtering/test_sosfilt.cpp"),
         ("x[n-1] -> x[n]", "A_i, b_i", "scan(T_i)", "y[n]"),
     ),
     Highlight(
@@ -67,10 +67,10 @@ HIGHLIGHTS: tuple[Highlight, ...] = (
         "parallel",
         "detrend 两级 reduction 与 Kahan 补偿",
         "axis-wise sums are stabilized with partial/final reduction and Kahan compensation.",
-        ("axis reduction", "float order", "CPU/CUDA drift"),
+        ("axis reduction", "float order", "CPU/ZQ500 drift"),
         ("partial sums", "Kahan local", "coeff apply"),
         ("single-precision alignment", "lower error"),
-        ("src/cuda/filtering.cu", "scripts/test/READMEV3_7_0.md"),
+        ("src/zhongkexin/filtering.cu", "scripts/test/READMEV3_7_0.md"),
         ("sum_y", "sum_ty", "Kahan", "a*x+b"),
     ),
     Highlight(
@@ -81,7 +81,7 @@ HIGHLIGHTS: tuple[Highlight, ...] = (
         ("long signals", "segment loops", "PSD postprocess"),
         ("batch plan", "R2C/C2C", "device PSD"),
         ("higher throughput", "less host loop"),
-        ("src/cuda/radartools.cu", "src/cuda/spectral.cu"),
+        ("src/zhongkexin/radartools.cu", "src/zhongkexin/spectral.cu"),
         ("segments", "cuFFT batch", "R2C/C2C", "PSD"),
     ),
     Highlight(
@@ -92,7 +92,7 @@ HIGHLIGHTS: tuple[Highlight, ...] = (
         ("guard window", "training cells", "edge cases"),
         ("direct 1D", "FFT long window", "integral image"),
         ("fast thresholds", "same CPU semantics"),
-        ("src/cuda/radartools.cu", "tests/unit/radartools/test_ca_cfar.cpp"),
+        ("src/zhongkexin/radartools.cu", "tests/unit/radartools/test_ca_cfar.cpp"),
         ("guard", "train", "prefix rows", "rect sum"),
     ),
     Highlight(
@@ -103,7 +103,7 @@ HIGHLIGHTS: tuple[Highlight, ...] = (
         ("per-period loop", "near-zero relative", "D2H sync"),
         ("partial kernel", "shared reduction", "finalize"),
         ("more parallelism", "device-resident mean/dot"),
-        ("src/cuda/spectral.cu", "scripts/test/READMEV3_8_4.md"),
+        ("src/zhongkexin/spectral.cu", "scripts/test/READMEV3_8_4.md"),
         ("periods", "freq blocks", "sin/cos", "power"),
     ),
     Highlight(
@@ -114,7 +114,7 @@ HIGHLIGHTS: tuple[Highlight, ...] = (
         ("phase array", "unwrap pass", "diff pass"),
         ("adjacent samples", "phase diff kernel", "fallback path"),
         ("less intermediate data", "lower e2e cost"),
-        ("src/cuda/demod.cu", "tests/unit/demod/test_fm_demod.cpp"),
+        ("src/zhongkexin/demod.cu", "tests/unit/demod/test_fm_demod.cpp"),
         ("z[n]", "conj(z[n-1])", "angle", "fm[n]"),
     ),
     Highlight(
@@ -125,7 +125,7 @@ HIGHLIGHTS: tuple[Highlight, ...] = (
         ("pulse matrix", "padding", "truncation"),
         ("safe pack", "pulse FFT", "boundary checks"),
         ("stable range-Doppler map", "no out-of-bounds"),
-        ("src/cuda/radartools.cu", "tests/unit/radartools/test_pulse_doppler.cpp"),
+        ("src/zhongkexin/radartools.cu", "tests/unit/radartools/test_pulse_doppler.cpp"),
         ("pulse", "sample", "pack", "FFT_pulse"),
     ),
     Highlight(
@@ -136,7 +136,7 @@ HIGHLIGHTS: tuple[Highlight, ...] = (
         ("covariance", "complex solve", "numeric risk"),
         ("cublasCgemm", "LU factor", "solve + dot"),
         ("trusted primitives", "beam response"),
-        ("src/cuda/radartools.cu", "tests/unit/radartools/test_mvdr.cpp"),
+        ("src/zhongkexin/radartools.cu", "tests/unit/radartools/test_mvdr.cpp"),
         ("R = XX^H", "LU", "R^-1 a", "w^H x"),
     ),
     Highlight(
@@ -158,7 +158,7 @@ HIGHLIGHTS: tuple[Highlight, ...] = (
         ("axis lines", "shape metadata", "H2D repeats"),
         ("LineBasesCache", "cached breaks", "workspace buffers"),
         ("less metadata copy", "repeat stability"),
-        ("src/cuda/filtering.cu",),
+        ("src/zhongkexin/filtering.cu",),
         ("line bases", "shape/stride", "workspace", "timed path"),
     ),
     Highlight(
@@ -169,7 +169,7 @@ HIGHLIGHTS: tuple[Highlight, ...] = (
         ("window build", "polyphase taps", "padded taps"),
         ("cache keys", "D2D reuse", "tap pruning"),
         ("lower setup cost", "stable large-gpu repeat"),
-        ("src/cuda/filtering.cu", "scripts/test/READMEV3_8_4.md"),
+        ("src/zhongkexin/filtering.cu", "scripts/test/READMEV3_8_4.md"),
         ("resample", "poly filter", "channel taps", "upfirdn"),
     ),
     Highlight(
@@ -180,7 +180,7 @@ HIGHLIGHTS: tuple[Highlight, ...] = (
         ("atomic sum", "noise estimate", "repeat jitter"),
         ("local stats", "block sum", "apply noise"),
         ("reproducible error", "device-resident"),
-        ("src/cuda/filtering.cu", "scripts/test/READMEV3_8_1.md"),
+        ("src/zhongkexin/filtering.cu", "scripts/test/READMEV3_8_1.md"),
         ("local mean", "variance", "final sum", "apply"),
     ),
     Highlight(
@@ -191,7 +191,7 @@ HIGHLIGHTS: tuple[Highlight, ...] = (
         ("window H2D", "segment prep", "FFT plan"),
         ("segment key", "real plan", "R2C fast path"),
         ("higher spectral throughput", "less setup"),
-        ("src/cuda/spectral.cu", "tests/unit/spectral/test_spectrogram.cpp"),
+        ("src/zhongkexin/spectral.cu", "tests/unit/spectral/test_spectrogram.cpp"),
         ("window", "segments", "R2C plan", "PSD"),
     ),
     Highlight(
@@ -202,7 +202,7 @@ HIGHLIGHTS: tuple[Highlight, ...] = (
         ("interp response", "full spectrum", "FFT setup"),
         ("prepared cache", "template D2D", "extract taps"),
         ("timed device path", "filter design speed"),
-        ("src/cuda/filter_design.cu", "scripts/test/READMEV3_8_3.md"),
+        ("src/zhongkexin/filter_design.cu", "scripts/test/READMEV3_8_3.md"),
         ("freq/gain", "spectrum template", "FFT", "taps"),
     ),
     Highlight(
@@ -213,7 +213,7 @@ HIGHLIGHTS: tuple[Highlight, ...] = (
         ("response build", "FFT", "normalize max"),
         ("GPU template", "CUB max", "final cache"),
         ("repeat mostly D2D", "fast large window"),
-        ("src/cuda/windows.cu", "scripts/test/READMEV3_8_4.md"),
+        ("src/zhongkexin/windows.cu", "scripts/test/READMEV3_8_4.md"),
         ("freq response", "IFFT", "max", "window"),
     ),
     Highlight(
@@ -224,7 +224,7 @@ HIGHLIGHTS: tuple[Highlight, ...] = (
         ("2D surface", "large output", "memory pressure"),
         ("normalized cache", "tile rows", "2D FFT workspace"),
         ("bounded peak memory", "visible bottleneck"),
-        ("src/cuda/radartools.cu", "scripts/test/READMEV3_8_4.md"),
+        ("src/zhongkexin/radartools.cu", "scripts/test/READMEV3_8_4.md"),
         ("delay", "doppler", "tile FFT", "surface"),
     ),
     Highlight(
@@ -235,7 +235,7 @@ HIGHLIGHTS: tuple[Highlight, ...] = (
         ("width loop", "kernel table", "global loads"),
         ("kernel cache", "width key", "shared tile"),
         ("less H2D", "less repeated load"),
-        ("src/cuda/wavelets.cu", "tests/unit/wavelets/test_cwt.cpp"),
+        ("src/zhongkexin/wavelets.cu", "tests/unit/wavelets/test_cwt.cpp"),
         ("widths", "wavelet table", "shared tile", "CWT"),
     ),
     Highlight(
@@ -246,7 +246,7 @@ HIGHLIGHTS: tuple[Highlight, ...] = (
         ("stage returns", "Host sync", "feature fusion"),
         ("fused score", "row peaks", "track kernel"),
         ("device pipeline", "lower e2e overhead"),
-        ("demo/task2_features/task2_features_cuda.cu",),
+        ("demo/task2_features/task2_features_zx_gpu.cu",),
         ("features", "smooth", "peaks", "track"),
     ),
     Highlight(
@@ -257,7 +257,7 @@ HIGHLIGHTS: tuple[Highlight, ...] = (
         ("small state", "serial track", "low occupancy"),
         ("points batch", "fixed dim", "register path"),
         ("enough parallelism", "task RMSE gate"),
-        ("src/cuda/estimation.cu", "tests/unit/estimation/test_kalman_filter.cpp"),
+        ("src/zhongkexin/estimation.cu", "tests/unit/estimation/test_kalman_filter.cpp"),
         ("points", "predict", "update", "RMSE"),
     ),
     Highlight(
@@ -268,7 +268,7 @@ HIGHLIGHTS: tuple[Highlight, ...] = (
         ("compare mask", "index compact", "manual scan"),
         ("DeviceSelect", "flagged indices", "device output"),
         ("fast peak list", "Task2 localization"),
-        ("src/cuda/peak_finding.cu", "tests/unit/peak_finding/"),
+        ("src/zhongkexin/peak_finding.cu", "tests/unit/peak_finding/"),
         ("mask", "CUB select", "indices", "peaks"),
     ),
     Highlight(
@@ -354,7 +354,7 @@ HIGHLIGHTS: tuple[Highlight, ...] = (
         "异常输入与资源漂移 gate",
         "invalid configs and repeat resource drift are explicit task-level gates.",
         ("happy path only", "leak risk", "unclear errors"),
-        ("invalid checks", "jitter", "CUDA/RSS drift"),
+        ("invalid checks", "jitter", "GPU/RSS drift"),
         ("robustness evidence", "stable repeat"),
         ("scripts/test/READMEV3_9.md", "scripts/test/run_task_demos.sh"),
         ("bad config", "std::invalid_argument", "drift", "gate"),
@@ -412,7 +412,7 @@ ZH_TEXT = {
     "large-N throughput": "大规模吞吐提升",
     "axis reduction": "按轴归约",
     "float order": "单精度累积顺序",
-    "CPU/CUDA drift": "CPU/CUDA 偏差",
+    "CPU/ZQ500 drift": "CPU/ZQ500 偏差",
     "partial sums": "分块部分和",
     "Kahan local": "局部 Kahan 补偿",
     "coeff apply": "系数回写",
@@ -620,7 +620,7 @@ ZH_TEXT = {
     "unclear errors": "错误不明确",
     "invalid checks": "异常输入检查",
     "jitter": "耗时抖动",
-    "CUDA/RSS drift": "CUDA/RSS 漂移",
+    "GPU/RSS drift": "GPU/RSS 漂移",
     "robustness evidence": "鲁棒性证据",
     "stable repeat": "repeat 稳定",
     "timing inflation": "计时放大",
@@ -984,7 +984,7 @@ def detail_caption(ax: plt.Axes, x: float, y: float, text: str) -> None:
 def draw_parallel(h: Highlight) -> plt.Figure:
     fig, ax = make_axes()
     panel(ax, 0.5, 0.72, 4.35, 7.65, "A. 串行瓶颈")
-    panel(ax, 5.05, 0.72, 6.15, 7.65, "B. CUDA 并行设计")
+    panel(ax, 5.05, 0.72, 6.15, 7.65, "B. ZQ500 并行设计")
     panel(ax, 11.4, 0.72, 4.05, 7.65, "C. 可观测价值")
 
     rounded_box(ax, 0.8, 6.88, 3.7, 0.72, zh(h.problem[0]), face=COLORS["problem"], weight="bold", fontsize=9.0)
@@ -1103,7 +1103,7 @@ def draw_pipeline(h: Highlight) -> plt.Figure:
     y_cpu = 6.83
     y_gpu = 5.15
     small_label(ax, 0.92, y_cpu + 0.55, "CPU 参考链路", color=COLORS["muted"])
-    small_label(ax, 0.92, y_gpu + 0.55, "CUDA 链路", color=COLORS["accent"])
+    small_label(ax, 0.92, y_gpu + 0.55, "ZQ500 GPU 链路", color=COLORS["accent"])
     ax.plot([1.0, 10.35], [y_cpu + 0.3, y_cpu + 0.3], color=COLORS["grid"], lw=1.1)
     ax.plot([1.0, 10.35], [y_gpu + 0.3, y_gpu + 0.3], color=COLORS["grid"], lw=1.1)
 

@@ -424,7 +424,7 @@ L 693.36 487.584
    </g>
    <g id="text_5">
     <text style="font-weight: 700; font-size: 15.5px; font-family: 'Droid Sans Fallback', 'DejaVu Sans'; fill: #243238" transform="translate(135.547695 229.598727)">kernel speedup</text>
-    <text style="font-weight: 700; font-size: 15.5px; font-family: 'Droid Sans Fallback', 'DejaVu Sans'; fill: #243238" transform="translate(129.972539 246.955336)">只看 CUDA Kernel</text>
+    <text style="font-weight: 700; font-size: 15.5px; font-family: 'Droid Sans Fallback', 'DejaVu Sans'; fill: #243238" transform="translate(129.972539 246.955336)">只看 ZQ500 GPU Kernel</text>
    </g>
    <g id="text_6">
     <text style="font-size: 12px; font-family: 'Droid Sans Fallback', 'DejaVu Sans'; text-anchor: middle; fill: #607d8b" x="126.16" y="392.784375" transform="rotate(-0 126.16 392.784375)">CPU</text>

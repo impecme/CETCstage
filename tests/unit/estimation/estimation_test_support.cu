@@ -25,7 +25,7 @@ namespace fs = std::filesystem;
 
 namespace cusignal
 {
-    namespace cuda_backend
+    namespace zx_gpu_backend
     {
         namespace estimation_test_hooks
         {
@@ -36,7 +36,7 @@ namespace cusignal
 
 namespace
 {
-    using cusignal::core::CudaRealArray;
+    using cusignal::core::ZxGpuRealArray;
     using cusignal::core::RealArray;
     using cusignal::core::Shape;
 
@@ -289,12 +289,12 @@ namespace
         return summarize(std::move(samples));
     }
 
-    CudaRealArray clone_device_array(const CudaRealArray &src)
+    ZxGpuRealArray clone_device_array(const ZxGpuRealArray &src)
     {
-        CudaRealArray dst(src.shape(), false);
+        ZxGpuRealArray dst(src.shape(), false);
         if (src.size() != 0)
         {
-            cusignal::core::throw_on_cuda_error(
+            cusignal::core::throw_on_zx_gpu_error(
                 cudaMemcpy(
                     dst.data(),
                     src.data(),
@@ -306,8 +306,8 @@ namespace
     }
 
     void restore_device_array(
-        const CudaRealArray &src,
-        CudaRealArray &dst,
+        const ZxGpuRealArray &src,
+        ZxGpuRealArray &dst,
         const char *name)
     {
         if (src.shape() != dst.shape() || src.size() != dst.size())
@@ -318,7 +318,7 @@ namespace
         {
             return;
         }
-        cusignal::core::throw_on_cuda_error(
+        cusignal::core::throw_on_zx_gpu_error(
             cudaMemcpy(
                 dst.data(),
                 src.data(),
@@ -444,7 +444,7 @@ namespace
         };
     }
 
-    Snapshot capture_filter(const cusignal::cuda_backend::estimation::KalmanFilter &filter)
+    Snapshot capture_filter(const cusignal::zx_gpu_backend::estimation::KalmanFilter &filter)
     {
         return Snapshot{
             filter.x.get(),
@@ -468,7 +468,7 @@ namespace
         filter.Q = make_array(Shape{1, 2, 2}, {0.1f, 0.0f, 0.0f, 0.2f});
     }
 
-    void configure_predict_case(cusignal::cuda_backend::estimation::KalmanFilter &filter)
+    void configure_predict_case(cusignal::zx_gpu_backend::estimation::KalmanFilter &filter)
     {
         filter.x = make_array(Shape{1, 2, 1}, {0.0f, 1.0f});
         filter.P = make_array(Shape{1, 2, 2}, {1.0f, 0.0f, 0.0f, 1.0f});
@@ -485,7 +485,7 @@ namespace
         filter.B = make_array(Shape{1, 2, 1}, {1.0f, 0.5f});
     }
 
-    void configure_predict_control_case(cusignal::cuda_backend::estimation::KalmanFilter &filter)
+    void configure_predict_control_case(cusignal::zx_gpu_backend::estimation::KalmanFilter &filter)
     {
         filter.x = make_array(Shape{1, 2, 1}, {1.0f, 2.0f});
         filter.P = make_array(Shape{1, 2, 2}, {1.0f, 0.0f, 0.0f, 1.0f});
@@ -502,7 +502,7 @@ namespace
         filter.R = make_array(Shape{1, 1, 1}, {0.5f});
     }
 
-    void configure_update_case(cusignal::cuda_backend::estimation::KalmanFilter &filter)
+    void configure_update_case(cusignal::zx_gpu_backend::estimation::KalmanFilter &filter)
     {
         filter.x = make_array(Shape{1, 2, 1}, {1.0f, 1.0f});
         filter.P = make_array(Shape{1, 2, 2}, {2.1f, 1.0f, 1.0f, 1.2f});
@@ -616,7 +616,7 @@ namespace
 
     Snapshot run_case_gpu(const Case &test_case)
     {
-        using Filter = cusignal::cuda_backend::estimation::KalmanFilter;
+        using Filter = cusignal::zx_gpu_backend::estimation::KalmanFilter;
         if (test_case.scenario == Scenario::InvalidDtype)
         {
             Filter filter(test_case.dim_x, test_case.dim_z, test_case.dim_u, test_case.points, test_case.dtype);
@@ -806,9 +806,9 @@ namespace
             }
 
             std::vector<float> kernel_samples;
-            const CudaRealArray device_control = CudaRealArray::from_host(control);
-            const CudaRealArray device_measurement = CudaRealArray::from_host(measurement);
-            cusignal::cuda_backend::estimation::KalmanFilter gpu_filter(
+            const ZxGpuRealArray device_control = ZxGpuRealArray::from_host(control);
+            const ZxGpuRealArray device_measurement = ZxGpuRealArray::from_host(measurement);
+            cusignal::zx_gpu_backend::estimation::KalmanFilter gpu_filter(
                 perf.dim_x,
                 perf.dim_z,
                 perf.dim_u,
@@ -816,10 +816,10 @@ namespace
                 perf.dtype);
             gpu_filter.H = host_h;
             gpu_filter.R = host_r;
-            const CudaRealArray initial_x = clone_device_array(gpu_filter.x);
-            const CudaRealArray initial_p = clone_device_array(gpu_filter.P);
-            const CudaRealArray initial_z = clone_device_array(gpu_filter.z);
-            const CudaRealArray initial_u = clone_device_array(gpu_filter.u);
+            const ZxGpuRealArray initial_x = clone_device_array(gpu_filter.x);
+            const ZxGpuRealArray initial_p = clone_device_array(gpu_filter.P);
+            const ZxGpuRealArray initial_z = clone_device_array(gpu_filter.z);
+            const ZxGpuRealArray initial_u = clone_device_array(gpu_filter.u);
             auto reset_gpu_filter = [&]() {
                 restore_device_array(initial_x, gpu_filter.x, "x");
                 restore_device_array(initial_p, gpu_filter.P, "P");
@@ -828,11 +828,11 @@ namespace
             };
             summary.gpu_e2e_perf = measure(options.warmup, options.repeat, [&]() {
                 reset_gpu_filter();
-                (void)cusignal::cuda_backend::estimation_test_hooks::consume_last_kernel_ms();
+                (void)cusignal::zx_gpu_backend::estimation_test_hooks::consume_last_kernel_ms();
                 gpu_filter.predict(device_control);
-                float kernel_ms = cusignal::cuda_backend::estimation_test_hooks::consume_last_kernel_ms();
+                float kernel_ms = cusignal::zx_gpu_backend::estimation_test_hooks::consume_last_kernel_ms();
                 gpu_filter.update(device_measurement);
-                kernel_ms += cusignal::cuda_backend::estimation_test_hooks::consume_last_kernel_ms();
+                kernel_ms += cusignal::zx_gpu_backend::estimation_test_hooks::consume_last_kernel_ms();
                 kernel_samples.push_back(kernel_ms);
             });
             summary.gpu_kernel_perf = summarize(std::move(kernel_samples));
@@ -845,7 +845,7 @@ namespace
                     write_real_csv(generated_root() / "input" / "perf_case__control.csv", control);
                     write_real_csv(generated_root() / "input" / "perf_case__measurement.csv", measurement);
 
-                    cusignal::cuda_backend::estimation::KalmanFilter gpu_filter(
+                    cusignal::zx_gpu_backend::estimation::KalmanFilter gpu_filter(
                         perf.dim_x,
                         perf.dim_z,
                         perf.dim_u,

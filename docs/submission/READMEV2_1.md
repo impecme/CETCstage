@@ -12,7 +12,7 @@
 
 本轮以 Python cuSignal 的公开接口风格为参照，对整个 C++/CUDA 工程进行一次允许破坏旧骨架兼容性的接口收口，重点解决以下问题：
 
-- 统一 `cpu` 与 `cuda_backend` 两条后端路径的公开签名。
+- 统一 `cpu` 与 `zx_gpu_backend` 两条后端路径的公开签名。
 - 用张量化 `core` 类型承载 ndarray 风格输入输出。
 - 为多返回、分支返回接口补齐具名结果结构与 `std::variant` 建模。
 - 为全部公开 API 补齐中文 Doxygen 注释，明确功能、输入、输出、异常和限制。
@@ -87,7 +87,7 @@ project_root/
 当前 CMake 工程名保持为 `cusignal_cpp_v2_1`，构建目标仅保留：
 
 - `cusignal_cpu`
-- `cusignal_cuda`
+- `cusignal_zx_gpu`
 
 ## `core` 类型层的收口
 
@@ -138,9 +138,9 @@ V2.1 不再只依赖一维 `RealSignal` / `ComplexSignal` 风格接口，而是�
 
 ### 接口层已经完成的内容
 
-- 头文件中的公开 API 已按当前架构统一到 `cpu` / `cuda_backend` 双命名空间。
+- 头文件中的公开 API 已按当前架构统一到 `cpu` / `zx_gpu_backend` 双命名空间。
 - 头文件中的公开 API 已补齐详细中文 Doxygen 注释。
-- 所有公开声明都已在 `src/cpu/` 和 `src/cuda/` 中提供对应定义。
+- 所有公开声明都已在 `src/cpu/` 和 `src/zhongkexin/` 中提供对应定义。
 - 当前源文件已可作为后续真实算法实现的稳定落点。
 
 ### 当前尚未完成的内容
@@ -163,13 +163,13 @@ V2.1 不再只依赖一维 `RealSignal` / `ComplexSignal` 风格接口，而是�
 
 ```bash
 cmake -S . -B build
-cmake --build build --target cusignal_cpu cusignal_cuda --parallel
+cmake --build build --target cusignal_cpu cusignal_zx_gpu --parallel
 ```
 
 构建成功后，当前阶段的验收标准：
 
 - `cusignal_cpu` 成功编译
-- `cusignal_cuda` 成功编译
+- `cusignal_zx_gpu` 成功编译
 
 ## 下一阶段建议
 

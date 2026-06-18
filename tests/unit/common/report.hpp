@@ -406,7 +406,7 @@ namespace cusignal_test::report
         const std::string &op,
         const fs::path &repo_root,
         long cxx_standard,
-        int cudart_version,
+        int runtime_version,
         const OptionsT &options,
         const SummaryT &summary,
         const std::vector<CaseT> &cases,
@@ -431,7 +431,7 @@ namespace cusignal_test::report
         stream << "  \"gpu_name\": \"" << json_escape(gpu_name) << "\",\n";
         stream << "  \"compile_config\": {\n";
         stream << "    \"cxx_standard\": " << cxx_standard << ",\n";
-        stream << "    \"cudart_version\": " << cudart_version << "\n";
+        stream << "    \"runtime_version\": " << runtime_version << "\n";
         stream << "  },\n";
         stream << "  \"summary\": {\n";
         stream << "    \"pass\": " << (summary.pass ? "true" : "false") << ",\n";
@@ -540,7 +540,7 @@ namespace cusignal_test::report
         const std::string &op,
         const fs::path &repo_root,
         long cxx_standard,
-        int cudart_version,
+        int runtime_version,
         const OptionsT &options,
         const SummaryT &summary)
     {
@@ -563,7 +563,7 @@ namespace cusignal_test::report
         stream << "  \"gpu_name\": \"" << json_escape(gpu_name) << "\",\n";
         stream << "  \"compile_config\": {\n";
         stream << "    \"cxx_standard\": " << cxx_standard << ",\n";
-        stream << "    \"cudart_version\": " << cudart_version << "\n";
+        stream << "    \"runtime_version\": " << runtime_version << "\n";
         stream << "  },\n";
         stream << "  \"summary\": {\n";
         stream << "    \"pass\": " << (summary.pass ? "true" : "false") << ",\n";
@@ -608,7 +608,7 @@ namespace cusignal_test::report
         const fs::path &repo_root,
         const fs::path &operator_report_root,
         long cxx_standard,
-        int cudart_version,
+        int runtime_version,
         const OptionsT &options,
         const SummaryT &summary)
     {
@@ -617,7 +617,7 @@ namespace cusignal_test::report
                                             op,
                                             repo_root,
                                             cxx_standard,
-                                            cudart_version,
+                                            runtime_version,
                                             options,
                                             summary);
         write_text_file(operator_report_root / "latest_metrics.json", metrics_json);
@@ -630,7 +630,7 @@ namespace cusignal_test::report
         const fs::path &repo_root,
         const fs::path &operator_report_root,
         long cxx_standard,
-        int cudart_version,
+        int runtime_version,
         const OptionsT &options,
         const SummaryT &summary,
         const std::vector<CaseT> &cases,
@@ -647,7 +647,7 @@ namespace cusignal_test::report
                                op,
                                repo_root,
                                cxx_standard,
-                               cudart_version,
+                               runtime_version,
                                options,
                                summary,
                                cases,

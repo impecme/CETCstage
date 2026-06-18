@@ -2,15 +2,19 @@
 
 ## 总体状态
 
-当前迁移的总目标是完成整个 CETC 项目到中科芯 CUDA 兼容平台的迁移，而不是只跑通 `task1_radar_demo` 和 `task2_features_demo`。截至 2026-06-17，**第一阶段：平台打通与 Task1/Task2 任务级验证**、**第二阶段：Task1/Task2 依赖算子闭环**、**第三阶段：全量公开算子迁移**和**第四阶段：性能、资源与稳定性收敛**均已按阶段范围内“全部功能迁移”的口径完成。
+当前迁移的总目标是完成整个 CETC 项目到中科芯 ZQ500 兼容平台的迁移，而不是只跑通 `task1_radar_demo` 和 `task2_features_demo`。截至 2026-06-18，**第一阶段：平台打通与 Task1/Task2 任务级验证**、**第二阶段：Task1/Task2 依赖算子闭环**、**第三阶段：全量公开算子迁移**、**第四阶段：性能、资源与稳定性收敛**和**第五阶段：交付固化**均已按阶段范围内“全部功能迁移”的口径完成。
 
-因此，当前状态不能解读为“全项目已经迁移完成”。它表示：
+因此，当前状态表示项目已经形成面向中科芯 ZQ500 的完整交付基线：
 
 - V4.0 全项目迁移总蓝图已建立。
 - V4.1 第一阶段已在本队中科芯 docker 内通过统一验收脚本验证。
 - V4.2 已在本队中科芯 docker 内通过全规模关闭验证：29/29 依赖算子通过，Task1/Task2 L1-L6 sweep 全部通过，报告和图件已生成。
 - V4.3 已在本队中科芯 docker 内通过全量公开算子 accuracy 验证：12/12 模块通过，81/81 active 算子通过，报告已归档。
 - V4.4 已在本队中科芯 docker 内通过 Stage4 full：Task1/Task2 L1-L6 12/12 行通过，81 个算子、486/486 行 benchmark 通过，benchmark 图件已生成。
+- V4.5 已完成交付固化：README、AGENT、阶段计划、迁移状态、迁移台账和交付文档已收敛到同一 CPU reference + 容器内 ZQ500 GPU 验收口径。
+- V4.6 已完成中科芯专用命名收口：项目自有 GPU 目录、target、namespace、device 类型、helper 和当前脚本入口已改为 ZQ500 命名；容器 Stage4 full after rename 已通过。
+- V4.7 已完成低风险 CUDA 遗留表述收口：内部 helper、公开头文件注释、README/AGENT 当前说明和技术图脚本文案已改为 ZQ500 GPU 口径；未改中科芯 SDK 兼容符号和报告 schema。
+- V4.8 已完成报告 schema 中性化：当前执行链路中的 `cuda_*` 资源字段改为 `gpu_*`，`cudart_version` 改为 `runtime_version`；容器 Stage4 full 复验已通过，当前 JSON/CSV/Markdown 报告未再生成旧报告键。
 - 构建入口、compat 层和任务级验证路径已可用。
 - 不兼容与修改台账已建立：`docs/design/zhongkexin_migration_change_log.md`。
 - 复赛说明文件已发现并整理摘要：`docs/design/zhongkexin_rematch_notes.md`。
@@ -24,26 +28,32 @@
 | --- | --- | --- | --- | --- |
 | 第一阶段 | `docs/design/V4_1_plan.md` | 平台打通与 Task1/Task2 任务级验证 | 已完成 | probe 通过，`task1_radar_demo` 和 `task2_features_demo` L3 默认规模 `validation.pass=true`，Python 依赖可 import，并生成 demo 可视化图件 |
 | 第二阶段 | `docs/design/V4_2_plan.md` | Task1/Task2 依赖算子闭环 | 已完成 | 两个任务依赖算子 smoke/accuracy 通过，L1-L6 sweep、报告和任务级图件可复现 |
-| 第三阶段 | `docs/design/V4_3_plan.md` | 全量公开算子迁移 | 已完成 | 全部 CUDA 算子和公开 API 相关测试、数据生成、报告输出逐模块通过或明确入账 |
+| 第三阶段 | `docs/design/V4_3_plan.md` | 全量公开算子迁移 | 已完成 | 全部 ZQ500 GPU 算子和公开 API 相关测试、数据生成、报告输出逐模块通过或明确入账 |
 | 第四阶段 | `docs/design/V4_4_plan.md` | 性能、资源与稳定性收敛 | 已完成 | benchmark、resource、timing、性能 gate 和 benchmark 图件稳定可复现 |
-| 第五阶段 | `docs/design/V4_5_plan.md` | 交付固化 | 已进入 | README、AGENT、迁移报告、回归流程、报告和图件从零完整可复现 |
+| 第五阶段 | `docs/design/V4_5_plan.md` | 交付固化 | 已完成 | README、AGENT、迁移报告、回归流程、报告和图件从零完整可复现 |
+| 第六阶段 | `docs/design/V4_6_plan.md` | 中科芯专用命名收口 | 已完成 | 当前入口、脚本、构建和文档只保留 CPU + 中科芯 ZQ500 双链路；项目自有 CUDA 命名已改为 ZQ500 命名，Stage4 full after rename 已通过 |
+| 第七阶段 | `docs/design/V4_7_plan.md` | 低风险 CUDA 遗留表述收口 | 已完成 | 内部 helper、公开头文件注释、README/AGENT 和技术图脚本文案改为 ZQ500 GPU 口径；SDK 兼容符号和报告 schema 不变 |
+| 第八阶段 | `docs/design/V4_8_plan.md` | 报告 schema 中性化 | 已完成 | 当前 demo/report 字段从 `cuda_*` / `cudart_version` 改为 `gpu_*` / `runtime_version`；SDK 兼容 API 不变，容器 Stage4 full 复验已通过 |
 
 ## 阶段门禁状态
 
 | 阶段 | 进入条件状态 | 退出条件状态 | 说明 |
 | --- | --- | --- | --- |
-| V4.1 | 已满足 | 已满足 | `stage1.log` 显示脚本版本 `diagnostics-20260616-dlcc-cxx-python-v3` 已完成依赖准备、probe、`build-zx` 配置、`cusignal_cpu/cusignal_cuda` 和两个 demo 构建；Task1/Task2 L3 均 `PASS repeat=3`，并完成可视化图件生成 |
+| V4.1 | 已满足 | 已满足 | `stage1.log` 显示脚本版本 `diagnostics-20260616-dlcc-cxx-python-v3` 已完成依赖准备、probe、`build-zx` 配置、`cusignal_cpu/cusignal_zx_gpu` 和两个 demo 构建；Task1/Task2 L3 均 `PASS repeat=3`，并完成可视化图件生成 |
 | V4.2 | 已满足 | 已满足 | `stage2_full.log` 显示脚本版本 `diagnostics-20260616-stage2-deps-v5`，29/29 依赖算子通过，Task1/Task2 L1-L6 全规模 sweep、报告和图件均通过 |
 | V4.3 | 已满足 | 已满足 | Stage3 v2 active 81 条 accuracy 已通过；模块级 12/12、算子级 81/81，验收口径为 CPU reference + 中科芯 GPU |
 | V4.4 | 已满足 | 已满足 | Stage4 full 已通过：Task1/Task2 L1-L6、81 算子 486/486 benchmark、图件生成均通过 |
-| V4.5 | 已满足 | 未满足 | V4.4 已完成，当前进入交付固化 |
+| V4.5 | 已满足 | 已满足 | README、AGENT、V4.5 交付文档、迁移状态和台账已完成一致性收敛；2026-06-18 Stage4 full 复验 PASS |
+| V4.6 | 已满足 | 已满足 | 已实施项目自有 CUDA 命名到 ZQ500 命名的重构；容器 Stage4 full after rename PASS，81 个算子、486/486 行 benchmark 和图件链路通过 |
+| V4.7 | 已满足 | 已满足 | 只清理低风险表述和内部 helper 名；未改算法、构建、SDK ABI/API 或报告 schema |
+| V4.8 | 已满足 | 已满足 | 已迁移当前报告 schema；容器 Stage4 full PASS，取回的 JSON/CSV/Markdown 报告未出现旧 `cuda_*` 报告键或 `cudart_version` 字段 |
 
 ## 当前基线
 
 - 平台策略：当前迁移验收只面向 `ZHONGKEXIN`；CPU 链路作为 reference，GPU 链路指容器内 ZQ500。
-- 公开 API 状态：保持不变。
-- 当前阶段主目标：进入 V4.5 交付固化，整理 README、AGENT、迁移报告、复现流程、报告和图件归档。
-- 当前实现状态：中科芯 stage1 构建、链接、Task1/Task2 L3 验证、Python 依赖检查和可视化图件生成均已通过；V4.2 统一入口和依赖矩阵已完成，Stage2 full 已确认 29 个依赖算子全部通过，Task1/Task2 L1-L6 全规模、报告和图件通过；V4.3 Stage3 v2 active 81 条 accuracy 已通过，模块级 12/12、算子级 81/81；V4.4 Stage4 full 已通过，81 个算子、486/486 行 benchmark 和图件生成通过。
+- 公开 API 状态：V4.6 已将公开 GPU namespace 从 `cuda_backend` 改为 `zx_gpu_backend`，device 类型从 `Cuda*` 改为 `ZxGpu*`。
+- 当前阶段主目标：V4.8 报告 schema 中性化已关闭；后续若继续清理，只处理项目自有报告/文档命名，不改中科芯 SDK 兼容 API/ABI。
+- 当前实现状态：中科芯 stage1 构建、链接、Task1/Task2 L3 验证、Python 依赖检查和可视化图件生成均已通过；V4.2 统一入口和依赖矩阵已完成，Stage2 full 已确认 29 个依赖算子全部通过，Task1/Task2 L1-L6 全规模、报告和图件通过；V4.3 Stage3 v2 active 81 条 accuracy 已通过，模块级 12/12、算子级 81/81；V4.4 Stage4 full 已通过，81 个算子、486/486 行 benchmark 和图件生成通过；V4.5 交付固化已完成；V4.6 重命名后 Stage4 full after rename 已通过；V4.7 未触碰执行链路；V4.8 报告 schema 中性化后 Stage4 full 已通过。
 - 参赛者服务器说明：已阅读并纳入 README、AGENT 和迁移计划。
 - 复赛说明文件：已阅读 runtime API、driver API、科学计算库实现列表，并纳入 README、AGENT、V4 计划和迁移台账。
 - 当前项目记录：用户 ID `usr_04`，UID `1006`，主机名 `supervisor-X7850H0`，项目路径 `/home/usr_04/CETC`。
@@ -59,7 +69,7 @@
 | B | 平台构建入口 | 已完成 | `CUSIGNAL_PLATFORM=ZHONGKEXIN` 路径改为 `dlcc` CXX 编译模型，`.cu` 通过 `-x cuda --cuda-gpu-arch=dlgput64` 编译；`run_zhongkexin_stage1.sh` 统一验收通过 | 后续按 V4.2 增量扩展 |
 | C | 核心 runtime 兼容层 | 已完成 | 中科芯 headers/runtime 库解析可用，probe 静态库编译通过 | V4.2 继续覆盖依赖算子 smoke |
 | D | FFT/BLAS/SOLVER 重库依赖 | 已完成第一阶段验证 | `dlfft`、`dlblas`、`dlsolver`、`curt`、`dleol` 链接路径已解析，Task1/Task2 demo 已完成链接运行 | V4.2 逐算子验证 FFT 长度、SOLVER pivot 等平台约束 |
-| E | 轻量 CUDA 模块 | 已完成第一阶段验证 | `cusignal_cuda` 在中科芯路径完成构建和归档 | V4.2 继续模块级 smoke/accuracy |
+| E | 轻量 CUDA 模块 | 已完成第一阶段验证 | `cusignal_zx_gpu` 在中科芯路径完成构建和归档 | V4.2 继续模块级 smoke/accuracy |
 | F | Task1/Task2 demo 验收 | 已完成 | `task1_radar` 与 `task2_features` L3 均 `PASS repeat=3`，报告已写出；Python 依赖可 import，Task1/Task2 可视化图件已生成 | V4.2 扩展到 L1-L6 sweep |
 | G | 第一阶段外延检查 | 转入 V4.2 | 现有测试、demo 报告和 benchmark 脚本可复用 | 在 V4.2 执行依赖算子 smoke/accuracy 和 L1-L6 sweep |
 
@@ -70,7 +80,7 @@
 - 在中科芯 docker 内完成 SDK 初始化后，`dlsmi` 能看到可用设备。
 - `scripts/platform/probe_zhongkexin.sh` 通过，至少覆盖 runtime、kernel launch、event、FFT、BLAS、SOLVER 探测。
 - `build-zx` 能完成配置。
-- `cusignal_cpu`、`cusignal_cuda`、`task1_radar_demo`、`task2_features_demo` 能完成构建。
+- `cusignal_cpu`、`cusignal_zx_gpu`、`task1_radar_demo`、`task2_features_demo` 能完成构建。
 - `scripts/test/run_task_demos.sh --build-dir build-zx --no-build --repeat 3 --require-visualization-deps` 能运行完成。
 - Task1/Task2 默认 L3 规模报告中 `validation.pass=true`。
 - Task1/Task2 可视化图件能生成，`numpy/matplotlib/scipy` 均可 import。
@@ -83,7 +93,7 @@
 - 2026-06-16 取回的 `stage1.log` 开头为 `[zx-stage1] script version: diagnostics-20260616-dlcc-cxx-python-v3`，确认容器内执行的是完整功能闭环版本统一验收脚本。
 - 依赖准备完成：`cmake 3.22.1`、`dlcc /zq500/sdk/bin/dlcc`、SDK headers/libs 和 FFTW 均满足；`python modules: already installed`。
 - `scripts/platform/probe_zhongkexin.sh` 路径通过，`dlcc` 参数 `-std=c++17 -fPIC -x cuda --cuda-gpu-arch=dlgput64 -I/zq500/sdk/include -I/zq500/cuda11/include` 能产出 ELF relocatable。
-- `build-zx` 完成配置，`cusignal_cpu`、`cusignal_cuda`、`task1_radar_demo`、`task2_features_demo` 均完成构建和链接。
+- `build-zx` 完成配置，`cusignal_cpu`、`cusignal_zx_gpu`、`task1_radar_demo`、`task2_features_demo` 均完成构建和链接。
 - `task1_radar` 通过：`PASS repeat=3 scale_level=L3 invalid_input_checks=true skip_timing_validation=false`。
 - `task1_radar` 可视化完成，图件输出到 `data/reports/demo/task1_radar/figures`。
 - `task2_features` 通过：`PASS repeat=3 scale_level=L3 invalid_input_checks=true skip_timing_validation=false`。
@@ -158,13 +168,13 @@ cd /CETC
 scripts/platform/run_zhongkexin_stage1.sh
 ```
 
-统一验收脚本内部会兼容当前 SDK `env.sh` 的 `$1` 读取行为，运行前不需要手动 source。如需覆盖默认值，使用 `BUILD_DIR`、`CUDA_ARCH`、`REPEAT` 环境变量。当前中科芯路径默认使用 `CUDA_ARCH=OFF`，不要手动设置 `CUDA_ARCH=80`，否则 CMake 可能生成 NVIDIA 专用的 `sm_80` 参数。
+统一验收脚本内部会兼容当前 SDK `env.sh` 的 `$1` 读取行为，运行前不需要手动 source。如需覆盖默认值，使用 `BUILD_DIR`、`REPEAT` 等当前脚本支持的环境变量。V4.6 后当前构建入口固定使用中科芯 `dlcc --cuda-gpu-arch=dlgput64`，不再提供 NVIDIA 架构参数入口。
 
 等价展开命令：
 
 ```bash
 cmake -S . -B build-zx -DCUSIGNAL_PLATFORM=ZHONGKEXIN -DCMAKE_BUILD_TYPE=Release
-cmake --build build-zx --target cusignal_cpu cusignal_cuda task1_radar_demo task2_features_demo --parallel
+cmake --build build-zx --target cusignal_cpu cusignal_zx_gpu task1_radar_demo task2_features_demo --parallel
 scripts/test/run_task_demos.sh --build-dir build-zx --no-build --repeat 3 --require-visualization-deps
 ```
 
@@ -223,20 +233,39 @@ V4.4 当前证据：
 - 已补齐 benchmark scale mapping，并为中科芯 `chebwin`、`firwin2` 配置保守规模族；下一步复跑失败算子子集。
 - 失败算子子集复验已通过：15 个算子、90 行 benchmark 全部通过，图件生成通过。
 - Stage4 full 最终通过：脚本版本 `diagnostics-20260617-stage4-perf-full-v4`，Task1/Task2 L1-L6 12/12 行通过，81 个算子、486/486 行 benchmark 通过，`plot_status=passed`，生成 87 个 benchmark 图件文件。
-- 当前证据归档：`data/reports/zhongkexin/stage4_full_final/` 和 `data/reports/unit/benchmarks/zhongkexin_stage4_full/`。
-- 结论：V4.4 已关闭；当前进入 V4.5 交付固化。
+- 当前证据归档：`data/reports/zhongkexin/stage4_full_latest/` 和 `data/reports/unit/benchmarks/zhongkexin_stage4_full/`。
+- 结论：V4.4 已关闭；V4.5 交付固化已完成。
+
+V4.5 关闭证据：
+
+- 2026-06-18，容器内按 README/AGENT 推荐 Stage4 full 命令复验，脚本版本为 `diagnostics-20260617-stage4-perf-full-v4`。
+- 依赖准备通过：`cmake 3.22.1`、`dlcc /zq500/sdk/bin/dlcc`、SDK headers/libs、FFTW 和 Python modules 均满足。
+- Stage4 summary 显示 `pass=true`、`benchmark_rows=486`、`benchmark_failed_rows=0`、`plot_status=passed`。
+- benchmark CSV 统计为 81 个算子、486 行全部通过，图件目录共 87 个文件。
+- README、AGENT、V4.5 计划、V4.5 交付文档、迁移状态和迁移台账已收敛到 CPU reference + 容器内 ZQ500 GPU 单一验收口径。
+- 结论：V4.5 已关闭；当前项目进入提交材料整理和必要的维护性复验。
+
+V4.6 关闭证据：
+
+- 2026-06-18，容器内同步重命名版本后执行 Stage4 full after rename，脚本版本为 `diagnostics-20260617-stage4-perf-full-v4`。
+- CMake configure 使用 `/zq500/sdk/bin/dlcc`，解析中科芯 ZQ500 compatibility headers 和 `libcurt.so`、`libdlfft.so`、`libdlblas.so`、`libdlsolver.so`。
+- 取回日志 `stage4_full_after_rename.log` 显示 `[zx-stage4] PASS`。
+- 取回 summary `data/reports/zhongkexin/stage4_after_rename_latest/latest_stage4_summary.json` 显示 `pass=true`、`benchmark_rows=486`、`benchmark_failed_rows=0`、`plot_status=passed`。
+- 取回 benchmark 报告 `data/reports/unit/benchmarks/zhongkexin_stage4_full_after_rename/latest_report.md` 显示 `operators=81`、`rows=486`、`passed_rows=486`。
+- 图件目录 `data/reports/unit/benchmarks/zhongkexin_stage4_full_after_rename/figures` 共 87 个文件。
+- 结论：V4.6 已关闭；项目当前交付口径为 CPU reference + 容器内中科芯 ZQ500 GPU。
 
 ## 未决风险
 
 - 中科芯 SDK 的库名可能不同于标准 CMake CUDA targets。
-- 宿主机 shell 不能代表中科芯 SDK 验收环境；后续 V4.2-V4.5 仍必须以本队 docker 内日志为准。
+- 宿主机 shell 不能代表中科芯 SDK 验收环境；后续维护性复验仍必须以本队 docker 内日志为准。
 - 当前普通用户无法直接访问 Docker socket；如需由 Codex 直接执行容器验证，需要先进入本队 docker，或提供一个已具备 SDK 环境的 shell。
 - cuFFT static link 可能需要额外平台系统库。
 - 复赛科学计算库说明显示 cuFFT 点数仅支持 2 的整数次幂；所有 FFT-heavy 算子需要确认 padding 和裁剪策略。
 - 复赛科学计算库说明显示 cuSOLVER LU `devIpiv` 不支持 `nullptr`；所有 getrf 路径需要确认 pivot buffer。
 - 复赛 runtime/driver API 为部分覆盖；不得引入未确认支持的 memory pool、stream ordered allocator、external memory、IPC event、NvSci、graph capture 等高级 API。
 - 早期平台镜像上的 event timing 可能比 correctness 更不稳定。
-- 模板较重或使用 `thread_local` workspace 的代码可能暴露 CUDA 编译器兼容问题。
+- 模板较重或使用 `thread_local` workspace 的代码可能暴露 ZQ500 GPU 编译器兼容问题。
 - 中科芯平台可能没有 `compute-sanitizer`；如无等价工具，leak check 应记录为 skipped。
 - VPN 每天 `1:00-8:00` 关闭，长时间构建、benchmark 和 scale sweep 需要避开该时段。
 - 每次进入 docker 都需要初始化 SDK；当前统一验收脚本内部已用 `source /zq500/sdk/env.sh ""` 处理 `$1` 未绑定问题。

@@ -23,7 +23,7 @@ namespace fs = std::filesystem;
 
 namespace cusignal
 {
-    namespace cuda_backend
+    namespace zx_gpu_backend
     {
         namespace peak_finding_test_hooks
         {
@@ -36,7 +36,7 @@ namespace
 {
     namespace peak_api = cusignal::peak_finding_api;
     using cusignal::core::AxisIndices;
-    using cusignal::core::CudaRealArray;
+    using cusignal::core::ZxGpuRealArray;
     using cusignal::core::DeviceAxisIndices;
     using cusignal::core::IndexVector;
     using cusignal::core::RealArray;
@@ -472,7 +472,7 @@ namespace
                 bool cpu_exception = false;
                 bool gpu_exception = false;
                 peak_api::ExtremaResult cpu_result;
-                peak_api::CudaExtremaResult gpu_result;
+                peak_api::ZxGpuExtremaResult gpu_result;
                 try
                 {
                     cpu_result = cpu_callable(test_case);
@@ -528,9 +528,9 @@ namespace
         {
             summary.perf_cases = 1;
             const Case perf = perf_case(op == "argrelmin" ? "less" : "greater");
-            const CudaRealArray device_data = CudaRealArray::from_host(perf.data);
+            const ZxGpuRealArray device_data = ZxGpuRealArray::from_host(perf.data);
             auto gpu_perf = [&]() {
-                return cusignal::cuda_backend::peak_finding::argrelextrema(
+                return cusignal::zx_gpu_backend::peak_finding::argrelextrema(
                     device_data,
                     perf.comparator,
                     perf.axis,
@@ -545,10 +545,10 @@ namespace
             }
             std::vector<float> kernel_samples;
             summary.gpu_e2e_perf = measure(options.warmup, options.repeat, [&]() {
-                (void)cusignal::cuda_backend::peak_finding_test_hooks::consume_last_kernel_ms();
+                (void)cusignal::zx_gpu_backend::peak_finding_test_hooks::consume_last_kernel_ms();
                 (void)gpu_perf();
-                cusignal::core::throw_on_cuda_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
-                kernel_samples.push_back(cusignal::cuda_backend::peak_finding_test_hooks::consume_last_kernel_ms());
+                cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
+                kernel_samples.push_back(cusignal::zx_gpu_backend::peak_finding_test_hooks::consume_last_kernel_ms());
             });
             summary.gpu_kernel_perf = summarize(std::move(kernel_samples));
 
@@ -623,7 +623,7 @@ int run_argrelextrema_tests(int argc, char **argv)
             test_case.mode);
     };
     const auto gpu = [](const Case &test_case) {
-        return cusignal::cuda_backend::peak_finding::argrelextrema(
+        return cusignal::zx_gpu_backend::peak_finding::argrelextrema(
             test_case.data,
             test_case.comparator,
             test_case.axis,
@@ -644,7 +644,7 @@ int run_argrelmin_tests(int argc, char **argv)
             test_case.mode);
     };
     const auto gpu = [](const Case &test_case) {
-        return cusignal::cuda_backend::peak_finding::argrelmin(
+        return cusignal::zx_gpu_backend::peak_finding::argrelmin(
             test_case.data,
             test_case.axis,
             test_case.order,
@@ -664,7 +664,7 @@ int run_argrelmax_tests(int argc, char **argv)
             test_case.mode);
     };
     const auto gpu = [](const Case &test_case) {
-        return cusignal::cuda_backend::peak_finding::argrelmax(
+        return cusignal::zx_gpu_backend::peak_finding::argrelmax(
             test_case.data,
             test_case.axis,
             test_case.order,

@@ -163,7 +163,7 @@ namespace cusignal
             }
         }
 
-        inline core::WindowSpec to_host_window_spec(const core::CudaWindowSpec &window)
+        inline core::WindowSpec to_host_window_spec(const core::ZxGpuWindowSpec &window)
         {
             if (const auto *value = std::get_if<std::string>(&window))
             {
@@ -189,7 +189,7 @@ namespace cusignal
             {
                 return *value;
             }
-            return std::get<core::CudaRealSignal>(window).get();
+            return std::get<core::ZxGpuRealSignal>(window).get();
         }
 
         inline void validate_window_length(const core::WindowSpec &window, int numtaps)
@@ -203,7 +203,7 @@ namespace cusignal
             }
         }
 
-        inline void validate_window_length(const core::CudaWindowSpec &window, int numtaps)
+        inline void validate_window_length(const core::ZxGpuWindowSpec &window, int numtaps)
         {
             if (const auto *values = std::get_if<core::RealSignal>(&window))
             {
@@ -213,7 +213,7 @@ namespace cusignal
                 }
                 return;
             }
-            if (const auto *values = std::get_if<core::CudaRealSignal>(&window))
+            if (const auto *values = std::get_if<core::ZxGpuRealSignal>(&window))
             {
                 if (values->size() != static_cast<std::size_t>(numtaps))
                 {

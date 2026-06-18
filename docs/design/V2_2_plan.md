@@ -9,7 +9,7 @@
 ## Implementation Changes
 
 - 补齐 5 个算子真实实现：`chirp`、`gausspulse`、`sawtooth`、`square`、`unit_impulse`。
-- CPU 版使用 C++17 双精度公式实现；GPU 版使用真实 CUDA kernel，host 侧负责输入拷贝、launch、同步与结果回传到现有 `std::vector` 容器。
+- CPU 版使用 C++17 双精度公式实现；GPU 版使用真实 ZQ500 GPU kernel，host 侧负责输入拷贝、launch、同步与结果回传到现有 `std::vector` 容器。
 - 继续沿用当前异常契约：非法参数直接抛异常，不用 NaN 静默吞错。
 - 公开接口不新增类型；测试/runner 侧新增命令行入口约定：
   - `--emit-report`：写报告到 `data/reports`

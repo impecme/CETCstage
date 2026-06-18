@@ -2,10 +2,10 @@
 
 ## Summary
 
-- 本轮覆盖现有 `V2.13` 文档，把这 4 个模块按当前主线模式完整接入：真实 CPU/CUDA 实现、单算子单入口 unit tests、canonical data/report schema、一键测试与版本文档。
+- 本轮覆盖现有 `V2.13` 文档，把这 4 个模块按当前主线模式完整接入：真实 CPU/ZQ500 GPU 实现、单算子单入口 unit tests、canonical data/report schema、一键测试与版本文档。
 - 公开接口模式保持现状：
   - `cpu::*` 继续 host in/out
-  - `cuda_backend::*` 继续 host/device 双输入、device 输出
+  - `zx_gpu_backend::*` 继续 host/device 双输入、device 输出
   - 不新增公开类型，不改函数签名
 - 版本上的额外约束已锁定：
   - 直接覆盖现有 `V2.13`
@@ -17,7 +17,7 @@
 
 ### 1. `correlate`
 
-- 重写 `src/cpu/correlate.cpp` 和 `src/cuda/correlate.cu`，完整实现：
+- 重写 `src/cpu/correlate.cpp` 和 `src/zhongkexin/correlate.cu`，完整实现：
   - `correlate`
   - `correlate2d`
   - `correlation_lags`
@@ -32,8 +32,8 @@
   - `mode="full/same/valid"` 语义对齐 SciPy。
 - `correlation_lags`
   - 精确对齐 Python/SciPy 当前公式，尤其 `same` 和 `valid` 的偶奇长度切片规则。
-  - CUDA 返回 `CudaIndexSignal`，不回退 host。
-- CUDA 侧显存复用：
+  - CUDA 返回 `ZxGpuIndexSignal`，不回退 host。
+- ZQ500 GPU 侧显存复用：
   - 引入 `thread_local CorrelateWorkspace`
   - 复用 FFT 输入输出缓冲、反转/conj 缓冲、2D 空间域临时缓冲、lag 生成缓冲
   - 返回值始终是独立 device 对象
@@ -45,14 +45,14 @@
 
 ### 2. `demod`
 
-- 重写 `src/cpu/demod.cpp` 和 `src/cuda/demod.cu`，完整实现 `fm_demod`。
+- 重写 `src/cpu/demod.cpp` 和 `src/zhongkexin/demod.cu`，完整实现 `fm_demod`。
 - 数值语义固定为 Python 当前实现：
   - `unwrap(angle(x), axis)` 后做 `diff(..., axis)`
   - 输出沿目标轴长度减 `1`
 - 约束固定：
   - 输入必须是复数；对实输入抛 `std::invalid_argument`
   - `axis` 支持负索引
-- CUDA 侧实现固定为三段式 device-native：
+- ZQ500 GPU 侧实现固定为三段式 device-native：
   - 相位提取
   - 沿 line 的 unwrap
   - 沿 line 的 diff
@@ -64,7 +64,7 @@
 
 ### 3. `estimation`
 
-- 重写 `src/cpu/estimation.cpp` 和 `src/cuda/estimation.cu`，完整实现当前头文件声明的 `KalmanFilter` 类。
+- 重写 `src/cpu/estimation.cpp` 和 `src/zhongkexin/estimation.cu`，完整实现当前头文件声明的 `KalmanFilter` 类。
 - 公开接口不变，但运行时语义固定为：
   - `dtype` 仅接受 `"float32"`
   - `"float64"` 明确抛 `std::invalid_argument`
@@ -90,7 +90,7 @@
     - `x = x + Ky`
     - `P = (I - KH) P`
   - 同时缓存 `z`
-- CUDA 实现固定为 device-native，不回退 CPU：
+- ZQ500 GPU 实现固定为 device-native，不回退 CPU：
   - `predict` 和 `update` 使用每个 point 一个 block 的 shared-memory 小矩阵内核
   - `S^{-1}` 在 kernel 内做小型高斯消元
 - 显存复用：
@@ -102,7 +102,7 @@
 
 ### 4. `peak_finding`
 
-- 重写 `src/cpu/peak_finding.cpp` 和 `src/cuda/peak_finding.cu`，完整实现：
+- 重写 `src/cpu/peak_finding.cpp` 和 `src/zhongkexin/peak_finding.cu`，完整实现：
   - `argrelextrema`
   - `argrelmin`
   - `argrelmax`
@@ -116,7 +116,7 @@
   - 返回“每个维度一个索引数组”
 - CPU 实现：
   - 先生成 bool mask，再展开为各轴索引数组
-- CUDA 实现：
+- ZQ500 GPU 实现：
   - device 端生成 bool mask
   - 设备端压缩得到 flat hit indices
   - 再把 flat index 转换成每轴坐标，生成 `DeviceAxisIndices`

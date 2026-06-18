@@ -1,6 +1,7 @@
-[zx-stage4] script version: diagnostics-20260617-stage4-perf-full-v3
+[zx-stage4] script version: diagnostics-20260617-stage4-perf-full-v4
 [zx-stage4] build dir: build-zx
 [zx-stage4] task scales: 1,2,3,4,5,6
+[zx-stage4] run task sweep: 1
 [zx-stage4] benchmark modules: all
 [zx-stage4] benchmark operators: all
 [zx-stage4] benchmark scale levels: 1,2,3,4,5,6
@@ -13,110 +14,9 @@ Activate Release Package @ /zq500/sdk
 [zx-deps] fftw: already installed
 [zx-deps] python modules: already installed
 [zx-deps] dependency preparation complete
-[zx-stage4] configuring build dir: /CETC/build-zx
--- The CXX compiler identification is Clang 15.0.6
--- Detecting CXX compiler ABI info
--- Detecting CXX compiler ABI info - done
--- Check for working CXX compiler: /zq500/sdk/bin/dlcc - skipped
--- Detecting CXX compile features
--- Detecting CXX compile features - done
--- Using Zhongkexin CUDA headers without CUDAToolkit cudart target: /zq500/sdk/include
--- CUSIGNAL_PLATFORM=ZHONGKEXIN
--- Looking for C++ include pthread.h
--- Looking for C++ include pthread.h - found
--- Performing Test CMAKE_HAVE_LIBC_PTHREAD
--- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
--- Found Threads: TRUE  
--- Using Zhongkexin CUDA runtime compatibility library: /zq500/sdk/lib/libcurt.so
--- Using Zhongkexin cuFFT compatibility library: /zq500/sdk/lib/libdlfft.so
--- Using Zhongkexin cuBLAS compatibility library: /zq500/sdk/lib/libdlblas.so
--- Using Zhongkexin cuSOLVER compatibility library: /zq500/sdk/lib/libdlsolver.so
--- Using cuFFT compatibility library: /zq500/sdk/lib/libdlfft.so
--- Using cuBLAS compatibility library: /zq500/sdk/lib/libdlblas.so
--- Using cuSOLVER compatibility library: /zq500/sdk/lib/libdlsolver.so
--- Configuring done
--- Generating done
--- Build files have been written to: /CETC/build-zx
 [zx-stage4] running Task1/Task2 scale sweep
 [zx-stage4] running operator benchmark pilot
-[zx-stage4] error: operator benchmark failed, log: data/reports/zhongkexin/stage4/latest_operator_benchmark_pilot.log
-[cusignal-test] running peak_finding/argrelextrema
-[peak_finding/argrelextrema] PASS  accuracy_cases=0  perf_cases=1
-cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
-reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
-cpu_perf_ms   : median=0.134  mean=0.135  p95=0.135
-gpu_perf_ms   : e2e_median=0.256  kernel_median=0.199  p95=0.265  e2e_speedup=0.525x  kernel_speedup=0.676x
-reports       : data/reports/unit/peak_finding/argrelextrema/latest_summary.md
-[cusignal-test] summary: passed 1/1
-[all-ops-bench] [79/81 L2] peak_finding/argrelextrema scale=16384
-[all-ops-bench] running peak_finding/argrelextrema: /CETC/scripts/test/run_all_tests.sh --module peak_finding --operator argrelextrema --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
-[cusignal-test] timing       : warmup=5 repeat=30
-[cusignal-test] running peak_finding/argrelextrema
-[peak_finding/argrelextrema] PASS  accuracy_cases=0  perf_cases=1
-cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
-reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
-cpu_perf_ms   : median=0.505  mean=0.505  p95=0.512
-gpu_perf_ms   : e2e_median=0.261  kernel_median=0.204  p95=0.272  e2e_speedup=1.936x  kernel_speedup=2.474x
-reports       : data/reports/unit/peak_finding/argrelextrema/latest_summary.md
-[cusignal-test] summary: passed 1/1
-[all-ops-bench] [79/81 L3] peak_finding/argrelextrema scale=65536
-[all-ops-bench] running peak_finding/argrelextrema: /CETC/scripts/test/run_all_tests.sh --module peak_finding --operator argrelextrema --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
-[cusignal-test] timing       : warmup=5 repeat=30
-[cusignal-test] running peak_finding/argrelextrema
-[peak_finding/argrelextrema] PASS  accuracy_cases=0  perf_cases=1
-cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
-reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
-cpu_perf_ms   : median=2.032  mean=2.032  p95=2.038
-gpu_perf_ms   : e2e_median=0.282  kernel_median=0.227  p95=0.365  e2e_speedup=7.205x  kernel_speedup=8.933x
-reports       : data/reports/unit/peak_finding/argrelextrema/latest_summary.md
-[cusignal-test] summary: passed 1/1
-[all-ops-bench] [79/81 L4] peak_finding/argrelextrema scale=262144
-[all-ops-bench] running peak_finding/argrelextrema: /CETC/scripts/test/run_all_tests.sh --module peak_finding --operator argrelextrema --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
-[cusignal-test] timing       : warmup=5 repeat=30
-[cusignal-test] running peak_finding/argrelextrema
-[peak_finding/argrelextrema] PASS  accuracy_cases=0  perf_cases=1
-cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
-reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
-cpu_perf_ms   : median=8.114  mean=8.117  p95=8.120
-gpu_perf_ms   : e2e_median=0.386  kernel_median=0.332  p95=0.400  e2e_speedup=21.027x  kernel_speedup=24.423x
-reports       : data/reports/unit/peak_finding/argrelextrema/latest_summary.md
-[cusignal-test] summary: passed 1/1
-[all-ops-bench] [79/81 L5] peak_finding/argrelextrema scale=524288
-[all-ops-bench] running peak_finding/argrelextrema: /CETC/scripts/test/run_all_tests.sh --module peak_finding --operator argrelextrema --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
-[cusignal-test] timing       : warmup=5 repeat=30
-[cusignal-test] running peak_finding/argrelextrema
-[peak_finding/argrelextrema] PASS  accuracy_cases=0  perf_cases=1
-cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
-reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
-cpu_perf_ms   : median=16.053  mean=16.058  p95=16.067
-gpu_perf_ms   : e2e_median=0.527  kernel_median=0.472  p95=0.552  e2e_speedup=30.490x  kernel_speedup=33.992x
-reports       : data/reports/unit/peak_finding/argrelextrema/latest_summary.md
-[cusignal-test] summary: passed 1/1
-[all-ops-bench] [79/81 L6] peak_finding/argrelextrema scale=1048576
-[all-ops-bench] running peak_finding/argrelextrema: /CETC/scripts/test/run_all_tests.sh --module peak_finding --operator argrelextrema --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
-[cusignal-test] timing       : warmup=5 repeat=30
-[cusignal-test] running peak_finding/argrelextrema
-[peak_finding/argrelextrema] PASS  accuracy_cases=0  perf_cases=1
-cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
-reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
-cpu_perf_ms   : median=32.234  mean=32.248  p95=32.419
-gpu_perf_ms   : e2e_median=0.839  kernel_median=0.784  p95=0.857  e2e_speedup=38.406x  kernel_speedup=41.117x
-reports       : data/reports/unit/peak_finding/argrelextrema/latest_summary.md
-[cusignal-test] summary: passed 1/1
-[all-ops-bench] [80/81 L1] peak_finding/argrelmin scale=4096
-[all-ops-bench] [80/81 L2] peak_finding/argrelmin scale=16384
-[all-ops-bench] [80/81 L3] peak_finding/argrelmin scale=65536
-[all-ops-bench] [80/81 L4] peak_finding/argrelmin scale=262144
-[all-ops-bench] [80/81 L5] peak_finding/argrelmin scale=524288
-[all-ops-bench] [80/81 L6] peak_finding/argrelmin scale=1048576
-[all-ops-bench] [81/81 L1] peak_finding/argrelmax scale=4096
-[all-ops-bench] [81/81 L2] peak_finding/argrelmax scale=16384
-[all-ops-bench] [81/81 L3] peak_finding/argrelmax scale=65536
-[all-ops-bench] [81/81 L4] peak_finding/argrelmax scale=262144
-[all-ops-bench] [81/81 L5] peak_finding/argrelmax scale=524288
-[all-ops-bench] [81/81 L6] peak_finding/argrelmax scale=1048576
-[all-ops-bench] restoring original manifests
-[all-ops-bench] wrote /CETC/data/reports/unit/benchmarks/zhongkexin_stage4_full/all_ops_scale_benchmark_20260617_090638.csv
-[all-ops-bench] updated /CETC/data/reports/unit/benchmarks/zhongkexin_stage4_full/latest_all_ops_scale_benchmark.csv
-[all-ops-bench] updated /CETC/data/reports/unit/benchmarks/zhongkexin_stage4_full/latest_report.md
-[all-ops-bench] rows=486
+[zx-stage4] plotting operator benchmark
+[zx-stage4] wrote data/reports/zhongkexin/stage4/latest_stage4_summary.json
+[zx-stage4] wrote data/reports/zhongkexin/stage4/latest_stage4_summary.md
+[zx-stage4] PASS

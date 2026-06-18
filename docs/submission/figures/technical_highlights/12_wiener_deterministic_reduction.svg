@@ -874,7 +874,7 @@ z
     <text style="font-size: 6.2px; font-family: 'Droid Sans Fallback', 'DejaVu Sans'; text-anchor: middle; fill: #263238" x="850.176" y="441.198812" transform="rotate(-0 850.176 441.198812)">复测</text>
    </g>
    <g id="text_43">
-    <text style="font-size: 7.2px; font-family: 'Droid Sans Fallback', 'DejaVu Sans'; text-anchor: end; fill: #607d8b" x="895.68" y="497.118375" transform="rotate(-0 895.68 497.118375)">src/cuda/filtering.cu | scripts/test/READMEV3_8_1.md</text>
+    <text style="font-size: 7.2px; font-family: 'Droid Sans Fallback', 'DejaVu Sans'; text-anchor: end; fill: #607d8b" x="895.68" y="497.118375" transform="rotate(-0 895.68 497.118375)">src/zhongkexin/filtering.cu | scripts/test/READMEV3_8_1.md</text>
    </g>
   </g>
  </g>

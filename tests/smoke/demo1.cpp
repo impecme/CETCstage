@@ -1,5 +1,5 @@
 /*
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CUDA_ARCHITECTURES=80
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_GPU_ARCHITECTURES=80
 cmake --build build --target smoke_demo1 --parallel 8
 */
 #include "cusignal/cusignal.hpp"
@@ -11,12 +11,12 @@ cmake --build build --target smoke_demo1 --parallel 8
 
 int main()
 {
-    const auto zeros = cusignal::core::make_cuda_real_signal(4, 0.0f).get();
+    const auto zeros = cusignal::core::make_zx_gpu_real_signal(4, 0.0f).get();
     for (float value : zeros)
     {
         if (value != 0.0f)
         {
-            throw std::runtime_error("CudaRealSignal zero-fill check failed");
+            throw std::runtime_error("ZxGpuRealSignal zero-fill check failed");
         }
     }
 
@@ -25,19 +25,19 @@ int main()
         {3.5f, 4.0f},
     };
     const auto complex_output =
-        cusignal::core::CudaComplexSignal::from_host(complex_input).get();
+        cusignal::core::ZxGpuComplexSignal::from_host(complex_input).get();
     for (std::size_t index = 0; index < complex_input.size(); ++index)
     {
         if (std::abs(complex_output[index] - complex_input[index]) > 1.0e-6f)
         {
-            throw std::runtime_error("CudaComplexSignal round-trip check failed");
+            throw std::runtime_error("ZxGpuComplexSignal round-trip check failed");
         }
     }
 
     const cusignal::core::RealSignal t{-3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0};
-    const auto duty = cusignal::cuda_backend::windows::hann(static_cast<int>(t.size()));
-    const auto saw = cusignal::cuda_backend::waveforms::sawtooth(t, duty);
-    const auto square = cusignal::cuda_backend::waveforms::square(saw, duty);
+    const auto duty = cusignal::zx_gpu_backend::windows::hann(static_cast<int>(t.size()));
+    const auto saw = cusignal::zx_gpu_backend::waveforms::sawtooth(t, duty);
+    const auto square = cusignal::zx_gpu_backend::waveforms::square(saw, duty);
 
     std::cout << "demo1:";
     for (float value : saw.get())

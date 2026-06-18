@@ -75,7 +75,7 @@ namespace
         sum = next;
     }
 
-    std::pair<float, float> vectorstrength_pairwise_like_cuda(
+    std::pair<float, float> vectorstrength_pairwise_like_zx_gpu(
         const RealSignal &events,
         float period)
     {
@@ -1264,7 +1264,7 @@ namespace cusignal
                 result.phase = core::make_real_signal(1);
                 if (events.size() >= 4096)
                 {
-                    const auto pairwise = vectorstrength_pairwise_like_cuda(events, period);
+                    const auto pairwise = vectorstrength_pairwise_like_zx_gpu(events, period);
                     result.strength[0] = pairwise.first;
                     result.phase[0] = pairwise.second;
                     return result;

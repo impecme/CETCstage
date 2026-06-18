@@ -38,27 +38,27 @@ data/reports/unit/benchmarks/cpu_baselines/large-gpu-demo-fast/latest_cpu_baseli
 
 ## 本轮已 device-resident 化的 perf 路径
 
-- `waveforms/gausspulse`：perf 输入预上传为 `CudaRealSignal`，timed lambda 内走 public CUDA API 的 device-input 路径。
-- `radartools/pulse_doppler`：perf 输入预上传为 `CudaComplexArray`，并减少 `nfft < pulses` 时的无效 pack 线程。
-- `demod/fm_demod`：perf 输入预上传为 `CudaComplexArray`，CUDA 内复用 shape/stride metadata。
-- `filtering/detrend`：perf 输入预上传为 `CudaRealArray`，CUDA 内复用 line bases / breakpoints metadata。
-- `peak_finding/argrelextrema`：perf 输入预上传为 `CudaRealArray`，CUDA 内复用 axis pointer/metadata workspace。
+- `waveforms/gausspulse`：perf 输入预上传为 `ZxGpuRealSignal`，timed lambda 内走 public ZQ500 GPU API 的 device-input 路径。
+- `radartools/pulse_doppler`：perf 输入预上传为 `ZxGpuComplexArray`，并减少 `nfft < pulses` 时的无效 pack 线程。
+- `demod/fm_demod`：perf 输入预上传为 `ZxGpuComplexArray`，CUDA 内复用 shape/stride metadata。
+- `filtering/detrend`：perf 输入预上传为 `ZxGpuRealArray`，CUDA 内复用 line bases / breakpoints metadata。
+- `peak_finding/argrelextrema`：perf 输入预上传为 `ZxGpuRealArray`，CUDA 内复用 axis pointer/metadata workspace。
 - `radartools/ambgfun`：2D surface 使用分块 FFT workspace，降低大规模点的峰值显存需求；Batch6 增加 device-input normalized buffer cache，并按可用显存自适应 tile rows。更大的 128M tile 和“memset + only nonzero write”试验在 L6 上变慢，最终保留 64M tile 稳定路径。
 - `windows/chebwin`：Chebyshev frequency response template 改为 GPU kernel 生成，并按 `extended.size/at/sym` 缓存在 `WindowWorkspace`；Batch6 增加最终 normalized window cache，repeat 命中时 timed path 只做 result 分配和 D2D copy。
-- `radartools/ca_cfar`：perf 输入预上传为 `CudaRealArray`，timed lambda 内走现有 public CUDA API 的 device-input 路径，去掉计时区间内的 host 构造和 H2D。
-- `wavelets/cwt`：perf data 预上传为 `CudaRealSignal`，widths 保持 host 小向量用于校验和 cache key；CUDA workspace 按 `wavelet/data_count/widths` 缓存 CWT kernel table，cache hit 时跳过 CPU table 构造和 H2D；Batch6 为 `ricker` 增加 real-only shared-memory tile kernel，减少相邻 sample 的重复 global load。
-- `spectral/csd`：perf `x/y` 预上传为 `CudaRealArray`；string/named window spec 按 `window/nperseg/fs/scaling` 缓存 device window 与 scale，输出 buffer 改为未清零分配；Batch6 在 real one-sided 路径使用 R2C batched FFT，并为默认 `detrend="constant"` 增加 one-block-per-segment prepare kernel，避免每个 sample 重复扫描窗口求均值。
+- `radartools/ca_cfar`：perf 输入预上传为 `ZxGpuRealArray`，timed lambda 内走现有 public ZQ500 GPU API 的 device-input 路径，去掉计时区间内的 host 构造和 H2D。
+- `wavelets/cwt`：perf data 预上传为 `ZxGpuRealSignal`，widths 保持 host 小向量用于校验和 cache key；CUDA workspace 按 `wavelet/data_count/widths` 缓存 CWT kernel table，cache hit 时跳过 CPU table 构造和 H2D；Batch6 为 `ricker` 增加 real-only shared-memory tile kernel，减少相邻 sample 的重复 global load。
+- `spectral/csd`：perf `x/y` 预上传为 `ZxGpuRealArray`；string/named window spec 按 `window/nperseg/fs/scaling` 缓存 device window 与 scale，输出 buffer 改为未清零分配；Batch6 在 real one-sided 路径使用 R2C batched FFT，并为默认 `detrend="constant"` 增加 one-block-per-segment prepare kernel，避免每个 sample 重复扫描窗口求均值。
 - `spectral/lombscargle`：Batch6 将 one-thread-per-frequency 串行 sample loop 改为 one-block-per-frequency shared reduction，`precenter/normalize` 的 mean 和 dot 均保留在 device 上，移除 repeat 内 `y.get()` D2H。
-- `spectral/vectorstrength`：perf events 预上传为 `CudaRealSignal`，host periods 直接校验并缓存上传；每个 period 的 blocks 上限收敛到 1024，减少超大输入下的调度开销。
+- `spectral/vectorstrength`：perf events 预上传为 `ZxGpuRealSignal`，host periods 直接校验并缓存上传；每个 period 的 blocks 上限收敛到 1024，减少超大输入下的调度开销。
 - `radartools/pulse_compression`：perf 输入和 template 预上传为 device container，输出 buffer 改为未清零分配，timed path 避免大输入 H2D。
-- `filtering/freq_shift`：perf 输入预上传为 `CudaComplexArray`，输出 buffer 改为未清零分配。
+- `filtering/freq_shift`：perf 输入预上传为 `ZxGpuComplexArray`，输出 buffer 改为未清零分配。
 - `filtering/channelize_poly`：perf complex input 与 taps 预上传；host taps 路径缓存 padded taps workspace，输出 channels buffer 改为未清零分配。
 - `filtering/firfilter/firfilter2/sosfilt/upfirdn/decimate/hilbert/hilbert2`：perf 输入预上传为 device container，CUDA 内缓存 line bases、unit signal、`decimate` taps，并把完全写满的中间/输出 buffer 改为未清零分配。
-- `filtering/wiener`：perf 输入预上传为 `CudaRealArray`；CUDA 内缓存 shape/stride/mysize metadata，`noise < 0` 的 variance mean 保留在 device 上由 apply kernel 读取，移除 D2H 同步。
-- `filtering/resample`：perf 输入预上传为 `CudaRealArray`；named/string window 按 `window/axis_size` 缓存 device window，frequency/time 中间输出改为缓存后复用。
-- `filtering/resample_poly`：perf 输入预上传为 `CudaRealArray`；named window 生成的 scaled padded filter 按 `up/down/input/window` 缓存，`upfirdn_kernel` 只遍历当前 polyphase 对应 taps，减少无效 tap 扫描。
-- `spectral/spectrogram/stft`：perf 输入预上传为 `CudaRealArray`；CUDA 内缓存 segment window、scale、frequency axis 和 time axis，values 输出改为未清零分配。
-- Batch7：CUDA 实现已去除外部 parallel STL 依赖；`peak_finding/argrelextrema` 改用 CUDA toolkit 内置 selection，`filter_design/firwin` 改用自定义 device reduction，避免 repeat 内 host response 同步。
+- `filtering/wiener`：perf 输入预上传为 `ZxGpuRealArray`；CUDA 内缓存 shape/stride/mysize metadata，`noise < 0` 的 variance mean 保留在 device 上由 apply kernel 读取，移除 D2H 同步。
+- `filtering/resample`：perf 输入预上传为 `ZxGpuRealArray`；named/string window 按 `window/axis_size` 缓存 device window，frequency/time 中间输出改为缓存后复用。
+- `filtering/resample_poly`：perf 输入预上传为 `ZxGpuRealArray`；named window 生成的 scaled padded filter 按 `up/down/input/window` 缓存，`upfirdn_kernel` 只遍历当前 polyphase 对应 taps，减少无效 tap 扫描。
+- `spectral/spectrogram/stft`：perf 输入预上传为 `ZxGpuRealArray`；CUDA 内缓存 segment window、scale、frequency axis 和 time axis，values 输出改为未清零分配。
+- Batch7：ZQ500 GPU 实现已去除外部 parallel STL 依赖；`peak_finding/argrelextrema` 改用 CUDA toolkit 内置 selection，`filter_design/firwin` 改用自定义 device reduction，避免 repeat 内 host response 同步。
 
 ## 2026-05-03 验证结果
 
@@ -116,7 +116,7 @@ data/reports/unit/benchmarks/cpu_baselines/large-gpu-demo-fast/latest_cpu_baseli
 - 复用演示 baseline 的全量 GPU-only 输出为 `data/reports/unit/benchmarks/all_ops_large/latest_all_ops_scale_benchmark.csv`。
 - 本轮全量结果：`318/318` rows passed，失败行 `0`，`max_mixed_error=8.03277e-05`。
 - 图表输出在 `data/reports/unit/benchmarks/all_ops_large/figures/`。
-- CUDA 实现与 test support 中继续保持无禁用 GPU helper 依赖；当前替代路径使用 CUB 或自定义 CUDA kernel。
+- ZQ500 GPU 实现与 test support 中继续保持无禁用 GPU helper 依赖；当前替代路径使用 CUB 或自定义 ZQ500 GPU kernel。
 
 ### Batch8 L6 实际耗时 Top 10
 
@@ -138,8 +138,8 @@ data/reports/unit/benchmarks/cpu_baselines/large-gpu-demo-fast/latest_cpu_baseli
 ## Batch9 保守性能优化结果
 
 - 本轮保持公共 API、输出语义、CSV schema 和 CPU baseline cache 口径不变，只调整内部 CUDA/perf runner 路径。
-- `radartools/ambgfun`：perf runner 在 `--gpu-only-perf` 下预上传 `CudaComplexSignal`，复用 normalized device-input cache；2D surface tile FFT 固定复用同一 batch plan，避免尾 tile 触发 batch size 变化；surface extract 去掉 modulo shift，并使用 float math。
-- `windows/kaiser`：增加专用对称 CUDA kernel，`bessel_i0(beta)` 在 host 侧只计算一次，kernel 直接写最终输出，避免通用 window 的 extended buffer + copy 路径。
+- `radartools/ambgfun`：perf runner 在 `--gpu-only-perf` 下预上传 `ZxGpuComplexSignal`，复用 normalized device-input cache；2D surface tile FFT 固定复用同一 batch plan，避免尾 tile 触发 batch size 变化；surface extract 去掉 modulo shift，并使用 float math。
+- `windows/kaiser`：增加专用对称 ZQ500 GPU kernel，`bessel_i0(beta)` 在 host 侧只计算一次，kernel 直接写最终输出，避免通用 window 的 extended buffer + copy 路径。
 - `spectral/spectrogram`：为 `return_onesided=true && mode="psd"` 增加 R2C fast path，复用 real segment prepare、`RealForwardPlan` 和 R2C PSD 输出 kernel；其他 mode 继续走原 C2C 路径。
 - 由于当前 GPU0 被外部进程占用，`radartools/ambgfun` L6 完整 surface 在 GPU0 上会因 1 GiB 级输出触发 OOM；本轮 fresh/full 与全量 GPU-only 复测使用 `CUDA_VISIBLE_DEVICES=1` 隔离到空闲 A100。
 - Fresh correctness：`radartools/ambgfun`、`windows/kaiser`、`spectral/spectrogram` 均 PASS。

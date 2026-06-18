@@ -19,7 +19,7 @@
 ## 接口语义
 
 - `cpu::*` 保持 host 输入输出。
-- `cuda_backend::*` 保持 host/device 双输入、device 输出。
+- `zx_gpu_backend::*` 保持 host/device 双输入、device 输出。
 - 不改头文件签名。
 - `include/` 中现有注释块结构保留，仅移除占位语义。
 
@@ -28,7 +28,7 @@
 - 公共逻辑集中在 `src/common/spectral_detail.hpp`
 - CPU 频域计算使用 FFTW
 - CUDA 频域计算使用 `cuFFT`
-- CUDA 侧通过 `thread_local SpectralWorkspace` 复用：
+- ZQ500 GPU 侧通过 `thread_local SpectralWorkspace` 复用：
   - 输入归一化 scratch
   - segment/FFT 缓冲
   - iSTFT overlap-add 缓冲
@@ -79,4 +79,4 @@
 
 ## 版本结论
 
-`V2.11` 完成了 `spectral` 模块的 CPU/CUDA 实现、unit test、reference/perf 数据链路和一键测试接入，当前主线模块已继续扩展到 `spectral`。
+`V2.11` 完成了 `spectral` 模块的 CPU/ZQ500 GPU 实现、unit test、reference/perf 数据链路和一键测试接入，当前主线模块已继续扩展到 `spectral`。

@@ -29,13 +29,13 @@ namespace fs = std::filesystem;
 
 namespace cusignal
 {
-    namespace cuda_backend
+    namespace zx_gpu_backend
     {
         namespace filtering_test_hooks
         {
             float consume_last_kernel_ms();
         }
-    } // namespace cuda_backend
+    } // namespace zx_gpu_backend
 } // namespace cusignal
 
 namespace
@@ -45,11 +45,11 @@ namespace
     using cusignal::core::Complex;
     using cusignal::core::ComplexArray;
     using cusignal::core::ComplexSignal;
-    using cusignal::core::CudaComplexArray;
-    using cusignal::core::CudaComplexSignal;
-    using cusignal::core::CudaRealArray;
-    using cusignal::core::CudaRealSignal;
-    using cusignal::core::CudaWindowSpec;
+    using cusignal::core::ZxGpuComplexArray;
+    using cusignal::core::ZxGpuComplexSignal;
+    using cusignal::core::ZxGpuRealArray;
+    using cusignal::core::ZxGpuRealSignal;
+    using cusignal::core::ZxGpuWindowSpec;
     using cusignal::core::IndexVector;
     using cusignal::core::NamedFloatPairParameter;
     using cusignal::core::NamedFloatParameter;
@@ -202,12 +202,12 @@ namespace
     struct DeviceOutputBundle
     {
         bool main_complex = false;
-        CudaRealArray real_output;
-        CudaComplexArray complex_output;
+        ZxGpuRealArray real_output;
+        ZxGpuComplexArray complex_output;
         bool has_state = false;
-        CudaRealArray state;
+        ZxGpuRealArray state;
         bool has_time = false;
-        CudaRealSignal time;
+        ZxGpuRealSignal time;
     };
 
     using JsonArray = cusignal_test::json::Array;
@@ -1080,7 +1080,7 @@ namespace
         throw std::runtime_error("unsupported window spec kind");
     }
 
-    CudaWindowSpec to_cuda_window_spec(const WindowSpec &spec)
+    ZxGpuWindowSpec to_zx_gpu_window_spec(const WindowSpec &spec)
     {
         if (std::holds_alternative<std::string>(spec))
         {
@@ -1105,16 +1105,16 @@ namespace
         return std::get<RealSignal>(spec);
     }
 
-    CudaWindowSpec to_cuda_window_spec_with_device_array(
+    ZxGpuWindowSpec to_zx_gpu_window_spec_with_device_array(
         const WindowSpec &spec,
-        std::optional<CudaRealSignal> &device_window)
+        std::optional<ZxGpuRealSignal> &device_window)
     {
         if (const auto *values = std::get_if<RealSignal>(&spec))
         {
-            device_window.emplace(CudaRealSignal::from_host(*values));
+            device_window.emplace(ZxGpuRealSignal::from_host(*values));
             return *device_window;
         }
-        return to_cuda_window_spec(spec);
+        return to_zx_gpu_window_spec(spec);
     }
 
     float mixed_error_for_sample(float abs_error, float expected_norm, float atol, float reference_scale)
@@ -1284,12 +1284,12 @@ namespace
         for (int iteration = 0; iteration < options.warmup; ++iteration)
         {
             callable();
-            (void)cusignal::cuda_backend::filtering_test_hooks::consume_last_kernel_ms();
+            (void)cusignal::zx_gpu_backend::filtering_test_hooks::consume_last_kernel_ms();
         }
         for (int iteration = 0; iteration < options.repeat; ++iteration)
         {
             callable();
-            durations.push_back(cusignal::cuda_backend::filtering_test_hooks::consume_last_kernel_ms());
+            durations.push_back(cusignal::zx_gpu_backend::filtering_test_hooks::consume_last_kernel_ms());
         }
         return summarize_timings(durations);
     }
@@ -1469,14 +1469,14 @@ namespace
         return bundle;
     }
 
-    DeviceOutputBundle make_real_output(const CudaRealArray &output)
+    DeviceOutputBundle make_real_output(const ZxGpuRealArray &output)
     {
         DeviceOutputBundle bundle;
         bundle.real_output = output;
         return bundle;
     }
 
-    DeviceOutputBundle make_complex_output(const CudaComplexArray &output)
+    DeviceOutputBundle make_complex_output(const ZxGpuComplexArray &output)
     {
         DeviceOutputBundle bundle;
         bundle.main_complex = true;
@@ -1678,7 +1678,7 @@ namespace
                 },
                 [](const FilteringCase &c)
                 {
-                    return make_real_output(cuda_backend::filtering::wiener(get_x_real(c), c.mysize, c.noise));
+                    return make_real_output(zx_gpu_backend::filtering::wiener(get_x_real(c), c.mysize, c.noise));
                 }};
         }
         if (op == "firfilter")
@@ -1701,14 +1701,14 @@ namespace
                 {
                     if (!c.zi_file.empty())
                     {
-                        const auto result = cuda_backend::filtering::firfilter(
+                        const auto result = zx_gpu_backend::filtering::firfilter(
                             get_b_signal(c), get_x_real(c), c.axis, get_zi_array(c));
                         DeviceOutputBundle bundle = make_real_output(result.output);
                         bundle.has_state = true;
                         bundle.state = result.final_state;
                         return bundle;
                     }
-                    return make_real_output(cuda_backend::filtering::firfilter(get_b_signal(c), get_x_real(c), c.axis));
+                    return make_real_output(zx_gpu_backend::filtering::firfilter(get_b_signal(c), get_x_real(c), c.axis));
                 }};
         }
         if (op == "lfilter")
@@ -1731,14 +1731,14 @@ namespace
                 {
                     if (!c.zi_file.empty())
                     {
-                        const auto result = cuda_backend::filtering::lfilter(
+                        const auto result = zx_gpu_backend::filtering::lfilter(
                             get_b_signal(c), get_a_signal(c), get_x_real(c), c.axis, get_zi_array(c));
                         DeviceOutputBundle bundle = make_real_output(result.output);
                         bundle.has_state = true;
                         bundle.state = result.final_state;
                         return bundle;
                     }
-                    return make_real_output(cuda_backend::filtering::lfilter(get_b_signal(c), get_a_signal(c), get_x_real(c), c.axis));
+                    return make_real_output(zx_gpu_backend::filtering::lfilter(get_b_signal(c), get_a_signal(c), get_x_real(c), c.axis));
                 }};
         }
         if (op == "lfilter_zi")
@@ -1754,11 +1754,11 @@ namespace
                 },
                 [](const FilteringCase &c)
                 {
-                    return make_real_output(CudaRealArray::from_host(make_real_array_from_flat(
+                    return make_real_output(ZxGpuRealArray::from_host(make_real_array_from_flat(
                         Shape{get_a_signal(c).size() > get_b_signal(c).size()
                                   ? get_a_signal(c).size() - 1
                                   : get_b_signal(c).size() - 1},
-                        cuda_backend::filtering::lfilter_zi(get_b_signal(c), get_a_signal(c)).get())));
+                        zx_gpu_backend::filtering::lfilter_zi(get_b_signal(c), get_a_signal(c)).get())));
                 }};
         }
         if (op == "firfilter_zi")
@@ -1771,8 +1771,8 @@ namespace
                 },
                 [](const FilteringCase &c)
                 {
-                    const RealSignal output = cuda_backend::filtering::firfilter_zi(get_b_signal(c)).get();
-                    return make_real_output(CudaRealArray::from_host(make_real_array_from_flat(Shape{output.size()}, output)));
+                    const RealSignal output = zx_gpu_backend::filtering::firfilter_zi(get_b_signal(c)).get();
+                    return make_real_output(ZxGpuRealArray::from_host(make_real_array_from_flat(Shape{output.size()}, output)));
                 }};
         }
         if (op == "firfilter2")
@@ -1786,7 +1786,7 @@ namespace
                 [](const FilteringCase &c)
                 {
                     return make_real_output(
-                        cuda_backend::filtering::firfilter2(get_b_signal(c), get_x_real(c), c.axis, c.padtype, c.padlen, c.method, c.irlen));
+                        zx_gpu_backend::filtering::firfilter2(get_b_signal(c), get_x_real(c), c.axis, c.padtype, c.padlen, c.method, c.irlen));
                 }};
         }
         if (op == "filtfilt")
@@ -1800,7 +1800,7 @@ namespace
                 [](const FilteringCase &c)
                 {
                     return make_real_output(
-                        cuda_backend::filtering::filtfilt(get_b_signal(c), get_a_signal(c), get_x_real(c), c.axis, c.padtype, c.padlen, c.method, c.irlen));
+                        zx_gpu_backend::filtering::filtfilt(get_b_signal(c), get_a_signal(c), get_x_real(c), c.axis, c.padtype, c.padlen, c.method, c.irlen));
                 }};
         }
         if (op == "sosfilt")
@@ -1823,14 +1823,14 @@ namespace
                 {
                     if (!c.zi_file.empty())
                     {
-                        const auto result = cuda_backend::filtering::sosfilt(
+                        const auto result = zx_gpu_backend::filtering::sosfilt(
                             get_sos_array(c), get_x_real(c), c.axis, get_zi_array(c));
                         DeviceOutputBundle bundle = make_real_output(result.output);
                         bundle.has_state = true;
                         bundle.state = result.final_state;
                         return bundle;
                     }
-                    return make_real_output(cuda_backend::filtering::sosfilt(get_sos_array(c), get_x_real(c), c.axis));
+                    return make_real_output(zx_gpu_backend::filtering::sosfilt(get_sos_array(c), get_x_real(c), c.axis));
                 }};
         }
         if (op == "hilbert")
@@ -1842,7 +1842,7 @@ namespace
                 },
                 [](const FilteringCase &c)
                 {
-                    return make_complex_output(cuda_backend::filtering::hilbert(get_x_real(c), c.n, c.axis));
+                    return make_complex_output(zx_gpu_backend::filtering::hilbert(get_x_real(c), c.n, c.axis));
                 }};
         }
         if (op == "hilbert2")
@@ -1854,7 +1854,7 @@ namespace
                 },
                 [](const FilteringCase &c)
                 {
-                    return make_complex_output(cuda_backend::filtering::hilbert2(get_x_real(c), c.n_shape));
+                    return make_complex_output(zx_gpu_backend::filtering::hilbert2(get_x_real(c), c.n_shape));
                 }};
         }
         if (op == "detrend")
@@ -1866,7 +1866,7 @@ namespace
                 },
                 [](const FilteringCase &c)
                 {
-                    return make_real_output(cuda_backend::filtering::detrend(get_data_array(c), c.axis, c.type, c.bp, c.overwrite_data));
+                    return make_real_output(zx_gpu_backend::filtering::detrend(get_data_array(c), c.axis, c.type, c.bp, c.overwrite_data));
                 }};
         }
         if (op == "freq_shift")
@@ -1878,7 +1878,7 @@ namespace
                 },
                 [](const FilteringCase &c)
                 {
-                    return make_complex_output(cuda_backend::filtering::freq_shift(get_x_complex(c), c.freq, c.fs));
+                    return make_complex_output(zx_gpu_backend::filtering::freq_shift(get_x_complex(c), c.freq, c.fs));
                 }};
         }
         if (op == "channelize_poly")
@@ -1891,7 +1891,7 @@ namespace
                 },
                 [](const FilteringCase &c)
                 {
-                    const auto result = cuda_backend::filtering::channelize_poly(flatten(get_x_complex(c)), get_h_signal(c), c.n_chans);
+                    const auto result = zx_gpu_backend::filtering::channelize_poly(flatten(get_x_complex(c)), get_h_signal(c), c.n_chans);
                     return make_complex_output(result.channels);
                 }};
         }
@@ -1904,7 +1904,7 @@ namespace
                 },
                 [](const FilteringCase &c)
                 {
-                    return make_real_output(cuda_backend::filtering::decimate(get_x_real(c), c.q, c.n, c.axis, c.zero_phase));
+                    return make_real_output(zx_gpu_backend::filtering::decimate(get_x_real(c), c.q, c.n, c.axis, c.zero_phase));
                 }};
         }
         if (op == "resample")
@@ -1926,13 +1926,13 @@ namespace
                 {
                     if (!c.t_file.empty())
                     {
-                        const auto result = cuda_backend::filtering::resample(get_x_real(c), c.num, get_t_signal(c), c.axis, to_cuda_window_spec(c.window), c.domain);
+                        const auto result = zx_gpu_backend::filtering::resample(get_x_real(c), c.num, get_t_signal(c), c.axis, to_zx_gpu_window_spec(c.window), c.domain);
                         DeviceOutputBundle bundle = make_real_output(result.output);
                         bundle.has_time = true;
                         bundle.time = result.time;
                         return bundle;
                     }
-                    return make_real_output(cuda_backend::filtering::resample(get_x_real(c), c.num, c.axis, to_cuda_window_spec(c.window), c.domain));
+                    return make_real_output(zx_gpu_backend::filtering::resample(get_x_real(c), c.num, c.axis, to_zx_gpu_window_spec(c.window), c.domain));
                 }};
         }
         if (op == "resample_poly")
@@ -1944,7 +1944,7 @@ namespace
                 },
                 [](const FilteringCase &c)
                 {
-                    return make_real_output(cuda_backend::filtering::resample_poly(get_x_real(c), c.up, c.down, c.axis, to_cuda_window_spec(c.window)));
+                    return make_real_output(zx_gpu_backend::filtering::resample_poly(get_x_real(c), c.up, c.down, c.axis, to_zx_gpu_window_spec(c.window)));
                 }};
         }
         if (op == "upfirdn")
@@ -1956,7 +1956,7 @@ namespace
                 },
                 [](const FilteringCase &c)
                 {
-                    return make_real_output(cuda_backend::filtering::upfirdn(get_h_signal(c), get_x_real(c), c.up, c.down, c.axis));
+                    return make_real_output(zx_gpu_backend::filtering::upfirdn(get_h_signal(c), get_x_real(c), c.up, c.down, c.axis));
                 }};
         }
         throw std::runtime_error("unsupported filtering operator: " + op);
@@ -2204,82 +2204,82 @@ namespace
         CaseReport report;
         report.case_id = test_case.id;
         report.category = test_case.category;
-        std::optional<CudaRealArray> detrend_device_data;
+        std::optional<ZxGpuRealArray> detrend_device_data;
         if (op == "detrend")
         {
             const RealArray data = get_data_array(test_case);
             report.samples = data.values.size();
-            detrend_device_data.emplace(CudaRealArray::from_host(data));
+            detrend_device_data.emplace(ZxGpuRealArray::from_host(data));
         }
-        std::optional<CudaComplexArray> freq_shift_x;
+        std::optional<ZxGpuComplexArray> freq_shift_x;
         if (op == "freq_shift")
         {
             const ComplexArray x = get_x_complex(test_case);
             report.samples = x.values.size();
-            freq_shift_x.emplace(CudaComplexArray::from_host(x));
+            freq_shift_x.emplace(ZxGpuComplexArray::from_host(x));
         }
-        std::optional<CudaComplexSignal> channelize_x;
-        std::optional<CudaRealSignal> channelize_h;
+        std::optional<ZxGpuComplexSignal> channelize_x;
+        std::optional<ZxGpuRealSignal> channelize_h;
         if (op == "channelize_poly")
         {
             const ComplexSignal x = flatten(get_x_complex(test_case));
             const RealSignal h = get_h_signal(test_case);
             report.samples = x.size();
-            channelize_x.emplace(CudaComplexSignal::from_host(x));
-            channelize_h.emplace(CudaRealSignal::from_host(h));
+            channelize_x.emplace(ZxGpuComplexSignal::from_host(x));
+            channelize_h.emplace(ZxGpuRealSignal::from_host(h));
         }
-        std::optional<CudaRealArray> filtering_x;
-        std::optional<CudaRealSignal> filtering_b;
-        std::optional<CudaRealSignal> filtering_h;
-        std::optional<CudaRealArray> filtering_sos;
-        std::optional<CudaRealArray> filtering_zi;
+        std::optional<ZxGpuRealArray> filtering_x;
+        std::optional<ZxGpuRealSignal> filtering_b;
+        std::optional<ZxGpuRealSignal> filtering_h;
+        std::optional<ZxGpuRealArray> filtering_sos;
+        std::optional<ZxGpuRealArray> filtering_zi;
         if (op == "firfilter" || op == "firfilter2" || op == "decimate" ||
             op == "hilbert" || op == "hilbert2" || op == "wiener" ||
             op == "resample" || op == "resample_poly")
         {
             const RealArray x = get_x_real(test_case);
             report.samples = x.values.size();
-            filtering_x.emplace(CudaRealArray::from_host(x));
+            filtering_x.emplace(ZxGpuRealArray::from_host(x));
         }
         if (op == "firfilter" || op == "firfilter2")
         {
-            filtering_b.emplace(CudaRealSignal::from_host(get_b_signal(test_case)));
+            filtering_b.emplace(ZxGpuRealSignal::from_host(get_b_signal(test_case)));
         }
         if (op == "firfilter" && !test_case.zi_file.empty())
         {
-            filtering_zi.emplace(CudaRealArray::from_host(get_zi_array(test_case)));
+            filtering_zi.emplace(ZxGpuRealArray::from_host(get_zi_array(test_case)));
         }
         if (op == "sosfilt")
         {
             const RealArray x = get_x_real(test_case);
             report.samples = x.values.size();
-            filtering_x.emplace(CudaRealArray::from_host(x));
-            filtering_sos.emplace(CudaRealArray::from_host(get_sos_array(test_case)));
+            filtering_x.emplace(ZxGpuRealArray::from_host(x));
+            filtering_sos.emplace(ZxGpuRealArray::from_host(get_sos_array(test_case)));
             if (!test_case.zi_file.empty())
             {
-                filtering_zi.emplace(CudaRealArray::from_host(get_zi_array(test_case)));
+                filtering_zi.emplace(ZxGpuRealArray::from_host(get_zi_array(test_case)));
             }
         }
         if (op == "upfirdn")
         {
             const RealArray x = get_x_real(test_case);
             report.samples = x.values.size();
-            filtering_x.emplace(CudaRealArray::from_host(x));
-            filtering_h.emplace(CudaRealSignal::from_host(get_h_signal(test_case)));
+            filtering_x.emplace(ZxGpuRealArray::from_host(x));
+            filtering_h.emplace(ZxGpuRealSignal::from_host(get_h_signal(test_case)));
         }
-        std::optional<CudaRealSignal> filtering_t;
-        std::optional<CudaRealSignal> filtering_window_signal;
-        CudaWindowSpec filtering_window = to_cuda_window_spec_with_device_array(
+        std::optional<ZxGpuRealSignal> filtering_t;
+        std::optional<ZxGpuRealSignal> filtering_window_signal;
+        ZxGpuWindowSpec filtering_window = to_zx_gpu_window_spec_with_device_array(
             test_case.window,
             filtering_window_signal);
         if (op == "resample" && !test_case.t_file.empty())
         {
-            filtering_t.emplace(CudaRealSignal::from_host(get_t_signal(test_case)));
+            filtering_t.emplace(ZxGpuRealSignal::from_host(get_t_signal(test_case)));
         }
         auto run_gpu_perf = [&]() -> DeviceOutputBundle {
             if (detrend_device_data.has_value())
             {
-                return make_real_output(cusignal::cuda_backend::filtering::detrend(
+                return make_real_output(cusignal::zx_gpu_backend::filtering::detrend(
                     *detrend_device_data,
                     test_case.axis,
                     test_case.type,
@@ -2288,14 +2288,14 @@ namespace
             }
             if (freq_shift_x.has_value())
             {
-                return make_complex_output(cusignal::cuda_backend::filtering::freq_shift(
+                return make_complex_output(cusignal::zx_gpu_backend::filtering::freq_shift(
                     *freq_shift_x,
                     test_case.freq,
                     test_case.fs));
             }
             if (channelize_x.has_value() && channelize_h.has_value())
             {
-                const auto result = cusignal::cuda_backend::filtering::channelize_poly(
+                const auto result = cusignal::zx_gpu_backend::filtering::channelize_poly(
                     *channelize_x,
                     *channelize_h,
                     test_case.n_chans);
@@ -2305,7 +2305,7 @@ namespace
             {
                 if (filtering_zi.has_value())
                 {
-                    const auto result = cusignal::cuda_backend::filtering::firfilter(
+                    const auto result = cusignal::zx_gpu_backend::filtering::firfilter(
                         *filtering_b,
                         *filtering_x,
                         test_case.axis,
@@ -2315,14 +2315,14 @@ namespace
                     bundle.state = result.final_state;
                     return bundle;
                 }
-                return make_real_output(cusignal::cuda_backend::filtering::firfilter(
+                return make_real_output(cusignal::zx_gpu_backend::filtering::firfilter(
                     *filtering_b,
                     *filtering_x,
                     test_case.axis));
             }
             if (op == "firfilter2" && filtering_b.has_value() && filtering_x.has_value())
             {
-                return make_real_output(cusignal::cuda_backend::filtering::firfilter2(
+                return make_real_output(cusignal::zx_gpu_backend::filtering::firfilter2(
                     *filtering_b,
                     *filtering_x,
                     test_case.axis,
@@ -2335,7 +2335,7 @@ namespace
             {
                 if (filtering_zi.has_value())
                 {
-                    const auto result = cusignal::cuda_backend::filtering::sosfilt(
+                    const auto result = cusignal::zx_gpu_backend::filtering::sosfilt(
                         *filtering_sos,
                         *filtering_x,
                         test_case.axis,
@@ -2345,14 +2345,14 @@ namespace
                     bundle.state = result.final_state;
                     return bundle;
                 }
-                return make_real_output(cusignal::cuda_backend::filtering::sosfilt(
+                return make_real_output(cusignal::zx_gpu_backend::filtering::sosfilt(
                     *filtering_sos,
                     *filtering_x,
                     test_case.axis));
             }
             if (op == "upfirdn" && filtering_h.has_value() && filtering_x.has_value())
             {
-                return make_real_output(cusignal::cuda_backend::filtering::upfirdn(
+                return make_real_output(cusignal::zx_gpu_backend::filtering::upfirdn(
                     *filtering_h,
                     *filtering_x,
                     test_case.up,
@@ -2361,7 +2361,7 @@ namespace
             }
             if (op == "decimate" && filtering_x.has_value())
             {
-                return make_real_output(cusignal::cuda_backend::filtering::decimate(
+                return make_real_output(cusignal::zx_gpu_backend::filtering::decimate(
                     *filtering_x,
                     test_case.q,
                     test_case.n,
@@ -2370,7 +2370,7 @@ namespace
             }
             if (op == "wiener" && filtering_x.has_value())
             {
-                return make_real_output(cusignal::cuda_backend::filtering::wiener(
+                return make_real_output(cusignal::zx_gpu_backend::filtering::wiener(
                     *filtering_x,
                     test_case.mysize,
                     test_case.noise));
@@ -2379,7 +2379,7 @@ namespace
             {
                 if (filtering_t.has_value())
                 {
-                    const auto result = cusignal::cuda_backend::filtering::resample(
+                    const auto result = cusignal::zx_gpu_backend::filtering::resample(
                         *filtering_x,
                         test_case.num,
                         *filtering_t,
@@ -2391,7 +2391,7 @@ namespace
                     bundle.time = result.time;
                     return bundle;
                 }
-                return make_real_output(cusignal::cuda_backend::filtering::resample(
+                return make_real_output(cusignal::zx_gpu_backend::filtering::resample(
                     *filtering_x,
                     test_case.num,
                     test_case.axis,
@@ -2400,7 +2400,7 @@ namespace
             }
             if (op == "resample_poly" && filtering_x.has_value())
             {
-                return make_real_output(cusignal::cuda_backend::filtering::resample_poly(
+                return make_real_output(cusignal::zx_gpu_backend::filtering::resample_poly(
                     *filtering_x,
                     test_case.up,
                     test_case.down,
@@ -2409,14 +2409,14 @@ namespace
             }
             if (op == "hilbert" && filtering_x.has_value())
             {
-                return make_complex_output(cusignal::cuda_backend::filtering::hilbert(
+                return make_complex_output(cusignal::zx_gpu_backend::filtering::hilbert(
                     *filtering_x,
                     test_case.n,
                     test_case.axis));
             }
             if (op == "hilbert2" && filtering_x.has_value())
             {
-                return make_complex_output(cusignal::cuda_backend::filtering::hilbert2(
+                return make_complex_output(cusignal::zx_gpu_backend::filtering::hilbert2(
                     *filtering_x,
                     test_case.n_shape));
             }
@@ -2445,7 +2445,7 @@ namespace
         }
         report.gpu_e2e_perf = benchmark_host_latency(options, [&]() {
             (void)run_gpu_perf();
-            cusignal::core::throw_on_cuda_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
+            cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
         });
         report.gpu_kernel_perf = benchmark_gpu_kernel_latency(options, [&]() { (void)run_gpu_perf(); });
         if (options.emit_report)

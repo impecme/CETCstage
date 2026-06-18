@@ -24,13 +24,13 @@ namespace fs = std::filesystem;
 
 namespace cusignal
 {
-    namespace cuda_backend
+    namespace zx_gpu_backend
     {
         namespace wavelets_test_hooks
         {
             float consume_last_kernel_ms();
         }
-    } // namespace cuda_backend
+    } // namespace zx_gpu_backend
 } // namespace cusignal
 
 namespace
@@ -38,9 +38,9 @@ namespace
     using cusignal::core::Complex;
     using cusignal::core::ComplexArray;
     using cusignal::core::ComplexSignal;
-    using cusignal::core::CudaComplexArray;
-    using cusignal::core::CudaComplexSignal;
-    using cusignal::core::CudaRealSignal;
+    using cusignal::core::ZxGpuComplexArray;
+    using cusignal::core::ZxGpuComplexSignal;
+    using cusignal::core::ZxGpuRealSignal;
     using cusignal::core::RealSignal;
     using cusignal::core::RealSignalLike;
     using cusignal::core::Shape;
@@ -138,9 +138,9 @@ namespace
         std::string name;
         FieldKind kind = FieldKind::Real;
         Shape shape;
-        CudaRealSignal real_signal;
-        CudaComplexSignal complex_signal;
-        CudaComplexArray complex_array;
+        ZxGpuRealSignal real_signal;
+        ZxGpuComplexSignal complex_signal;
+        ZxGpuComplexArray complex_array;
     };
 
     struct OutputBundle
@@ -464,7 +464,7 @@ namespace
         return bundle;
     }
 
-    DeviceOutputBundle make_device_bundle(const CudaRealSignal &signal)
+    DeviceOutputBundle make_device_bundle(const ZxGpuRealSignal &signal)
     {
         DeviceOutputBundle bundle;
         DeviceOutputField field;
@@ -476,7 +476,7 @@ namespace
         return bundle;
     }
 
-    DeviceOutputBundle make_device_bundle(const CudaComplexSignal &signal)
+    DeviceOutputBundle make_device_bundle(const ZxGpuComplexSignal &signal)
     {
         DeviceOutputBundle bundle;
         DeviceOutputField field;
@@ -488,7 +488,7 @@ namespace
         return bundle;
     }
 
-    DeviceOutputBundle make_device_bundle(const CudaComplexArray &values)
+    DeviceOutputBundle make_device_bundle(const ZxGpuComplexArray &values)
     {
         DeviceOutputBundle bundle;
         DeviceOutputField field;
@@ -787,14 +787,14 @@ namespace
         for (int warmup = 0; warmup < options.warmup; ++warmup)
         {
             callable();
-            (void)cusignal::cuda_backend::wavelets_test_hooks::consume_last_kernel_ms();
+            (void)cusignal::zx_gpu_backend::wavelets_test_hooks::consume_last_kernel_ms();
         }
         std::vector<float> durations;
         durations.reserve(static_cast<std::size_t>(options.repeat));
         for (int repeat = 0; repeat < options.repeat; ++repeat)
         {
             callable();
-            durations.push_back(cusignal::cuda_backend::wavelets_test_hooks::consume_last_kernel_ms());
+            durations.push_back(cusignal::zx_gpu_backend::wavelets_test_hooks::consume_last_kernel_ms());
         }
         return compute_timing_stats(durations);
     }
@@ -1065,7 +1065,7 @@ namespace
                     return make_bundle(cusignal::cpu::wavelets::qmf(load_hk_signal(test_case)));
                 },
                 [](const WaveletsCase &test_case) {
-                    return make_device_bundle(cusignal::cuda_backend::wavelets::qmf(load_hk_signal(test_case)));
+                    return make_device_bundle(cusignal::zx_gpu_backend::wavelets::qmf(load_hk_signal(test_case)));
                 }};
         }
         if (op == "morlet")
@@ -1079,7 +1079,7 @@ namespace
                         test_case.complete));
                 },
                 [](const WaveletsCase &test_case) {
-                    return make_device_bundle(cusignal::cuda_backend::wavelets::morlet(
+                    return make_device_bundle(cusignal::zx_gpu_backend::wavelets::morlet(
                         test_case.points,
                         test_case.w,
                         test_case.s,
@@ -1095,7 +1095,7 @@ namespace
                         test_case.a));
                 },
                 [](const WaveletsCase &test_case) {
-                    return make_device_bundle(cusignal::cuda_backend::wavelets::ricker(
+                    return make_device_bundle(cusignal::zx_gpu_backend::wavelets::ricker(
                         test_case.points,
                         test_case.a));
                 }};
@@ -1110,7 +1110,7 @@ namespace
                         test_case.w));
                 },
                 [](const WaveletsCase &test_case) {
-                    return make_device_bundle(cusignal::cuda_backend::wavelets::morlet2(
+                    return make_device_bundle(cusignal::zx_gpu_backend::wavelets::morlet2(
                         test_case.points,
                         test_case.s,
                         test_case.w));
@@ -1126,7 +1126,7 @@ namespace
                         load_widths_signal(test_case)));
                 },
                 [](const WaveletsCase &test_case) {
-                    return make_device_bundle(cusignal::cuda_backend::wavelets::cwt(
+                    return make_device_bundle(cusignal::zx_gpu_backend::wavelets::cwt(
                         load_data_signal(test_case),
                         test_case.wavelet,
                         load_widths_signal(test_case)));
@@ -1341,29 +1341,29 @@ namespace
         report.case_id = test_case.id;
         report.category = test_case.category;
 
-        std::optional<CudaRealSignal> qmf_device_input;
+        std::optional<ZxGpuRealSignal> qmf_device_input;
         if (op == "qmf")
         {
-            qmf_device_input.emplace(CudaRealSignal::from_host(load_hk_signal(test_case)));
+            qmf_device_input.emplace(ZxGpuRealSignal::from_host(load_hk_signal(test_case)));
         }
-        std::optional<CudaRealSignal> cwt_device_data;
+        std::optional<ZxGpuRealSignal> cwt_device_data;
         std::optional<RealSignal> cwt_widths;
         if (op == "cwt")
         {
             const RealSignal data = load_data_signal(test_case);
             cwt_widths.emplace(load_widths_signal(test_case));
             report.samples = data.size() * cwt_widths->size();
-            cwt_device_data.emplace(CudaRealSignal::from_host(data));
+            cwt_device_data.emplace(ZxGpuRealSignal::from_host(data));
         }
         auto run_gpu_perf = [&]() {
             if (qmf_device_input.has_value())
             {
                 return make_device_bundle(
-                    cusignal::cuda_backend::wavelets::qmf(*qmf_device_input));
+                    cusignal::zx_gpu_backend::wavelets::qmf(*qmf_device_input));
             }
             if (cwt_device_data.has_value() && cwt_widths.has_value())
             {
-                return make_device_bundle(cusignal::cuda_backend::wavelets::cwt(
+                return make_device_bundle(cusignal::zx_gpu_backend::wavelets::cwt(
                     *cwt_device_data,
                     test_case.wavelet,
                     *cwt_widths));
@@ -1394,7 +1394,7 @@ namespace
         }
         report.gpu_e2e_perf = benchmark_host_latency(options, [&]() {
             (void)run_gpu_perf();
-            cusignal::core::throw_on_cuda_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
+            cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
         });
         report.gpu_kernel_perf =
             benchmark_gpu_kernel_latency(options, [&]() { (void)run_gpu_perf(); });

@@ -29,7 +29,7 @@
 - `qmf` 按 SciPy/test 语义实现，不照搬当前 Python `_qmf_kernel`
 - `cwt` 只支持 `"ricker"` 与 `"morlet2"`
 - `cwt` 只覆盖当前 C++ 头文件可表达的实输入子集
-- `cuda_backend::*` 保持 host/device 双输入、device 输出
+- `zx_gpu_backend::*` 保持 host/device 双输入、device 输出
 - `gpu_e2e_perf` 不包含 `get()`
 
 ## 一键测试

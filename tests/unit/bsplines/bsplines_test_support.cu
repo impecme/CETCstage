@@ -24,18 +24,18 @@ namespace fs = std::filesystem;
 
 namespace cusignal
 {
-    namespace cuda_backend
+    namespace zx_gpu_backend
     {
         namespace bsplines_test_hooks
         {
             float consume_last_kernel_ms();
         }
-    } // namespace cuda_backend
+    } // namespace zx_gpu_backend
 } // namespace cusignal
 
 namespace
 {
-    using cusignal::core::CudaRealArray;
+    using cusignal::core::ZxGpuRealArray;
     using cusignal::core::RealArray;
     using cusignal::core::RealArrayLike;
     using cusignal::core::RealSignal;
@@ -132,7 +132,7 @@ namespace
     };
 
     using CpuRunner = std::function<RealArray(const BsplinesCase &)>;
-    using GpuRunner = std::function<CudaRealArray(const BsplinesCase &)>;
+    using GpuRunner = std::function<ZxGpuRealArray(const BsplinesCase &)>;
 
     struct Runner
     {
@@ -518,7 +518,7 @@ namespace
         for (int warmup = 0; warmup < options.warmup; ++warmup)
         {
             callable();
-            (void)cusignal::cuda_backend::bsplines_test_hooks::consume_last_kernel_ms();
+            (void)cusignal::zx_gpu_backend::bsplines_test_hooks::consume_last_kernel_ms();
         }
 
         std::vector<float> durations;
@@ -526,7 +526,7 @@ namespace
         for (int repeat = 0; repeat < options.repeat; ++repeat)
         {
             callable();
-            durations.push_back(cusignal::cuda_backend::bsplines_test_hooks::consume_last_kernel_ms());
+            durations.push_back(cusignal::zx_gpu_backend::bsplines_test_hooks::consume_last_kernel_ms());
         }
         return compute_timing_stats(durations);
     }
@@ -668,7 +668,7 @@ namespace
                     return cusignal::cpu::bsplines::cubic(load_case_input(test_case));
                 },
                 [](const BsplinesCase &test_case) {
-                    return cusignal::cuda_backend::bsplines::cubic(load_case_input(test_case));
+                    return cusignal::zx_gpu_backend::bsplines::cubic(load_case_input(test_case));
                 }};
         }
         if (op == "quadratic")
@@ -678,7 +678,7 @@ namespace
                     return cusignal::cpu::bsplines::quadratic(load_case_input(test_case));
                 },
                 [](const BsplinesCase &test_case) {
-                    return cusignal::cuda_backend::bsplines::quadratic(load_case_input(test_case));
+                    return cusignal::zx_gpu_backend::bsplines::quadratic(load_case_input(test_case));
                 }};
         }
         if (op == "gauss_spline")
@@ -688,28 +688,28 @@ namespace
                     return cusignal::cpu::bsplines::gauss_spline(load_case_input(test_case), test_case.n);
                 },
                 [](const BsplinesCase &test_case) {
-                    return cusignal::cuda_backend::bsplines::gauss_spline(load_case_input(test_case), test_case.n);
+                    return cusignal::zx_gpu_backend::bsplines::gauss_spline(load_case_input(test_case), test_case.n);
                 }};
         }
         throw std::runtime_error("unsupported bsplines operator: " + op);
     }
 
-    CudaRealArray run_gpu_with_input(
+    ZxGpuRealArray run_gpu_with_input(
         const std::string &op,
         const BsplinesCase &test_case,
         const RealArrayLike &input)
     {
         if (op == "cubic")
         {
-            return cusignal::cuda_backend::bsplines::cubic(input);
+            return cusignal::zx_gpu_backend::bsplines::cubic(input);
         }
         if (op == "quadratic")
         {
-            return cusignal::cuda_backend::bsplines::quadratic(input);
+            return cusignal::zx_gpu_backend::bsplines::quadratic(input);
         }
         if (op == "gauss_spline")
         {
-            return cusignal::cuda_backend::bsplines::gauss_spline(input, test_case.n);
+            return cusignal::zx_gpu_backend::bsplines::gauss_spline(input, test_case.n);
         }
         throw std::runtime_error("unsupported bsplines operator: " + op);
     }
@@ -941,7 +941,7 @@ namespace
         report.category = test_case.category;
 
         const RealArray input = load_case_input(test_case);
-        const CudaRealArray device_input = CudaRealArray::from_host(input);
+        const ZxGpuRealArray device_input = ZxGpuRealArray::from_host(input);
         RealArray gpu_output;
         if (!options.gpu_only_perf)
         {
@@ -961,7 +961,7 @@ namespace
         }
         report.gpu_e2e_perf = benchmark_host_latency(options, [&]() {
             (void)run_gpu_with_input(op, test_case, device_input);
-            cusignal::core::throw_on_cuda_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
+            cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
         });
         report.gpu_kernel_perf =
             benchmark_gpu_kernel_latency(options, [&]() {

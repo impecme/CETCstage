@@ -19,12 +19,12 @@ namespace cusignal
         };
 
         /**
-         * @brief CUDA 带最终延迟状态的滤波返回结果。
+         * @brief ZQ500 GPU 带最终延迟状态的滤波返回结果。
          */
-        struct CudaFilterStateResult
+        struct ZxGpuFilterStateResult
         {
-            core::CudaRealArray output;
-            core::CudaRealArray final_state;
+            core::ZxGpuRealArray output;
+            core::ZxGpuRealArray final_state;
         };
 
         /**
@@ -37,12 +37,12 @@ namespace cusignal
         };
 
         /**
-         * @brief CUDA 带时间轴的重采样返回结果。
+         * @brief ZQ500 GPU 带时间轴的重采样返回结果。
          */
-        struct CudaResampleResult
+        struct ZxGpuResampleResult
         {
-            core::CudaRealArray output;
-            core::CudaRealSignal time;
+            core::ZxGpuRealArray output;
+            core::ZxGpuRealSignal time;
         };
 
         /**
@@ -54,11 +54,11 @@ namespace cusignal
         };
 
         /**
-         * @brief CUDA 多相信道化结果。
+         * @brief ZQ500 GPU 多相信道化结果。
          */
-        struct CudaChannelizerResult
+        struct ZxGpuChannelizerResult
         {
-            core::CudaComplexArray channels;
+            core::ZxGpuComplexArray channels;
         };
 
     } // namespace filtering_api
@@ -414,21 +414,21 @@ namespace cusignal
         } // namespace filtering
     } // namespace cpu
 
-    namespace cuda_backend
+    namespace zx_gpu_backend
     {
         namespace filtering
         {
 
             /**
-             * @brief 在 CUDA 后端对 N 维实数输入执行 Wiener 滤波。
+             * @brief 在 ZQ500 GPU 后端对 N 维实数输入执行 Wiener 滤波。
              *
              * @param image 输入实数张量。
              * @return 与输入同形状的滤波结果。
              */
-            core::CudaRealArray wiener(const core::RealArrayLike &image);
+            core::ZxGpuRealArray wiener(const core::RealArrayLike &image);
 
             /**
-             * @brief 在 CUDA 后端对 N 维实数输入执行 Wiener 滤波，并显式给出窗口边长。
+             * @brief 在 ZQ500 GPU 后端对 N 维实数输入执行 Wiener 滤波，并显式给出窗口边长。
              *
              * @param image 输入实数张量。
              * @param mysize 标量窗口边长。
@@ -436,13 +436,13 @@ namespace cusignal
              * @return 与输入同形状的滤波结果。
              * @throws std::invalid_argument 当 `mysize <= 0` 时抛出异常。
              */
-            core::CudaRealArray wiener(
+            core::ZxGpuRealArray wiener(
                 const core::RealArrayLike &image,
                 int mysize,
                 float noise = -1.0);
 
             /**
-             * @brief 在 CUDA 后端对 N 维实数输入执行 Wiener 滤波，并显式给出各维窗口大小。
+             * @brief 在 ZQ500 GPU 后端对 N 维实数输入执行 Wiener 滤波，并显式给出各维窗口大小。
              *
              * @param image 输入实数张量。
              * @param mysize 各维窗口边长。
@@ -450,26 +450,26 @@ namespace cusignal
              * @return 与输入同形状的滤波结果。
              * @throws std::invalid_argument 当 `mysize` 为空或 rank 不匹配时抛出异常。
              */
-            core::CudaRealArray wiener(
+            core::ZxGpuRealArray wiener(
                 const core::RealArrayLike &image,
                 const core::Shape &mysize,
                 float noise = -1.0);
 
             /**
-             * @brief 在 CUDA 后端使用 FIR 系数对输入执行一维线性滤波。
+             * @brief 在 ZQ500 GPU 后端使用 FIR 系数对输入执行一维线性滤波。
              *
              * @param b FIR 分子系数。
              * @param x 输入实数张量。
              * @param axis 滤波轴。
              * @return 与输入同形状的滤波结果。
              */
-            core::CudaRealArray firfilter(
+            core::ZxGpuRealArray firfilter(
                 const core::RealSignalLike &b,
                 const core::RealArrayLike &x,
                 int axis = -1);
 
             /**
-             * @brief 在 CUDA 后端使用 FIR 系数对输入执行一维线性滤波，并返回最终延迟状态。
+             * @brief 在 ZQ500 GPU 后端使用 FIR 系数对输入执行一维线性滤波，并返回最终延迟状态。
              *
              * @param b FIR 分子系数。
              * @param x 输入实数张量。
@@ -477,14 +477,14 @@ namespace cusignal
              * @param zi 初始延迟状态。
              * @return 滤波输出及最终延迟状态。
              */
-            filtering_api::CudaFilterStateResult firfilter(
+            filtering_api::ZxGpuFilterStateResult firfilter(
                 const core::RealSignalLike &b,
                 const core::RealArrayLike &x,
                 int axis,
                 const core::RealArrayLike &zi);
 
             /**
-             * @brief 在 CUDA 后端使用 FIR/IIR 系数对输入执行一维线性滤波。
+             * @brief 在 ZQ500 GPU 后端使用 FIR/IIR 系数对输入执行一维线性滤波。
              *
              * @param b 分子系数。
              * @param a 分母系数。
@@ -492,14 +492,14 @@ namespace cusignal
              * @param axis 滤波轴。
              * @return 与输入同形状的滤波结果。
              */
-            core::CudaRealArray lfilter(
+            core::ZxGpuRealArray lfilter(
                 const core::RealSignalLike &b,
                 const core::RealSignalLike &a,
                 const core::RealArrayLike &x,
                 int axis = -1);
 
             /**
-             * @brief 在 CUDA 后端使用 FIR/IIR 系数对输入执行一维线性滤波，并返回最终延迟状态。
+             * @brief 在 ZQ500 GPU 后端使用 FIR/IIR 系数对输入执行一维线性滤波，并返回最终延迟状态。
              *
              * @param b 分子系数。
              * @param a 分母系数。
@@ -508,7 +508,7 @@ namespace cusignal
              * @param zi 初始延迟状态。
              * @return 滤波输出及最终延迟状态。
              */
-            filtering_api::CudaFilterStateResult lfilter(
+            filtering_api::ZxGpuFilterStateResult lfilter(
                 const core::RealSignalLike &b,
                 const core::RealSignalLike &a,
                 const core::RealArrayLike &x,
@@ -516,26 +516,26 @@ namespace cusignal
                 const core::RealArrayLike &zi);
 
             /**
-             * @brief 在 CUDA 后端计算 IIR `lfilter` 的稳态初始条件。
+             * @brief 在 ZQ500 GPU 后端计算 IIR `lfilter` 的稳态初始条件。
              *
              * @param b 分子系数。
              * @param a 分母系数。
              * @return 一维初始状态向量。
              */
-            core::CudaRealSignal lfilter_zi(
+            core::ZxGpuRealSignal lfilter_zi(
                 const core::RealSignalLike &b,
                 const core::RealSignalLike &a);
 
             /**
-             * @brief 在 CUDA 后端计算 FIR `firfilter` 的稳态初始条件。
+             * @brief 在 ZQ500 GPU 后端计算 FIR `firfilter` 的稳态初始条件。
              *
              * @param b FIR 系数。
              * @return 一维初始状态向量。
              */
-            core::CudaRealSignal firfilter_zi(const core::RealSignalLike &b);
+            core::ZxGpuRealSignal firfilter_zi(const core::RealSignalLike &b);
 
             /**
-             * @brief 在 CUDA 后端执行前后向 FIR 滤波。
+             * @brief 在 ZQ500 GPU 后端执行前后向 FIR 滤波。
              *
              * @param b FIR 系数。
              * @param x 输入实数张量。
@@ -546,7 +546,7 @@ namespace cusignal
              * @param irlen `gust` 方法的冲激响应长度，负值表示未显式提供。
              * @return 与输入同形状的滤波结果。
              */
-            core::CudaRealArray firfilter2(
+            core::ZxGpuRealArray firfilter2(
                 const core::RealSignalLike &b,
                 const core::RealArrayLike &x,
                 int axis = -1,
@@ -556,7 +556,7 @@ namespace cusignal
                 int irlen = -1);
 
             /**
-             * @brief 在 CUDA 后端执行前后向 IIR/FIR 滤波。
+             * @brief 在 ZQ500 GPU 后端执行前后向 IIR/FIR 滤波。
              *
              * @param b 分子系数。
              * @param a 分母系数。
@@ -568,7 +568,7 @@ namespace cusignal
              * @param irlen `gust` 方法的冲激响应长度，负值表示未显式提供。
              * @return 与输入同形状的滤波结果。
              */
-            core::CudaRealArray filtfilt(
+            core::ZxGpuRealArray filtfilt(
                 const core::RealSignalLike &b,
                 const core::RealSignalLike &a,
                 const core::RealArrayLike &x,
@@ -579,20 +579,20 @@ namespace cusignal
                 int irlen = -1);
 
             /**
-             * @brief 在 CUDA 后端使用二阶节级联对输入执行滤波。
+             * @brief 在 ZQ500 GPU 后端使用二阶节级联对输入执行滤波。
              *
              * @param sos 二阶节系数张量，预期形状为 `[n_sections, 6]`。
              * @param x 输入实数张量。
              * @param axis 滤波轴。
              * @return 与输入同形状的滤波结果。
              */
-            core::CudaRealArray sosfilt(
+            core::ZxGpuRealArray sosfilt(
                 const core::RealArrayLike &sos,
                 const core::RealArrayLike &x,
                 int axis = -1);
 
             /**
-             * @brief 在 CUDA 后端使用二阶节级联对输入执行滤波，并返回最终状态。
+             * @brief 在 ZQ500 GPU 后端使用二阶节级联对输入执行滤波，并返回最终状态。
              *
              * @param sos 二阶节系数张量，预期形状为 `[n_sections, 6]`。
              * @param x 输入实数张量。
@@ -600,39 +600,39 @@ namespace cusignal
              * @param zi 初始状态。
              * @return 滤波输出及最终状态。
              */
-            filtering_api::CudaFilterStateResult sosfilt(
+            filtering_api::ZxGpuFilterStateResult sosfilt(
                 const core::RealArrayLike &sos,
                 const core::RealArrayLike &x,
                 int axis,
                 const core::RealArrayLike &zi);
 
             /**
-             * @brief 在 CUDA 后端对实数输入执行 Hilbert 变换。
+             * @brief 在 ZQ500 GPU 后端对实数输入执行 Hilbert 变换。
              *
              * @param x 输入实数张量。
              * @param n FFT 点数，0 表示使用目标轴长度。
              * @param axis 变换轴。
              * @return 与输入同 rank 的复数解析信号张量。
              */
-            core::CudaComplexArray hilbert(
+            core::ZxGpuComplexArray hilbert(
                 const core::RealArrayLike &x,
                 int n = 0,
                 int axis = -1);
 
             /**
-             * @brief 在 CUDA 后端对二维实数输入执行二维 Hilbert 变换。
+             * @brief 在 ZQ500 GPU 后端对二维实数输入执行二维 Hilbert 变换。
              *
              * @param x 输入二维实数张量。
              * @param n FFT 目标形状；为空表示使用输入形状。
              * @return 与输入同 rank 的复数解析信号张量。
              * @throws std::invalid_argument 当 `x` 不是二维时抛出异常。
              */
-            core::CudaComplexArray hilbert2(
+            core::ZxGpuComplexArray hilbert2(
                 const core::RealArrayLike &x,
                 const core::Shape &n = {});
 
             /**
-             * @brief 在 CUDA 后端沿指定轴移除线性或常量趋势。
+             * @brief 在 ZQ500 GPU 后端沿指定轴移除线性或常量趋势。
              *
              * @param data 输入实数张量。
              * @param axis 去趋势轴。
@@ -641,7 +641,7 @@ namespace cusignal
              * @param overwrite_data 是否允许覆盖输入缓冲区语义。
              * @return 与输入同形状的去趋势结果。
              */
-            core::CudaRealArray detrend(
+            core::ZxGpuRealArray detrend(
                 const core::RealArrayLike &data,
                 int axis = -1,
                 const std::string &type = "linear",
@@ -649,20 +649,20 @@ namespace cusignal
                 bool overwrite_data = false);
 
             /**
-             * @brief 在 CUDA 后端对复数输入执行频移。
+             * @brief 在 ZQ500 GPU 后端对复数输入执行频移。
              *
              * @param x 复数输入张量。
              * @param freq 目标频移，单位 Hz。
              * @param fs 采样率，单位 Hz。
              * @return 与输入同形状的频移后复数张量。
              */
-            core::CudaComplexArray freq_shift(
+            core::ZxGpuComplexArray freq_shift(
                 const core::ComplexArrayLike &x,
                 float freq,
                 float fs);
 
             /**
-             * @brief 在 CUDA 后端将输入信号按多相方式信道化。
+             * @brief 在 ZQ500 GPU 后端将输入信号按多相方式信道化。
              *
              * @param x 输入复数信号。
              * @param h 原型滤波器系数。
@@ -670,13 +670,13 @@ namespace cusignal
              * @return 信道化后的复数张量结果。
              * @throws std::invalid_argument 当 `n_chans <= 0` 时抛出异常。
              */
-            filtering_api::CudaChannelizerResult channelize_poly(
+            filtering_api::ZxGpuChannelizerResult channelize_poly(
                 const core::ComplexSignalLike &x,
                 const core::RealSignalLike &h,
                 int n_chans);
 
             /**
-             * @brief 在 CUDA 后端对输入执行 decimate。
+             * @brief 在 ZQ500 GPU 后端对输入执行 decimate。
              *
              * @param x 输入实数张量。
              * @param q 抽取倍率。
@@ -685,7 +685,7 @@ namespace cusignal
              * @param zero_phase 是否使用零相位策略。
              * @return 抽取后的实数张量。
              */
-            core::CudaRealArray decimate(
+            core::ZxGpuRealArray decimate(
                 const core::RealArrayLike &x,
                 int q,
                 int n = -1,
@@ -693,7 +693,7 @@ namespace cusignal
                 bool zero_phase = true);
 
             /**
-             * @brief 在 CUDA 后端仅返回重采样结果。
+             * @brief 在 ZQ500 GPU 后端仅返回重采样结果。
              *
              * @param x 输入实数张量。
              * @param num 目标样本数。
@@ -702,15 +702,15 @@ namespace cusignal
              * @param domain 计算域，支持 `"time"` 与 `"freq"`。
              * @return 重采样后的实数张量。
              */
-            core::CudaRealArray resample(
+            core::ZxGpuRealArray resample(
                 const core::RealArrayLike &x,
                 int num,
                 int axis = 0,
-                core::CudaWindowSpec window = std::string(),
+                core::ZxGpuWindowSpec window = std::string(),
                 const std::string &domain = "time");
 
             /**
-             * @brief 在 CUDA 后端返回重采样结果及新时间轴。
+             * @brief 在 ZQ500 GPU 后端返回重采样结果及新时间轴。
              *
              * @param x 输入实数张量。
              * @param num 目标样本数。
@@ -720,16 +720,16 @@ namespace cusignal
              * @param domain 计算域，支持 `"time"` 与 `"freq"`。
              * @return 重采样后的张量与新时间轴。
              */
-            filtering_api::CudaResampleResult resample(
+            filtering_api::ZxGpuResampleResult resample(
                 const core::RealArrayLike &x,
                 int num,
                 const core::RealSignalLike &t,
                 int axis = 0,
-                core::CudaWindowSpec window = std::string(),
+                core::ZxGpuWindowSpec window = std::string(),
                 const std::string &domain = "time");
 
             /**
-             * @brief 在 CUDA 后端使用多相滤波执行有理比重采样。
+             * @brief 在 ZQ500 GPU 后端使用多相滤波执行有理比重采样。
              *
              * @param x 输入实数张量。
              * @param up 上采样倍率。
@@ -738,15 +738,15 @@ namespace cusignal
              * @param window 窗函数规格，默认使用 `("kaiser", 5.0)`。
              * @return 重采样后的实数张量。
              */
-            core::CudaRealArray resample_poly(
+            core::ZxGpuRealArray resample_poly(
                 const core::RealArrayLike &x,
                 int up,
                 int down,
                 int axis = 0,
-                core::CudaWindowSpec window = core::NamedFloatParameter{"kaiser", 5.0});
+                core::ZxGpuWindowSpec window = core::NamedFloatParameter{"kaiser", 5.0});
 
             /**
-             * @brief 在 CUDA 后端执行 upfirdn 操作。
+             * @brief 在 ZQ500 GPU 后端执行 upfirdn 操作。
              *
              * @param h FIR 系数。
              * @param x 输入实数张量。
@@ -755,7 +755,7 @@ namespace cusignal
              * @param axis 处理轴。
              * @return 处理后的实数张量。
              */
-            core::CudaRealArray upfirdn(
+            core::ZxGpuRealArray upfirdn(
                 const core::RealSignalLike &h,
                 const core::RealArrayLike &x,
                 int up = 1,
@@ -763,5 +763,5 @@ namespace cusignal
                 int axis = -1);
 
         } // namespace filtering
-    } // namespace cuda_backend
+    } // namespace zx_gpu_backend
 } // namespace cusignal

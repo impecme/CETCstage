@@ -14,7 +14,7 @@
 
 - `bsplines`
   - CPU 实现：`cubic`、`quadratic`、`gauss_spline`
-  - CUDA 实现：逐元素 device kernel、host/device 双输入归一化、device 输出
+  - ZQ500 GPU 实现：逐元素 device kernel、host/device 双输入归一化、device 输出
   - 公共实现：`src/common/bsplines_detail.hpp` 收敛共享公式与 order 校验
 - 单测与报告
   - 新增 `tests/unit/bsplines`

@@ -28,13 +28,13 @@ namespace fs = std::filesystem;
 
 namespace cusignal
 {
-    namespace cuda_backend
+    namespace zx_gpu_backend
     {
         namespace filter_design_test_hooks
         {
             float consume_last_kernel_ms();
         }
-    } // namespace cuda_backend
+    } // namespace zx_gpu_backend
 } // namespace cusignal
 
 namespace
@@ -42,10 +42,10 @@ namespace
     namespace filter_design_api = cusignal::filter_design_api;
     using cusignal::core::Complex;
     using cusignal::core::ComplexSignal;
-    using cusignal::core::CudaComplexSignal;
-    using cusignal::core::CudaIndexSignal;
-    using cusignal::core::CudaRealSignal;
-    using cusignal::core::CudaWindowSpec;
+    using cusignal::core::ZxGpuComplexSignal;
+    using cusignal::core::ZxGpuIndexSignal;
+    using cusignal::core::ZxGpuRealSignal;
+    using cusignal::core::ZxGpuWindowSpec;
     using cusignal::core::IndexVector;
     using cusignal::core::NamedFloatPairParameter;
     using cusignal::core::NamedFloatParameter;
@@ -164,9 +164,9 @@ namespace
     struct DeviceOutputBundle
     {
         bool is_complex = false;
-        CudaRealSignal real_values;
-        CudaComplexSignal complex_values;
-        CudaIndexSignal indices;
+        ZxGpuRealSignal real_values;
+        ZxGpuComplexSignal complex_values;
+        ZxGpuIndexSignal indices;
         bool has_indices = false;
     };
 
@@ -840,13 +840,13 @@ namespace
         for (int iteration = 0; iteration < options.warmup; ++iteration)
         {
             callable();
-            (void)cusignal::cuda_backend::filter_design_test_hooks::consume_last_kernel_ms();
+            (void)cusignal::zx_gpu_backend::filter_design_test_hooks::consume_last_kernel_ms();
         }
         for (int iteration = 0; iteration < options.repeat; ++iteration)
         {
             callable();
             durations.push_back(
-                cusignal::cuda_backend::filter_design_test_hooks::consume_last_kernel_ms());
+                cusignal::zx_gpu_backend::filter_design_test_hooks::consume_last_kernel_ms());
         }
         return summarize_timings(durations);
     }
@@ -951,7 +951,7 @@ namespace
         throw std::runtime_error("unsupported window spec kind");
     }
 
-    CudaWindowSpec to_cuda_window_spec(const WindowSpec &spec)
+    ZxGpuWindowSpec to_zx_gpu_window_spec(const WindowSpec &spec)
     {
         if (std::holds_alternative<std::string>(spec))
         {
@@ -1299,7 +1299,7 @@ namespace
     DeviceOutputBundle scalar_output_device(float value)
     {
         DeviceOutputBundle bundle;
-        bundle.real_values = CudaRealSignal::from_host(RealSignal{value});
+        bundle.real_values = ZxGpuRealSignal::from_host(RealSignal{value});
         return bundle;
     }
 
@@ -1318,14 +1318,14 @@ namespace
         return bundle;
     }
 
-    DeviceOutputBundle make_output(const CudaRealSignal &values)
+    DeviceOutputBundle make_output(const ZxGpuRealSignal &values)
     {
         DeviceOutputBundle bundle;
         bundle.real_values = values;
         return bundle;
     }
 
-    DeviceOutputBundle make_output(const CudaComplexSignal &values)
+    DeviceOutputBundle make_output(const ZxGpuComplexSignal &values)
     {
         DeviceOutputBundle bundle;
         bundle.is_complex = true;
@@ -1345,7 +1345,7 @@ namespace
                 },
                 [](const FilterDesignCase &test_case)
                 {
-                    return scalar_output_device(cuda_backend::filter_design::kaiser_beta(test_case.attenuation));
+                    return scalar_output_device(zx_gpu_backend::filter_design::kaiser_beta(test_case.attenuation));
                 }};
         }
         if (op == "kaiser_atten")
@@ -1357,7 +1357,7 @@ namespace
                 },
                 [](const FilterDesignCase &test_case)
                 {
-                    return scalar_output_device(cuda_backend::filter_design::kaiser_atten(test_case.numtaps, test_case.width));
+                    return scalar_output_device(zx_gpu_backend::filter_design::kaiser_atten(test_case.numtaps, test_case.width));
                 }};
         }
         if (op == "cmplx_sort")
@@ -1373,19 +1373,19 @@ namespace
                     if (test_case.input_kind == "complex")
                     {
                         const ComplexSignal input = make_cmplx_sort_complex_input(test_case);
-                        const filter_design_api::CudaComplexSortResult sorted =
-                            cuda_backend::filter_design::cmplx_sort(input);
+                        const filter_design_api::ZxGpuComplexSortResult sorted =
+                            zx_gpu_backend::filter_design::cmplx_sort(input);
                         bundle.is_complex = true;
-                        bundle.complex_values = std::get<CudaComplexSignal>(sorted.values);
+                        bundle.complex_values = std::get<ZxGpuComplexSignal>(sorted.values);
                         bundle.indices = sorted.indices;
                         bundle.has_indices = true;
                     }
                     else
                     {
                         const RealSignal input = make_cmplx_sort_real_input(test_case);
-                        const filter_design_api::CudaComplexSortResult sorted =
-                            cuda_backend::filter_design::cmplx_sort(input);
-                        bundle.real_values = std::get<CudaRealSignal>(sorted.values);
+                        const filter_design_api::ZxGpuComplexSortResult sorted =
+                            zx_gpu_backend::filter_design::cmplx_sort(input);
+                        bundle.real_values = std::get<ZxGpuRealSignal>(sorted.values);
                         bundle.indices = sorted.indices;
                         bundle.has_indices = true;
                     }
@@ -1426,13 +1426,13 @@ namespace
                 [](const FilterDesignCase &test_case)
                 {
                     const WindowSpec host_window = test_case.window.value_or(WindowSpec{std::string("hamming")});
-                    const CudaWindowSpec window = to_cuda_window_spec(host_window);
+                    const ZxGpuWindowSpec window = to_zx_gpu_window_spec(host_window);
                     const PassZeroSpec pass_zero = test_case.pass_zero_is_bool
                                                        ? PassZeroSpec{test_case.pass_zero_bool}
                                                        : PassZeroSpec{test_case.pass_zero_string};
                     if (test_case.cutoff_is_scalar)
                     {
-                        return make_output(cuda_backend::filter_design::firwin(
+                        return make_output(zx_gpu_backend::filter_design::firwin(
                             test_case.numtaps,
                             test_case.cutoff.front(),
                             test_case.width,
@@ -1442,7 +1442,7 @@ namespace
                             test_case.nyq,
                             test_case.fs));
                     }
-                    return make_output(cuda_backend::filter_design::firwin(
+                    return make_output(zx_gpu_backend::filter_design::firwin(
                         test_case.numtaps,
                         test_case.cutoff,
                         test_case.width,
@@ -1472,12 +1472,12 @@ namespace
                 [](const FilterDesignCase &test_case)
                 {
                     const WindowSpec host_window = test_case.window.value_or(WindowSpec{std::string("hamming")});
-                    return make_output(cuda_backend::filter_design::firwin2(
+                    return make_output(zx_gpu_backend::filter_design::firwin2(
                         test_case.numtaps,
                         test_case.freq,
                         test_case.gain,
                         test_case.nfreqs,
-                        to_cuda_window_spec(host_window),
+                        to_zx_gpu_window_spec(host_window),
                         test_case.nyq,
                         test_case.antisymmetric,
                         test_case.fs));
@@ -1763,7 +1763,7 @@ namespace
         report.gpu_e2e_perf = benchmark_host_latency(options, [&]()
                                                      {
                                                          (void)runner.gpu(test_case);
-                                                         cusignal::core::throw_on_cuda_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
+                                                         cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
                                                      });
         report.gpu_kernel_perf = benchmark_gpu_kernel_latency(options, [&]()
                                                               { (void)runner.gpu(test_case); });

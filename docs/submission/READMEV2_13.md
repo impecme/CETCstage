@@ -15,7 +15,7 @@
 - `estimation`
 - `peak_finding`
 
-交付内容包括真实 CPU/CUDA 实现、单算子单入口 unit test、generated/reference/report 数据链路，以及一键测试注册。
+交付内容包括真实 CPU/ZQ500 GPU 实现、单算子单入口 unit test、generated/reference/report 数据链路，以及一键测试注册。
 
 ## 本轮内容
 
@@ -35,7 +35,7 @@
 ## 行为约束
 
 - `cpu::*` 继续保持 host 输入输出。
-- `cuda_backend::*` 继续保持 host/device 双输入、device 输出。
+- `zx_gpu_backend::*` 继续保持 host/device 双输入、device 输出。
 - `KalmanFilter(dtype)` 当前只支持 `"float32"`；`"float64"` 显式报不支持。
 - `correlate(method="direct")` 当前只支持 1D。
 - `peak_finding` 继续只支持字符串 comparator，不扩展到 Python callable。

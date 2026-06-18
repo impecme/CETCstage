@@ -19,7 +19,7 @@ BENCH_SCALE_LEVELS="${BENCH_SCALE_LEVELS:-3}"
 BENCH_WARMUP="${BENCH_WARMUP:-1}"
 BENCH_REPEAT="${BENCH_REPEAT:-3}"
 BENCH_REPORT_MODE="${BENCH_REPORT_MODE:-concise}"
-BENCH_OUTPUT_DIR="${BENCH_OUTPUT_DIR:-data/reports/unit/benchmarks/zhongkexin_stage4_pilot}"
+BENCH_OUTPUT_DIR="${BENCH_OUTPUT_DIR:-data/reports/unit/benchmarks/zhongkexin_stage4_default}"
 RUN_BENCHMARK_PLOTS="${RUN_BENCHMARK_PLOTS:-1}"
 PLOT_FORMATS="${PLOT_FORMATS:-png}"
 
@@ -89,8 +89,8 @@ if [[ ! -f "${build_path}/CMakeCache.txt" ]]; then
 fi
 
 mkdir -p "${STAGE4_REPORT_ROOT}"
-TASK_LOG="${STAGE4_REPORT_ROOT}/latest_task_scale_pilot.log"
-BENCH_LOG="${STAGE4_REPORT_ROOT}/latest_operator_benchmark_pilot.log"
+TASK_LOG="${STAGE4_REPORT_ROOT}/latest_task_scale.log"
+BENCH_LOG="${STAGE4_REPORT_ROOT}/latest_operator_benchmark.log"
 PLOT_LOG="${STAGE4_REPORT_ROOT}/latest_operator_benchmark_plot.log"
 SUMMARY_JSON="${STAGE4_REPORT_ROOT}/latest_stage4_summary.json"
 SUMMARY_MD="${STAGE4_REPORT_ROOT}/latest_stage4_summary.md"
@@ -110,7 +110,7 @@ else
   printf '[zx-stage4] skipped by RUN_TASK_SWEEP=0\n' >"${TASK_LOG}"
 fi
 
-echo "[zx-stage4] running operator benchmark pilot"
+echo "[zx-stage4] running operator benchmark"
 run_logged "operator benchmark" "${BENCH_LOG}" \
   python3 scripts/test/benchmark_all_ops_scales.py \
   --platform ZHONGKEXIN \
@@ -196,7 +196,7 @@ payload = {
 }
 Path(summary_json).write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
-lines = ["# Zhongkexin V4.4 Stage4 Pilot Summary", ""]
+lines = ["# Zhongkexin V4.4 Stage4 Summary", ""]
 for key, value in payload.items():
     lines.append(f"- {key}: `{value}`")
 Path(summary_md).write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -207,7 +207,7 @@ if not payload["pass"]:
     raise SystemExit(1)
 PY
 
-# Full expansion after pilot passes:
+# Full expansion command:
 # TASK_SCALES=1,2,3,4,5,6 \
 # BENCH_MODULES=all \
 # BENCH_SCALE_LEVELS=1,2,3,4,5,6 \

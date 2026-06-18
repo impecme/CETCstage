@@ -74,7 +74,7 @@ namespace cusignal
         } // namespace wavelets
     } // namespace cpu
 
-    namespace cuda_backend
+    namespace zx_gpu_backend
     {
         namespace wavelets
         {
@@ -85,7 +85,7 @@ namespace cusignal
              * @param hk 输入低通滤波器系数。
              * @return 与 `hk` 等长的镜像滤波器系数。
              */
-            core::CudaRealSignal qmf(const core::RealSignalLike &hk);
+            core::ZxGpuRealSignal qmf(const core::RealSignalLike &hk);
 
             /**
              * @brief 生成 Morlet 小波。
@@ -97,7 +97,7 @@ namespace cusignal
              * @return 长度为 `points` 的复数小波序列。
              * @throws std::invalid_argument 当 `points < 0` 或 `s <= 0` 时抛出异常。
              */
-            core::CudaComplexSignal morlet(
+            core::ZxGpuComplexSignal morlet(
                 int points,
                 float w = 5.0,
                 float s = 1.0,
@@ -111,7 +111,7 @@ namespace cusignal
              * @return 长度为 `points` 的实数小波序列。
              * @throws std::invalid_argument 当 `points < 0` 或 `a <= 0` 时抛出异常。
              */
-            core::CudaRealSignal ricker(int points, float a);
+            core::ZxGpuRealSignal ricker(int points, float a);
 
             /**
              * @brief 生成 Morlet2 小波。
@@ -122,7 +122,7 @@ namespace cusignal
              * @return 长度为 `points` 的复数小波序列。
              * @throws std::invalid_argument 当 `points < 0` 或 `s <= 0` 时抛出异常。
              */
-            core::CudaComplexSignal morlet2(int points, float s, float w = 5.0);
+            core::ZxGpuComplexSignal morlet2(int points, float s, float w = 5.0);
 
             /**
              * @brief 执行连续小波变换。
@@ -134,11 +134,11 @@ namespace cusignal
              * @throws std::invalid_argument 当 `wavelet` 不受支持或 `widths` 为空时抛出异常。
              * @note Python callable wavelet 本轮暂不支持。
              */
-            core::CudaComplexArray cwt(
+            core::ZxGpuComplexArray cwt(
                 const core::RealSignalLike &data,
                 const std::string &wavelet,
                 const core::RealSignalLike &widths);
 
         } // namespace wavelets
-    } // namespace cuda_backend
+    } // namespace zx_gpu_backend
 } // namespace cusignal

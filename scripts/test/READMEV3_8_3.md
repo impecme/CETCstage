@@ -33,12 +33,12 @@
 - 每类型/线程最多保留 `8` 块或 `512 MiB`，超限释放最旧块。
 - `zero_fill=true` 仍执行 `cudaMemset`，容器 shape/size/ownership 语义不变。
 - `bsplines`、`wavelets/qmf`、`waveforms/chirp/sawtooth/square` 的 perf case
-  预先生成 host 输入并上传到 device，计时循环内调用现有 public CUDA API 的
+  预先生成 host 输入并上传到 device，计时循环内调用现有 public ZQ500 GPU API 的
   device-input 路径。
 - `kalman_filter` perf case 预构造并复用固定维度 `KalmanFilter`、device control
   和 device measurement；每次计时前用 D2D copy 复位 `x/P/z/u`，再计入
   `predict + update`。
-- `firwin2` 在 CUDA 实现内部增加 thread-local prepared cache，重复 case 复用
+- `firwin2` 在 ZQ500 GPU 实现内部增加 thread-local prepared cache，重复 case 复用
   full-spectrum device template；计时循环内从 template 做 D2D copy 后执行 FFT
   与 taps extraction。
 
@@ -47,7 +47,7 @@
 低 e2e 优化后的相关 perf runner 中，`gpu_e2e_*_ms` 表示：
 
 ```text
-device-resident public CUDA API call + output allocation/cache + 必要的 device 内部工作区复位/拷贝
+device-resident public ZQ500 GPU API call + output allocation/cache + 必要的 device 内部工作区复位/拷贝
 ```
 
 这与 V3.8.2 的 CSV schema 完全一致，但对点式轻量算子不再把每次 H2D 输入上传和
@@ -57,7 +57,7 @@ device-resident public CUDA API call + output allocation/cache + 必要的 devic
 ## 回归命令
 
 ```bash
-cmake --build build --target cusignal_cuda cusignal_cpu --parallel $(nproc)
+cmake --build build --target cusignal_zx_gpu cusignal_cpu --parallel $(nproc)
 cmake --build build --target \
   bsplines_test_cubic bsplines_test_quadratic bsplines_test_gauss_spline \
   wavelets_test_qmf \

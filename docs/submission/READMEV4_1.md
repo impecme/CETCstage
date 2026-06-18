@@ -12,7 +12,7 @@
 
 ## 阶段目标
 
-本阶段目标是打通 CETC 项目在中科芯 CUDA 兼容平台上的第一条完整任务级链路。完成范围包括平台探测、构建入口、核心库构建、Task1/Task2 默认规模运行、报告输出、Python 依赖检查和可视化图件生成。
+本阶段目标是打通 CETC 项目在中科芯 ZQ500 兼容平台上的第一条完整任务级链路。完成范围包括平台探测、构建入口、核心库构建、Task1/Task2 默认规模运行、报告输出、Python 依赖检查和可视化图件生成。
 
 本阶段完成不代表全项目迁移完成。后续仍需按 V4.2-V4.5 继续关闭依赖算子、全量公开算子、性能稳定性和最终交付复现。
 
@@ -44,7 +44,7 @@ scripts/platform/run_zhongkexin_stage1.sh 2>&1 | tee stage1.log
 scripts/platform/prepare_zhongkexin_deps.sh --ensure-fftw --install-python
 scripts/platform/probe_zhongkexin.sh
 cmake -S . -B build-zx -DCUSIGNAL_PLATFORM=ZHONGKEXIN -DCMAKE_BUILD_TYPE=Release
-cmake --build build-zx --target cusignal_cpu cusignal_cuda task1_radar_demo task2_features_demo --parallel
+cmake --build build-zx --target cusignal_cpu cusignal_zx_gpu task1_radar_demo task2_features_demo --parallel
 scripts/test/run_task_demos.sh --build-dir build-zx --no-build --repeat 3 --require-visualization-deps
 ```
 
@@ -64,7 +64,7 @@ git diff --check -- docs/design/zhongkexin_migration_status.md docs/design/zhong
 - `dlcc` probe 产出 `ELF 64-bit LSB relocatable`
 - `Built target zx_probe`
 - `Built target cusignal_cpu`
-- `Built target cusignal_cuda`
+- `Built target cusignal_zx_gpu`
 - `Built target task1_radar_demo`
 - `Built target task2_features_demo`
 - `[task1_radar] PASS repeat=3 scale_level=L3 invalid_input_checks=true skip_timing_validation=false`
@@ -95,9 +95,9 @@ git diff --check -- docs/design/zhongkexin_migration_status.md docs/design/zhong
 V4.1 第一阶段已满足以下完成条件：
 
 - 中科芯 docker 内依赖准备通过。
-- 平台 probe 通过，最小 CUDA 编译产物为 ELF relocatable。
+- 平台 probe 通过，最小 ZQ500 GPU 编译产物为 ELF relocatable。
 - `build-zx` 配置完成。
-- `cusignal_cpu`、`cusignal_cuda`、`task1_radar_demo`、`task2_features_demo` 构建完成。
+- `cusignal_cpu`、`cusignal_zx_gpu`、`task1_radar_demo`、`task2_features_demo` 构建完成。
 - Task1/Task2 L3 默认规模均通过 `PASS repeat=3`。
 - `numpy/matplotlib/scipy` 可 import。
 - Task1/Task2 可视化脚本执行完成并生成 `figures`。
@@ -111,7 +111,7 @@ V4.1 第一阶段已满足以下完成条件：
 - V4.2 需要扩展到 Task1/Task2 依赖算子 smoke/accuracy 和 L1-L6 sweep。
 - FFT-heavy 路径仍需按复赛说明确认 2 的整数次幂 padding 与裁剪策略。
 - cuSOLVER LU 路径仍需逐项确认 pivot buffer 不传 `nullptr`。
-- V4.3 以后需要覆盖全量公开 API、全量 CUDA 算子、数据生成和报告输出。
+- V4.3 以后需要覆盖全量公开 API、全量 ZQ500 GPU 算子、数据生成和报告输出。
 - V4.4 需要恢复更完整的 benchmark、资源、timing 和性能稳定性验收。
 - V4.5 需要完成从零复现、最终提交文档和交付物整理。
 

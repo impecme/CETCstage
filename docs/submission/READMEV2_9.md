@@ -14,9 +14,9 @@
 
 - `bsplines`
   - CPU 实现：`cubic`、`quadratic`、`gauss_spline`
-  - CUDA 实现：逐元素 device kernel、host/device 双输入归一化、device 输出
+  - ZQ500 GPU 实现：逐元素 device kernel、host/device 双输入归一化、device 输出
   - 公共实现：`src/common/bsplines_detail.hpp`
-  - CUDA kernel 计时：`bsplines_test_hooks::consume_last_kernel_ms()`
+  - ZQ500 GPU kernel 计时：`bsplines_test_hooks::consume_last_kernel_ms()`
 - unit 测试
   - 新增 `tests/unit/bsplines`
   - 一键脚本注册 `bsplines` 的 3 个 operator

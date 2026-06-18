@@ -67,20 +67,20 @@ project(zhongkexin_probe LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(ZX_CXX_CUDA_FLAGS "" CACHE STRING "dlcc flags for .cu sources")
+set(ZX_CXX_GPU_FLAGS "" CACHE STRING "dlcc flags for ZQ500 GPU sources")
 find_path(
-  ZX_CUDA_INCLUDE_DIRS
+  ZX_GPU_INCLUDE_DIRS
   NAMES cuda_runtime.h
-  PATHS /zq500/sdk/include /zq500/cuda11/include /usr/local/cuda/include
+  PATHS /zq500/sdk/include /zq500/cuda11/include
 )
-if(NOT ZX_CUDA_INCLUDE_DIRS)
+if(NOT ZX_GPU_INCLUDE_DIRS)
   message(FATAL_ERROR "cuda_runtime.h was not found")
 endif()
 
 add_library(zx_probe STATIC probe.cu)
 set_source_files_properties(probe.cu PROPERTIES LANGUAGE CXX)
-target_include_directories(zx_probe PRIVATE ${ZX_CUDA_INCLUDE_DIRS})
-target_compile_options(zx_probe PRIVATE ${ZX_CXX_CUDA_FLAGS})
+target_include_directories(zx_probe PRIVATE ${ZX_GPU_INCLUDE_DIRS})
+target_compile_options(zx_probe PRIVATE ${ZX_CXX_GPU_FLAGS})
 CMAKE
 
 cat >"${src}/probe.cu" <<'CU'
@@ -103,5 +103,5 @@ cmake \
   -S "${src}" \
   -B "${build}" \
   -DCMAKE_CXX_COMPILER="${dlcc}" \
-  -DZX_CXX_CUDA_FLAGS="${cmake_flags}"
+  -DZX_CXX_GPU_FLAGS="${cmake_flags}"
 cmake --build "${build}" --target zx_probe --parallel --verbose

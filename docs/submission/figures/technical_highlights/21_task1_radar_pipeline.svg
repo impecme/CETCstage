@@ -1556,7 +1556,7 @@ L 843.84 370.061961
     <text style="font-size: 8.4px; font-family: 'Droid Sans Fallback', 'DejaVu Sans'; text-anchor: start; fill: #607d8b" x="52.992" y="95.629875" transform="rotate(-0 52.992 95.629875)">CPU 参考链路</text>
    </g>
    <g id="text_4">
-    <text style="font-size: 8.4px; font-family: 'Droid Sans Fallback', 'DejaVu Sans'; text-anchor: start; fill: #3f6f8f" x="52.992" y="192.397875" transform="rotate(-0 52.992 192.397875)">CUDA 链路</text>
+    <text style="font-size: 8.4px; font-family: 'Droid Sans Fallback', 'DejaVu Sans'; text-anchor: start; fill: #3f6f8f" x="52.992" y="192.397875" transform="rotate(-0 52.992 192.397875)">ZQ500 GPU 链路</text>
    </g>
    <g id="text_5">
     <text style="font-size: 7.6px; font-family: 'Droid Sans Fallback', 'DejaVu Sans'; text-anchor: middle; fill: #263238" x="101.376" y="109.233125" transform="rotate(-0 101.376 109.233125)">参考</text>

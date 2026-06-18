@@ -58,7 +58,7 @@ namespace cusignal::radartools_detail
         return false;
     }
 
-    inline bool window_disabled(const core::CudaWindowSpec &window)
+    inline bool window_disabled(const core::ZxGpuWindowSpec &window)
     {
         if (const auto *name = std::get_if<std::string>(&window))
         {

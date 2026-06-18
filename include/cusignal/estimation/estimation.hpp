@@ -156,7 +156,7 @@ namespace cusignal
         } // namespace estimation
     } // namespace cpu
 
-    namespace cuda_backend
+    namespace zx_gpu_backend
     {
         namespace estimation
         {
@@ -173,52 +173,52 @@ namespace cusignal
                 /**
                  * @brief 当前状态估计，形状为 `[points, dim_x, 1]`。
                  */
-                core::CudaRealArray x;
+                core::ZxGpuRealArray x;
 
                 /**
                  * @brief 当前状态协方差，形状为 `[points, dim_x, dim_x]`。
                  */
-                core::CudaRealArray P;
+                core::ZxGpuRealArray P;
 
                 /**
                  * @brief 最近一次更新使用的观测量，形状为 `[points, dim_z, 1]`。
                  */
-                core::CudaRealArray z;
+                core::ZxGpuRealArray z;
 
                 /**
                  * @brief 测量噪声协方差，形状为 `[points, dim_z, dim_z]`。
                  */
-                core::CudaRealArray R;
+                core::ZxGpuRealArray R;
 
                 /**
                  * @brief 过程噪声协方差，形状为 `[points, dim_x, dim_x]`。
                  */
-                core::CudaRealArray Q;
+                core::ZxGpuRealArray Q;
 
                 /**
                  * @brief 状态转移矩阵，形状为 `[points, dim_x, dim_x]`。
                  */
-                core::CudaRealArray F;
+                core::ZxGpuRealArray F;
 
                 /**
                  * @brief 观测矩阵，形状为 `[points, dim_z, dim_x]`。
                  */
-                core::CudaRealArray H;
+                core::ZxGpuRealArray H;
 
                 /**
                  * @brief 控制矩阵，形状为 `[points, dim_x, dim_u]`。
                  */
-                core::CudaRealArray B;
+                core::ZxGpuRealArray B;
 
                 /**
                  * @brief 控制输入，形状为 `[points, dim_u, 1]`。
                  */
-                core::CudaRealArray u;
+                core::ZxGpuRealArray u;
 
                 /**
                  * @brief 淡忘因子平方，形状为 `[points, 1, 1]`。
                  */
-                core::CudaRealArray alpha_sq;
+                core::ZxGpuRealArray alpha_sq;
 
                 /**
                  * @brief 构造 KalmanFilter 对象。
@@ -304,5 +304,5 @@ namespace cusignal
             };
 
         } // namespace estimation
-    } // namespace cuda_backend
+    } // namespace zx_gpu_backend
 } // namespace cusignal

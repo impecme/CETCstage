@@ -8,10 +8,10 @@
 
 - `filter_design`
   - CPU 实现：`kaiser_beta`、`kaiser_atten`、`cmplx_sort`、`firwin`、`firwin2`
-  - CUDA 实现：`cmplx_sort` 的 device 排序、`firwin` 的 device tap 生成、`firwin2` 的 `cuFFT` 逆变换设计路径
+  - ZQ500 GPU 实现：`cmplx_sort` 的 device 排序、`firwin` 的 device tap 生成、`firwin2` 的 `cuFFT` 逆变换设计路径
 - `filtering`
   - CPU 实现：`wiener`、`fir/lfilter`、`filtfilt`、`sosfilt`、`hilbert/hilbert2`、`detrend`、`freq_shift`、`channelize_poly`、`decimate`、`resample`、`resample_poly`、`upfirdn`
-  - CUDA 实现：保持 host/device 双输入与 device 输出边界，补齐完整返回链路与测试接入
+  - ZQ500 GPU 实现：保持 host/device 双输入与 device 输出边界，补齐完整返回链路与测试接入
 
 ## 测试链路
 
@@ -75,9 +75,9 @@
 - `filtering` 的 perf case 额外在 `generated/input/` 下写入 `case_id__spec.json`。
 - `latest_metrics.json` 的 case 级条目现在会同步记录这些样本 artifacts。
 
-### `filtering` CUDA 路径
+### `filtering` ZQ500 GPU 路径
 
-- `filtering` 的 CUDA 后端已从原先的 hybrid 路径收敛为 device-native 主计算。
+- `filtering` 的 ZQ500 GPU 后端已从原先的 hybrid 路径收敛为 device-native 主计算。
 - 保持 `V2.4/V2.5` 语义不变：
   - 输入继续支持 host/device 双态
   - host 输入自动 H2D

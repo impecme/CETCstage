@@ -569,7 +569,7 @@ z
     <text style="font-size: 13.5px; font-family: 'Droid Sans Fallback', 'DejaVu Sans'; text-anchor: middle; fill: #243238" x="1058.76" y="527.885156" transform="rotate(-0 1058.76 527.885156)">repeat</text>
    </g>
    <g id="text_33">
-    <text style="font-size: 11.5px; font-family: 'Droid Sans Fallback', 'DejaVu Sans'; text-anchor: end; fill: #607d8b" x="1105.2" y="617.928516" transform="rotate(-0 1105.2 617.928516)">include/cusignal/core/types.hpp | src/cuda/filtering.cu | src/cuda/spectral.cu | src/cuda/windows.cu</text>
+    <text style="font-size: 11.5px; font-family: 'Droid Sans Fallback', 'DejaVu Sans'; text-anchor: end; fill: #607d8b" x="1105.2" y="617.928516" transform="rotate(-0 1105.2 617.928516)">include/cusignal/core/types.hpp | src/zhongkexin/filtering.cu | src/zhongkexin/spectral.cu | src/zhongkexin/windows.cu</text>
    </g>
   </g>
  </g>

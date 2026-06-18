@@ -33,7 +33,7 @@ namespace
     constexpr float kPi = 3.141592653589793238462643383279502884;
     constexpr int kDetrendReductionBlock = 256;
 
-    void detrend_linear_pairwise_like_cuda(RealSignal &values)
+    void detrend_linear_pairwise_like_zx_gpu(RealSignal &values)
     {
         const int count = static_cast<int>(values.size());
         const int block_count = (count + kDetrendReductionBlock - 1) / kDetrendReductionBlock;
@@ -855,7 +855,7 @@ namespace cusignal
                         }
                         if (breaks.size() == 2 && values.size() >= 1024)
                         {
-                            detrend_linear_pairwise_like_cuda(values);
+                            detrend_linear_pairwise_like_zx_gpu(values);
                         }
                         else
                         {

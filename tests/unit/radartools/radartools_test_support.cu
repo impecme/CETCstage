@@ -28,13 +28,13 @@ namespace fs = std::filesystem;
 
 namespace cusignal
 {
-    namespace cuda_backend
+    namespace zx_gpu_backend
     {
         namespace radartools_test_hooks
         {
             float consume_last_kernel_ms();
         }
-    } // namespace cuda_backend
+    } // namespace zx_gpu_backend
 } // namespace cusignal
 
 namespace
@@ -43,11 +43,11 @@ namespace
     using cusignal::core::Complex;
     using cusignal::core::ComplexArray;
     using cusignal::core::ComplexSignal;
-    using cusignal::core::CudaComplexArray;
-    using cusignal::core::CudaComplexSignal;
-    using cusignal::core::CudaRealArray;
-    using cusignal::core::CudaRealSignal;
-    using cusignal::core::CudaWindowSpec;
+    using cusignal::core::ZxGpuComplexArray;
+    using cusignal::core::ZxGpuComplexSignal;
+    using cusignal::core::ZxGpuRealArray;
+    using cusignal::core::ZxGpuRealSignal;
+    using cusignal::core::ZxGpuWindowSpec;
     using cusignal::core::NamedFloatPairParameter;
     using cusignal::core::NamedFloatParameter;
     using cusignal::core::NamedTaylorParameter;
@@ -151,9 +151,9 @@ namespace
         std::string name;
         FieldKind kind = FieldKind::RealSignal;
         Shape shape;
-        CudaRealSignal real_signal;
-        CudaRealArray real_array;
-        CudaComplexArray complex_array;
+        ZxGpuRealSignal real_signal;
+        ZxGpuRealArray real_array;
+        ZxGpuComplexArray complex_array;
     };
 
     struct OutputBundle
@@ -379,11 +379,11 @@ namespace
         throw std::runtime_error("unsupported window spec kind");
     }
 
-    CudaWindowSpec to_cuda_window_spec(const WindowSpec &spec)
+    ZxGpuWindowSpec to_zx_gpu_window_spec(const WindowSpec &spec)
     {
         return std::visit(
-            [](const auto &value) -> CudaWindowSpec {
-                return CudaWindowSpec{value};
+            [](const auto &value) -> ZxGpuWindowSpec {
+                return ZxGpuWindowSpec{value};
             },
             spec);
     }
@@ -883,7 +883,7 @@ namespace
         return bundle;
     }
 
-    DeviceOutputBundle make_device_bundle(const CudaComplexArray &values, const std::string &name = "signal")
+    DeviceOutputBundle make_device_bundle(const ZxGpuComplexArray &values, const std::string &name = "signal")
     {
         DeviceOutputBundle bundle;
         DeviceOutputField field;
@@ -902,12 +902,12 @@ namespace
         field.name = "value";
         field.kind = FieldKind::RealSignal;
         field.shape = Shape{1};
-        field.real_signal = CudaRealSignal::from_host(RealSignal{value});
+        field.real_signal = ZxGpuRealSignal::from_host(RealSignal{value});
         bundle.fields.push_back(std::move(field));
         return bundle;
     }
 
-    DeviceOutputBundle make_device_bundle(const radartools_api::CudaCfarResult &result)
+    DeviceOutputBundle make_device_bundle(const radartools_api::ZxGpuCfarResult &result)
     {
         DeviceOutputBundle bundle;
         DeviceOutputField threshold;
@@ -925,13 +925,13 @@ namespace
         return bundle;
     }
 
-    DeviceOutputBundle make_device_bundle(const radartools_api::CudaAmbgfunResult &result)
+    DeviceOutputBundle make_device_bundle(const radartools_api::ZxGpuAmbgfunResult &result)
     {
         DeviceOutputBundle bundle;
         std::visit(
             [&](const auto &value) {
                 using T = std::decay_t<decltype(value)>;
-                if constexpr (std::is_same_v<T, radartools_api::CudaAmbgfunCutResult>)
+                if constexpr (std::is_same_v<T, radartools_api::ZxGpuAmbgfunCutResult>)
                 {
                     DeviceOutputField values_field;
                     values_field.name = "values";
@@ -1246,14 +1246,14 @@ namespace
         for (int warmup = 0; warmup < options.warmup; ++warmup)
         {
             callable();
-            (void)cusignal::cuda_backend::radartools_test_hooks::consume_last_kernel_ms();
+            (void)cusignal::zx_gpu_backend::radartools_test_hooks::consume_last_kernel_ms();
         }
         std::vector<float> durations;
         durations.reserve(static_cast<std::size_t>(options.repeat));
         for (int repeat = 0; repeat < options.repeat; ++repeat)
         {
             callable();
-            durations.push_back(cusignal::cuda_backend::radartools_test_hooks::consume_last_kernel_ms());
+            durations.push_back(cusignal::zx_gpu_backend::radartools_test_hooks::consume_last_kernel_ms());
         }
         return compute_timing_stats(durations);
     }
@@ -1500,11 +1500,11 @@ namespace
                         test_case.nfft));
                 },
                 [](const RadarCase &test_case) {
-                    return make_device_bundle(cusignal::cuda_backend::radartools::pulse_compression(
+                    return make_device_bundle(cusignal::zx_gpu_backend::radartools::pulse_compression(
                         load_complex_array_x(test_case),
                         load_template(test_case),
                         test_case.normalize,
-                        to_cuda_window_spec(test_case.window),
+                        to_zx_gpu_window_spec(test_case.window),
                         test_case.nfft));
                 }};
         }
@@ -1518,9 +1518,9 @@ namespace
                         test_case.nfft));
                 },
                 [](const RadarCase &test_case) {
-                    return make_device_bundle(cusignal::cuda_backend::radartools::pulse_doppler(
+                    return make_device_bundle(cusignal::zx_gpu_backend::radartools::pulse_doppler(
                         load_complex_array_x(test_case),
-                        to_cuda_window_spec(test_case.window),
+                        to_zx_gpu_window_spec(test_case.window),
                         test_case.nfft));
                 }};
         }
@@ -1548,7 +1548,7 @@ namespace
                 [](const RadarCase &test_case) {
                     if (!test_case.y_file.empty() || test_case.generated_y.has_value())
                     {
-                        return make_device_bundle(cusignal::cuda_backend::radartools::ambgfun(
+                        return make_device_bundle(cusignal::zx_gpu_backend::radartools::ambgfun(
                             load_complex_signal_x(test_case),
                             load_y_signal(test_case),
                             test_case.fs,
@@ -1556,7 +1556,7 @@ namespace
                             test_case.cut,
                             test_case.cut_value));
                     }
-                    return make_device_bundle(cusignal::cuda_backend::radartools::ambgfun(
+                    return make_device_bundle(cusignal::zx_gpu_backend::radartools::ambgfun(
                         load_complex_signal_x(test_case),
                         test_case.fs,
                         test_case.prf,
@@ -1571,7 +1571,7 @@ namespace
                     return make_bundle(cusignal::cpu::radartools::cfar_alpha(test_case.pfa, test_case.cells));
                 },
                 [](const RadarCase &test_case) {
-                    return make_device_bundle(cusignal::cuda_backend::radartools::cfar_alpha(test_case.pfa, test_case.cells));
+                    return make_device_bundle(cusignal::zx_gpu_backend::radartools::cfar_alpha(test_case.pfa, test_case.cells));
                 }};
         }
         if (op == "ca_cfar")
@@ -1595,13 +1595,13 @@ namespace
                 [](const RadarCase &test_case) {
                     if (!test_case.guard_shape.empty())
                     {
-                        return make_device_bundle(cusignal::cuda_backend::radartools::ca_cfar(
+                        return make_device_bundle(cusignal::zx_gpu_backend::radartools::ca_cfar(
                             load_real_array_x(test_case),
                             test_case.guard_shape,
                             test_case.reference_shape,
                             test_case.pfa));
                     }
-                    return make_device_bundle(cusignal::cuda_backend::radartools::ca_cfar(
+                    return make_device_bundle(cusignal::zx_gpu_backend::radartools::ca_cfar(
                         load_real_array_x(test_case),
                         test_case.guard_cells,
                         test_case.reference_cells,
@@ -1618,7 +1618,7 @@ namespace
                         test_case.calc_cov));
                 },
                 [](const RadarCase &test_case) {
-                    return make_device_bundle(cusignal::cuda_backend::radartools::mvdr(
+                    return make_device_bundle(cusignal::zx_gpu_backend::radartools::mvdr(
                         load_complex_array_x(test_case),
                         load_sv(test_case),
                         test_case.calc_cov));
@@ -2005,61 +2005,61 @@ namespace
         report.case_id = test_case.id;
         report.category = test_case.category;
 
-        std::optional<CudaComplexArray> pulse_compression_x;
-        std::optional<CudaComplexSignal> pulse_compression_template;
+        std::optional<ZxGpuComplexArray> pulse_compression_x;
+        std::optional<ZxGpuComplexSignal> pulse_compression_template;
         if (op == "pulse_compression")
         {
-            pulse_compression_x.emplace(CudaComplexArray::from_host(load_complex_array_x(test_case)));
-            pulse_compression_template.emplace(CudaComplexSignal::from_host(load_template(test_case)));
+            pulse_compression_x.emplace(ZxGpuComplexArray::from_host(load_complex_array_x(test_case)));
+            pulse_compression_template.emplace(ZxGpuComplexSignal::from_host(load_template(test_case)));
         }
-        std::optional<CudaComplexArray> pulse_doppler_x;
+        std::optional<ZxGpuComplexArray> pulse_doppler_x;
         if (op == "pulse_doppler")
         {
-            pulse_doppler_x.emplace(CudaComplexArray::from_host(load_complex_array_x(test_case)));
+            pulse_doppler_x.emplace(ZxGpuComplexArray::from_host(load_complex_array_x(test_case)));
         }
-        std::optional<CudaRealArray> ca_cfar_x;
+        std::optional<ZxGpuRealArray> ca_cfar_x;
         if (op == "ca_cfar")
         {
-            ca_cfar_x.emplace(CudaRealArray::from_host(load_real_array_x(test_case)));
+            ca_cfar_x.emplace(ZxGpuRealArray::from_host(load_real_array_x(test_case)));
         }
-        std::optional<CudaComplexSignal> ambgfun_x;
-        std::optional<CudaComplexSignal> ambgfun_y;
+        std::optional<ZxGpuComplexSignal> ambgfun_x;
+        std::optional<ZxGpuComplexSignal> ambgfun_y;
         if (op == "ambgfun" && options.gpu_only_perf)
         {
-            ambgfun_x.emplace(CudaComplexSignal::from_host(load_complex_signal_x(test_case)));
+            ambgfun_x.emplace(ZxGpuComplexSignal::from_host(load_complex_signal_x(test_case)));
             if (!test_case.y_file.empty() || test_case.generated_y.has_value())
             {
-                ambgfun_y.emplace(CudaComplexSignal::from_host(load_y_signal(test_case)));
+                ambgfun_y.emplace(ZxGpuComplexSignal::from_host(load_y_signal(test_case)));
             }
         }
         auto run_gpu_perf = [&]() -> DeviceOutputBundle {
             if (pulse_compression_x.has_value() && pulse_compression_template.has_value())
             {
-                return make_device_bundle(cusignal::cuda_backend::radartools::pulse_compression(
+                return make_device_bundle(cusignal::zx_gpu_backend::radartools::pulse_compression(
                     *pulse_compression_x,
                     *pulse_compression_template,
                     test_case.normalize,
-                    to_cuda_window_spec(test_case.window),
+                    to_zx_gpu_window_spec(test_case.window),
                     test_case.nfft));
             }
             if (pulse_doppler_x.has_value())
             {
-                return make_device_bundle(cusignal::cuda_backend::radartools::pulse_doppler(
+                return make_device_bundle(cusignal::zx_gpu_backend::radartools::pulse_doppler(
                     *pulse_doppler_x,
-                    to_cuda_window_spec(test_case.window),
+                    to_zx_gpu_window_spec(test_case.window),
                     test_case.nfft));
             }
             if (ca_cfar_x.has_value())
             {
                 if (!test_case.guard_shape.empty())
                 {
-                    return make_device_bundle(cusignal::cuda_backend::radartools::ca_cfar(
+                    return make_device_bundle(cusignal::zx_gpu_backend::radartools::ca_cfar(
                         *ca_cfar_x,
                         test_case.guard_shape,
                         test_case.reference_shape,
                         test_case.pfa));
                 }
-                return make_device_bundle(cusignal::cuda_backend::radartools::ca_cfar(
+                return make_device_bundle(cusignal::zx_gpu_backend::radartools::ca_cfar(
                     *ca_cfar_x,
                     test_case.guard_cells,
                     test_case.reference_cells,
@@ -2069,7 +2069,7 @@ namespace
             {
                 if (ambgfun_y.has_value())
                 {
-                    return make_device_bundle(cusignal::cuda_backend::radartools::ambgfun(
+                    return make_device_bundle(cusignal::zx_gpu_backend::radartools::ambgfun(
                         *ambgfun_x,
                         *ambgfun_y,
                         test_case.fs,
@@ -2077,7 +2077,7 @@ namespace
                         test_case.cut,
                         test_case.cut_value));
                 }
-                return make_device_bundle(cusignal::cuda_backend::radartools::ambgfun(
+                return make_device_bundle(cusignal::zx_gpu_backend::radartools::ambgfun(
                     *ambgfun_x,
                     test_case.fs,
                     test_case.prf,
@@ -2109,7 +2109,7 @@ namespace
         }
         report.gpu_e2e_perf = benchmark_host_latency(options, [&]() {
             (void)run_gpu_perf();
-            cusignal::core::throw_on_cuda_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
+            cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
         });
         report.gpu_kernel_perf = benchmark_gpu_kernel_latency(options, [&]() { (void)run_gpu_perf(); });
 

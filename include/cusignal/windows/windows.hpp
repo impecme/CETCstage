@@ -260,7 +260,7 @@ namespace cusignal
         } // namespace windows
     } // namespace cpu
 
-    namespace cuda_backend
+    namespace zx_gpu_backend
     {
         namespace windows
         {
@@ -275,8 +275,8 @@ namespace cusignal
              * @throws std::invalid_argument 当 `nx < 0` 或窗规格不受支持时抛出异常。
              * @note callable 形式本轮暂不支持。
              */
-            core::CudaRealSignal get_window(
-                core::CudaWindowSpec window,
+            core::ZxGpuRealSignal get_window(
+                core::ZxGpuWindowSpec window,
                 int nx,
                 bool fftbins = true);
 
@@ -287,7 +287,7 @@ namespace cusignal
              * @param sym 为 true 生成对称窗，为 false 生成周期窗。
              * @return 长度为 `size` 的实数窗序列。
              */
-            core::CudaRealSignal barthann(int size, bool sym = true);
+            core::ZxGpuRealSignal barthann(int size, bool sym = true);
 
             /**
              * @brief 生成 Bartlett 窗。
@@ -296,7 +296,7 @@ namespace cusignal
              * @param sym 为 true 生成对称窗，为 false 生成周期窗。
              * @return 长度为 `size` 的实数窗序列。
              */
-            core::CudaRealSignal bartlett(int size, bool sym = true);
+            core::ZxGpuRealSignal bartlett(int size, bool sym = true);
 
             /**
              * @brief 生成 Blackman 窗。
@@ -305,7 +305,7 @@ namespace cusignal
              * @param sym 为 true 生成对称窗，为 false 生成周期窗。
              * @return 长度为 `size` 的实数窗序列。
              */
-            core::CudaRealSignal blackman(int size, bool sym = true);
+            core::ZxGpuRealSignal blackman(int size, bool sym = true);
 
             /**
              * @brief 生成 Blackman-Harris 窗。
@@ -314,7 +314,7 @@ namespace cusignal
              * @param sym 为 true 生成对称窗，为 false 生成周期窗。
              * @return 长度为 `size` 的实数窗序列。
              */
-            core::CudaRealSignal blackmanharris(int size, bool sym = true);
+            core::ZxGpuRealSignal blackmanharris(int size, bool sym = true);
 
             /**
              * @brief 生成 Bohman 窗。
@@ -323,7 +323,7 @@ namespace cusignal
              * @param sym 为 true 生成对称窗，为 false 生成周期窗。
              * @return 长度为 `size` 的实数窗序列。
              */
-            core::CudaRealSignal bohman(int size, bool sym = true);
+            core::ZxGpuRealSignal bohman(int size, bool sym = true);
 
             /**
              * @brief 生成矩形窗。
@@ -332,7 +332,7 @@ namespace cusignal
              * @param sym 是否生成对称窗；矩形窗下仅保留接口语义。
              * @return 长度为 `size` 的实数窗序列。
              */
-            core::CudaRealSignal boxcar(int size, bool sym = true);
+            core::ZxGpuRealSignal boxcar(int size, bool sym = true);
 
             /**
              * @brief 生成 Dolph-Chebyshev 窗。
@@ -342,7 +342,7 @@ namespace cusignal
              * @param sym 为 true 生成对称窗，为 false 生成周期窗。
              * @return 长度为 `size` 的实数窗序列。
              */
-            core::CudaRealSignal chebwin(int size, float at, bool sym = true);
+            core::ZxGpuRealSignal chebwin(int size, float at, bool sym = true);
 
             /**
              * @brief 生成余弦窗。
@@ -351,7 +351,7 @@ namespace cusignal
              * @param sym 为 true 生成对称窗，为 false 生成周期窗。
              * @return 长度为 `size` 的实数窗序列。
              */
-            core::CudaRealSignal cosine(int size, bool sym = true);
+            core::ZxGpuRealSignal cosine(int size, bool sym = true);
 
             /**
              * @brief 生成指数窗，中心位置按上游默认规则自动推导。
@@ -361,7 +361,7 @@ namespace cusignal
              * @param sym 为 true 生成对称窗，为 false 生成周期窗。
              * @return 长度为 `size` 的实数窗序列。
              */
-            core::CudaRealSignal exponential(int size, float tau = 1.0, bool sym = true);
+            core::ZxGpuRealSignal exponential(int size, float tau = 1.0, bool sym = true);
 
             /**
              * @brief 生成指数窗，并显式指定中心位置。
@@ -372,7 +372,7 @@ namespace cusignal
              * @param sym 为 true 生成对称窗，为 false 生成周期窗。
              * @return 长度为 `size` 的实数窗序列。
              */
-            core::CudaRealSignal exponential(int size, float center, float tau, bool sym);
+            core::ZxGpuRealSignal exponential(int size, float center, float tau, bool sym);
 
             /**
              * @brief 生成 Flat-top 窗。
@@ -381,7 +381,7 @@ namespace cusignal
              * @param sym 为 true 生成对称窗，为 false 生成周期窗。
              * @return 长度为 `size` 的实数窗序列。
              */
-            core::CudaRealSignal flattop(int size, bool sym = true);
+            core::ZxGpuRealSignal flattop(int size, bool sym = true);
 
             /**
              * @brief 生成高斯窗。
@@ -391,7 +391,7 @@ namespace cusignal
              * @param sym 为 true 生成对称窗，为 false 生成周期窗。
              * @return 长度为 `size` 的实数窗序列。
              */
-            core::CudaRealSignal gaussian(int size, float std, bool sym = true);
+            core::ZxGpuRealSignal gaussian(int size, float std, bool sym = true);
 
             /**
              * @brief 生成一般余弦窗。
@@ -401,7 +401,7 @@ namespace cusignal
              * @param sym 为 true 生成对称窗，为 false 生成周期窗。
              * @return 长度为 `size` 的实数窗序列。
              */
-            core::CudaRealSignal general_cosine(
+            core::ZxGpuRealSignal general_cosine(
                 int size,
                 const core::RealSignalLike &a,
                 bool sym = true);
@@ -415,7 +415,7 @@ namespace cusignal
              * @param sym 为 true 生成对称窗，为 false 生成周期窗。
              * @return 长度为 `size` 的实数窗序列。
              */
-            core::CudaRealSignal general_gaussian(
+            core::ZxGpuRealSignal general_gaussian(
                 int size,
                 float p,
                 float sig,
@@ -429,7 +429,7 @@ namespace cusignal
              * @param sym 为 true 生成对称窗，为 false 生成周期窗。
              * @return 长度为 `size` 的实数窗序列。
              */
-            core::CudaRealSignal general_hamming(int size, float alpha, bool sym = true);
+            core::ZxGpuRealSignal general_hamming(int size, float alpha, bool sym = true);
 
             /**
              * @brief 生成 Hamming 窗。
@@ -438,7 +438,7 @@ namespace cusignal
              * @param sym 为 true 生成对称窗，为 false 生成周期窗。
              * @return 长度为 `size` 的实数窗序列。
              */
-            core::CudaRealSignal hamming(int size, bool sym = true);
+            core::ZxGpuRealSignal hamming(int size, bool sym = true);
 
             /**
              * @brief 生成 Hann 窗。
@@ -447,7 +447,7 @@ namespace cusignal
              * @param sym 为 true 生成对称窗，为 false 生成周期窗。
              * @return 长度为 `size` 的实数窗序列。
              */
-            core::CudaRealSignal hann(int size, bool sym = true);
+            core::ZxGpuRealSignal hann(int size, bool sym = true);
 
             /**
              * @brief 生成 Kaiser 窗。
@@ -457,7 +457,7 @@ namespace cusignal
              * @param sym 为 true 生成对称窗，为 false 生成周期窗。
              * @return 长度为 `size` 的实数窗序列。
              */
-            core::CudaRealSignal kaiser(int size, float beta, bool sym = true);
+            core::ZxGpuRealSignal kaiser(int size, float beta, bool sym = true);
 
             /**
              * @brief 生成 Nuttall 窗。
@@ -466,7 +466,7 @@ namespace cusignal
              * @param sym 为 true 生成对称窗，为 false 生成周期窗。
              * @return 长度为 `size` 的实数窗序列。
              */
-            core::CudaRealSignal nuttall(int size, bool sym = true);
+            core::ZxGpuRealSignal nuttall(int size, bool sym = true);
 
             /**
              * @brief 生成 Parzen 窗。
@@ -475,7 +475,7 @@ namespace cusignal
              * @param sym 为 true 生成对称窗，为 false 生成周期窗。
              * @return 长度为 `size` 的实数窗序列。
              */
-            core::CudaRealSignal parzen(int size, bool sym = true);
+            core::ZxGpuRealSignal parzen(int size, bool sym = true);
 
             /**
              * @brief 生成 Taylor 窗。
@@ -487,7 +487,7 @@ namespace cusignal
              * @param sym 为 true 生成对称窗，为 false 生成周期窗。
              * @return 长度为 `size` 的实数窗序列。
              */
-            core::CudaRealSignal taylor(
+            core::ZxGpuRealSignal taylor(
                 int size,
                 int nbar = 4,
                 float sll = 30.0,
@@ -501,7 +501,7 @@ namespace cusignal
              * @param sym 为 true 生成对称窗，为 false 生成周期窗。
              * @return 长度为 `size` 的实数窗序列。
              */
-            core::CudaRealSignal triang(int size, bool sym = true);
+            core::ZxGpuRealSignal triang(int size, bool sym = true);
 
             /**
              * @brief 生成 Tukey 窗。
@@ -511,8 +511,8 @@ namespace cusignal
              * @param sym 为 true 生成对称窗，为 false 生成周期窗。
              * @return 长度为 `size` 的实数窗序列。
              */
-            core::CudaRealSignal tukey(int size, float alpha = 0.5, bool sym = true);
+            core::ZxGpuRealSignal tukey(int size, float alpha = 0.5, bool sym = true);
 
         } // namespace windows
-    } // namespace cuda_backend
+    } // namespace zx_gpu_backend
 } // namespace cusignal

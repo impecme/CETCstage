@@ -30,7 +30,7 @@
 实现特点如下：
 
 - `cpu::waveforms::*` 使用 C++17 双精度公式实现，作为对照基线。
-- `cuda_backend::waveforms::*` 使用 CUDA kernel + host wrapper 实现，显式完成 H2D、kernel launch、D2H 和同步。
+- `zx_gpu_backend::waveforms::*` 使用 ZQ500 GPU kernel + host wrapper 实现，显式完成 H2D、kernel launch、D2H 和同步。
 - 继续沿用 `V2.1` 的公开头文件签名与返回类型，不新增破坏性接口。
 - 非法输入保持显式异常语义，不使用 NaN 静默吞错。
 
@@ -139,7 +139,7 @@ data/
 
 ```bash
 cmake -S . -B build
-cmake --build build --target cusignal_cpu cusignal_cuda --parallel
+cmake --build build --target cusignal_cpu cusignal_zx_gpu --parallel
 cmake --build build --target \
   waveforms_test_chirp \
   waveforms_test_gausspulse \

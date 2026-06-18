@@ -7,8 +7,7 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 DEFAULT_BUILD_DIR="${PROJECT_ROOT}/build"
 DEFAULT_BUILD_TYPE="Release"
-DEFAULT_CUDA_ARCH="${CUDA_ARCH:-80}"
-DEFAULT_PLATFORM="${CUSIGNAL_PLATFORM:-NVIDIA}"
+DEFAULT_PLATFORM="${CUSIGNAL_PLATFORM:-ZHONGKEXIN}"
 
 MODULE_FILTER="all"
 OPERATOR_FILTER="all"
@@ -23,7 +22,6 @@ WARMUP_SET=0
 REPEAT_SET=0
 BUILD_DIR="${DEFAULT_BUILD_DIR}"
 BUILD_TYPE="${DEFAULT_BUILD_TYPE}"
-CUDA_ARCH="${DEFAULT_CUDA_ARCH}"
 PLATFORM="${DEFAULT_PLATFORM}"
 JOBS=""
 DO_BUILD=1
@@ -130,8 +128,7 @@ Options:
   --repeat N             Repeat iterations for perf runners, default: 30
   --build-dir PATH       Build directory, default: <repo>/build
   --build-type TYPE      CMake build type, default: Release
-  --platform NAME        CUSIGNAL platform: NVIDIA|ZHONGKEXIN, default: ${PLATFORM}
-  --cuda-arch ARCH       CUDA arch passed to CMake, default: ${CUDA_ARCH}
+  --platform NAME        CUSIGNAL platform: ZHONGKEXIN, default: ${PLATFORM}
   --jobs N               Parallel build jobs, default: auto-detect
   --no-build             Skip configure/build and reuse existing binaries
   --list                 List the registered test entries after filtering
@@ -238,11 +235,6 @@ parse_args() {
         PLATFORM="$2"
         shift 2
         ;;
-      --cuda-arch)
-        [[ $# -ge 2 ]] || die "--cuda-arch requires a value"
-        CUDA_ARCH="$2"
-        shift 2
-        ;;
       --jobs)
         [[ $# -ge 2 ]] || die "--jobs requires a value"
         JOBS="$2"
@@ -298,7 +290,7 @@ validate_args() {
 
   PLATFORM="$(printf '%s' "${PLATFORM}" | tr '[:lower:]' '[:upper:]')"
   case "${PLATFORM}" in
-    NVIDIA|ZHONGKEXIN) ;;
+    ZHONGKEXIN) ;;
     *) die "invalid --platform: ${PLATFORM}" ;;
   esac
 
@@ -340,11 +332,7 @@ configure_and_build() {
   log "build dir    : ${BUILD_DIR}"
   log "build type   : ${BUILD_TYPE}"
   log "platform     : ${PLATFORM}"
-  if [[ "${PLATFORM}" == "NVIDIA" ]]; then
-    log "cuda arch    : ${CUDA_ARCH}"
-  else
-    log "cuda arch    : n/a (ZHONGKEXIN uses dlcc --cuda-gpu-arch=dlgput64)"
-  fi
+  log "gpu arch     : ZQ500 dlgput64 via dlcc"
   log "jobs         : ${jobs}"
 
   local cmake_args=(
@@ -353,17 +341,13 @@ configure_and_build() {
     -DCMAKE_BUILD_TYPE="${BUILD_TYPE}"
     -DCUSIGNAL_PLATFORM="${PLATFORM}"
   )
-  if [[ "${PLATFORM}" == "NVIDIA" ]]; then
-    cmake_args+=(-DCMAKE_CUDA_ARCHITECTURES="${CUDA_ARCH}")
-  else
-    local zhongkexin_cxx="${ZHONGKEXIN_CXX_COMPILER:-}"
-    if [[ -z "${zhongkexin_cxx}" ]]; then
-      zhongkexin_cxx="$(command -v dlcc || true)"
-    fi
-    [[ -n "${zhongkexin_cxx}" ]] || die "dlcc was not found for ZHONGKEXIN build"
-    log "cxx compiler : ${zhongkexin_cxx}"
-    cmake_args+=(-DCMAKE_CXX_COMPILER="${zhongkexin_cxx}")
+  local zhongkexin_cxx="${ZHONGKEXIN_CXX_COMPILER:-}"
+  if [[ -z "${zhongkexin_cxx}" ]]; then
+    zhongkexin_cxx="$(command -v dlcc || true)"
   fi
+  [[ -n "${zhongkexin_cxx}" ]] || die "dlcc was not found for ZHONGKEXIN build"
+  log "cxx compiler : ${zhongkexin_cxx}"
+  cmake_args+=(-DCMAKE_CXX_COMPILER="${zhongkexin_cxx}")
 
   cmake "${cmake_args[@]}"
 

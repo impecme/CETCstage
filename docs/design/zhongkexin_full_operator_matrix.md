@@ -2,9 +2,9 @@
 
 ## 文档定位
 
-本文档用于 V4.3 全量公开算子迁移。它冻结当前公开模块、CUDA 实现、测试注册状态和中科芯容器验证入口。
+本文档用于 V4.3 全量公开算子迁移。它冻结当前公开模块、ZQ500 GPU 实现、测试注册状态和中科芯容器验证入口。
 
-V4.2 只覆盖 Task1/Task2 直接依赖算子；V4.3 扩展到 `scripts/test/run_all_tests.sh` 当前注册的全部公开算子测试。原注释候选项已确认具备测试源码、CMake target 和 CPU/CUDA API，现已纳入 active 验证范围。
+V4.2 只覆盖 Task1/Task2 直接依赖算子；V4.3 扩展到 `scripts/test/run_all_tests.sh` 当前注册的全部公开算子测试。原注释候选项已确认具备测试源码、CMake target 和 CPU/ZQ500 GPU API，现已纳入 active 验证范围。
 
 ## 当前注册概览
 
@@ -15,20 +15,20 @@ V4.2 只覆盖 Task1/Task2 直接依赖算子；V4.3 扩展到 `scripts/test/run
 - 目标报告：V4.3 脚本写入 `data/reports/zhongkexin/stage3/`
 - 当前验证：Stage3 active 81 条 accuracy 已全部通过，模块级 `12/12`、算子级 `81/81`。
 
-| 模块 | active 条目数 | CUDA 实现 | 测试支持库 | 依赖类型 | V4.2 覆盖情况 | V4.3 起始状态 |
+| 模块 | active 条目数 | ZQ500 GPU 实现 | 测试支持库 | 依赖类型 | V4.2 覆盖情况 | V4.3 起始状态 |
 | --- | ---: | --- | --- | --- | --- | --- |
-| `waveforms` | 5 | `src/cuda/waveforms.cu` | `tests/unit/waveforms/waveform_test_support.cu` | runtime/math | 部分覆盖 | 5/5 已通过 |
-| `bsplines` | 3 | `src/cuda/bsplines.cu` | `tests/unit/bsplines/bsplines_test_support.cu` | runtime/math | 部分覆盖 | 3/3 已通过 |
-| `windows` | 23 | `src/cuda/windows.cu` | `tests/unit/windows/windows_test_support.cu` | runtime/math | 部分覆盖 | 23/23 已通过 |
-| `filter_design` | 5 | `src/cuda/filter_design.cu` | `tests/unit/filter_design/filter_design_test_support.cu` | runtime/math | 已覆盖 active 条目 | 5/5 已通过 |
-| `filtering` | 17 | `src/cuda/filtering.cu` | `tests/unit/filtering/filtering_test_support.cu` | FFT-heavy/mixed | 部分覆盖 | 17/17 已通过 |
-| `radartools` | 6 | `src/cuda/radartools.cu` | `tests/unit/radartools/radartools_test_support.cu` | FFT-heavy/mixed | 已覆盖 active 条目 | 6/6 已通过 |
-| `spectral` | 9 | `src/cuda/spectral.cu` | `tests/unit/spectral/spectral_test_support.cu` | FFT-heavy | 部分覆盖 | 9/9 已通过 |
-| `wavelets` | 5 | `src/cuda/wavelets.cu` | `tests/unit/wavelets/wavelets_test_support.cu` | runtime/math | 部分覆盖 | 5/5 已通过 |
-| `correlate` | 3 | `src/cuda/correlate.cu` | `tests/unit/correlate/correlate_test_support.cu` | FFT-heavy/mixed | 已覆盖 active 条目 | 3/3 已通过 |
-| `demod` | 1 | `src/cuda/demod.cu` | `tests/unit/demod/demod_test_support.cu` | runtime/math | 已覆盖 active 条目 | 1/1 已通过 |
-| `estimation` | 1 | `src/cuda/estimation.cu` | `tests/unit/estimation/estimation_test_support.cu` | BLAS/SOLVER/mixed | 已覆盖 active 条目 | 1/1 已通过 |
-| `peak_finding` | 3 | `src/cuda/peak_finding.cu` | `tests/unit/peak_finding/peak_finding_test_support.cu` | runtime/math | 已覆盖 active 条目 | 3/3 已通过 |
+| `waveforms` | 5 | `src/zhongkexin/waveforms.cu` | `tests/unit/waveforms/waveform_test_support.cu` | runtime/math | 部分覆盖 | 5/5 已通过 |
+| `bsplines` | 3 | `src/zhongkexin/bsplines.cu` | `tests/unit/bsplines/bsplines_test_support.cu` | runtime/math | 部分覆盖 | 3/3 已通过 |
+| `windows` | 23 | `src/zhongkexin/windows.cu` | `tests/unit/windows/windows_test_support.cu` | runtime/math | 部分覆盖 | 23/23 已通过 |
+| `filter_design` | 5 | `src/zhongkexin/filter_design.cu` | `tests/unit/filter_design/filter_design_test_support.cu` | runtime/math | 已覆盖 active 条目 | 5/5 已通过 |
+| `filtering` | 17 | `src/zhongkexin/filtering.cu` | `tests/unit/filtering/filtering_test_support.cu` | FFT-heavy/mixed | 部分覆盖 | 17/17 已通过 |
+| `radartools` | 6 | `src/zhongkexin/radartools.cu` | `tests/unit/radartools/radartools_test_support.cu` | FFT-heavy/mixed | 已覆盖 active 条目 | 6/6 已通过 |
+| `spectral` | 9 | `src/zhongkexin/spectral.cu` | `tests/unit/spectral/spectral_test_support.cu` | FFT-heavy | 部分覆盖 | 9/9 已通过 |
+| `wavelets` | 5 | `src/zhongkexin/wavelets.cu` | `tests/unit/wavelets/wavelets_test_support.cu` | runtime/math | 部分覆盖 | 5/5 已通过 |
+| `correlate` | 3 | `src/zhongkexin/correlate.cu` | `tests/unit/correlate/correlate_test_support.cu` | FFT-heavy/mixed | 已覆盖 active 条目 | 3/3 已通过 |
+| `demod` | 1 | `src/zhongkexin/demod.cu` | `tests/unit/demod/demod_test_support.cu` | runtime/math | 已覆盖 active 条目 | 1/1 已通过 |
+| `estimation` | 1 | `src/zhongkexin/estimation.cu` | `tests/unit/estimation/estimation_test_support.cu` | BLAS/SOLVER/mixed | 已覆盖 active 条目 | 1/1 已通过 |
+| `peak_finding` | 3 | `src/zhongkexin/peak_finding.cu` | `tests/unit/peak_finding/peak_finding_test_support.cu` | runtime/math | 已覆盖 active 条目 | 3/3 已通过 |
 
 ## Active 条目清单
 

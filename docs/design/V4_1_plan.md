@@ -46,22 +46,22 @@
 
 - 确认当前 NVIDIA 路径仍可作为对照基线。
 - 确认中科芯服务器链路、docker、SDK 初始化和 `dlsmi` 可用。
-- 记录当前用户、路径、SDK 环境、CMake/CUDA 编译器和库探测结果。
+- 记录当前用户、路径、SDK 环境、CMake/ZQ500 GPU 编译器和库探测结果。
 - 更新 `docs/design/zhongkexin_migration_status.md`。
 
 ### 2. 平台构建入口
 
 - 维护 `CUSIGNAL_PLATFORM=NVIDIA|ZHONGKEXIN` 构建入口。
 - 维护 `scripts/platform/probe_zhongkexin.sh`。
-- probe 需要在配置 CMake 前执行环境 preflight，检查 `/zq500/sdk/env.sh`、`dlsmi`、CMake >= 3.18 和 CUDA 兼容编译器。
+- probe 需要在配置 CMake 前执行环境 preflight，检查 `/zq500/sdk/env.sh`、`dlsmi`、CMake >= 3.18 和 ZQ500 兼容编译器。
 - 确认 `build-zx` 能配置到至少生成构建系统。
 - 若中科芯库 target 名称不同，使用 `CUSIGNAL_ZHONGKEXIN_*_LIBRARY` 显式传入。
 - probe 必须覆盖复赛说明中当前项目直接依赖的 runtime、event、memory、cuFFT、cuBLAS、cuSOLVER 最小路径。
 
 ### 3. 核心 runtime 兼容层
 
-- 维护 `include/cusignal/core/platform_cuda_compat.hpp`。
-- 保持 `CudaRealSignal`、`CudaComplexSignal`、`CudaRealArray`、`CudaComplexArray` 等公开类型名不变。
+- 维护 `include/cusignal/core/platform_zx_gpu_compat.hpp`。
+- 保持 `ZxGpuRealSignal`、`ZxGpuComplexSignal`、`ZxGpuRealArray`、`ZxGpuComplexArray` 等公开类型名不变。
 - 验证 host/device copy、zero-fill、storage cache 和复数 `float2` 打包。
 - 用 `smoke_demo1` 作为最小验证入口。
 
@@ -131,7 +131,7 @@ set +u
 source /zq500/sdk/env.sh ""
 set -u
 cmake -S . -B build-zx -DCUSIGNAL_PLATFORM=ZHONGKEXIN -DCMAKE_BUILD_TYPE=Release
-cmake --build build-zx --target cusignal_cpu cusignal_cuda task1_radar_demo task2_features_demo --parallel
+cmake --build build-zx --target cusignal_cpu cusignal_zx_gpu task1_radar_demo task2_features_demo --parallel
 ```
 
 任务级 demo：
@@ -153,7 +153,7 @@ scripts/test/run_task_demos.sh --build-dir build-zx --no-build --repeat 3 --requ
 - 在中科芯 docker 内完成 SDK 初始化后，`dlsmi` 能看到可用设备。
 - `scripts/platform/probe_zhongkexin.sh` 通过，至少覆盖 runtime、kernel launch、event、FFT、BLAS、SOLVER 探测。
 - `build-zx` 能完成配置。
-- `cusignal_cpu`、`cusignal_cuda`、`task1_radar_demo`、`task2_features_demo` 能完成构建。
+- `cusignal_cpu`、`cusignal_zx_gpu`、`task1_radar_demo`、`task2_features_demo` 能完成构建。
 - `scripts/test/run_task_demos.sh --build-dir build-zx --no-build --repeat 3 --require-visualization-deps` 能运行完成。
 - Task1/Task2 默认 L3 规模报告中 `validation.pass=true`。
 - `numpy/matplotlib/scipy` 均可 import，Task1/Task2 的 `figures/*.png` 和 `figures/README.md` 已生成。

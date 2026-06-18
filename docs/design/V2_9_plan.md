@@ -8,7 +8,7 @@
   - `cusignal/python/cusignal/test/test_bsplines.py`
 - 约束固定：
   - 不改变已有接口模式。
-  - CUDA 路径继续保持 host/device 双输入、device 输出。
+  - ZQ500 GPU 路径继续保持 host/device 双输入、device 输出。
   - 显存复用做法对齐现有 `waveforms` / `windows` / `filter_design`。
   - 测试、数据、报告组织对齐当前 canonical unit schema，也就是 `V2.8` 之后这套格式。
 
@@ -24,11 +24,11 @@
   - 按展平 `values` 逐点计算。
   - 输出 shape 与输入完全一致。
   - `gauss_spline` 仅保留 `n < 0` 异常。
-- 重写 `src/cuda/bsplines.cu`：
-  - 使用真实逐元素 CUDA kernel，不再返回零张量。
+- 重写 `src/zhongkexin/bsplines.cu`：
+  - 使用真实逐元素 ZQ500 GPU kernel，不再返回零张量。
   - 输入继续走 `as_device_array(...)` 归一化。
   - 引入 `thread_local` workspace，至少复用输入 scratch、输出 scratch 和必要临时缓冲，避免跨调用重复 `cudaMalloc/cudaFree`。
-  - 返回值保持独立 `CudaRealArray`，workspace 不对外暴露别名。
+  - 返回值保持独立 `ZxGpuRealArray`，workspace 不对外暴露别名。
   - 增加 `g_last_kernel_ms` 和 `bsplines_test_hooks::consume_last_kernel_ms()`，口径对齐现有模块。
 - `include/cusignal/bsplines/bsplines.hpp` 只做最小修正：
   - 保留原注释块结构和风格。
@@ -72,7 +72,7 @@
   - `docs/submission/READMEV2_9.md`
 - 文档内容明确：
   - 这轮实现以仓内 Python `cusignal` 的 `bsplines.py` 与 `test_bsplines.py` 为行为基准
-  - CUDA 路径遵守 `V2.4` host/device 双输入与 `V2.5` 显存复用原则
+  - ZQ500 GPU 路径遵守 `V2.4` host/device 双输入与 `V2.5` 显存复用原则
   - 测试数据与样本命名遵守 `V2.8` canonical schema
 - 更新 `README.md`：
   - 当前版本改为 `V2.9`
@@ -95,7 +95,7 @@
   - 所有 case 验证 shape 保持不变
   - 数值语义以仓内 Python `cusignal` 行为和 reference 数据为准
 - perf 重点：
-  - `gpu_e2e_perf` 仍是 host 输入 + H2D + CUDA 计算，不包含 `get()`
+  - `gpu_e2e_perf` 仍是 host 输入 + H2D + ZQ500 GPU 计算，不包含 `get()`
   - `gpu_kernel_perf` 不应系统性为 `0.000`
   - `--emit-report` 后确认 `generated/input` 与 `generated/output_samples` 都落盘，且同时有 `cpu/gpu` 两份样本
 - 全量回归：

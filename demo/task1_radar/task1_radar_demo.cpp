@@ -1,4 +1,4 @@
-#include "task1_radar_cuda.hpp"
+#include "task1_radar_zx_gpu.hpp"
 
 #include <cuda_runtime_api.h>
 
@@ -39,7 +39,7 @@ namespace cusignal_demo::task1_radar
     using cusignal::core::RealSignal;
     using cusignal::core::Shape;
     using cusignal::radartools_api::AmbgfunSurfaceResult;
-    using cusignal::radartools_api::CudaAmbgfunSurfaceResult;
+    using cusignal::radartools_api::ZxGpuAmbgfunSurfaceResult;
 
     struct ScenarioConfig
     {
@@ -96,10 +96,10 @@ namespace cusignal_demo::task1_radar
     {
         double rss_current_mib = 0.0;
         double rss_peak_mib = 0.0;
-        double cuda_free_mib = 0.0;
-        double cuda_total_mib = 0.0;
-        int cuda_device = -1;
-        std::string cuda_device_name = "unknown";
+        double gpu_free_mib = 0.0;
+        double gpu_total_mib = 0.0;
+        int gpu_device = -1;
+        std::string gpu_device_name = "unknown";
     };
 
     struct ValidationCheck
@@ -127,7 +127,7 @@ namespace cusignal_demo::task1_radar
         float cfar_threshold_mixed = 5.0e-3f;
         float ambgfun_surface_mixed = 1.0e-4f;
         float timing_relative_jitter = 0.35f;
-        float cuda_free_drift_mib = 32.0f;
+        float gpu_free_drift_mib = 32.0f;
         float rss_current_drift_mib = 64.0f;
     };
 
@@ -259,12 +259,12 @@ namespace cusignal_demo::task1_radar
 
     struct GpuArtifacts
     {
-        cusignal::core::CudaComplexArray pulse_compression;
-        cusignal::core::CudaComplexArray pulse_doppler;
-        cusignal::core::CudaRealArray range_doppler_power;
-        cusignal::core::CudaRealArray cfar_threshold;
-        cusignal::core::CudaRealArray cfar_detections;
-        CudaAmbgfunSurfaceResult ambgfun;
+        cusignal::core::ZxGpuComplexArray pulse_compression;
+        cusignal::core::ZxGpuComplexArray pulse_doppler;
+        cusignal::core::ZxGpuRealArray range_doppler_power;
+        cusignal::core::ZxGpuRealArray cfar_threshold;
+        cusignal::core::ZxGpuRealArray cfar_detections;
+        ZxGpuAmbgfunSurfaceResult ambgfun;
     };
 
     struct HostGpuArtifacts
@@ -413,19 +413,19 @@ namespace cusignal_demo::task1_radar
         int device = -1;
         if (cudaGetDevice(&device) == cudaSuccess)
         {
-            snapshot.cuda_device = device;
+            snapshot.gpu_device = device;
             cudaDeviceProp prop{};
             if (cudaGetDeviceProperties(&prop, device) == cudaSuccess)
             {
-                snapshot.cuda_device_name = prop.name;
+                snapshot.gpu_device_name = prop.name;
             }
         }
         std::size_t free_bytes = 0;
         std::size_t total_bytes = 0;
         if (cudaMemGetInfo(&free_bytes, &total_bytes) == cudaSuccess)
         {
-            snapshot.cuda_free_mib = static_cast<double>(free_bytes) / (1024.0 * 1024.0);
-            snapshot.cuda_total_mib = static_cast<double>(total_bytes) / (1024.0 * 1024.0);
+            snapshot.gpu_free_mib = static_cast<double>(free_bytes) / (1024.0 * 1024.0);
+            snapshot.gpu_total_mib = static_cast<double>(total_bytes) / (1024.0 * 1024.0);
         }
         return snapshot;
     }
@@ -584,10 +584,10 @@ namespace cusignal_demo::task1_radar
         stream << pad << "{\n";
         stream << child << "\"rss_current_mib\": " << snapshot.rss_current_mib << ",\n";
         stream << child << "\"rss_peak_mib\": " << snapshot.rss_peak_mib << ",\n";
-        stream << child << "\"cuda_free_mib\": " << snapshot.cuda_free_mib << ",\n";
-        stream << child << "\"cuda_total_mib\": " << snapshot.cuda_total_mib << ",\n";
-        stream << child << "\"cuda_device\": " << snapshot.cuda_device << ",\n";
-        stream << child << "\"cuda_device_name\": \"" << json_escape(snapshot.cuda_device_name) << "\"\n";
+        stream << child << "\"gpu_free_mib\": " << snapshot.gpu_free_mib << ",\n";
+        stream << child << "\"gpu_total_mib\": " << snapshot.gpu_total_mib << ",\n";
+        stream << child << "\"gpu_device\": " << snapshot.gpu_device << ",\n";
+        stream << child << "\"gpu_device_name\": \"" << json_escape(snapshot.gpu_device_name) << "\"\n";
         stream << pad << "}";
         return stream.str();
     }
@@ -600,7 +600,7 @@ namespace cusignal_demo::task1_radar
         stream << pad << "\"resource_usage\": {\n";
         stream << child << "\"before\": " << resource_snapshot_json(before, indent + 2) << ",\n";
         stream << child << "\"after\": " << resource_snapshot_json(after, indent + 2) << ",\n";
-        stream << child << "\"cuda_free_delta_mib\": " << (after.cuda_free_mib - before.cuda_free_mib) << ",\n";
+        stream << child << "\"gpu_free_delta_mib\": " << (after.gpu_free_mib - before.gpu_free_mib) << ",\n";
         stream << child << "\"rss_current_delta_mib\": " << (after.rss_current_mib - before.rss_current_mib) << "\n";
         stream << pad << "}";
         return stream.str();
@@ -620,7 +620,7 @@ namespace cusignal_demo::task1_radar
                    << ", \"business_numeric_pass\": " << bool_json(iteration.business_numeric_pass)
                    << ", \"cpu_total_ms\": " << iteration.cpu_total_ms
                    << ", \"gpu_total_ms\": " << iteration.gpu_total_ms
-                   << ", \"cuda_free_mib\": " << iteration.resource_after.cuda_free_mib
+                   << ", \"gpu_free_mib\": " << iteration.resource_after.gpu_free_mib
                    << ", \"rss_current_mib\": " << iteration.resource_after.rss_current_mib
                    << "}" << (index + 1 == iterations.size() ? "\n" : ",\n");
         }
@@ -881,7 +881,7 @@ namespace cusignal_demo::task1_radar
     {
         const auto start = std::chrono::steady_clock::now();
         auto value = fn();
-        cusignal::core::throw_on_cuda_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize");
+        cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize");
         const auto end = std::chrono::steady_clock::now();
         const float elapsed_ms = std::chrono::duration<float, std::milli>(end - start).count();
         return std::make_pair(std::move(value), elapsed_ms);
@@ -1115,15 +1115,15 @@ namespace cusignal_demo::task1_radar
         {
             const ResourceSnapshot &first = iterations.front().resource_after;
             const ResourceSnapshot &last = iterations.back().resource_after;
-            const double cuda_free_drop = first.cuda_free_mib - last.cuda_free_mib;
+            const double gpu_free_drop = first.gpu_free_mib - last.gpu_free_mib;
             const double rss_growth = last.rss_current_mib - first.rss_current_mib;
             add_check(
                 validation,
-                "cuda_free_memory_drift_mib",
-                cuda_free_drop <= thresholds.cuda_free_drift_mib,
-                cuda_free_drop,
-                thresholds.cuda_free_drift_mib,
-                "final CUDA free memory must not drop materially after repeats");
+                "gpu_free_memory_drift_mib",
+                gpu_free_drop <= thresholds.gpu_free_drift_mib,
+                gpu_free_drop,
+                thresholds.gpu_free_drift_mib,
+                "final GPU free memory must not drop materially after repeats");
             add_check(
                 validation,
                 "rss_current_drift_mib",
@@ -1242,7 +1242,7 @@ namespace cusignal_demo::task1_radar
         GpuArtifacts artifacts;
 
         auto [pulse_compression, pulse_compression_ms] = measure_gpu_ms([&]() {
-            return cusignal::cuda_backend::radartools::pulse_compression(
+            return cusignal::zx_gpu_backend::radartools::pulse_compression(
                 rx_matrix,
                 tx_template,
                 config.pulse_compression_normalize,
@@ -1253,23 +1253,23 @@ namespace cusignal_demo::task1_radar
         artifacts.pulse_compression = std::move(pulse_compression);
 
         auto [pulse_doppler, pulse_doppler_ms] = measure_gpu_ms([&]() {
-            auto shifted = cusignal::cuda_backend::radartools::pulse_doppler(
+            auto shifted = cusignal::zx_gpu_backend::radartools::pulse_doppler(
                 artifacts.pulse_compression,
                 config.pulse_doppler_window,
                 config.pulse_doppler_nfft);
-            return fftshift_rows_complex_cuda(shifted);
+            return fftshift_rows_complex_zx_gpu(shifted);
         });
         timings.push_back({"pulse_doppler", 0.0, pulse_doppler_ms});
         artifacts.pulse_doppler = std::move(pulse_doppler);
 
         auto [range_doppler_power, power_ms] = measure_gpu_ms([&]() {
-            return power_map_cuda(artifacts.pulse_doppler);
+            return power_map_zx_gpu(artifacts.pulse_doppler);
         });
         timings.push_back({"power_map", 0.0, power_ms});
         artifacts.range_doppler_power = std::move(range_doppler_power);
 
         auto [cfar, cfar_ms] = measure_gpu_ms([&]() {
-            return cusignal::cuda_backend::radartools::ca_cfar(
+            return cusignal::zx_gpu_backend::radartools::ca_cfar(
                 artifacts.range_doppler_power,
                 config.cfar_guard_cells,
                 config.cfar_reference_cells,
@@ -1280,7 +1280,7 @@ namespace cusignal_demo::task1_radar
         artifacts.cfar_detections = std::move(cfar.detections);
 
         auto [ambgfun, ambgfun_ms] = measure_gpu_ms([&]() {
-            return cusignal::cuda_backend::radartools::ambgfun(
+            return cusignal::zx_gpu_backend::radartools::ambgfun(
                 tx_template,
                 config.fs,
                 config.prf,
@@ -1288,7 +1288,7 @@ namespace cusignal_demo::task1_radar
                 0.0f);
         });
         timings.push_back({"ambgfun", 0.0, ambgfun_ms});
-        artifacts.ambgfun = std::get<CudaAmbgfunSurfaceResult>(std::move(ambgfun));
+        artifacts.ambgfun = std::get<ZxGpuAmbgfunSurfaceResult>(std::move(ambgfun));
 
         return std::make_pair(std::move(artifacts), std::move(timings));
     }
@@ -1468,8 +1468,8 @@ namespace cusignal_demo::task1_radar
         stream << "## Validation\n\n";
         stream << "- pass: `" << (validation.pass ? "true" : "false") << "`\n";
         stream << "- repeat_runs: `" << iterations.size() << "`\n";
-        stream << "- cuda_free_delta_mib: `" << std::setprecision(3)
-               << (resource_after.cuda_free_mib - resource_before.cuda_free_mib) << "`\n";
+        stream << "- gpu_free_delta_mib: `" << std::setprecision(3)
+               << (resource_after.gpu_free_mib - resource_before.gpu_free_mib) << "`\n";
         stream << "- rss_current_delta_mib: `"
                << (resource_after.rss_current_mib - resource_before.rss_current_mib) << "`\n\n";
         stream << "## Artifacts\n\n";
@@ -1718,7 +1718,7 @@ namespace cusignal_demo::task1_radar
                 thresholds,
                 invalid_checks_passed,
                 options.skip_timing_validation);
-            cusignal::core::throw_on_cuda_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize");
+            cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize");
             IterationSummary summary;
             summary.index = iteration + 1;
             summary.pass = current_validation.pass;
@@ -1778,7 +1778,7 @@ namespace cusignal_demo::task1_radar
                 resource_after,
                 iterations));
 
-        cusignal::core::throw_on_cuda_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize");
+        cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize");
 
         if (!final_validation.pass)
         {

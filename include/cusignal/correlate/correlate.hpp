@@ -96,7 +96,7 @@ namespace cusignal
         } // namespace correlate
     } // namespace cpu
 
-    namespace cuda_backend
+    namespace zx_gpu_backend
     {
         namespace correlate
         {
@@ -111,7 +111,7 @@ namespace cusignal
              * @return 互相关结果张量。
              * @throws std::invalid_argument 当 `mode`、`method` 或 rank 不合法时抛出异常。
              */
-            core::CudaRealArray correlate(
+            core::ZxGpuRealArray correlate(
                 const core::RealArrayLike &in1,
                 const core::RealArrayLike &in2,
                 const std::string &mode = "full",
@@ -127,7 +127,7 @@ namespace cusignal
              * @return 互相关结果张量。
              * @throws std::invalid_argument 当 `mode`、`method` 或 rank 不合法时抛出异常。
              */
-            core::CudaComplexArray correlate(
+            core::ZxGpuComplexArray correlate(
                 const core::ComplexArrayLike &in1,
                 const core::ComplexArrayLike &in2,
                 const std::string &mode = "full",
@@ -144,7 +144,7 @@ namespace cusignal
              * @return 二维互相关结果张量。
              * @throws std::invalid_argument 当输入不是二维或模式字符串非法时抛出异常。
              */
-            core::CudaRealArray correlate2d(
+            core::ZxGpuRealArray correlate2d(
                 const core::RealArrayLike &in1,
                 const core::RealArrayLike &in2,
                 const std::string &mode = "full",
@@ -162,7 +162,7 @@ namespace cusignal
              * @return 二维互相关结果张量。
              * @throws std::invalid_argument 当输入不是二维或模式字符串非法时抛出异常。
              */
-            core::CudaComplexArray correlate2d(
+            core::ZxGpuComplexArray correlate2d(
                 const core::ComplexArrayLike &in1,
                 const core::ComplexArrayLike &in2,
                 const std::string &mode = "full",
@@ -178,11 +178,11 @@ namespace cusignal
              * @return 一维 lag 索引序列。
              * @throws std::invalid_argument 当长度或模式非法时抛出异常。
              */
-            core::CudaIndexSignal correlation_lags(
+            core::ZxGpuIndexSignal correlation_lags(
                 int in1_len,
                 int in2_len,
                 const std::string &mode = "full");
 
         } // namespace correlate
-    } // namespace cuda_backend
+    } // namespace zx_gpu_backend
 } // namespace cusignal

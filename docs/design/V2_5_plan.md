@@ -12,16 +12,16 @@
 
 ### 1. 公开接口与版本约束
 
-- `include/cusignal/*/*.hpp` 不做签名修改，`cpu::*` 和 `cuda_backend::*` 接口保持 `V2.4` 语义不变。
+- `include/cusignal/*/*.hpp` 不做签名修改，`cpu::*` 和 `zx_gpu_backend::*` 接口保持 `V2.4` 语义不变。
 - `include/` 中现有注释块保持原样，不重写、不压缩。
-- 本轮所有优化都限定在 `src/cuda/waveforms.cu`、`src/cuda/windows.cu` 及必要的共享内部辅助层。
+- 本轮所有优化都限定在 `src/zhongkexin/waveforms.cu`、`src/zhongkexin/windows.cu` 及必要的共享内部辅助层。
 
 ### 2. `waveforms` 内部复用落地
 
-- 把 `src/cuda/waveforms.cu` 中现有未真正使用的 `Workspace` 结构改成实际参与执行的 `thread_local` 工作区。
-- 不再让 host 输入归一化依赖每次调用新建的局部 `CudaRealSignal t_storage`；改为使用 workspace 中持久存在的 scratch `CudaRealSignal`，让 `reserve/resize` 的容量复用真正发生。
+- 把 `src/zhongkexin/waveforms.cu` 中现有未真正使用的 `Workspace` 结构改成实际参与执行的 `thread_local` 工作区。
+- 不再让 host 输入归一化依赖每次调用新建的局部 `ZxGpuRealSignal t_storage`；改为使用 workspace 中持久存在的 scratch `ZxGpuRealSignal`，让 `reserve/resize` 的容量复用真正发生。
 - 各算子的复用策略固定为：
-  - `chirp`：复用 host 输入上传缓冲；复数路径直接写 `CudaComplexSignal`，不再保留“实部/虚部分离后再额外组包”的多余临时路径。
+  - `chirp`：复用 host 输入上传缓冲；复数路径直接写 `ZxGpuComplexSignal`，不再保留“实部/虚部分离后再额外组包”的多余临时路径。
   - `gausspulse`：复用 host 输入上传缓冲；返回值仍为独立结果对象。
   - `sawtooth` / `square`：复用 `t` 上传缓冲和逐点 `width/duty` 上传缓冲。
   - `unit_impulse`：保持直接写返回值，不强行引入无意义 workspace。
@@ -29,16 +29,16 @@
 
 ### 3. `windows` 内部零拷贝优化
 
-- `src/cuda/windows.cu` 中 `WindowWorkspace` 保留并继续使用 `thread_local`，但职责升级为完整 device 工作区：
+- `src/zhongkexin/windows.cu` 中 `WindowWorkspace` 保留并继续使用 `thread_local`，但职责升级为完整 device 工作区：
   - 缓存普通窗输出 scratch
   - 缓存系数上传缓冲
   - 缓存 `chebwin` 频谱缓冲
   - 缓存 `cuFFT` plan
-- `launch_window_kernel(...)` 改成直接产出 `CudaRealSignal`，不再走“device 计算 -> D2H 到 `RealSignal` -> `from_host(...)` 回 device”的路径。
+- `launch_window_kernel(...)` 改成直接产出 `ZxGpuRealSignal`，不再走“device 计算 -> D2H 到 `RealSignal` -> `from_host(...)` 回 device”的路径。
 - `general_cosine(...)` 改成纯 device 路径：
   - host 系数时上传到 workspace
   - device 系数时直接使用 device 指针
-  - 不再对 `CudaRealSignal` 系数执行 `.get()`
+  - 不再对 `ZxGpuRealSignal` 系数执行 `.get()`
 - 依赖 `general_cosine` 或 `launch_window_kernel` 的窗函数统一切到纯 device 返回链，包括：
   - `blackman`
   - `blackmanharris`
@@ -59,7 +59,7 @@
 
 ### 4. 性能统计与文档
 
-- `gpu_e2e_perf` 口径保持不变：host 输入 + 自动 H2D + CUDA 计算，**不包含 `get()`**。
+- `gpu_e2e_perf` 口径保持不变：host 输入 + 自动 H2D + ZQ500 GPU 计算，**不包含 `get()`**。
 - `gpu_kernel_perf` 对 `windows` 的统计更新为“算子全部 GPU 计算阶段总时长”：
   - 普通窗：完整 kernel 时长
   - `chebwin`：`cuFFT + postprocess kernel` 总 GPU 计算时长
@@ -89,8 +89,8 @@
   - `windows` 普通窗函数内部不再出现 device-to-host materialization
   - `chebwin` 内部不再把 FFT 结果整段 D2H 重建
 - 静态验收：
-  - `src/cuda/waveforms.cu` 中 workspace 被真实调用，而不是只定义不用
-  - `src/cuda/windows.cu` 中除显式 host array spec 上传外，不再有内部 `.get()` 回 host 的实现路径
+  - `src/zhongkexin/waveforms.cu` 中 workspace 被真实调用，而不是只定义不用
+  - `src/zhongkexin/windows.cu` 中除显式 host array spec 上传外，不再有内部 `.get()` 回 host 的实现路径
 
 ## Assumptions
 

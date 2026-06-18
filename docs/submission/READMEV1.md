@@ -8,7 +8,7 @@
 
 ## 本次实现内容
 
-本次版本完成了赛题附录中 53 个算子的 C++11 接口骨架搭建，并按照 `cpu` 与 `cuda_backend` 两条实现路径分别补齐了空实现。
+本次版本完成了赛题附录中 53 个算子的 C++11 接口骨架搭建，并按照 `cpu` 与 `zx_gpu_backend` 两条实现路径分别补齐了空实现。
 
 除接口和实现骨架外，本次对运行入口目录职责做了精简调整，不再保留旧的多层运行入口划分方式，而是统一改为按对象组织：
 
@@ -29,14 +29,14 @@
 
 ```cpp
 cusignal::cpu::模块名::函数名(...)
-cusignal::cuda_backend::模块名::函数名(...)
+cusignal::zx_gpu_backend::模块名::函数名(...)
 ```
 
 示例：
 
 ```cpp
 cusignal::cpu::waveforms::chirp(...);
-cusignal::cuda_backend::filtering::resample(...);
+cusignal::zx_gpu_backend::filtering::resample(...);
 ```
 
 ## 已覆盖的赛题模块
@@ -88,7 +88,7 @@ cmake --build build --parallel
 ## 构建产物
 
 - `cusignal_cpu`：CPU 骨架静态库
-- `cusignal_cuda`：CUDA 骨架静态库
+- `cusignal_zx_gpu`：CUDA 骨架静态库
 - `cusignal_smoke`：轻量级编译与链接验证程序
 
 ## 后续工作

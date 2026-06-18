@@ -27,13 +27,13 @@ namespace fs = std::filesystem;
 
 namespace cusignal
 {
-    namespace cuda_backend
+    namespace zx_gpu_backend
     {
         namespace windows_test_hooks
         {
             float consume_last_kernel_ms();
         }
-    } // namespace cuda_backend
+    } // namespace zx_gpu_backend
 } // namespace cusignal
 
 namespace
@@ -41,8 +41,8 @@ namespace
     using cusignal::core::NamedFloatPairParameter;
     using cusignal::core::NamedFloatParameter;
     using cusignal::core::NamedTaylorParameter;
-    using cusignal::core::CudaRealSignal;
-    using cusignal::core::CudaWindowSpec;
+    using cusignal::core::ZxGpuRealSignal;
+    using cusignal::core::ZxGpuWindowSpec;
     using cusignal::core::RealSignal;
     using cusignal::core::WindowSpec;
 
@@ -138,7 +138,7 @@ namespace
     using JsonObject = cusignal_test::json::Object;
     using JsonValue = cusignal_test::json::Value;
     using CpuWindowFunction = std::function<RealSignal(const WindowCase &)>;
-    using GpuWindowFunction = std::function<CudaRealSignal(const WindowCase &)>;
+    using GpuWindowFunction = std::function<ZxGpuRealSignal(const WindowCase &)>;
 
     struct Runner
     {
@@ -567,7 +567,7 @@ namespace
         for (int warmup = 0; warmup < options.warmup; ++warmup)
         {
             callable();
-            (void)cusignal::cuda_backend::windows_test_hooks::consume_last_kernel_ms();
+            (void)cusignal::zx_gpu_backend::windows_test_hooks::consume_last_kernel_ms();
         }
 
         std::vector<float> durations;
@@ -575,7 +575,7 @@ namespace
         for (int repeat = 0; repeat < options.repeat; ++repeat)
         {
             callable();
-            durations.push_back(cusignal::cuda_backend::windows_test_hooks::consume_last_kernel_ms());
+            durations.push_back(cusignal::zx_gpu_backend::windows_test_hooks::consume_last_kernel_ms());
         }
         return compute_timing_stats(durations);
     }
@@ -692,7 +692,7 @@ namespace
         throw std::runtime_error("unsupported window spec kind");
     }
 
-    CudaWindowSpec to_cuda_window_spec(const WindowSpec &spec)
+    ZxGpuWindowSpec to_zx_gpu_window_spec(const WindowSpec &spec)
     {
         if (std::holds_alternative<std::string>(spec))
         {
@@ -869,8 +869,8 @@ namespace
                     {
                         throw std::runtime_error("get_window case requires spec");
                     }
-                    return cuda_backend::windows::get_window(
-                        to_cuda_window_spec(*test_case.spec),
+                    return zx_gpu_backend::windows::get_window(
+                        to_zx_gpu_window_spec(*test_case.spec),
                         test_case.size,
                         !test_case.sym);
                 }};
@@ -879,49 +879,49 @@ namespace
         {
             return Runner{
                 [](const WindowCase &test_case) { return cpu::windows::barthann(test_case.size, test_case.sym); },
-                [](const WindowCase &test_case) { return cuda_backend::windows::barthann(test_case.size, test_case.sym); }};
+                [](const WindowCase &test_case) { return zx_gpu_backend::windows::barthann(test_case.size, test_case.sym); }};
         }
         if (op == "bartlett")
         {
             return Runner{
                 [](const WindowCase &test_case) { return cpu::windows::bartlett(test_case.size, test_case.sym); },
-                [](const WindowCase &test_case) { return cuda_backend::windows::bartlett(test_case.size, test_case.sym); }};
+                [](const WindowCase &test_case) { return zx_gpu_backend::windows::bartlett(test_case.size, test_case.sym); }};
         }
         if (op == "blackman")
         {
             return Runner{
                 [](const WindowCase &test_case) { return cpu::windows::blackman(test_case.size, test_case.sym); },
-                [](const WindowCase &test_case) { return cuda_backend::windows::blackman(test_case.size, test_case.sym); }};
+                [](const WindowCase &test_case) { return zx_gpu_backend::windows::blackman(test_case.size, test_case.sym); }};
         }
         if (op == "blackmanharris")
         {
             return Runner{
                 [](const WindowCase &test_case) { return cpu::windows::blackmanharris(test_case.size, test_case.sym); },
-                [](const WindowCase &test_case) { return cuda_backend::windows::blackmanharris(test_case.size, test_case.sym); }};
+                [](const WindowCase &test_case) { return zx_gpu_backend::windows::blackmanharris(test_case.size, test_case.sym); }};
         }
         if (op == "bohman")
         {
             return Runner{
                 [](const WindowCase &test_case) { return cpu::windows::bohman(test_case.size, test_case.sym); },
-                [](const WindowCase &test_case) { return cuda_backend::windows::bohman(test_case.size, test_case.sym); }};
+                [](const WindowCase &test_case) { return zx_gpu_backend::windows::bohman(test_case.size, test_case.sym); }};
         }
         if (op == "boxcar")
         {
             return Runner{
                 [](const WindowCase &test_case) { return cpu::windows::boxcar(test_case.size, test_case.sym); },
-                [](const WindowCase &test_case) { return cuda_backend::windows::boxcar(test_case.size, test_case.sym); }};
+                [](const WindowCase &test_case) { return zx_gpu_backend::windows::boxcar(test_case.size, test_case.sym); }};
         }
         if (op == "chebwin")
         {
             return Runner{
                 [](const WindowCase &test_case) { return cpu::windows::chebwin(test_case.size, test_case.param0, test_case.sym); },
-                [](const WindowCase &test_case) { return cuda_backend::windows::chebwin(test_case.size, test_case.param0, test_case.sym); }};
+                [](const WindowCase &test_case) { return zx_gpu_backend::windows::chebwin(test_case.size, test_case.param0, test_case.sym); }};
         }
         if (op == "cosine")
         {
             return Runner{
                 [](const WindowCase &test_case) { return cpu::windows::cosine(test_case.size, test_case.sym); },
-                [](const WindowCase &test_case) { return cuda_backend::windows::cosine(test_case.size, test_case.sym); }};
+                [](const WindowCase &test_case) { return zx_gpu_backend::windows::cosine(test_case.size, test_case.sym); }};
         }
         if (op == "exponential")
         {
@@ -938,88 +938,88 @@ namespace
                 {
                     if (test_case.mode == "center_tau")
                     {
-                        return cuda_backend::windows::exponential(test_case.size, test_case.param0, test_case.param1, test_case.sym);
+                        return zx_gpu_backend::windows::exponential(test_case.size, test_case.param0, test_case.param1, test_case.sym);
                     }
-                    return cuda_backend::windows::exponential(test_case.size, test_case.param0, test_case.sym);
+                    return zx_gpu_backend::windows::exponential(test_case.size, test_case.param0, test_case.sym);
                 }};
         }
         if (op == "flattop")
         {
             return Runner{
                 [](const WindowCase &test_case) { return cpu::windows::flattop(test_case.size, test_case.sym); },
-                [](const WindowCase &test_case) { return cuda_backend::windows::flattop(test_case.size, test_case.sym); }};
+                [](const WindowCase &test_case) { return zx_gpu_backend::windows::flattop(test_case.size, test_case.sym); }};
         }
         if (op == "gaussian")
         {
             return Runner{
                 [](const WindowCase &test_case) { return cpu::windows::gaussian(test_case.size, test_case.param0, test_case.sym); },
-                [](const WindowCase &test_case) { return cuda_backend::windows::gaussian(test_case.size, test_case.param0, test_case.sym); }};
+                [](const WindowCase &test_case) { return zx_gpu_backend::windows::gaussian(test_case.size, test_case.param0, test_case.sym); }};
         }
         if (op == "general_cosine")
         {
             return Runner{
                 [](const WindowCase &test_case) { return cpu::windows::general_cosine(test_case.size, test_case.coefficients, test_case.sym); },
-                [](const WindowCase &test_case) { return cuda_backend::windows::general_cosine(test_case.size, test_case.coefficients, test_case.sym); }};
+                [](const WindowCase &test_case) { return zx_gpu_backend::windows::general_cosine(test_case.size, test_case.coefficients, test_case.sym); }};
         }
         if (op == "general_gaussian")
         {
             return Runner{
                 [](const WindowCase &test_case) { return cpu::windows::general_gaussian(test_case.size, test_case.param0, test_case.param1, test_case.sym); },
-                [](const WindowCase &test_case) { return cuda_backend::windows::general_gaussian(test_case.size, test_case.param0, test_case.param1, test_case.sym); }};
+                [](const WindowCase &test_case) { return zx_gpu_backend::windows::general_gaussian(test_case.size, test_case.param0, test_case.param1, test_case.sym); }};
         }
         if (op == "general_hamming")
         {
             return Runner{
                 [](const WindowCase &test_case) { return cpu::windows::general_hamming(test_case.size, test_case.param0, test_case.sym); },
-                [](const WindowCase &test_case) { return cuda_backend::windows::general_hamming(test_case.size, test_case.param0, test_case.sym); }};
+                [](const WindowCase &test_case) { return zx_gpu_backend::windows::general_hamming(test_case.size, test_case.param0, test_case.sym); }};
         }
         if (op == "hamming")
         {
             return Runner{
                 [](const WindowCase &test_case) { return cpu::windows::hamming(test_case.size, test_case.sym); },
-                [](const WindowCase &test_case) { return cuda_backend::windows::hamming(test_case.size, test_case.sym); }};
+                [](const WindowCase &test_case) { return zx_gpu_backend::windows::hamming(test_case.size, test_case.sym); }};
         }
         if (op == "hann")
         {
             return Runner{
                 [](const WindowCase &test_case) { return cpu::windows::hann(test_case.size, test_case.sym); },
-                [](const WindowCase &test_case) { return cuda_backend::windows::hann(test_case.size, test_case.sym); }};
+                [](const WindowCase &test_case) { return zx_gpu_backend::windows::hann(test_case.size, test_case.sym); }};
         }
         if (op == "kaiser")
         {
             return Runner{
                 [](const WindowCase &test_case) { return cpu::windows::kaiser(test_case.size, test_case.param0, test_case.sym); },
-                [](const WindowCase &test_case) { return cuda_backend::windows::kaiser(test_case.size, test_case.param0, test_case.sym); }};
+                [](const WindowCase &test_case) { return zx_gpu_backend::windows::kaiser(test_case.size, test_case.param0, test_case.sym); }};
         }
         if (op == "nuttall")
         {
             return Runner{
                 [](const WindowCase &test_case) { return cpu::windows::nuttall(test_case.size, test_case.sym); },
-                [](const WindowCase &test_case) { return cuda_backend::windows::nuttall(test_case.size, test_case.sym); }};
+                [](const WindowCase &test_case) { return zx_gpu_backend::windows::nuttall(test_case.size, test_case.sym); }};
         }
         if (op == "parzen")
         {
             return Runner{
                 [](const WindowCase &test_case) { return cpu::windows::parzen(test_case.size, test_case.sym); },
-                [](const WindowCase &test_case) { return cuda_backend::windows::parzen(test_case.size, test_case.sym); }};
+                [](const WindowCase &test_case) { return zx_gpu_backend::windows::parzen(test_case.size, test_case.sym); }};
         }
         if (op == "taylor")
         {
             return Runner{
                 [](const WindowCase &test_case) { return cpu::windows::taylor(test_case.size, test_case.int_param0, test_case.param0, test_case.bool_param0, test_case.sym); },
-                [](const WindowCase &test_case) { return cuda_backend::windows::taylor(test_case.size, test_case.int_param0, test_case.param0, test_case.bool_param0, test_case.sym); }};
+                [](const WindowCase &test_case) { return zx_gpu_backend::windows::taylor(test_case.size, test_case.int_param0, test_case.param0, test_case.bool_param0, test_case.sym); }};
         }
         if (op == "triang")
         {
             return Runner{
                 [](const WindowCase &test_case) { return cpu::windows::triang(test_case.size, test_case.sym); },
-                [](const WindowCase &test_case) { return cuda_backend::windows::triang(test_case.size, test_case.sym); }};
+                [](const WindowCase &test_case) { return zx_gpu_backend::windows::triang(test_case.size, test_case.sym); }};
         }
         if (op == "tukey")
         {
             return Runner{
                 [](const WindowCase &test_case) { return cpu::windows::tukey(test_case.size, test_case.param0, test_case.sym); },
-                [](const WindowCase &test_case) { return cuda_backend::windows::tukey(test_case.size, test_case.param0, test_case.sym); }};
+                [](const WindowCase &test_case) { return zx_gpu_backend::windows::tukey(test_case.size, test_case.param0, test_case.sym); }};
         }
         throw std::runtime_error("unsupported windows operator: " + op);
     }
@@ -1491,7 +1491,7 @@ namespace
         }
         report.gpu_e2e_perf = benchmark_host_latency(options, [&]() {
             (void)runner.gpu(test_case);
-            cusignal::core::throw_on_cuda_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
+            cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
         });
         report.gpu_kernel_perf =
             benchmark_gpu_kernel_latency(options, [&]() { (void)runner.gpu(test_case); });

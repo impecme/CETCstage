@@ -5,7 +5,7 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 build="${BUILD_DIR:-/CETC/build-zx}"
 repeat="${REPEAT:-3}"
 
-echo "[zx-stage1] script version: diagnostics-20260616-dlcc-cxx-python-v3"
+echo "[zx-stage1] script version: diagnostics-20260618-zxgpu-rename-v4"
 echo "[zx-stage1] project root: ${root}"
 echo "[zx-stage1] build dir: ${build}"
 
@@ -85,11 +85,11 @@ cmake \
   -DCUSIGNAL_PLATFORM=ZHONGKEXIN \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_CXX_COMPILER="${dlcc}" \
-  -DCUSIGNAL_ZHONGKEXIN_CXX_CUDA_FLAGS="${cmake_flags}"
+  -DCUSIGNAL_ZHONGKEXIN_CXX_GPU_FLAGS="${cmake_flags}"
 
 cmake --build "${build}" --target \
   cusignal_cpu \
-  cusignal_cuda \
+  cusignal_zx_gpu \
   task1_radar_demo \
   task2_features_demo \
   --parallel --verbose

@@ -13,7 +13,7 @@
 #include <variant>
 #include <vector>
 
-#include "cusignal/core/platform_cuda_compat.hpp"
+#include "cusignal/core/platform_zx_gpu_compat.hpp"
 
 namespace cusignal
 {
@@ -41,9 +41,9 @@ namespace cusignal
          * @param what 调用说明。
          * @throws std::runtime_error 当状态非成功时抛出异常。
          */
-        inline void throw_on_cuda_error(cudaError_t status, const char *what)
+        inline void throw_on_zx_gpu_error(cudaError_t status, const char *what)
         {
-            platform::throw_on_cuda_error(status, what);
+            platform::throw_on_zx_gpu_error(status, what);
         }
 
         /**
@@ -618,62 +618,62 @@ namespace cusignal
         /**
          * @brief 一维实数 device 信号便捷类型。
          */
-        using CudaRealSignal = DeviceSignal<Scalar>;
+        using ZxGpuRealSignal = DeviceSignal<Scalar>;
 
         /**
          * @brief 一维复数 device 信号便捷类型。
          */
-        using CudaComplexSignal = DeviceSignal<Complex>;
+        using ZxGpuComplexSignal = DeviceSignal<Complex>;
 
         /**
          * @brief 一维整型 device 索引序列。
          */
-        using CudaIndexSignal = DeviceSignal<int>;
+        using ZxGpuIndexSignal = DeviceSignal<int>;
 
         /**
          * @brief 通用 N 维实数 device 张量。
          */
-        using CudaRealArray = DeviceArray<Scalar>;
+        using ZxGpuRealArray = DeviceArray<Scalar>;
 
         /**
          * @brief 通用 N 维复数 device 张量。
          */
-        using CudaComplexArray = DeviceArray<Complex>;
+        using ZxGpuComplexArray = DeviceArray<Complex>;
 
         /**
          * @brief 通用 N 维整型 device 张量。
          */
-        using CudaIndexArray = DeviceArray<int>;
+        using ZxGpuIndexArray = DeviceArray<int>;
 
         /**
-         * @brief CUDA API 接受的一维实数信号输入规格。
+         * @brief ZQ500 GPU API 接受的一维实数信号输入规格。
          */
-        using RealSignalLike = std::variant<RealSignal, CudaRealSignal>;
+        using RealSignalLike = std::variant<RealSignal, ZxGpuRealSignal>;
 
         /**
-         * @brief CUDA API 接受的一维复数信号输入规格。
+         * @brief ZQ500 GPU API 接受的一维复数信号输入规格。
          */
-        using ComplexSignalLike = std::variant<ComplexSignal, CudaComplexSignal>;
+        using ComplexSignalLike = std::variant<ComplexSignal, ZxGpuComplexSignal>;
 
         /**
-         * @brief CUDA API 接受的一维整型索引输入规格。
+         * @brief ZQ500 GPU API 接受的一维整型索引输入规格。
          */
-        using IndexSignalLike = std::variant<IndexVector, CudaIndexSignal>;
+        using IndexSignalLike = std::variant<IndexVector, ZxGpuIndexSignal>;
 
         /**
-         * @brief CUDA API 接受的 N 维实数张量输入规格。
+         * @brief ZQ500 GPU API 接受的 N 维实数张量输入规格。
          */
-        using RealArrayLike = std::variant<RealArray, CudaRealArray>;
+        using RealArrayLike = std::variant<RealArray, ZxGpuRealArray>;
 
         /**
-         * @brief CUDA API 接受的 N 维复数张量输入规格。
+         * @brief ZQ500 GPU API 接受的 N 维复数张量输入规格。
          */
-        using ComplexArrayLike = std::variant<ComplexArray, CudaComplexArray>;
+        using ComplexArrayLike = std::variant<ComplexArray, ZxGpuComplexArray>;
 
         /**
-         * @brief CUDA API 接受的 N 维整型张量输入规格。
+         * @brief ZQ500 GPU API 接受的 N 维整型张量输入规格。
          */
-        using IndexArrayLike = std::variant<IndexArray, CudaIndexArray>;
+        using IndexArrayLike = std::variant<IndexArray, ZxGpuIndexArray>;
 
         /**
          * @brief 带名字的单个窗口参数，用于表达 Python 中 `(name, value)` 形式的 tuple。
@@ -722,12 +722,12 @@ namespace cusignal
                 RealSignal>;
 
         /**
-         * @brief CUDA 侧窗函数规格描述。
+         * @brief ZQ500 GPU 侧窗函数规格描述。
          *
          * 与 `WindowSpec` 相比，显式窗数组既可以是 host 信号，也可以是
          * device 信号。
          */
-        using CudaWindowSpec =
+        using ZxGpuWindowSpec =
             std::variant<
                 std::string,
                 Scalar,
@@ -735,7 +735,7 @@ namespace cusignal
                 NamedFloatPairParameter,
                 NamedTaylorParameter,
                 RealSignal,
-                CudaRealSignal>;
+                ZxGpuRealSignal>;
 
         /**
          * @brief `pass_zero` 规格描述。
@@ -757,9 +757,9 @@ namespace cusignal
         using AxisIndices = std::vector<IndexVector>;
 
         /**
-         * @brief CUDA 侧“每个维度一个索引数组”的结果形式。
+         * @brief ZQ500 GPU 侧“每个维度一个索引数组”的结果形式。
          */
-        using DeviceAxisIndices = std::vector<CudaIndexSignal>;
+        using DeviceAxisIndices = std::vector<ZxGpuIndexSignal>;
 
         /**
          * @brief 波形函数复合输出。
@@ -778,9 +778,9 @@ namespace cusignal
         using WaveformBundle = WaveformBundleTemplate<RealSignal>;
 
         /**
-         * @brief CUDA 波形函数复合输出。
+         * @brief ZQ500 GPU 波形函数复合输出。
          */
-        using CudaWaveformBundle = WaveformBundleTemplate<CudaRealSignal>;
+        using ZxGpuWaveformBundle = WaveformBundleTemplate<ZxGpuRealSignal>;
 
         /**
          * @brief 兼容旧骨架的 CFAR 检测结果。

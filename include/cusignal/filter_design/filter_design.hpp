@@ -19,12 +19,12 @@ namespace cusignal
         };
 
         /**
-         * @brief CUDA `cmplx_sort` 的返回结果。
+         * @brief ZQ500 GPU `cmplx_sort` 的返回结果。
          */
-        struct CudaComplexSortResult
+        struct ZxGpuComplexSortResult
         {
-            std::variant<core::CudaRealSignal, core::CudaComplexSignal> values;
-            core::CudaIndexSignal indices;
+            std::variant<core::ZxGpuRealSignal, core::ZxGpuComplexSignal> values;
+            core::ZxGpuIndexSignal indices;
         };
 
     } // namespace filter_design_api
@@ -143,7 +143,7 @@ namespace cusignal
         } // namespace filter_design
     } // namespace cpu
 
-    namespace cuda_backend
+    namespace zx_gpu_backend
     {
         namespace filter_design
         {
@@ -172,7 +172,7 @@ namespace cusignal
              * @param p 待排序的一维实数根数组。
              * @return 排序后的根与对应原始索引。
              */
-            filter_design_api::CudaComplexSortResult cmplx_sort(const core::RealSignalLike &p);
+            filter_design_api::ZxGpuComplexSortResult cmplx_sort(const core::RealSignalLike &p);
 
             /**
              * @brief 按幅值对复数根数组排序。
@@ -180,7 +180,7 @@ namespace cusignal
              * @param p 待排序的一维复数根数组。
              * @return 排序后的根与对应原始索引。
              */
-            filter_design_api::CudaComplexSortResult cmplx_sort(const core::ComplexSignalLike &p);
+            filter_design_api::ZxGpuComplexSortResult cmplx_sort(const core::ComplexSignalLike &p);
 
             /**
              * @brief 使用窗函数法设计单截止频率 FIR 滤波器。
@@ -196,11 +196,11 @@ namespace cusignal
              * @return 长度为 `numtaps` 的 FIR 系数。
              * @throws std::invalid_argument 当 `numtaps <= 0` 或 `cutoff` 非法时抛出异常。
              */
-            core::CudaRealSignal firwin(
+            core::ZxGpuRealSignal firwin(
                 int numtaps,
                 float cutoff,
                 float width = -1.0,
-                core::CudaWindowSpec window = std::string("hamming"),
+                core::ZxGpuWindowSpec window = std::string("hamming"),
                 core::PassZeroSpec pass_zero = true,
                 bool scale = true,
                 float nyq = -1.0,
@@ -220,11 +220,11 @@ namespace cusignal
              * @return 长度为 `numtaps` 的 FIR 系数。
              * @throws std::invalid_argument 当 `numtaps <= 0` 或 `cutoff` 为空时抛出异常。
              */
-            core::CudaRealSignal firwin(
+            core::ZxGpuRealSignal firwin(
                 int numtaps,
                 const core::RealSignalLike &cutoff,
                 float width = -1.0,
-                core::CudaWindowSpec window = std::string("hamming"),
+                core::ZxGpuWindowSpec window = std::string("hamming"),
                 core::PassZeroSpec pass_zero = true,
                 bool scale = true,
                 float nyq = -1.0,
@@ -244,16 +244,16 @@ namespace cusignal
              * @return 长度为 `numtaps` 的 FIR 系数。
              * @throws std::invalid_argument 当 `freq` 与 `gain` 长度不一致或 `numtaps <= 0` 时抛出异常。
              */
-            core::CudaRealSignal firwin2(
+            core::ZxGpuRealSignal firwin2(
                 int numtaps,
                 const core::RealSignalLike &freq,
                 const core::RealSignalLike &gain,
                 int nfreqs = 0,
-                core::CudaWindowSpec window = std::string("hamming"),
+                core::ZxGpuWindowSpec window = std::string("hamming"),
                 float nyq = -1.0,
                 bool antisymmetric = false,
                 float fs = 2.0);
 
         } // namespace filter_design
-    } // namespace cuda_backend
+    } // namespace zx_gpu_backend
 } // namespace cusignal

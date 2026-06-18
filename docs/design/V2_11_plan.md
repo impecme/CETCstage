@@ -9,7 +9,7 @@
 - 约束保持不变：
   - 不改公开函数签名和接口模式。
   - `cpu::*` 继续 host in/out。
-  - `cuda_backend::*` 继续 host/device 双输入、device 输出。
+  - `zx_gpu_backend::*` 继续 host/device 双输入、device 输出。
   - `include/` 注释块结构和风格保留，只删除占位语义。
   - 测试、数据、报告组织继续对齐当前 canonical unit schema。
 - 本轮只实现当前头文件里已有的公开 API：
@@ -70,9 +70,9 @@
   - 以当前 C++ 头文件为准，`periodogram/welch/csd/spectrogram/stft/coherence` 只实现 `RealArray` 输入子集。
   - 不为对齐 Python 测试去扩展到复数输入签名。
 
-### 3. CUDA 实现与显存复用
+### 3. ZQ500 GPU 实现与显存复用
 
-- 重写 `src/cuda/spectral.cu`，全部改为真实 device-native 实现，不再返回零张量。
+- 重写 `src/zhongkexin/spectral.cu`，全部改为真实 device-native 实现，不再返回零张量。
 - 引入 `thread_local SpectralWorkspace`，按算子族复用 scratch：
   - `LombWorkspace`：输入归一化、输出缓冲
   - `SegmentWorkspace`：window、segment、detrend、batch FFT 缓冲
@@ -159,7 +159,7 @@
 - perf 重点：
   - 每个 operator 至少 1 个 perf case
   - `gpu_e2e_perf` 保持 host 输入 + H2D + GPU 计算，不包含 `get()`
-  - `gpu_kernel_perf` 对全部 CUDA 算子为真实非零时间
+  - `gpu_kernel_perf` 对全部 ZQ500 GPU 算子为真实非零时间
   - `--emit-report` 后确认 `generated/input` 与 `output_samples` 都落盘，且 CPU/GPU 两套样本齐全
 - 全量回归：
   - `./scripts/test/run_all_tests.sh --emit-report`

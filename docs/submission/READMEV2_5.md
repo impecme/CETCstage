@@ -8,7 +8,7 @@
 
 ## 版本定位
 
-`V2.5` 建立在 `V2.4` 的 host/device 双输入、device 输出接口语义之上，本轮不改任何公开 API，而是继续把 CUDA 后端内部实现做实：
+`V2.5` 建立在 `V2.4` 的 host/device 双输入、device 输出接口语义之上，本轮不改任何公开 API，而是继续把 ZQ500 GPU 后端内部实现做实：
 
 - `waveforms`：把之前只停留在定义层面的 workspace 改成真正参与执行的跨调用 scratch/buffer 复用。
 - `windows`：把之前仍然存在的内部 D2H/H2D 回绕去掉，改成真正的 device 端生成、device 端后处理和 device 端返回。
@@ -17,11 +17,11 @@
 
 ### 1. `waveforms` 真实工作区复用
 
-本轮将 `src/cuda/waveforms.cu` 中原先未真正用起来的 workspace 结构改成了实际参与执行的 `thread_local` 工作区。
+本轮将 `src/zhongkexin/waveforms.cu` 中原先未真正用起来的 workspace 结构改成了实际参与执行的 `thread_local` 工作区。
 
 当前复用策略如下：
 
-- `chirp`：复用 host 输入上传缓冲；复数路径直接写 `CudaComplexSignal`，不再额外拆成实部/虚部再组包。
+- `chirp`：复用 host 输入上传缓冲；复数路径直接写 `ZxGpuComplexSignal`，不再额外拆成实部/虚部再组包。
 - `gausspulse`：复用 host 输入上传缓冲。
 - `sawtooth` / `square`：复用 `t` 上传缓冲以及逐点 `width/duty` 上传缓冲。
 - `unit_impulse`：保持直接写返回值，不引入没有实际收益的工作区。
@@ -30,7 +30,7 @@
 
 ### 2. `windows` 纯 device 返回链
 
-本轮保留并扩展了 `src/cuda/windows.cu` 中的 `thread_local WindowWorkspace`，使其真正承担完整的 device 工作区职责：
+本轮保留并扩展了 `src/zhongkexin/windows.cu` 中的 `thread_local WindowWorkspace`，使其真正承担完整的 device 工作区职责：
 
 - 缓存普通窗输出 scratch
 - 缓存系数上传缓冲
@@ -40,7 +40,7 @@
 
 内部行为变化如下：
 
-- `launch_window_kernel(...)` 不再返回 host `RealSignal`，而是直接产出 `CudaRealSignal`。
+- `launch_window_kernel(...)` 不再返回 host `RealSignal`，而是直接产出 `ZxGpuRealSignal`。
 - 普通窗函数不再走“device 计算 -> D2H -> `from_host(...)` 回 device”的旧路径。
 - `general_cosine(...)` 不再对 device 系数调用 `.get()`，而是直接消费 device 指针。
 - `blackman`、`blackmanharris`、`flattop`、`general_hamming`、`hamming`、`hann`、`nuttall` 等路径全部切到纯 device 返回链。
@@ -57,7 +57,7 @@
 4. GPU postprocess kernel 完成频谱重排
 5. GPU reduction 求最大值
 6. GPU normalize kernel 完成归一化
-7. GPU copy/truncate 到最终 `CudaRealSignal`
+7. GPU copy/truncate 到最终 `ZxGpuRealSignal`
 
 因此 `chebwin` 的后处理现在已经全部留在 device 侧。
 
@@ -65,7 +65,7 @@
 
 本轮没有更改 `V2.4` 已经确定的测试与性能口径：
 
-- `gpu_e2e_perf`：host 输入 + 自动 H2D + CUDA 计算，**不包含 `get()`**
+- `gpu_e2e_perf`：host 输入 + 自动 H2D + ZQ500 GPU 计算，**不包含 `get()`**
 - `gpu_kernel_perf`：记录 GPU 计算阶段耗时
 
 其中 `windows` 的 `gpu_kernel_perf` 现在包含：
@@ -80,8 +80,8 @@
 本轮对外语义保持与 `V2.4` 一致：
 
 - `cpu::*` 路径仍为 host 输入输出
-- `cuda_backend::*` 仍支持 host/device 双输入
-- `cuda_backend::*` 数组输出仍统一为 device ndarray 风格对象
+- `zx_gpu_backend::*` 仍支持 host/device 双输入
+- `zx_gpu_backend::*` 数组输出仍统一为 device ndarray 风格对象
 - 仍然只有显式 `get()` 才执行 D2H
 
 `include/` 中现有 API 注释也保持不变。

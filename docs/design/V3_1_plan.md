@@ -21,7 +21,7 @@
 - 在 `demo/task2_features` 下新增：
   - `CMakeLists.txt`
   - `task2_features_demo.cpp`
-  - `task2_features_cuda.hpp/.cu`
+  - `task2_features_zx_gpu.hpp/.cu`
   - `visualize_task2.py`
   - `README.md`
 - 根 `CMakeLists.txt` 接入 `demo/task2_features`，生成单一可执行目标 `task2_features_demo`。
@@ -111,10 +111,10 @@
   - 关键中间结果误差
   - 峰值序列与 Kalman 轨迹对真值的误差
 
-### 4. CUDA 实现与 demo 内复用
+### 4. ZQ500 GPU 实现与 demo 内复用
 
 - 不改任何库公开接口；demo 内只新增任务级辅助代码。
-- `task2_features_demo.cpp` 调用现有模块的 CPU/CUDA API；`task2_features_cuda.hpp/.cu` 只承接 demo 自己需要的局部 GPU 辅助：
+- `task2_features_demo.cpp` 调用现有模块的 CPU/ZQ500 GPU API；`task2_features_zx_gpu.hpp/.cu` 只承接 demo 自己需要的局部 GPU 辅助：
   - 复信号功率/幅值
   - 一维分数归一化
   - `spectrogram` 时间能量积分

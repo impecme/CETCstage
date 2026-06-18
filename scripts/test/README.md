@@ -65,7 +65,7 @@
   "gpu_name": "...",
   "compile_config": {
     "cxx_standard": 201703,
-    "cudart_version": 11070
+    "runtime_version": 11070
   },
   "summary": {
     "pass": true,
@@ -118,7 +118,7 @@
 | `--repeat N` | `30` | perf repeat 次数，非负整数 | 控制计时统计样本量 |
 | `--build-dir PATH` | `<repo>/build` | CMake build 目录 | 使用非默认构建目录 |
 | `--build-type TYPE` | `Release` | CMake build type | Debug/Release 切换 |
-| `--cuda-arch ARCH` | 当前默认 `80` | 传给 CMake 的 CUDA 架构 | 指定目标 GPU 架构 |
+| `--platform NAME` | `ZHONGKEXIN` | 当前只接受中科芯平台 | 保持默认即可 |
 | `--jobs N` | 自动探测 | 并行构建 job 数 | 限制或加速构建 |
 | `--no-build` | 默认会构建 | 跳过 configure/build，复用现有二进制 | 已构建后快速复测 |
 | `--list` | 关闭 | 列出过滤后的已注册测试项 | 查看可用模块/算子 |

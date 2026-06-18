@@ -200,9 +200,9 @@ def create_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--build-dir", default="build", help="Build directory (default: build)")
     parser.add_argument(
         "--platform",
-        choices=("NVIDIA", "ZHONGKEXIN"),
-        default=os.environ.get("CUSIGNAL_PLATFORM", "NVIDIA").upper(),
-        help="CUSIGNAL platform passed to run_all_tests.sh (default: CUSIGNAL_PLATFORM or NVIDIA)",
+        choices=("ZHONGKEXIN",),
+        default=os.environ.get("CUSIGNAL_PLATFORM", "ZHONGKEXIN").upper(),
+        help="CUSIGNAL platform passed to run_all_tests.sh (default: ZHONGKEXIN)",
     )
     parser.add_argument(
         "--output-dir",
@@ -361,7 +361,6 @@ def build_selected_targets(repo_root: Path, build_dir: Path, target_names: list[
 
     jobs = str(os.cpu_count() or 1)
     build_type = os.environ.get("CMAKE_BUILD_TYPE", "Release")
-    cuda_arch = os.environ.get("CUDA_ARCH", "80")
     configure_cmd = [
         "cmake",
         "-S",
@@ -371,13 +370,10 @@ def build_selected_targets(repo_root: Path, build_dir: Path, target_names: list[
         f"-DCMAKE_BUILD_TYPE={build_type}",
         f"-DCUSIGNAL_PLATFORM={platform}",
     ]
-    if platform == "NVIDIA":
-        configure_cmd.append(f"-DCMAKE_CUDA_ARCHITECTURES={cuda_arch}")
-    else:
-        zhongkexin_cxx = os.environ.get("ZHONGKEXIN_CXX_COMPILER") or shutil.which("dlcc")
-        if not zhongkexin_cxx:
-            raise RuntimeError("dlcc was not found for ZHONGKEXIN build")
-        configure_cmd.append(f"-DCMAKE_CXX_COMPILER={zhongkexin_cxx}")
+    zhongkexin_cxx = os.environ.get("ZHONGKEXIN_CXX_COMPILER") or shutil.which("dlcc")
+    if not zhongkexin_cxx:
+        raise RuntimeError("dlcc was not found for ZHONGKEXIN build")
+    configure_cmd.append(f"-DCMAKE_CXX_COMPILER={zhongkexin_cxx}")
     build_cmd = [
         "cmake",
         "--build",
@@ -391,7 +387,7 @@ def build_selected_targets(repo_root: Path, build_dir: Path, target_names: list[
     log(
         "building selected targets once: "
         f"{len(unique_targets)} targets, platform={platform}, build_type={build_type}, "
-        f"cuda_arch={'n/a' if platform == 'ZHONGKEXIN' else cuda_arch}, jobs={jobs}"
+        f"gpu_arch=dlgput64, jobs={jobs}"
     )
     subprocess.run(configure_cmd, cwd=repo_root, check=True)
     subprocess.run(build_cmd, cwd=repo_root, check=True)
@@ -410,7 +406,7 @@ def scale_family_for(
     module: str,
     operator: str,
     scale_profile: str = "default",
-    platform: str = "NVIDIA",
+    platform: str = "ZHONGKEXIN",
 ) -> str:
     if platform == "ZHONGKEXIN":
         if module == "windows" and operator == "chebwin":

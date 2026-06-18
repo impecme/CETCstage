@@ -897,7 +897,7 @@ z
     <text style="font-size: 13.5px; font-family: 'Droid Sans Fallback', 'DejaVu Sans'; text-anchor: middle; fill: #243238" x="1069.92" y="548.045156" transform="rotate(-0 1069.92 548.045156)">单测</text>
    </g>
    <g id="text_30">
-    <text style="font-size: 11.5px; font-family: 'Droid Sans Fallback', 'DejaVu Sans'; text-anchor: end; fill: #607d8b" x="1105.2" y="617.928516" transform="rotate(-0 1105.2 617.928516)">src/cuda/filtering.cu | src/cuda/spectral.cu | src/cuda/demod.cu</text>
+    <text style="font-size: 11.5px; font-family: 'Droid Sans Fallback', 'DejaVu Sans'; text-anchor: end; fill: #607d8b" x="1105.2" y="617.928516" transform="rotate(-0 1105.2 617.928516)">src/zhongkexin/filtering.cu | src/zhongkexin/spectral.cu | src/zhongkexin/demod.cu</text>
    </g>
   </g>
  </g>

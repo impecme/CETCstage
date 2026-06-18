@@ -155,7 +155,7 @@ data/reports/unit/benchmarks/all_ops_large/latest_all_ops_scale_benchmark.csv
 
 ## 验收记录
 
-- `cmake --build build --target cusignal_cuda`：通过。
+- `cmake --build build --target cusignal_zx_gpu`：通过。
 - `python3 -m py_compile scripts/test/benchmark_all_ops_scales.py scripts/test/plot_all_ops_benchmark.py`：通过。
 - 源码范围 `git diff --check`：通过。
 - 精准单测：`filtering_test_sosfilt`、`filtering_test_detrend`、`filtering_test_resample`、`estimation_test_kalman_filter`、`waveforms_test_gausspulse`、`waveforms_test_sawtooth`、`waveforms_test_chirp`、`waveforms_test_square`、`demod_test_fm_demod`、`radartools_test_pulse_doppler`、`spectral_test_vectorstrength` 均通过。

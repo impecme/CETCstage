@@ -1,15 +1,15 @@
-# CETC CUDA 信号处理加速库
+# CETC 中科芯 ZQ500 信号处理加速库
 
-本项目面向第十届集创赛“中科芯”企业命题，围绕 GPU 芯片上的信号处理加速库及算法开发展开。仓库以 CUDA C++ 为主线，覆盖赛题任务 1“雷达目标检测与多普勒分析”和任务 2“多域特征提取定位”，同时保留 CPU 对照实现、任务级 demo、单算子测试以及 Python 可视化链路，便于验证精度、性能和工程可交付性。
+本项目面向第十届集创赛“中科芯”企业命题，围绕 ZQ500 GPU 上的信号处理加速库及算法开发展开。仓库当前只保留 CPU reference + 中科芯 ZQ500 GPU 双链路，覆盖赛题任务 1“雷达目标检测与多普勒分析”和任务 2“多域特征提取定位”，同时保留任务级 demo、单算子测试以及 Python 可视化链路，便于验证精度、性能和工程可交付性。
 
 ## 项目简介
 
-- 面向比赛任务构建可运行、可验证的 CUDA 信号处理工程。
+- 面向比赛任务构建可运行、可验证的中科芯 ZQ500 信号处理工程。
 - 将公共算子沉淀为按模块组织的信号处理库接口，支持后续扩展和复用。
 
 仓库目前具备以下能力：
 
-- `src/cpu/` 与 `src/cuda/` 双实现路径，可做 CPU/GPU 结果对照。
+- `src/cpu/` 与 `src/zhongkexin/` 双实现路径，可做 CPU/GPU 结果对照。
 - `demo/task1_radar/` 与 `demo/task2_features/` 提供任务级演示入口。
 - `tests/smoke/` 提供最小编译与链接验证，`tests/unit/` 提供单算子测试链路。
 - `demo/*/visualize_*.py` 可将任务输出转换为图表和报告文件。
@@ -18,7 +18,7 @@
 
 ## 项目特色
 
-- CUDA C++ 主线实现，核心算子提供 CPU 与 CUDA 两套可对照路径。
+- 中科芯 ZQ500 GPU 主线实现，核心算子提供 CPU 与 ZQ500 GPU 两套可对照路径。
 - 当前代码线采用统一单精度口径，实数数据为 `float32`，复数数据为 `complex64` 语义。
 - 覆盖 waveforms、filtering、spectral、radartools、estimation、windows、wavelets、correlate 等模块。
 - 支持 GPU 相对 CPU 的误差、耗时、e2e speedup、kernel speedup 统一报告。
@@ -29,9 +29,8 @@
 工程环境如下：
 
 - 当前迁移验证 GPU：本服务器容器内中科芯 ZQ500
-- 历史 CUDA 基线：`2 x NVIDIA A100-SXM4-40GB` / CUDA `11.7`
 - 构建系统：`CMake >= 3.18`，当前验证版本为 `3.22.1`
-- 语言标准：`C++17` / `CUDA17`
+- 语言标准：`C++17`
 - 本地依赖：`FFTW` 通过 `./scripts/build/install_fftw.sh` 安装到 `third_party/fftw/install`
 
 绘图与分析辅助环境如下：
@@ -47,7 +46,7 @@
 
 每个中科芯迁移版本或阶段关闭时，必须同步产出交付文档，统一放在 `docs/submission/`。交付文档命名采用 `READMEV<major>_<minor>.md` 风格，并按版本交付口径组织：版本目标、核心改动、解决的问题、验证结果、交付产物、完成判定和遗留风险。不要把交付文档写成“第几轮容器验证”的流水账；容器日志轮次只作为证据摘要或进入迁移台账。
 
-历史 NVIDIA CUDA 基线默认架构为 `80`，适配 `sm80` GPU；当前中科芯迁移入口不要手动设置 `CUDA_ARCH=80`，统一由平台脚本使用 ZQ500 对应的 `dlcc --cuda-gpu-arch=dlgput64` 参数。
+当前中科芯构建入口固定使用 ZQ500 对应的 `dlcc --cuda-gpu-arch=dlgput64` 参数，不再提供 NVIDIA/A100 构建路径。
 
 ## 参赛者服务器与 Docker 环境
 
@@ -145,7 +144,7 @@ scripts/platform/run_zhongkexin_stage4.sh 2>&1 | tee stage4_full.log
 当前主干采用统一单精度实现；中科芯迁移阶段以 CPU reference 与容器内 ZQ500 GPU 的数值一致性和任务闭环为验收口径。
 
 - 公共接口保留 `dtype` 参数以降低接口破坏面，但默认值和校验口径已收敛到 `float32`。
-- CPU 与 CUDA 对照均按单精度实现；单算子 metrics 保留 `max_abs_error`、`max_rel_error`、`rmse`，全量 benchmark 主表使用 `mixed_error` 展示近零保护后的主误差。
+- CPU reference 与 ZQ500 GPU 对照均按单精度实现；单算子 metrics 保留 `max_abs_error`、`max_rel_error`、`rmse`，全量 benchmark 主表使用 `mixed_error` 展示近零保护后的主误差。
 - `waveforms`、`filtering/detrend`、`spectral/vectorstrength`、`correlate`、`windows`、`estimation` 等路径中的中间量、workspace、scratch buffer、测试统计与数据生成脚本已同步为单精度口径。
 - `data/reference` 与 `data/generated` 的活动 manifest 已同步到 `float32` / `complex64` 描述；窗口参数中的命名实数参数统一为 `named_float` 语义。
 
@@ -211,7 +210,7 @@ scripts/test/run_task_demos.sh --no-build --repeat 2 --leak-check
 
 - Task1：CPU/GPU 检测一致、GPU 命中注入目标；默认 L3 下 `pulse_compression`、`pulse_doppler`、`ambgfun_surface` 的 `mixed_error <= 1e-4`，`cfar_threshold` 的任务级中间阈值 `mixed_error <= 5e-3`；L4-L6 大规模扫测对 `pulse_doppler` 和 `cfar_threshold` 使用规模化阈值，完整口径见本文“任务级 Demo 验收”和“全量 Benchmark 与作图”两节。
 - Task2：CPU/GPU track 一致、GPU Kalman track 在 truth 容差内；`filtered`、`correlate`、`spectrogram`、`cwt`、`feature_score` 的 `mixed_error <= 1e-4`，`kalman_track` 以 RMSE/业务容差作为正式 gate。
-- 资源与稳定性：repeat 内检查业务一致性、GPU total 相对中位数抖动、CUDA free memory 漂移和当前 RSS 增长；报告记录 RSS peak、CUDA free/total 与 device name。
+- 资源与稳定性：repeat 内检查业务一致性、GPU total 相对中位数抖动、ZQ500 GPU free memory 漂移和当前 RSS 增长；报告记录 RSS peak、GPU free/total 与 device name。
 - 异常输入：`--invalid-input-checks` 会跑固定非法配置矩阵，要求返回明确 `std::invalid_argument` 和字段名。
 - `--leak-check` 为可选深度检查项，会在可用时运行 `compute-sanitizer --tool memcheck`；深检时跳过性能 gate，避免 sanitizer 放大耗时误触发失败。未执行 `--leak-check` 时，提交文档中应将 compute-sanitizer / ASAN / LSAN 标记为预留检查项。
 
@@ -224,7 +223,7 @@ scripts/test/run_task_demos.sh --no-build --repeat 2 --leak-check
 仅构建核心库：
 
 ```bash
-cmake --build build --target cusignal_cpu cusignal_cuda --parallel
+cmake --build build --target cusignal_cpu cusignal_zx_gpu --parallel
 ```
 
 构建 smoke 示例：
@@ -249,9 +248,9 @@ cmake --build build --target smoke_demo1 --parallel
 int main()
 {
     const cusignal::core::RealSignal t{-3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0};
-    const auto duty = cusignal::cuda_backend::windows::hann(static_cast<int>(t.size()));
-    const auto saw = cusignal::cuda_backend::waveforms::sawtooth(t, duty);
-    const auto square = cusignal::cuda_backend::waveforms::square(saw, duty);
+    const auto duty = cusignal::zx_gpu_backend::windows::hann(static_cast<int>(t.size()));
+    const auto saw = cusignal::zx_gpu_backend::waveforms::sawtooth(t, duty);
+    const auto square = cusignal::zx_gpu_backend::waveforms::square(saw, duty);
 
     std::cout << "demo1:";
     for (float value : saw.get())
@@ -394,7 +393,7 @@ python3 scripts/test/plot_all_ops_benchmark.py \
 | 全量算子图件 | `data/reports/unit/benchmarks/zhongkexin_stage4_full/figures/` | benchmark 总览图与算子图 |
 | 单元测试入口 | `tests/unit/` | 81 个已迁移算子的测试覆盖 |
 | 公开接口 | `include/cusignal/` | 库函数头文件与公开 API |
-| CUDA 实现 | `src/cuda/` | GPU 加速实现源码 |
+| ZQ500 GPU 实现 | `src/zhongkexin/` | GPU 加速实现源码 |
 | CPU 基线 | `src/cpu/` | CPU 参考实现源码 |
 
 ## 项目结构
@@ -407,7 +406,7 @@ CETC/
 ├─ docs/          设计、验证、性能与提交文档
 ├─ include/       公共头文件与模块接口
 ├─ scripts/       构建、测试、数据和打包脚本
-├─ src/           CPU、CUDA 与公共实现
+├─ src/           CPU、ZQ500 GPU 与公共实现
 ├─ tests/         smoke 验证与单算子测试
 └─ third_party/   FFTW 与辅助 Python 依赖
 ```

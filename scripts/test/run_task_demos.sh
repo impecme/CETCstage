@@ -333,7 +333,7 @@ def scale_row(name, scale):
         "speedup": cpu_ms / gpu_ms if gpu_ms > 0 else 0.0,
         "max_mixed_error": max_mixed_error(data),
         "gpu_total_jitter": check_value(validation, "gpu_total_stability"),
-        "cuda_free_drift_mib": check_value(validation, "cuda_free_memory_drift_mib"),
+        "gpu_free_drift_mib": check_value(validation, "gpu_free_memory_drift_mib"),
         "rss_current_drift_mib": check_value(validation, "rss_current_drift_mib"),
         "metrics_path": rel(metrics_path),
         "summary_path": rel(summary_path),
@@ -418,7 +418,7 @@ if os.environ.get("TASK_DEMO_SCALE_SWEEP") == "1":
         "speedup",
         "max_mixed_error",
         "gpu_total_jitter",
-        "cuda_free_drift_mib",
+        "gpu_free_drift_mib",
         "rss_current_drift_mib",
         "metrics_path",
         "summary_path",
@@ -435,7 +435,7 @@ if os.environ.get("TASK_DEMO_SCALE_SWEEP") == "1":
     md.append(f"- pass: `{str(scale_pass).lower()}`")
     md.append(f"- repeat: `{os.environ.get('TASK_DEMO_REPEAT', '0')}`")
     md.append("")
-    md.append("| task | scale | size | validation | gpu_ms | cpu_ms | speedup | max_mixed_error | jitter | cuda_drift_mib | rss_drift_mib |")
+    md.append("| task | scale | size | validation | gpu_ms | cpu_ms | speedup | max_mixed_error | jitter | gpu_drift_mib | rss_drift_mib |")
     md.append("| --- | ---: | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
     for row in scale_rows:
         md.append(
@@ -443,7 +443,7 @@ if os.environ.get("TASK_DEMO_SCALE_SWEEP") == "1":
             f"{str(row['validation_pass']).lower()} | {row['gpu_median_total_ms']:.6f} | "
             f"{row['cpu_median_total_ms']:.6f} | {row['speedup']:.3f} | "
             f"{row['max_mixed_error']:.6g} | {row['gpu_total_jitter']:.6g} | "
-            f"{row['cuda_free_drift_mib']:.6g} | {row['rss_current_drift_mib']:.6g} |"
+            f"{row['gpu_free_drift_mib']:.6g} | {row['rss_current_drift_mib']:.6g} |"
         )
     md.append("")
     md.append("## Artifacts")

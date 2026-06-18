@@ -4,12 +4,12 @@
 
 ## 项目定位
 
-本仓库是 `CETC`，面向第十届集创赛“中科芯”企业命题的 CUDA C++ 信号处理加速库。
+本仓库是 `CETC`，面向第十届集创赛“中科芯”企业命题的中科芯 ZQ500 信号处理加速库。
 
 项目目标是构建一个接近 cuSignal 风格的算子库，当前包含：
 
 - 用于正确性对照的 CPU 参考实现。
-- 用于加速的 CUDA 实现。
+- 用于加速的 ZQ500 GPU 实现。
 - 面向雷达检测和多域特征定位的任务级 demo。
 - 单元测试、smoke 测试、benchmark 脚本、运行报告和提交文档。
 
@@ -41,7 +41,7 @@
 关键目标：
 
 - `cusignal_cpu`：CPU baseline 静态库。
-- `cusignal_cuda`：CUDA 静态库，依赖 `cusignal_cpu`。
+- `cusignal_zx_gpu`：ZQ500 GPU 静态库，依赖 `cusignal_cpu`。
 - `task1_radar_demo`：任务一雷达 demo。
 - `task2_features_demo`：任务二特征定位 demo。
 - `smoke_demo1`：最小编译和链接 smoke 测试。
@@ -50,14 +50,12 @@
 依赖环境：
 
 - CMake >= 3.18
-- C++17 / CUDA17
+- C++17
 - 中科芯 ZQ500 SDK 与 `dlcc`
-- 中科芯 CUDA runtime/FFT/BLAS/SOLVER 兼容库
-- cuBLAS
-- cuSOLVER
+- 中科芯 ZQ500 runtime/FFT/BLAS/SOLVER 兼容库
 - 安装在 `third_party/fftw/install` 下的 FFTW3
 
-当前交付验收不再以 NVIDIA 路径为阶段关闭条件。中科芯 CUDA 兼容平台命令：
+当前交付验收不再以 NVIDIA 路径为阶段关闭条件。中科芯 ZQ500 平台命令：
 
 ```bash
 cd /CETC
@@ -162,7 +160,7 @@ V4.1 第一阶段统一验收入口：
 scripts/platform/run_zhongkexin_stage1.sh
 ```
 
-该脚本必须在本队 docker 内执行；它会自动 `source /zq500/sdk/env.sh`、运行 `scripts/platform/probe_zhongkexin.sh`、配置 `build-zx`、构建 `cusignal_cpu` / `cusignal_cuda` / `task1_radar_demo` / `task2_features_demo`，最后运行 `scripts/test/run_task_demos.sh --build-dir build-zx --no-build --repeat 3 --require-visualization-deps`。
+该脚本必须在本队 docker 内执行；它会自动 `source /zq500/sdk/env.sh`、运行 `scripts/platform/probe_zhongkexin.sh`、配置 `build-zx`、构建 `cusignal_cpu` / `cusignal_zx_gpu` / `task1_radar_demo` / `task2_features_demo`，最后运行 `scripts/test/run_task_demos.sh --build-dir build-zx --no-build --repeat 3 --require-visualization-deps`。
 
 V4.2 第二阶段统一验收入口：
 
@@ -224,7 +222,7 @@ tail -n 200 stage4_full.log
 grep -nEi "error|failed|fatal|not found|undefined|file format" stage4_full.log
 ```
 
-运行该统一脚本前不要再手动 source SDK；脚本内部已经用 `source /zq500/sdk/env.sh ""` 兼容当前容器环境。如需覆盖默认值，使用 `BUILD_DIR`、`TASK_SCALES`、`RUN_TASK_SWEEP`、`BENCH_MODULES`、`BENCH_OPERATORS`、`BENCH_SCALE_LEVELS`、`BENCH_WARMUP`、`BENCH_REPEAT` 环境变量。当前中科芯路径不要手动设置 `CUDA_ARCH=80`，否则 CMake 可能生成 NVIDIA 专用的 `sm_80` 参数。
+运行该统一脚本前不要再手动 source SDK；脚本内部已经用 `source /zq500/sdk/env.sh ""` 兼容当前容器环境。如需覆盖默认值，使用 `BUILD_DIR`、`TASK_SCALES`、`RUN_TASK_SWEEP`、`BENCH_MODULES`、`BENCH_OPERATORS`、`BENCH_SCALE_LEVELS`、`BENCH_WARMUP`、`BENCH_REPEAT` 环境变量。当前中科芯路径固定由 `dlcc --cuda-gpu-arch=dlgput64` 编译 ZQ500 GPU 源码，不再提供 NVIDIA 架构参数入口。
 
 ## 核心架构
 
@@ -239,10 +237,10 @@ grep -nEi "error|failed|fatal|not found|undefined|file format" stage4_full.log
 主要命名空间：
 
 - `cusignal::cpu::<module>`：CPU host 实现。
-- `cusignal::cuda_backend::<module>`：CUDA 后端实现。
+- `cusignal::zx_gpu_backend::<module>`：ZQ500 GPU 后端实现。
 - `cusignal::core`：共享标量、张量和 device 容器类型。
 
-中科芯迁移继续保留 `cuda_backend` 命名空间。当前交付路径使用 `CUSIGNAL_PLATFORM=ZHONGKEXIN`；兼容差异应集中放在 `include/cusignal/core/platform_cuda_compat.hpp` 或 `include/cusignal/core/platform_cuda_libraries.hpp`，不要通过修改公开 API 解决。
+当前公开 GPU 命名空间为 `zx_gpu_backend`。当前交付路径固定使用 `CUSIGNAL_PLATFORM=ZHONGKEXIN`；兼容差异应集中放在 `include/cusignal/core/platform_zx_gpu_compat.hpp` 或 `include/cusignal/core/platform_zx_gpu_libraries.hpp`。
 
 项目采用统一单精度口径：
 
@@ -261,13 +259,13 @@ grep -nEi "error|failed|fatal|not found|undefined|file format" stage4_full.log
 
 重要 device 类型：
 
-- `core::CudaRealSignal`
-- `core::CudaComplexSignal`
-- `core::CudaRealArray`
-- `core::CudaComplexArray`
-- `core::CudaIndexSignal`
+- `core::ZxGpuRealSignal`
+- `core::ZxGpuComplexSignal`
+- `core::ZxGpuRealArray`
+- `core::ZxGpuComplexArray`
+- `core::ZxGpuIndexSignal`
 
-`include/cusignal/core/types.hpp` 中的 `DeviceSignal` 和 `DeviceArray` 管理 CUDA device storage，并通过 `.get()` 把结果拷回 host。复数 device 存储使用 `float2` 打包。
+`include/cusignal/core/types.hpp` 中的 `DeviceSignal` 和 `DeviceArray` 管理 ZQ500 device storage，并通过 `.get()` 把结果拷回 host。复数 device 存储使用 `float2` 打包。
 
 ## 源码布局
 
@@ -276,7 +274,7 @@ grep -nEi "error|failed|fatal|not found|undefined|file format" stage4_full.log
 - `include/cusignal/<module>/<module>.hpp`：公开 API 声明和结果结构。
 - `src/common/<module>_detail.hpp`：共享参数校验、数学公式、shape/axis 逻辑。
 - `src/cpu/<module>.cpp`：CPU 参考实现。
-- `src/cuda/<module>.cu`：CUDA 实现、kernel、workspace 和 CUDA 库调用。
+- `src/zhongkexin/<module>.cu`：ZQ500 GPU 实现、kernel、workspace 和 ZQ500 兼容库调用。
 - `tests/unit/<module>`：单元测试支撑和算子测试入口。
 - `data/reference/unit/<module>/<operator>`：静态 manifest、输入和期望输出数据。
 - `scripts/data/generate_<module>_data.py`：reference/generated 数据生成脚本。
@@ -412,18 +410,18 @@ data/reference/unit/<module>/<operator>/
 
 尽量沿用现有模式：
 
-- 保持 CPU 和 CUDA API 行为一致。
-- CPU/CUDA 都需要的公式和校验逻辑放到 `src/common/*_detail.hpp`。
+- 保持 CPU 和 ZQ500 GPU API 行为一致。
+- CPU/ZQ500 GPU 都需要的公式和校验逻辑放到 `src/common/*_detail.hpp`。
 - 公开声明放在对应的 `include/cusignal/<module>/<module>.hpp`。
 - 除非任务明确要求，否则保持单精度策略。
 - 保留近零参考值下的 `mixed_error` 报告口径。
 - 优先复用现有 helper 类型和 shape/axis 工具。
 - 修复算子时不要引入无关重构。
 
-CUDA 代码约定：
+ZQ500 GPU 代码约定：
 
 - 尽量使用现有 device container 类型。
-- 检查 CUDA、cuFFT、cuBLAS 和 cuSOLVER 返回值。
+- 检查 ZQ500 runtime、cuFFT、cuBLAS 和 cuSOLVER 兼容 API 返回值。
 - 修改性能敏感路径时保留 thread-local workspace/cache 模式。
 - 热路径中避免重复分配，优先扩展已有 workspace。
 

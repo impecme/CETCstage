@@ -5,7 +5,7 @@
 - 当前子版本定为 `V2.6`。本轮目标是参考现有 `waveforms` / `windows` 的实现与测试链路，把 `filter_design` 和 `filtering` 两个模块从占位实现补成可用实现。
 - 公开接口保持 `V2.4` / `V2.5` 语义不变：
   - `cpu::*` 继续是 host 输入输出
-  - `cuda_backend::*` 继续支持 host/device 双输入，数组输出继续为 device 对象
+  - `zx_gpu_backend::*` 继续支持 host/device 双输入，数组输出继续为 device 对象
   - `include/` 中现有 API 注释块全部保留，只做最小必要的参数/返回类型对齐，不重写说明
 - 本轮同时补齐：
   - CPU/CUDA 真实实现
@@ -37,10 +37,10 @@
   - 支持单 cutoff 和多 cutoff 两个重载。
   - 完整支持 `width` 覆盖为 Kaiser 窗、`pass_zero` 的 bool/字符串语义、`scale`、`nyq/fs` 解析、偶 tap 的 Nyquist 约束、显式窗数组与命名窗规格。
   - CPU：按理想冲激响应公式生成 tap，再乘 `cpu::windows::get_window(...)`。
-  - CUDA：device 端生成 tap，调用 `cuda_backend::windows::get_window(...)` 获取窗并做 device 端逐点乘；复用 `V2.5` 风格的 workspace/scratch。
+  - CUDA：device 端生成 tap，调用 `zx_gpu_backend::windows::get_window(...)` 获取窗并做 device 端逐点乘；复用 `V2.5` 风格的 workspace/scratch。
   - `scale=true` 时按首个通带的单位增益规则做归一化。
 - `firwin2`：
-  - 完整支持 `nfreqs`、重复频点阶跃、Type I-IV、`antisymmetric`、当前已有的 `WindowSpec/CudaWindowSpec` 规格。
+  - 完整支持 `nfreqs`、重复频点阶跃、Type I-IV、`antisymmetric`、当前已有的 `WindowSpec/ZxGpuWindowSpec` 规格。
   - CPU：频率插值后用 FFTW 生成时域系数，再乘窗。
   - CUDA：频率插值后用 `cuFFT` 做 device 端生成与后处理，再乘窗。
   - 默认 `nfreqs` 固定为 `1 + 2^ceil(log2(numtaps))`，并要求严格大于 `numtaps`。
@@ -134,7 +134,7 @@
 - perf 验收：
   - 每个 operator 至少 1 个 perf case
   - `gust` 不进入 perf
-  - `gpu_e2e_perf` 保持 host 输入 + H2D + CUDA 计算，不包含 `get()`
+  - `gpu_e2e_perf` 保持 host 输入 + H2D + ZQ500 GPU 计算，不包含 `get()`
   - 抽样核对终端摘要、JSON、CSV 三处一致
 
 ## Assumptions

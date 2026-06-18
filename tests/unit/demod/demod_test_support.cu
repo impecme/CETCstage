@@ -23,7 +23,7 @@ namespace fs = std::filesystem;
 
 namespace cusignal
 {
-    namespace cuda_backend
+    namespace zx_gpu_backend
     {
         namespace demod_test_hooks
         {
@@ -36,8 +36,8 @@ namespace
 {
     using cusignal::core::Complex;
     using cusignal::core::ComplexArray;
-    using cusignal::core::CudaComplexArray;
-    using cusignal::core::CudaRealArray;
+    using cusignal::core::ZxGpuComplexArray;
+    using cusignal::core::ZxGpuRealArray;
     using cusignal::core::RealArray;
     using cusignal::core::Shape;
 
@@ -426,7 +426,7 @@ int run_fm_demod_tests(int argc, char **argv)
             }
             try
             {
-                gpu = cusignal::cuda_backend::demod::fm_demod(test_case.input, test_case.axis).get();
+                gpu = cusignal::zx_gpu_backend::demod::fm_demod(test_case.input, test_case.axis).get();
             }
             catch (const std::exception &)
             {
@@ -470,9 +470,9 @@ int run_fm_demod_tests(int argc, char **argv)
         {
             summary.perf_cases = 1;
             const Case perf = perf_case();
-            const CudaComplexArray device_input = CudaComplexArray::from_host(perf.input);
+            const ZxGpuComplexArray device_input = ZxGpuComplexArray::from_host(perf.input);
             auto gpu_perf = [&]() {
-                return cusignal::cuda_backend::demod::fm_demod(device_input, perf.axis);
+                return cusignal::zx_gpu_backend::demod::fm_demod(device_input, perf.axis);
             };
             if (!options.gpu_only_perf)
             {
@@ -483,10 +483,10 @@ int run_fm_demod_tests(int argc, char **argv)
 
         std::vector<float> kernel_samples;
             summary.gpu_e2e_perf = measure(options.warmup, options.repeat, [&]() {
-                (void)cusignal::cuda_backend::demod_test_hooks::consume_last_kernel_ms();
+                (void)cusignal::zx_gpu_backend::demod_test_hooks::consume_last_kernel_ms();
                 (void)gpu_perf();
-                cusignal::core::throw_on_cuda_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
-                kernel_samples.push_back(cusignal::cuda_backend::demod_test_hooks::consume_last_kernel_ms());
+                cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
+                kernel_samples.push_back(cusignal::zx_gpu_backend::demod_test_hooks::consume_last_kernel_ms());
             });
             summary.gpu_kernel_perf = summarize(std::move(kernel_samples));
 
