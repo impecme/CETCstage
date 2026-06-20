@@ -8,6 +8,7 @@
 | `docs/performance/v5_0/agent_collaboration.md` | V5.0 性能优化阶段的智能体分工、协作流和验证流 |
 | `docs/performance/v5_0/optimization_change_log.md` | V5.0 性能优化台账，记录优化措施、验证结果和待处理项 |
 | `docs/performance/v5_0/operator_optimization_matrix.md` | 两任务依赖 27、核心 53、全库 81 的类型、接口、测试和性能契约 |
+| `docs/performance/v5_0/operator_contract_inventory.md` | 从测试注册表生成的 81 条算子真实路径和工作包状态 |
 
 ## 中科芯迁移基线
 

@@ -130,6 +130,8 @@
 |---|---|---|---|
 | `--modules MODULES` | `all` | 逗号分隔模块过滤 | `--modules filtering,spectral` |
 | `--operators OPERATORS` | `all` | 逗号分隔算子过滤 | `--operators cwt,stft` |
+| `--operator-set SET` | `OPERATOR_SET` 或 `all` | 选择 `task27`、`core53`、`extended28`、`all81` 命名集合 | V5 分阶段 benchmark |
+| `--operator-sets-file PATH` | `scripts/test/operator_sets.json` | 指定机器可读集合定义 | 集合审计或临时分支验证 |
 | `--scale-count SCALE_COUNT` | `6`，当前固定 | 规模点数量 | 保持默认，不作为常规调参 |
 | `--scale-profile {default,large-gpu}` | `default` | 选择 6 档规模 profile | 展示 GPU 吞吐用 `large-gpu` |
 | `--warmup WARMUP` | `5`，`--demo-fast` 下为 `1` | perf warmup 次数 | 稳定复测用较大值 |
@@ -206,7 +208,7 @@
 | `--fix-notes-file FIX_NOTES_FILE` | 空 | 读取修正说明 CSV 增强报告 | 生成带修复机制说明的报告 |
 
 ## `benchmark_all_ops_scales.py`（全量多规模采集）
-该脚本用于当前已启用的 53 个算子多规模 `perf` 自动化测试。每个算子执行 6 个规模点，脚本会按算子输入语义临时改写 `data/generated/unit/<module>/<operator>/manifest.json`，运行结束后自动恢复 manifest。
+该脚本用于当前已启用的 81 个算子多规模 `perf` 自动化测试。每个算子执行 6 个规模点，脚本会按算子输入语义临时改写 `data/generated/unit/<module>/<operator>/manifest.json`，运行结束后自动恢复 manifest。
 
 默认行为：
 - 默认模块/算子：`all`（来自 `scripts/test/run_all_tests.sh --list`）
@@ -221,7 +223,7 @@
 常用命令：
 
 ```bash
-# 1) 全量 53 算子 x 6 规模，复用已有二进制
+# 1) 全量 81 算子 x 6 规模，复用已有二进制
 scripts/test/benchmark_all_ops_scales.py --no-build
 
 # 2) 全量执行前先构建
@@ -259,6 +261,15 @@ scripts/test/benchmark_all_ops_scales.py \
   --no-build \
   --warmup 1 \
   --repeat 1
+
+# 6a) 使用 V5 命名集合；仍可叠加 modules/operators 做交集过滤
+scripts/test/benchmark_all_ops_scales.py \
+  --operator-set task27 \
+  --operator-sets-file scripts/test/operator_sets.json \
+  --no-build \
+  --scale-levels 6 \
+  --warmup 1 \
+  --repeat 3
 
 # 7) 自定义输出目录
 scripts/test/benchmark_all_ops_scales.py \

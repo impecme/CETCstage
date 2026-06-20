@@ -31,7 +31,7 @@ V5 在 CPU reference 与中科芯 ZQ500 GPU 正确性不退化的前提下，完
 3. `V5.2-03`：在现有模板容器上补齐五种实数与 complex64 类型基础测试。
 4. `V5.2-04` 至 `V5.2-07`：类型契约、复赛表解析、平台探针和阶段回归。
 
-当前只执行 `V5.2-01`，通过并回填台账后才进入 `V5.2-02`。计划中出现但仓库尚不存在的 `OPERATOR_SET`、兼容矩阵脚本和 CMake probe target，分别由 V5.2-01、V5.2-05 和 V5.2-06 创建，不得提前作为现有能力使用。
+当前只执行 `V5.2-01`：集合、校验脚本、81 行契约骨架和 `OPERATOR_SET` benchmark 接口已完成宿主机 L0，等待容器 smoke；回填通过后才进入 `V5.2-02`。兼容矩阵脚本和 CMake probe target 分别由 V5.2-05 和 V5.2-06 创建，不得提前作为现有能力使用。
 
 ## 类型原则
 
@@ -55,4 +55,5 @@ V5 在 CPU reference 与中科芯 ZQ500 GPU 正确性不退化的前提下，完
 | `agent_collaboration.md` | 智能体职责、文件所有权和阶段协作流程 |
 | `optimization_change_log.md` | 优化措施、工程变更、验证证据和状态台账 |
 | `operator_optimization_matrix.md` | 81 算子范围、类型/接口/测试契约和性能状态 |
+| `operator_contract_inventory.md` | 由测试注册表生成的 81 条声明、CPU/GPU、测试和审计状态 |
 | `plans/V5_0_plan.md` 至 `plans/V5_5_plan.md` | 总计划与各阶段门禁 |

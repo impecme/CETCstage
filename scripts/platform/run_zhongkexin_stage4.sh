@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="diagnostics-20260620-stage5-perf-v1"
+VERSION="diagnostics-20260620-stage5-perf-v2"
 BUILD_DIR="${BUILD_DIR:-build-zx}"
 BUILD_TYPE="${BUILD_TYPE:-Release}"
 INSTALL_PYTHON_DEPS="${INSTALL_PYTHON_DEPS:-1}"
@@ -12,7 +12,15 @@ TASK_REPEAT="${TASK_REPEAT:-3}"
 TASK_SCALES="${TASK_SCALES:-3}"
 RUN_TASK_SWEEP="${RUN_TASK_SWEEP:-1}"
 
-BENCH_MODULES="${BENCH_MODULES:-waveforms}"
+OPERATOR_SET="${OPERATOR_SET:-all}"
+OPERATOR_SETS_FILE="${OPERATOR_SETS_FILE:-scripts/test/operator_sets.json}"
+if [[ -n "${BENCH_MODULES:-}" ]]; then
+  BENCH_MODULES="${BENCH_MODULES}"
+elif [[ "${OPERATOR_SET}" == "all" ]]; then
+  BENCH_MODULES="waveforms"
+else
+  BENCH_MODULES="all"
+fi
 BENCH_OPERATORS="${BENCH_OPERATORS:-all}"
 BENCH_SCALE_PROFILE="${BENCH_SCALE_PROFILE:-default}"
 BENCH_SCALE_LEVELS="${BENCH_SCALE_LEVELS:-3}"
@@ -35,6 +43,7 @@ echo "[zx-stage4] task scales: ${TASK_SCALES}"
 echo "[zx-stage4] run task sweep: ${RUN_TASK_SWEEP}"
 echo "[zx-stage4] benchmark modules: ${BENCH_MODULES}"
 echo "[zx-stage4] benchmark operators: ${BENCH_OPERATORS}"
+echo "[zx-stage4] operator set: ${OPERATOR_SET}"
 echo "[zx-stage4] benchmark scale levels: ${BENCH_SCALE_LEVELS}"
 echo "[zx-stage4] report root: ${STAGE4_REPORT_ROOT}"
 echo "[zx-stage4] gpu memory monitor: ${STAGE4_GPU_MEM_MONITOR}"
@@ -140,6 +149,8 @@ run_logged "operator benchmark" "${BENCH_LOG}" \
   --build-dir "${BUILD_DIR}" \
   --modules "${BENCH_MODULES}" \
   --operators "${BENCH_OPERATORS}" \
+  --operator-set "${OPERATOR_SET}" \
+  --operator-sets-file "${OPERATOR_SETS_FILE}" \
   --scale-profile "${BENCH_SCALE_PROFILE}" \
   --scale-levels "${BENCH_SCALE_LEVELS}" \
   --warmup "${BENCH_WARMUP}" \
@@ -171,6 +182,7 @@ python3 - \
   "${TASK_LOG}" \
   "${BENCH_MODULES}" \
   "${BENCH_OPERATORS}" \
+  "${OPERATOR_SET}" \
   "${BENCH_SCALE_LEVELS}" \
   "${BENCH_LOG}" \
   "${BENCH_CSV}" \
@@ -192,6 +204,7 @@ from pathlib import Path
     task_log,
     bench_modules,
     bench_operators,
+    operator_set,
     bench_scale_levels,
     bench_log,
     bench_csv,
@@ -227,6 +240,7 @@ payload = {
     "task_log": task_log,
     "benchmark_modules": bench_modules,
     "benchmark_operators": bench_operators,
+    "operator_set": operator_set,
     "benchmark_scale_levels": bench_scale_levels,
     "benchmark_log": bench_log,
     "benchmark_csv": bench_csv,

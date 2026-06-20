@@ -28,6 +28,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from operator_set_support import load_operator_set_config, resolve_operator_sets
+
 
 DEFAULT_SCALE_FAMILIES: dict[str, tuple[int, ...]] = {
     "linear_points": (1024, 4096, 16384, 65536, 262144, 1048576),
@@ -176,6 +178,16 @@ def create_argument_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--modules", default="all", help="Comma-separated modules (default: all)")
     parser.add_argument("--operators", default="all", help="Comma-separated operators (default: all)")
+    parser.add_argument(
+        "--operator-set",
+        default=os.environ.get("OPERATOR_SET", "all"),
+        help="Named set from operator_sets.json, or all to disable set filtering",
+    )
+    parser.add_argument(
+        "--operator-sets-file",
+        default=os.environ.get("OPERATOR_SETS_FILE", "scripts/test/operator_sets.json"),
+        help="Named operator set definition file",
+    )
     parser.add_argument(
         "--scale-count",
         type=int,
@@ -344,6 +356,7 @@ def filter_entries(
     entries: list[tuple[str, str, str]],
     selected_modules: list[str],
     selected_operators: list[str],
+    selected_set: set[tuple[str, str]] | None = None,
 ) -> list[tuple[str, str, str]]:
     module_filter = None if selected_modules == ["all"] else set(selected_modules)
     operator_filter = None if selected_operators == ["all"] else set(selected_operators)
@@ -364,9 +377,10 @@ def filter_entries(
         for module, operator, target_name in entries
         if (module_filter is None or module in module_filter)
         and (operator_filter is None or operator in operator_filter)
+        and (selected_set is None or (module, operator) in selected_set)
     ]
     if not filtered:
-        raise RuntimeError("no operators match --modules/--operators filters")
+        raise RuntimeError("no operators match the set/module/operator filters")
     return filtered
 
 
@@ -1788,7 +1802,24 @@ def main() -> int:
     )
 
     entries = load_enabled_entries(runner_script, build_dir, args.platform)
-    filtered_entries = filter_entries(entries, args.modules, args.operators)
+    selected_set: set[tuple[str, str]] | None = None
+    if args.operator_set != "all":
+        operator_sets_path = resolve_path(repo_root, args.operator_sets_file)
+        operator_sets_payload = load_operator_set_config(operator_sets_path)
+        known_operators = [(module, operator) for module, operator, _target in entries]
+        resolved_sets = resolve_operator_sets(operator_sets_payload, known_operators)
+        if args.operator_set not in resolved_sets:
+            available = ", ".join(sorted(resolved_sets))
+            raise ValueError(
+                f"unknown operator set {args.operator_set!r}; available sets: {available}"
+            )
+        selected_set = resolved_sets[args.operator_set]
+    filtered_entries = filter_entries(
+        entries,
+        args.modules,
+        args.operators,
+        selected_set,
+    )
     target_names = [target_name for _module, _operator, target_name in filtered_entries]
     targets = [
         make_target(repo_root, module, operator)
@@ -1812,6 +1843,7 @@ def main() -> int:
 
     backups = backup_manifests(targets)
     log(f"selected operators: {len(targets)}")
+    log(f"operator set: {args.operator_set}")
     log(f"build mode: {'build' if args.do_build else 'no-build'}")
     log(f"platform: {args.platform}")
     log(f"scale profile: {args.scale_profile}")
