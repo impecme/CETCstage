@@ -1,0 +1,2 @@
+module,operator,scale_family,largest_scale_level,largest_scale_value,status,failed_scales,max_mixed_error_all_scales,gpu_e2e_speedup_at_max_scale,gpu_kernel_speedup_at_max_scale,cpu_median_ms_at_max_scale,gpu_e2e_median_ms_at_max_scale,gpu_kernel_median_ms_at_max_scale,git_commit,gpu_name
+filtering,wiener,matrix_total,6,1048576,passed,0,9.75527e-07,3.02595,3.00295,643.551,212.677,214.306,,ZQ500-Q QUAD-0

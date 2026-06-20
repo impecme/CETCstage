@@ -127,6 +127,22 @@ class RunMetrics:
     gpu_kernel_median_ms: str = ""
     gpu_e2e_min_ms: str = ""
     gpu_e2e_max_ms: str = ""
+    device_cache_enabled: str = ""
+    device_cache_allocation_calls: str = ""
+    device_cache_allocation_mib: str = ""
+    device_cache_hits: str = ""
+    device_cache_misses: str = ""
+    device_cache_recycled_blocks: str = ""
+    device_cache_recycled_mib: str = ""
+    device_cache_evicted_blocks: str = ""
+    device_cache_evicted_mib: str = ""
+    device_cache_freed_blocks: str = ""
+    device_cache_freed_mib: str = ""
+    device_cache_cached_blocks: str = ""
+    device_cache_cached_mib: str = ""
+    device_cache_peak_cached_mib: str = ""
+    device_cache_max_cached_mib: str = ""
+    device_cache_max_single_cached_mib: str = ""
     git_commit: str = ""
     gpu_name: str = ""
 
@@ -1012,6 +1028,13 @@ def summary_timing_stat(summary: dict[str, Any], field: str, stat: str) -> float
         return math.nan
 
 
+def summary_nested_metric(summary: dict[str, Any], field: str, key: str) -> Any:
+    value = summary.get(field)
+    if not isinstance(value, dict):
+        return None
+    return value.get(key)
+
+
 def metrics_from_payload(payload: dict[str, Any]) -> RunMetrics:
     summary = payload.get("summary", {})
     if not isinstance(summary, dict):
@@ -1028,6 +1051,22 @@ def metrics_from_payload(payload: dict[str, Any]) -> RunMetrics:
         gpu_kernel_median_ms=format_metric(summary_timing_stat(summary, "gpu_kernel_perf", "median_ms")),
         gpu_e2e_min_ms=format_metric(summary_timing_stat(summary, "gpu_e2e_perf", "min_ms")),
         gpu_e2e_max_ms=format_metric(summary_timing_stat(summary, "gpu_e2e_perf", "max_ms")),
+        device_cache_enabled=format_metric(summary_nested_metric(summary, "device_storage_cache", "cache_enabled")),
+        device_cache_allocation_calls=format_metric(summary_nested_metric(summary, "device_storage_cache", "allocation_calls")),
+        device_cache_allocation_mib=format_metric(summary_nested_metric(summary, "device_storage_cache", "allocation_mib")),
+        device_cache_hits=format_metric(summary_nested_metric(summary, "device_storage_cache", "cache_hits")),
+        device_cache_misses=format_metric(summary_nested_metric(summary, "device_storage_cache", "cache_misses")),
+        device_cache_recycled_blocks=format_metric(summary_nested_metric(summary, "device_storage_cache", "recycled_blocks")),
+        device_cache_recycled_mib=format_metric(summary_nested_metric(summary, "device_storage_cache", "recycled_mib")),
+        device_cache_evicted_blocks=format_metric(summary_nested_metric(summary, "device_storage_cache", "evicted_blocks")),
+        device_cache_evicted_mib=format_metric(summary_nested_metric(summary, "device_storage_cache", "evicted_mib")),
+        device_cache_freed_blocks=format_metric(summary_nested_metric(summary, "device_storage_cache", "freed_blocks")),
+        device_cache_freed_mib=format_metric(summary_nested_metric(summary, "device_storage_cache", "freed_mib")),
+        device_cache_cached_blocks=format_metric(summary_nested_metric(summary, "device_storage_cache", "cached_blocks")),
+        device_cache_cached_mib=format_metric(summary_nested_metric(summary, "device_storage_cache", "cached_mib")),
+        device_cache_peak_cached_mib=format_metric(summary_nested_metric(summary, "device_storage_cache", "peak_cached_mib")),
+        device_cache_max_cached_mib=format_metric(summary_nested_metric(summary, "device_storage_cache", "max_cached_mib")),
+        device_cache_max_single_cached_mib=format_metric(summary_nested_metric(summary, "device_storage_cache", "max_single_cached_mib")),
         git_commit=format_metric(payload.get("git_commit")),
         gpu_name=format_metric(payload.get("gpu_name")),
     )
@@ -1333,6 +1372,22 @@ def csv_columns() -> list[str]:
         "gpu_kernel_median_ms",
         "gpu_e2e_min_ms",
         "gpu_e2e_max_ms",
+        "device_cache_enabled",
+        "device_cache_allocation_calls",
+        "device_cache_allocation_mib",
+        "device_cache_hits",
+        "device_cache_misses",
+        "device_cache_recycled_blocks",
+        "device_cache_recycled_mib",
+        "device_cache_evicted_blocks",
+        "device_cache_evicted_mib",
+        "device_cache_freed_blocks",
+        "device_cache_freed_mib",
+        "device_cache_cached_blocks",
+        "device_cache_cached_mib",
+        "device_cache_peak_cached_mib",
+        "device_cache_max_cached_mib",
+        "device_cache_max_single_cached_mib",
         "shape_note",
         "metrics_json_path",
         "git_commit",
@@ -1373,6 +1428,22 @@ def empty_row(
         "gpu_kernel_median_ms": "",
         "gpu_e2e_min_ms": "",
         "gpu_e2e_max_ms": "",
+        "device_cache_enabled": "",
+        "device_cache_allocation_calls": "",
+        "device_cache_allocation_mib": "",
+        "device_cache_hits": "",
+        "device_cache_misses": "",
+        "device_cache_recycled_blocks": "",
+        "device_cache_recycled_mib": "",
+        "device_cache_evicted_blocks": "",
+        "device_cache_evicted_mib": "",
+        "device_cache_freed_blocks": "",
+        "device_cache_freed_mib": "",
+        "device_cache_cached_blocks": "",
+        "device_cache_cached_mib": "",
+        "device_cache_peak_cached_mib": "",
+        "device_cache_max_cached_mib": "",
+        "device_cache_max_single_cached_mib": "",
         "shape_note": "",
         "metrics_json_path": str(target.metrics_path),
         "git_commit": "",
@@ -1392,6 +1463,22 @@ def fill_metrics(row: dict[str, Any], metrics: RunMetrics) -> None:
         "gpu_kernel_median_ms",
         "gpu_e2e_min_ms",
         "gpu_e2e_max_ms",
+        "device_cache_enabled",
+        "device_cache_allocation_calls",
+        "device_cache_allocation_mib",
+        "device_cache_hits",
+        "device_cache_misses",
+        "device_cache_recycled_blocks",
+        "device_cache_recycled_mib",
+        "device_cache_evicted_blocks",
+        "device_cache_evicted_mib",
+        "device_cache_freed_blocks",
+        "device_cache_freed_mib",
+        "device_cache_cached_blocks",
+        "device_cache_cached_mib",
+        "device_cache_peak_cached_mib",
+        "device_cache_max_cached_mib",
+        "device_cache_max_single_cached_mib",
         "git_commit",
         "gpu_name",
     ):

@@ -5,8 +5,8 @@
 - 版本名称：`V4.5 交付固化`
 - 当前日期：`2026-06-18`
 - 当前状态：已完成
-- 对应计划：`docs/design/V4_5_plan.md`
-- 修改台账：`docs/design/zhongkexin_migration_change_log.md`
+- 对应计划：`docs/migration/zhongkexin/plans/V4_5_plan.md`
+- 修改台账：`docs/migration/zhongkexin/change_log.md`
 
 ## 版本目标
 

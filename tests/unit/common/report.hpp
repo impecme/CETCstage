@@ -16,6 +16,7 @@
 #include <string>
 #include <vector>
 
+#include "cusignal/core/types.hpp"
 #include "json.hpp"
 
 namespace cusignal_test::report
@@ -161,6 +162,11 @@ namespace cusignal_test::report
         return stream.str();
     }
 
+    inline double bytes_to_mib(std::size_t bytes)
+    {
+        return static_cast<double>(bytes) / (1024.0 * 1024.0);
+    }
+
     template <typename TimingStatsT>
     inline float median_speedup(
         const std::optional<TimingStatsT> &baseline,
@@ -240,6 +246,61 @@ namespace cusignal_test::report
         has_previous_field = true;
     }
 
+    inline std::string build_device_storage_cache_stats_json(int indent)
+    {
+        const auto stats = cusignal::core::device_storage_cache_stats_snapshot();
+        const std::string current_indent(static_cast<std::size_t>(indent), ' ');
+        const std::string child_indent(static_cast<std::size_t>(indent + 2), ' ');
+        std::ostringstream stream;
+        stream << "{\n";
+        stream << child_indent << "\"cache_enabled\": "
+               << (stats.cache_enabled ? "true" : "false") << ",\n";
+        stream << child_indent << "\"allocation_calls\": " << stats.allocation_calls << ",\n";
+        stream << child_indent << "\"allocation_bytes\": " << stats.allocation_bytes << ",\n";
+        stream << child_indent << "\"allocation_mib\": " << bytes_to_mib(stats.allocation_bytes) << ",\n";
+        stream << child_indent << "\"cache_hits\": " << stats.cache_hits << ",\n";
+        stream << child_indent << "\"cache_misses\": " << stats.cache_misses << ",\n";
+        stream << child_indent << "\"recycled_blocks\": " << stats.recycled_blocks << ",\n";
+        stream << child_indent << "\"recycled_bytes\": " << stats.recycled_bytes << ",\n";
+        stream << child_indent << "\"recycled_mib\": " << bytes_to_mib(stats.recycled_bytes) << ",\n";
+        stream << child_indent << "\"evicted_blocks\": " << stats.evicted_blocks << ",\n";
+        stream << child_indent << "\"evicted_bytes\": " << stats.evicted_bytes << ",\n";
+        stream << child_indent << "\"evicted_mib\": " << bytes_to_mib(stats.evicted_bytes) << ",\n";
+        stream << child_indent << "\"freed_blocks\": " << stats.freed_blocks << ",\n";
+        stream << child_indent << "\"freed_bytes\": " << stats.freed_bytes << ",\n";
+        stream << child_indent << "\"freed_mib\": " << bytes_to_mib(stats.freed_bytes) << ",\n";
+        stream << child_indent << "\"cached_blocks\": " << stats.cached_blocks << ",\n";
+        stream << child_indent << "\"cached_bytes\": " << stats.cached_bytes << ",\n";
+        stream << child_indent << "\"cached_mib\": " << bytes_to_mib(stats.cached_bytes) << ",\n";
+        stream << child_indent << "\"peak_cached_bytes\": " << stats.peak_cached_bytes << ",\n";
+        stream << child_indent << "\"peak_cached_mib\": "
+               << bytes_to_mib(stats.peak_cached_bytes) << ",\n";
+        stream << child_indent << "\"max_cached_blocks\": " << stats.max_cached_blocks << ",\n";
+        stream << child_indent << "\"max_cached_bytes\": " << stats.max_cached_bytes << ",\n";
+        stream << child_indent << "\"max_cached_mib\": " << bytes_to_mib(stats.max_cached_bytes) << ",\n";
+        stream << child_indent << "\"max_single_cached_bytes\": "
+               << stats.max_single_cached_bytes << ",\n";
+        stream << child_indent << "\"max_single_cached_mib\": "
+               << bytes_to_mib(stats.max_single_cached_bytes) << '\n';
+        stream << current_indent << '}';
+        return stream.str();
+    }
+
+    inline void append_device_storage_cache_stats_field(
+        std::ostringstream &stream,
+        int indent,
+        bool &has_previous_field)
+    {
+        if (has_previous_field)
+        {
+            stream << ",\n";
+        }
+        stream << std::string(static_cast<std::size_t>(indent), ' ')
+               << "\"device_storage_cache\": "
+               << build_device_storage_cache_stats_json(indent);
+        has_previous_field = true;
+    }
+
     inline const cusignal_test::json::Object &as_object(
         const cusignal_test::json::Value &value)
     {
@@ -316,6 +377,15 @@ namespace cusignal_test::report
                    << format_fixed(median_speedup(summary.cpu_perf, summary.gpu_kernel_perf))
                    << "x\n";
         }
+        const auto cache_stats = cusignal::core::device_storage_cache_stats_snapshot();
+        stream << "- device_cache allocations: " << cache_stats.allocation_calls
+               << " calls, " << format_fixed(static_cast<float>(bytes_to_mib(cache_stats.allocation_bytes)))
+               << " MiB\n";
+        stream << "- device_cache hits/misses: " << cache_stats.cache_hits
+               << "/" << cache_stats.cache_misses << "\n";
+        stream << "- device_cache recycled: " << cache_stats.recycled_blocks
+               << " blocks, " << format_fixed(static_cast<float>(bytes_to_mib(cache_stats.recycled_bytes)))
+               << " MiB\n";
         stream << "\n## Cases\n\n";
         for (const CaseT &report : cases)
         {
@@ -462,6 +532,7 @@ namespace cusignal_test::report
                                   options.repeat,
                                   4,
                                   has_summary_field);
+        append_device_storage_cache_stats_field(stream, 4, has_summary_field);
         stream << "\n";
         stream << "  },\n";
         stream << "  \"cases\": [\n";
@@ -594,6 +665,7 @@ namespace cusignal_test::report
                                   options.repeat,
                                   4,
                                   has_summary_field);
+        append_device_storage_cache_stats_field(stream, 4, has_summary_field);
         stream << "\n";
         stream << "  },\n";
         stream << "  \"cases\": []\n";

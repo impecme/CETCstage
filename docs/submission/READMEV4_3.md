@@ -5,9 +5,9 @@
 - 版本名称：`V4.3 全量公开算子迁移`
 - 交付日期：`2026-06-17`
 - 当前状态：已关闭
-- 对应计划：`docs/design/V4_3_plan.md`
-- 全量矩阵：`docs/design/zhongkexin_full_operator_matrix.md`
-- 修改台账：`docs/design/zhongkexin_migration_change_log.md`
+- 对应计划：`docs/migration/zhongkexin/plans/V4_3_plan.md`
+- 全量矩阵：`docs/migration/zhongkexin/full_operator_matrix.md`
+- 修改台账：`docs/migration/zhongkexin/change_log.md`
 
 ## 版本目标
 
@@ -16,7 +16,7 @@ V4.3 将中科芯迁移范围从 V4.2 的 Task1/Task2 依赖算子扩展到项�
 ## 核心改动
 
 - 新增 Stage3 统一入口：`scripts/platform/run_zhongkexin_stage3.sh`。
-- 新增全量公开算子矩阵：`docs/design/zhongkexin_full_operator_matrix.md`。
+- 新增全量公开算子矩阵：`docs/migration/zhongkexin/full_operator_matrix.md`。
 - `scripts/test/run_all_tests.sh --platform ZHONGKEXIN` 自动加载 `/zq500/sdk/env.sh`，手工单算子复验和 Stage3 包装入口使用同一 SDK 环境。
 - 原注释候选 28 条已纳入 active 注册表，当前 active accuracy 条目为 81 条。
 - 中科芯 `spectral/csd` 禁用 R2C 快路径，改走已验证的 C2C 路径。

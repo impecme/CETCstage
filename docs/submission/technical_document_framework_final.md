@@ -2,7 +2,7 @@
 
 更新时间：2026-06-01
 
-> 本文件是项目当前唯一主技术文档。文件名保留 `technical_document_framework_final.md` 以兼容已有引用，但内容已从“框架”合并为“统一版完整技术文档”。`docs/design/*`、`docs/submission/READMEV*`、`scripts/test/READMEV*` 保留为历史设计和版本记录；提交、答辩和复盘时优先引用本文。
+> 本文件是项目当前唯一主技术文档。文件名保留 `technical_document_framework_final.md` 以兼容已有引用，但内容已从“框架”合并为“统一版完整技术文档”。文档入口见 `docs/README.md`；`docs/archive/version_plans/`、`docs/migration/zhongkexin/`、`docs/performance/v5_0/`、`docs/submission/READMEV*`、`scripts/test/READMEV*` 保留为阶段记录；提交、答辩和复盘时优先引用本文。
 
 ## 摘要
 
@@ -531,7 +531,7 @@ scripts/test/run_task_demos.sh --no-build --repeat 2 --leak-check
 | 项目总览 | `README.md` | 项目能力、环境、快速开始、测试和报告入口 |
 | 统一主技术文档 | `docs/submission/technical_document_framework_final.md` | 本文 |
 | 历史提交说明 | `docs/submission/READMEV*.md` | 版本记录，不作为主技术文档 |
-| 历史设计计划 | `docs/design/*.md` | 方案演进，不作为主技术文档 |
+| 历史设计计划 | `docs/archive/version_plans/`、`docs/migration/zhongkexin/`、`docs/performance/v5_0/` | 方案演进，不作为主技术文档 |
 | 测试脚本总览 | `scripts/test/README.md` | 当前测试脚本和 benchmark 使用说明 |
 | 任务级验收说明 | `scripts/test/READMEV3_9.md` | repeat、scale sweep、compute-sanitizer 等最新验收口径 |
 | 公开 API | `include/cusignal/` | 后端迁移边界 |
@@ -641,5 +641,5 @@ scripts/test/run_task_demos.sh --no-build --repeat 2 --leak-check
 - 本文是唯一主技术文档，集中说明背景、架构、算子覆盖、任务链路、技术亮点、验证体系、性能分析和迁移策略。
 - `docs/submission/technical_defense_whitepaper.md` 的答辩亮点内容已并入本文，不再单独保留。
 - `docs/submission/technical_doc_revision_notes.md` 的旧 Word 改稿清单已被本文取代，不再单独保留。
-- `docs/submission/READMEV*.md`、`docs/design/*.md` 和 `scripts/test/READMEV*.md` 作为历史版本记录保留，用于追溯具体迭代，但不作为提交或答辩时的主技术文档。
+- `docs/submission/READMEV*.md`、`docs/archive/version_plans/`、`docs/migration/zhongkexin/`、`docs/performance/v5_0/` 和 `scripts/test/READMEV*.md` 作为历史版本记录保留，用于追溯具体迭代，但不作为提交或答辩时的主技术文档。
 - 若后续继续补充技术亮点，应优先更新本文第 7 章，并确保每个亮点都能落到具体源码、脚本、测试或运行报告路径。

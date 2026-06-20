@@ -1,4 +1,8 @@
 build/
+build-*/
+__cmake_systeminformation/
+.zq500_sdk_full.delete_me/
+/*.log
 third_party/python/
 third_party/fftw/dist/
 third_party/fftw/src/

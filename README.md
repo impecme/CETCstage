@@ -19,10 +19,36 @@
 ## 项目特色
 
 - 中科芯 ZQ500 GPU 主线实现，核心算子提供 CPU 与 ZQ500 GPU 两套可对照路径。
-- 当前代码线采用统一单精度口径，实数数据为 `float32`，复数数据为 `complex64` 语义。
+- 项目实数类型标准为 FP32、FP16、INT32、INT16、INT8；逐算子按照原始语义确定适用类型并提供 CPU/GPU 对应实现。
 - 覆盖 waveforms、filtering、spectral、radartools、estimation、windows、wavelets、correlate 等模块。
 - 支持 GPU 相对 CPU 的误差、耗时、e2e speedup、kernel speedup 统一报告。
 - 支持 `default` 与 `large-gpu` 两套规模 profile，便于区分小规模开销和大规模吞吐。
+
+## 代码目录结构
+
+```text
+CETC/
+├── include/cusignal/       公共算子声明、核心类型和中科芯兼容层
+├── src/common/             CPU/GPU 共用的参数校验、形状和算法辅助逻辑
+├── src/cpu/                按模块组织的 CPU reference 实现
+├── src/zhongkexin/         与 CPU 接口对应的 ZQ500 GPU 实现
+├── demo/task1_radar/       任务一雷达目标检测与多普勒分析流程
+├── demo/task2_features/    任务二多域特征提取定位流程
+├── tests/smoke/            最小编译、链接和基础调用验证
+├── tests/unit/             按模块和算子组织的正确性、性能与报告测试
+├── scripts/build/          依赖安装和构建辅助脚本
+├── scripts/platform/       中科芯环境检查、平台探针和阶段统一入口
+├── scripts/test/           单算子、全算子、任务及绘图测试入口
+├── scripts/data/           测试输入和参考数据生成脚本
+├── docs/migration/         V4 中科芯迁移依据、限制和历史台账
+├── docs/performance/v5_0/  V5 性能优化计划、契约矩阵和独立台账
+├── docs/submission/        各版本交付说明和最终技术文档
+├── data/reference/         单算子参考输入、输出和 manifest
+├── data/generated/         运行生成的任务及中间数据
+└── data/reports/           单元测试、benchmark、任务和阶段报告
+```
+
+算子模块遵循统一边界：声明位于 `include/cusignal/<module>/`，CPU 与 GPU 实现分别位于 `src/cpu/<module>.cpp` 和 `src/zhongkexin/<module>.cu`，对应测试位于 `tests/unit/<module>/`。任务 Demo 负责流程编排，不应维护与公共算子重复的算法实现。
 
 ## 项目环境
 
@@ -103,7 +129,7 @@ dlsmi
 复赛说明文件/
 ```
 
-其中 `CUDA 11.7 runtime API.xlsx`、`CUDA 11.7 driver api.xlsx` 和 `科学计算库实现列表.xlsx` 说明了中科芯平台的 CUDA runtime、driver API 和科学计算库支持范围。迁移摘要见 `docs/design/zhongkexin_rematch_notes.md`。当前迁移必须特别注意：
+其中 `CUDA 11.7 runtime API.xlsx`、`CUDA 11.7 driver api.xlsx` 和 `科学计算库实现列表.xlsx` 说明了中科芯平台的 CUDA runtime、driver API 和科学计算库支持范围。迁移摘要见 `docs/migration/zhongkexin/platform_notes.md`。当前迁移必须特别注意：
 
 - 不要假设中科芯平台完整支持 CUDA 11.7 全量 runtime/driver API。
 - cuFFT 点数仅支持 2 的整数次幂，不足需要补 0。
@@ -139,14 +165,16 @@ scripts/platform/run_zhongkexin_stage4.sh 2>&1 | tee stage4_full.log
 
 `run_zhongkexin_stage4.sh` 会自动检查依赖、配置中科芯 `build-zx`、运行 Task1/Task2 L1-L6 scale sweep、执行全量算子多规模 benchmark，并生成报告和图件。当前交付验收只面向 CPU reference + 容器内 ZQ500 GPU。
 
-## 精度约定
+## 精度与数据类型约定
 
-当前主干采用统一单精度实现；中科芯迁移阶段以 CPU reference 与容器内 ZQ500 GPU 的数值一致性和任务闭环为验收口径。
+项目以 FP32、FP16、INT32、INT16、INT8 五种实数类型作为正式支持范围，并按逐算子适用性矩阵确定具体组合。所有适用组合均以 CPU reference 与容器内 ZQ500 GPU 的数值一致性和任务闭环为验收口径。
 
-- 公共接口保留 `dtype` 参数以降低接口破坏面，但默认值和校验口径已收敛到 `float32`。
-- CPU reference 与 ZQ500 GPU 对照均按单精度实现；单算子 metrics 保留 `max_abs_error`、`max_rel_error`、`rmse`，全量 benchmark 主表使用 `mixed_error` 展示近零保护后的主误差。
+- 公共接口保留 `dtype` 参数并逐步模板化；FP32、FP16、INT32、INT16、INT8 是统一类型集合，不适用类型必须由算子契约明确拒绝。
+- CPU reference 与 ZQ500 GPU 对照使用相同输入和输出类型；单算子 metrics 保留 `max_abs_error`、`max_rel_error`、`rmse`，全量 benchmark 主表使用 `mixed_error` 展示近零保护后的主误差。
 - `waveforms`、`filtering/detrend`、`spectral/vectorstrength`、`correlate`、`windows`、`estimation` 等路径中的中间量、workspace、scratch buffer、测试统计与数据生成脚本已同步为单精度口径。
 - `data/reference` 与 `data/generated` 的活动 manifest 已同步到 `float32` / `complex64` 描述；窗口参数中的命名实数参数统一为 `named_float` 语义。
+- 正式实数类型为 FP32、FP16、INT32、INT16、INT8，但只为原始算子语义允许的类型提供实现；纯浮点算子无需实现整数路径。
+- 默认返回或处理复数的算子只支持 `complex64`。CPU 使用 `std::complex<float>`，GPU 使用 `cuFloatComplex`/`cuComplex`，不实现平台不支持的 `complex128`。
 
 大规模结果中少数算子的原始相对误差可能较大，通常来自参考值接近零时 ratio 被放大；全量报告默认使用 `mixed_error`，在近零区域用绝对误差判断。
 

@@ -326,6 +326,7 @@ scripts/test/benchmark_all_ops_scales.py \
 | `gpu_kernel_*_ms` | GPU kernel 延迟统计，包含 `median/mean/p95/min/max/std` |
 | `gpu_e2e_speedup` | `cpu_median_ms / gpu_e2e_median_ms` |
 | `gpu_kernel_speedup` | `cpu_median_ms / gpu_kernel_median_ms` |
+| `device_cache_*` | V5.0 起新增的公共 `DeviceStorageCache` 统计，覆盖 allocation、hit/miss、recycle、evict、free、cached/peak cached 和 cache limit；只统计 `DeviceSignal`/`DeviceArray` 公共 storage cache，不覆盖模块内本地 `DeviceBuffer` |
 | `shape_note` | 本行实际改写的关键规模字段摘要 |
 | `metrics_json_path` | 本行读取的 `latest_metrics.json` 绝对路径 |
 | `error_note` | 失败诊断信息，例如命令失败、metrics 未更新或 manifest 缩放失败 |

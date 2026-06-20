@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="diagnostics-20260617-stage4-perf-full-v4"
+VERSION="diagnostics-20260620-stage5-perf-v1"
 BUILD_DIR="${BUILD_DIR:-build-zx}"
 BUILD_TYPE="${BUILD_TYPE:-Release}"
 INSTALL_PYTHON_DEPS="${INSTALL_PYTHON_DEPS:-1}"
@@ -22,6 +22,8 @@ BENCH_REPORT_MODE="${BENCH_REPORT_MODE:-concise}"
 BENCH_OUTPUT_DIR="${BENCH_OUTPUT_DIR:-data/reports/unit/benchmarks/zhongkexin_stage4_default}"
 RUN_BENCHMARK_PLOTS="${RUN_BENCHMARK_PLOTS:-1}"
 PLOT_FORMATS="${PLOT_FORMATS:-png}"
+STAGE4_GPU_MEM_MONITOR="${STAGE4_GPU_MEM_MONITOR:-1}"
+STAGE4_GPU_MEM_INTERVAL="${STAGE4_GPU_MEM_INTERVAL:-0.5}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
@@ -35,6 +37,7 @@ echo "[zx-stage4] benchmark modules: ${BENCH_MODULES}"
 echo "[zx-stage4] benchmark operators: ${BENCH_OPERATORS}"
 echo "[zx-stage4] benchmark scale levels: ${BENCH_SCALE_LEVELS}"
 echo "[zx-stage4] report root: ${STAGE4_REPORT_ROOT}"
+echo "[zx-stage4] gpu memory monitor: ${STAGE4_GPU_MEM_MONITOR}"
 
 run_logged() {
   local label="$1"
@@ -46,6 +49,16 @@ run_logged() {
     exit 1
   fi
 }
+
+gpu_mem_monitor_pid=""
+stop_gpu_mem_monitor() {
+  if [[ -n "${gpu_mem_monitor_pid}" ]]; then
+    kill -TERM "${gpu_mem_monitor_pid}" >/dev/null 2>&1 || true
+    wait "${gpu_mem_monitor_pid}" >/dev/null 2>&1 || true
+    gpu_mem_monitor_pid=""
+  fi
+}
+trap stop_gpu_mem_monitor EXIT
 
 if [[ -f /zq500/sdk/env.sh ]]; then
   set +u
@@ -92,6 +105,8 @@ mkdir -p "${STAGE4_REPORT_ROOT}"
 TASK_LOG="${STAGE4_REPORT_ROOT}/latest_task_scale.log"
 BENCH_LOG="${STAGE4_REPORT_ROOT}/latest_operator_benchmark.log"
 PLOT_LOG="${STAGE4_REPORT_ROOT}/latest_operator_benchmark_plot.log"
+GPU_MEM_CSV="${STAGE4_REPORT_ROOT}/latest_gpu_memory_samples.csv"
+GPU_MEM_JSON="${STAGE4_REPORT_ROOT}/latest_gpu_memory_summary.json"
 SUMMARY_JSON="${STAGE4_REPORT_ROOT}/latest_stage4_summary.json"
 SUMMARY_MD="${STAGE4_REPORT_ROOT}/latest_stage4_summary.md"
 
@@ -111,6 +126,14 @@ else
 fi
 
 echo "[zx-stage4] running operator benchmark"
+if [[ "${STAGE4_GPU_MEM_MONITOR}" == "1" ]]; then
+  rm -f "${GPU_MEM_CSV}" "${GPU_MEM_JSON}"
+  python3 scripts/platform/sample_gpu_memory.py \
+    --csv "${GPU_MEM_CSV}" \
+    --json "${GPU_MEM_JSON}" \
+    --interval "${STAGE4_GPU_MEM_INTERVAL}" &
+  gpu_mem_monitor_pid="$!"
+fi
 run_logged "operator benchmark" "${BENCH_LOG}" \
   python3 scripts/test/benchmark_all_ops_scales.py \
   --platform ZHONGKEXIN \
@@ -124,6 +147,7 @@ run_logged "operator benchmark" "${BENCH_LOG}" \
   --build \
   --output-dir "${BENCH_OUTPUT_DIR}" \
   --report-mode "${BENCH_REPORT_MODE}"
+stop_gpu_mem_monitor
 
 BENCH_CSV="${BENCH_OUTPUT_DIR}/latest_all_ops_scale_benchmark.csv"
 FIGURE_DIR="${BENCH_OUTPUT_DIR}/figures"
@@ -151,7 +175,10 @@ python3 - \
   "${BENCH_LOG}" \
   "${BENCH_CSV}" \
   "${plot_status}" \
-  "${FIGURE_DIR}" <<'PY'
+  "${FIGURE_DIR}" \
+  "${STAGE4_GPU_MEM_MONITOR}" \
+  "${GPU_MEM_CSV}" \
+  "${GPU_MEM_JSON}" <<'PY'
 import csv
 import json
 import sys
@@ -170,6 +197,9 @@ from pathlib import Path
     bench_csv,
     plot_status,
     figure_dir,
+    gpu_mem_monitor,
+    gpu_mem_csv,
+    gpu_mem_json,
 ) = sys.argv[1:]
 
 rows = []
@@ -178,6 +208,17 @@ if csv_path.exists():
     with csv_path.open(newline="", encoding="utf-8") as handle:
         rows = list(csv.DictReader(handle))
 failed_rows = [row for row in rows if str(row.get("status", "")).lower() != "passed"]
+
+gpu_memory_summary = {"available": False, "error": "monitor disabled"}
+gpu_mem_json_path = Path(gpu_mem_json)
+if gpu_mem_monitor == "1":
+    if gpu_mem_json_path.exists():
+        try:
+            gpu_memory_summary = json.loads(gpu_mem_json_path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            gpu_memory_summary = {"available": False, "error": f"failed to parse monitor summary: {exc}"}
+    else:
+        gpu_memory_summary = {"available": False, "error": "monitor summary was not written"}
 
 payload = {
     "pass": not failed_rows and bool(rows),
@@ -193,11 +234,23 @@ payload = {
     "benchmark_failed_rows": len(failed_rows),
     "plot_status": plot_status,
     "figure_dir": figure_dir,
+    "gpu_memory_monitor_enabled": gpu_mem_monitor == "1",
+    "gpu_memory_csv": gpu_mem_csv,
+    "gpu_memory_json": gpu_mem_json,
+    "gpu_memory_available": bool(gpu_memory_summary.get("available", False)),
+    "gpu_memory_sample_count": gpu_memory_summary.get("sample_count", 0),
+    "gpu_memory_used_mib_max": gpu_memory_summary.get("used_mib_max"),
+    "gpu_memory_used_mib_avg": gpu_memory_summary.get("used_mib_avg"),
+    "gpu_memory_free_mib_min": gpu_memory_summary.get("free_mib_min"),
+    "gpu_memory_util_percent_max": gpu_memory_summary.get("util_percent_max"),
+    "gpu_memory_summary": gpu_memory_summary,
 }
 Path(summary_json).write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 lines = ["# Zhongkexin V4.4 Stage4 Summary", ""]
 for key, value in payload.items():
+    if key == "gpu_memory_summary":
+        continue
     lines.append(f"- {key}: `{value}`")
 Path(summary_md).write_text("\n".join(lines) + "\n", encoding="utf-8")
 print(f"[zx-stage4] wrote {summary_json}")

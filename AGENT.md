@@ -134,12 +134,12 @@ SDK 示例和头文件路径：
 /zq500/cuda11/include
 ```
 
-复赛说明文件位于 `复赛说明文件/`，迁移摘要位于 `docs/design/zhongkexin_rematch_notes.md`。迁移时必须把这些说明作为平台约束来源：
+复赛说明文件位于 `复赛说明文件/`，迁移摘要位于 `docs/migration/zhongkexin/platform_notes.md`。迁移时必须把这些说明作为平台约束来源：
 
 - `CUDA 11.7 runtime API.xlsx`：runtime API 部分覆盖，不要引入未确认支持的 memory pool、stream ordered allocator、external memory、IPC event、NvSci、graph capture 等高级 API。
 - `CUDA 11.7 driver api.xlsx`：driver API 部分覆盖，第一阶段和第二阶段不要主动切到 driver API 实现 runtime 功能。
 - `科学计算库实现列表.xlsx`：cuFFT 仅支持 2 的整数次幂点数，不足需要补 0；cuSOLVER `getrf` 的 pivot 参数不能传入 `nullptr`；当前主路径优先关注 cuFFT、cuBLAS、cuSOLVER。
-- 任何因复赛说明引发的不兼容、待修改、fallback 或测试阈值调整，都必须记录到 `docs/design/zhongkexin_migration_change_log.md`。
+- 任何因复赛说明引发的不兼容、待修改、fallback 或测试阈值调整，都必须记录到 `docs/migration/zhongkexin/change_log.md`。
 
 文件传输：
 
@@ -168,7 +168,7 @@ V4.2 第二阶段统一验收入口：
 scripts/platform/run_zhongkexin_stage2.sh 2>&1 | tee stage2.log
 ```
 
-该脚本必须在本队 docker 内执行；它会按 `docs/design/zhongkexin_task_dependency_matrix.md` 批量运行 Task1/Task2 依赖算子 `accuracy`，写出 `data/reports/zhongkexin/stage2/latest_dependency_operator_report.*` 和逐算子日志。当前调试默认只跑 Task1/Task2 `L3` 一个规模的 scale 报告链路，避免中科芯 GPU 调试耗时过长；单规模通过后用 `STAGE2_SCALES=1,2,3,4,5,6` 打开全规模 sweep。取回日志后优先查看 `stage2.log` 和 `data/reports/zhongkexin/stage2/operators/*.log`。
+该脚本必须在本队 docker 内执行；它会按 `docs/migration/zhongkexin/task_dependency_matrix.md` 批量运行 Task1/Task2 依赖算子 `accuracy`，写出 `data/reports/zhongkexin/stage2/latest_dependency_operator_report.*` 和逐算子日志。当前调试默认只跑 Task1/Task2 `L3` 一个规模的 scale 报告链路，避免中科芯 GPU 调试耗时过长；单规模通过后用 `STAGE2_SCALES=1,2,3,4,5,6` 打开全规模 sweep。取回日志后优先查看 `stage2.log` 和 `data/reports/zhongkexin/stage2/operators/*.log`。
 
 如果当前只在服务器宿主机上，而用户可以在终端输入 sudo 密码，则使用宿主机同步入口。该流程用于把宿主机项目完全替换到容器 `/CETC`，包括删除容器中已经不存在于宿主机项目里的旧文件：
 
@@ -433,7 +433,7 @@ ZQ500 GPU 代码约定：
 
 ## 中科芯迁移记录硬规则
 
-中科芯迁移期间，AGENT 以本节为最高优先级迁移纪律之一执行。迁移过程中发现的不兼容点、需要修改点、已修改点、暂缓点和 fallback，必须全部记录到 `docs/design/zhongkexin_migration_change_log.md`。
+中科芯迁移期间，AGENT 以本节为最高优先级迁移纪律之一执行。迁移过程中发现的不兼容点、需要修改点、已修改点、暂缓点和 fallback，必须全部记录到 `docs/migration/zhongkexin/change_log.md`。
 
 必须记录的情况：
 
@@ -461,11 +461,11 @@ ZQ500 GPU 代码约定：
 - 即使暂时不修，也必须先记录。
 - 修改前记录“计划修改”，修改后补充“实际修改”和“验证结果”。
 - 每个阶段关闭前，必须核对台账，确认没有只存在于聊天记录或终端输出中的问题。
-- 更新 `docs/design/zhongkexin_migration_change_log.md` 后，同步检查 `docs/design/zhongkexin_migration_status.md` 是否需要更新。
+- 更新 `docs/migration/zhongkexin/change_log.md` 后，同步检查 `docs/migration/zhongkexin/status.md` 是否需要更新。
 
 ## 项目注意事项
 
-- 中科芯迁移协作信息位于 `docs/design/zhongkexin_migration_plan.md` 和 `docs/design/zhongkexin_migration_status.md`。
+- 中科芯迁移协作信息位于 `docs/migration/zhongkexin/README.md` 和 `docs/migration/zhongkexin/status.md`。
 - 有些测试存在 CMake target，但在 `scripts/test/run_all_tests.sh` 的 shell 注册表中被注释掉；判断默认脚本是否会运行某测试时，要同时检查 CMake 和脚本。
 - `README.md` 是最高层工程说明；构建、demo、benchmark、validation 出现重大变化时应保持同步。
 - `docs` 下包含比赛设计和提交文档；除非任务与文档或交付物相关，否则不要随意修改。

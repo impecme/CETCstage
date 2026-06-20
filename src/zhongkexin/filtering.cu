@@ -44,6 +44,8 @@ namespace
     constexpr int kMaxLfilterZiOrder = 512;
     constexpr int kMaxSosSections = 64;
     constexpr int kMaxRank = 8;
+    constexpr int kWienerTileSize = 16;
+    constexpr std::size_t kMaxWienerTiledWindow = 31;
     constexpr float kPi = 3.141592653589793238462643383279502884;
 
     thread_local float g_last_kernel_ms = 0.0;
@@ -879,6 +881,75 @@ namespace
             }
         }
 
+        const float mean = sum / window_volume;
+        local_mean[flat] = mean;
+        local_variance[flat] = sum_sq / window_volume - mean * mean;
+    }
+
+    __global__ void wiener_local_stats_2d_tiled_kernel(
+        const float *input,
+        std::size_t rows,
+        std::size_t cols,
+        std::size_t window_rows,
+        std::size_t window_cols,
+        float window_volume,
+        float *local_mean,
+        float *local_variance)
+    {
+        extern __shared__ float tile[];
+        const std::size_t half_rows = window_rows / 2;
+        const std::size_t half_cols = window_cols / 2;
+        const std::size_t tile_rows = static_cast<std::size_t>(blockDim.y) + 2 * half_rows;
+        const std::size_t tile_cols = static_cast<std::size_t>(blockDim.x) + 2 * half_cols;
+        const std::size_t tile_size = tile_rows * tile_cols;
+        const std::size_t thread_index =
+            static_cast<std::size_t>(threadIdx.y) * blockDim.x + threadIdx.x;
+        const std::size_t thread_count = static_cast<std::size_t>(blockDim.x) * blockDim.y;
+        const std::size_t block_row = static_cast<std::size_t>(blockIdx.y) * blockDim.y;
+        const std::size_t block_col = static_cast<std::size_t>(blockIdx.x) * blockDim.x;
+
+        for (std::size_t index = thread_index; index < tile_size; index += thread_count)
+        {
+            const std::size_t tile_row = index / tile_cols;
+            const std::size_t tile_col = index - tile_row * tile_cols;
+            const long long input_row = static_cast<long long>(block_row + tile_row) -
+                                        static_cast<long long>(half_rows);
+            const long long input_col = static_cast<long long>(block_col + tile_col) -
+                                        static_cast<long long>(half_cols);
+            float value = 0.0f;
+            if (input_row >= 0 && input_col >= 0 &&
+                static_cast<std::size_t>(input_row) < rows &&
+                static_cast<std::size_t>(input_col) < cols)
+            {
+                value = input[static_cast<std::size_t>(input_row) * cols +
+                              static_cast<std::size_t>(input_col)];
+            }
+            tile[index] = value;
+        }
+        __syncthreads();
+
+        const std::size_t output_row = block_row + threadIdx.y;
+        const std::size_t output_col = block_col + threadIdx.x;
+        if (output_row >= rows || output_col >= cols)
+        {
+            return;
+        }
+
+        float sum = 0.0f;
+        float sum_sq = 0.0f;
+        for (std::size_t row = 0; row <= 2 * half_rows; ++row)
+        {
+            const std::size_t tile_offset =
+                (static_cast<std::size_t>(threadIdx.y) + row) * tile_cols + threadIdx.x;
+            for (std::size_t col = 0; col <= 2 * half_cols; ++col)
+            {
+                const float value = tile[tile_offset + col];
+                sum += value;
+                sum_sq += value * value;
+            }
+        }
+
+        const std::size_t flat = output_row * cols + output_col;
         const float mean = sum / window_volume;
         local_mean[flat] = mean;
         local_variance[flat] = sum_sq / window_volume - mean * mean;
@@ -3612,17 +3683,48 @@ namespace cusignal
 
                 ScopedZxGpuEvents events;
                 g_last_kernel_ms = static_cast<float>(events.measure([&]() {
-                    wiener_local_stats_kernel<<<block_count(image_device.size()), kThreadsPerBlock>>>(
-                        image_device.data(),
-                        image_device.size(),
-                        g_workspace.wiener_shape_buffer.get(),
-                        g_workspace.wiener_stride_buffer.get(),
-                        g_workspace.wiener_mysize_buffer.get(),
-                        image_device.rank(),
-                        window_volume,
-                        g_workspace.real_array_b.data(),
-                        g_workspace.real_array_c.data());
-                    check_kernel_launch("wiener_local_stats_kernel");
+                    const bool use_2d_tiled_stats =
+                        image_device.rank() == 2 &&
+                        mysize[0] % 2 == 1 &&
+                        mysize[1] % 2 == 1 &&
+                        mysize[0] <= kMaxWienerTiledWindow &&
+                        mysize[1] <= kMaxWienerTiledWindow;
+                    if (use_2d_tiled_stats)
+                    {
+                        const dim3 threads(kWienerTileSize, kWienerTileSize);
+                        const dim3 blocks(
+                            static_cast<unsigned int>((image_device.shape()[1] + kWienerTileSize - 1) /
+                                                      kWienerTileSize),
+                            static_cast<unsigned int>((image_device.shape()[0] + kWienerTileSize - 1) /
+                                                      kWienerTileSize));
+                        const std::size_t shared_rows = kWienerTileSize + 2 * (mysize[0] / 2);
+                        const std::size_t shared_cols = kWienerTileSize + 2 * (mysize[1] / 2);
+                        const std::size_t shared_bytes = shared_rows * shared_cols * sizeof(float);
+                        wiener_local_stats_2d_tiled_kernel<<<blocks, threads, shared_bytes>>>(
+                            image_device.data(),
+                            image_device.shape()[0],
+                            image_device.shape()[1],
+                            mysize[0],
+                            mysize[1],
+                            window_volume,
+                            g_workspace.real_array_b.data(),
+                            g_workspace.real_array_c.data());
+                        check_kernel_launch("wiener_local_stats_2d_tiled_kernel");
+                    }
+                    else
+                    {
+                        wiener_local_stats_kernel<<<block_count(image_device.size()), kThreadsPerBlock>>>(
+                            image_device.data(),
+                            image_device.size(),
+                            g_workspace.wiener_shape_buffer.get(),
+                            g_workspace.wiener_stride_buffer.get(),
+                            g_workspace.wiener_mysize_buffer.get(),
+                            image_device.rank(),
+                            window_volume,
+                            g_workspace.real_array_b.data(),
+                            g_workspace.real_array_c.data());
+                        check_kernel_launch("wiener_local_stats_kernel");
+                    }
 
                     float resolved_noise = noise;
                     if (noise < 0.0)

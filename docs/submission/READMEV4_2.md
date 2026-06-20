@@ -5,10 +5,10 @@
 - 版本名称：`V4.2 Task1/Task2 依赖算子闭环`
 - 完成时间：`2026-06-17`
 - 当前状态：已完成
-- 对应计划：`docs/design/V4_2_plan.md`
-- 依赖矩阵：`docs/design/zhongkexin_task_dependency_matrix.md`
-- 状态记录：`docs/design/zhongkexin_migration_status.md`
-- 修改台账：`docs/design/zhongkexin_migration_change_log.md`
+- 对应计划：`docs/migration/zhongkexin/plans/V4_2_plan.md`
+- 依赖矩阵：`docs/migration/zhongkexin/task_dependency_matrix.md`
+- 状态记录：`docs/migration/zhongkexin/status.md`
+- 修改台账：`docs/migration/zhongkexin/change_log.md`
 
 ## 版本目标
 
@@ -25,7 +25,7 @@ V4.2 承接 V4.1，把 Task1/Task2 从“任务级 demo 可运行”推进到“
 ## 核心改动
 
 - 新增第二阶段统一入口：`scripts/platform/run_zhongkexin_stage2.sh`。
-- 新增 Task1/Task2 依赖算子矩阵：`docs/design/zhongkexin_task_dependency_matrix.md`。
+- 新增 Task1/Task2 依赖算子矩阵：`docs/migration/zhongkexin/task_dependency_matrix.md`。
 - `scripts/test/run_all_tests.sh` 增加 `--platform NVIDIA|ZHONGKEXIN`，中科芯路径配置时显式传入 `-DCMAKE_CXX_COMPILER=<dlcc>`。
 - 顶层 CMake 新增 `cusignal_configure_cuda_source_target`，统一处理 unit test support `.cu` 在 NVIDIA CUDA language 与中科芯 `dlcc -x cuda` CXX 编译模型下的差异。
 - 所有 `tests/unit/*/*_test_support.cu` 目标改为复用平台感知 helper，避免中科芯路径 support 静态库缺对象。
@@ -95,7 +95,7 @@ STAGE2_SCALES=1,2,3,4,5,6 scripts/platform/run_zhongkexin_stage2.sh 2>&1 | tee s
 
 ```bash
 bash -n copy_to_container.sh replace_container_project.sh scripts/platform/prepare_zhongkexin_deps.sh scripts/platform/run_zhongkexin_stage1.sh scripts/platform/run_zhongkexin_stage2.sh scripts/test/run_all_tests.sh scripts/test/run_task_demos.sh
-git diff --check -- CMakeLists.txt tests/unit scripts/test/run_all_tests.sh scripts/platform/run_zhongkexin_stage2.sh docs/design/zhongkexin_task_dependency_matrix.md docs/design/V4_2_plan.md docs/design/zhongkexin_migration_status.md docs/design/zhongkexin_migration_change_log.md README.md AGENT.md copy_to_container.sh replace_container_project.sh
+git diff --check -- CMakeLists.txt tests/unit scripts/test/run_all_tests.sh scripts/platform/run_zhongkexin_stage2.sh docs/migration/zhongkexin/task_dependency_matrix.md docs/migration/zhongkexin/plans/V4_2_plan.md docs/migration/zhongkexin/status.md docs/migration/zhongkexin/change_log.md README.md AGENT.md copy_to_container.sh replace_container_project.sh
 scripts/test/run_all_tests.sh --platform ZHONGKEXIN --module radartools --operator pulse_compression --case-set accuracy --list
 ```
 
@@ -107,12 +107,12 @@ V4.2 已满足关闭条件：
 - Task1/Task2 L1-L6 sweep 通过。
 - scale CSV/JSON/Markdown 和 Task1/Task2 图件已生成。
 - Stage2 期间出现的构建、链接、算子 accuracy、scale 图件问题均已入账并关闭。
-- `docs/design/zhongkexin_migration_status.md` 和 `docs/design/zhongkexin_migration_change_log.md` 已根据关闭证据更新。
+- `docs/migration/zhongkexin/status.md` 和 `docs/migration/zhongkexin/change_log.md` 已根据关闭证据更新。
 
 ## 遗留风险
 
 - 中科芯 spectrogram PSD 当前使用 C2C 路径保证 correctness；R2C PSD 快路径性能优化留到 V4.4 评估。
-- V4.2 覆盖 Task1/Task2 直接依赖范围，不覆盖全量公开算子；V4.3 已新增 `docs/design/zhongkexin_full_operator_matrix.md` 和 `scripts/platform/run_zhongkexin_stage3.sh` 继续推进。
+- V4.2 覆盖 Task1/Task2 直接依赖范围，不覆盖全量公开算子；V4.3 已新增 `docs/migration/zhongkexin/full_operator_matrix.md` 和 `scripts/platform/run_zhongkexin_stage3.sh` 继续推进。
 - 后续仍需确认 NVIDIA 默认路径的构建 sanity，避免中科芯兼容改动影响默认平台。
 
 ## 下一步

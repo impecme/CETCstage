@@ -1,0 +1,8 @@
+[all-ops-plot] rows=1 operators=1
+[all-ops-plot] wrote /CETC/data/reports/unit/benchmarks/v5_gpu_mem_probe/figures/latest_all_ops_plot_summary.csv
+[all-ops-plot] wrote /CETC/data/reports/unit/benchmarks/v5_gpu_mem_probe/figures/figure_1_accuracy_performance_overview.png
+[all-ops-plot] wrote /CETC/data/reports/unit/benchmarks/v5_gpu_mem_probe/figures/figure_2_cpu_gpu_e2e_time_heatmaps.png
+[all-ops-plot] wrote /CETC/data/reports/unit/benchmarks/v5_gpu_mem_probe/figures/figure_3_e2e_speedup_heatmap.png
+[all-ops-plot] wrote /CETC/data/reports/unit/benchmarks/v5_gpu_mem_probe/figures/figure_4_largest_scale_cpu_vs_gpu_scatter.png
+[all-ops-plot] wrote /CETC/data/reports/unit/benchmarks/v5_gpu_mem_probe/figures/figure_5_largest_scale_speedup_rank.png
+[all-ops-plot] wrote /CETC/data/reports/unit/benchmarks/v5_gpu_mem_probe/figures/operator_figures/filtering__wiener.png

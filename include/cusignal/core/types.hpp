@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <complex>
 #include <cstddef>
 #include <cstdlib>
@@ -197,6 +198,68 @@ namespace cusignal
 
         namespace detail
         {
+            struct DeviceStorageCacheStats
+            {
+                std::size_t allocation_calls = 0;
+                std::size_t allocation_bytes = 0;
+                std::size_t cache_hits = 0;
+                std::size_t cache_misses = 0;
+                std::size_t recycled_blocks = 0;
+                std::size_t recycled_bytes = 0;
+                std::size_t evicted_blocks = 0;
+                std::size_t evicted_bytes = 0;
+                std::size_t freed_blocks = 0;
+                std::size_t freed_bytes = 0;
+                std::size_t cached_blocks = 0;
+                std::size_t cached_bytes = 0;
+                std::size_t peak_cached_bytes = 0;
+            };
+
+            inline DeviceStorageCacheStats &device_storage_cache_stats()
+            {
+                thread_local DeviceStorageCacheStats *stats = new DeviceStorageCacheStats();
+                return *stats;
+            }
+
+            inline std::size_t env_size_or_default(const char *name, std::size_t default_value)
+            {
+                const char *value = std::getenv(name);
+                if (value == nullptr || *value == '\0')
+                {
+                    return default_value;
+                }
+                char *end = nullptr;
+                const unsigned long long parsed = std::strtoull(value, &end, 10);
+                if (end == value || parsed == 0)
+                {
+                    return default_value;
+                }
+                return static_cast<std::size_t>(parsed);
+            }
+
+            inline std::size_t max_cached_blocks()
+            {
+                static const std::size_t value =
+                    env_size_or_default("CUSIGNAL_DEVICE_STORAGE_CACHE_MAX_BLOCKS", 8);
+                return value;
+            }
+
+            inline std::size_t max_cached_bytes()
+            {
+                static const std::size_t value =
+                    env_size_or_default("CUSIGNAL_DEVICE_STORAGE_CACHE_MAX_MB", 512) *
+                    1024ULL * 1024ULL;
+                return value;
+            }
+
+            inline std::size_t max_single_cached_bytes()
+            {
+                static const std::size_t value =
+                    env_size_or_default("CUSIGNAL_DEVICE_STORAGE_CACHE_MAX_SINGLE_MB", 256) *
+                    1024ULL * 1024ULL;
+                return value;
+            }
+
             template <typename T>
             struct DeviceStorage
             {
@@ -254,12 +317,23 @@ namespace cusignal
             template <typename T>
             void trim_device_storage_cache(DeviceStorageCache<T> &cache)
             {
-                constexpr std::size_t kMaxCachedBlocks = 8;
-                constexpr std::size_t kMaxCachedBytes = 512ULL * 1024ULL * 1024ULL;
-                while ((!cache.blocks.empty() && cache.blocks.size() > kMaxCachedBlocks) ||
-                       cache.bytes > kMaxCachedBytes)
+                const std::size_t block_limit = max_cached_blocks();
+                const std::size_t byte_limit = max_cached_bytes();
+                while ((!cache.blocks.empty() && cache.blocks.size() > block_limit) ||
+                       cache.bytes > byte_limit)
                 {
-                    cache.bytes -= device_storage_bytes<T>(cache.blocks.front()->capacity);
+                    const std::size_t bytes =
+                        device_storage_bytes<T>(cache.blocks.front()->capacity);
+                    cache.bytes -= bytes;
+                    auto &stats = device_storage_cache_stats();
+                    stats.evicted_blocks += 1;
+                    stats.evicted_bytes += bytes;
+                    if (stats.cached_blocks != 0)
+                    {
+                        stats.cached_blocks -= 1;
+                    }
+                    stats.cached_bytes =
+                        stats.cached_bytes >= bytes ? stats.cached_bytes - bytes : 0;
                     cache.blocks.erase(cache.blocks.begin());
                 }
             }
@@ -272,16 +346,22 @@ namespace cusignal
                     return;
                 }
 
-                constexpr std::size_t kMaxSingleCachedBytes = 256ULL * 1024ULL * 1024ULL;
                 const std::size_t bytes = device_storage_bytes<T>(storage->capacity);
                 try
                 {
                     if (device_storage_cache_enabled() && storage->data != nullptr &&
-                        storage->capacity != 0 && bytes <= kMaxSingleCachedBytes)
+                        storage->capacity != 0 && bytes <= max_single_cached_bytes())
                     {
                         auto &cache = device_storage_cache<T>();
                         cache.bytes += bytes;
                         cache.blocks.emplace_back(storage);
+                        auto &stats = device_storage_cache_stats();
+                        stats.recycled_blocks += 1;
+                        stats.recycled_bytes += bytes;
+                        stats.cached_blocks += 1;
+                        stats.cached_bytes += bytes;
+                        stats.peak_cached_bytes =
+                            std::max(stats.peak_cached_bytes, stats.cached_bytes);
                         trim_device_storage_cache(cache);
                         return;
                     }
@@ -289,6 +369,9 @@ namespace cusignal
                 catch (...)
                 {
                 }
+                auto &stats = device_storage_cache_stats();
+                stats.freed_blocks += 1;
+                stats.freed_bytes += bytes;
                 delete storage;
             }
 
@@ -315,12 +398,23 @@ namespace cusignal
                     if (best != cache.blocks.end())
                     {
                         std::unique_ptr<DeviceStorage<T>> storage = std::move(*best);
-                        cache.bytes -= device_storage_bytes<T>(storage->capacity);
+                        const std::size_t bytes =
+                            device_storage_bytes<T>(storage->capacity);
+                        cache.bytes -= bytes;
                         cache.blocks.erase(best);
+                        auto &stats = device_storage_cache_stats();
+                        stats.cache_hits += 1;
+                        if (stats.cached_blocks != 0)
+                        {
+                            stats.cached_blocks -= 1;
+                        }
+                        stats.cached_bytes =
+                            stats.cached_bytes >= bytes ? stats.cached_bytes - bytes : 0;
                         return std::shared_ptr<DeviceStorage<T>>(
                             storage.release(),
                             recycle_device_storage<T>);
                     }
+                    device_storage_cache_stats().cache_misses += 1;
                 }
 
                 std::unique_ptr<DeviceStorage<T>> storage(new DeviceStorage<T>());
@@ -330,6 +424,9 @@ namespace cusignal
                     platform::device_malloc(
                         reinterpret_cast<void **>(&storage->data),
                         capacity * sizeof(T));
+                    auto &stats = device_storage_cache_stats();
+                    stats.allocation_calls += 1;
+                    stats.allocation_bytes += capacity * sizeof(T);
                 }
                 storage->capacity = capacity;
                 return std::shared_ptr<DeviceStorage<T>>(
@@ -337,6 +434,51 @@ namespace cusignal
                     recycle_device_storage<T>);
             }
         } // namespace detail
+
+        struct DeviceStorageCacheStatsSnapshot
+        {
+            std::size_t allocation_calls = 0;
+            std::size_t allocation_bytes = 0;
+            std::size_t cache_hits = 0;
+            std::size_t cache_misses = 0;
+            std::size_t recycled_blocks = 0;
+            std::size_t recycled_bytes = 0;
+            std::size_t evicted_blocks = 0;
+            std::size_t evicted_bytes = 0;
+            std::size_t freed_blocks = 0;
+            std::size_t freed_bytes = 0;
+            std::size_t cached_blocks = 0;
+            std::size_t cached_bytes = 0;
+            std::size_t peak_cached_bytes = 0;
+            std::size_t max_cached_blocks = 0;
+            std::size_t max_cached_bytes = 0;
+            std::size_t max_single_cached_bytes = 0;
+            bool cache_enabled = true;
+        };
+
+        inline DeviceStorageCacheStatsSnapshot device_storage_cache_stats_snapshot()
+        {
+            const auto &stats = detail::device_storage_cache_stats();
+            DeviceStorageCacheStatsSnapshot snapshot;
+            snapshot.allocation_calls = stats.allocation_calls;
+            snapshot.allocation_bytes = stats.allocation_bytes;
+            snapshot.cache_hits = stats.cache_hits;
+            snapshot.cache_misses = stats.cache_misses;
+            snapshot.recycled_blocks = stats.recycled_blocks;
+            snapshot.recycled_bytes = stats.recycled_bytes;
+            snapshot.evicted_blocks = stats.evicted_blocks;
+            snapshot.evicted_bytes = stats.evicted_bytes;
+            snapshot.freed_blocks = stats.freed_blocks;
+            snapshot.freed_bytes = stats.freed_bytes;
+            snapshot.cached_blocks = stats.cached_blocks;
+            snapshot.cached_bytes = stats.cached_bytes;
+            snapshot.peak_cached_bytes = stats.peak_cached_bytes;
+            snapshot.max_cached_blocks = detail::max_cached_blocks();
+            snapshot.max_cached_bytes = detail::max_cached_bytes();
+            snapshot.max_single_cached_bytes = detail::max_single_cached_bytes();
+            snapshot.cache_enabled = detail::device_storage_cache_enabled();
+            return snapshot;
+        }
 
         /**
          * @brief 一维 device 信号容器。

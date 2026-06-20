@@ -6,9 +6,9 @@
 - 完成时间：`2026-06-16`
 - 验证平台：中科芯 ZQ500-Q docker 环境
 - 项目路径：`/CETC`
-- 对应计划：`docs/design/V4_1_plan.md`
-- 状态记录：`docs/design/zhongkexin_migration_status.md`
-- 修改台账：`docs/design/zhongkexin_migration_change_log.md`
+- 对应计划：`docs/migration/zhongkexin/plans/V4_1_plan.md`
+- 状态记录：`docs/migration/zhongkexin/status.md`
+- 修改台账：`docs/migration/zhongkexin/change_log.md`
 
 ## 阶段目标
 
@@ -52,7 +52,7 @@ scripts/test/run_task_demos.sh --build-dir build-zx --no-build --repeat 3 --requ
 
 ```bash
 bash -n copy_to_container.sh replace_container_project.sh scripts/platform/prepare_zhongkexin_deps.sh scripts/platform/run_zhongkexin_stage1.sh scripts/test/run_task_demos.sh
-git diff --check -- docs/design/zhongkexin_migration_status.md docs/design/zhongkexin_migration_change_log.md
+git diff --check -- docs/migration/zhongkexin/status.md docs/migration/zhongkexin/change_log.md
 ```
 
 ## 验证结果
@@ -87,8 +87,8 @@ git diff --check -- docs/design/zhongkexin_migration_status.md docs/design/zhong
 | Task2 metrics | `data/reports/demo/task2_features/latest_metrics.json` | Task2 correctness、timing、资源和稳定性指标 |
 | Task2 阶段耗时 | `data/reports/demo/task2_features/latest_stage_timings.csv` | Task2 CPU/GPU 分阶段耗时 |
 | Task2 图件 | `data/reports/demo/task2_features/figures/` | Task2 可视化 PNG 和 README |
-| 迁移状态 | `docs/design/zhongkexin_migration_status.md` | V4.1 已完成，V4.2 进入条件已满足 |
-| 迁移台账 | `docs/design/zhongkexin_migration_change_log.md` | V4.1 修改、验证和遗留项记录 |
+| 迁移状态 | `docs/migration/zhongkexin/status.md` | V4.1 已完成，V4.2 进入条件已满足 |
+| 迁移台账 | `docs/migration/zhongkexin/change_log.md` | V4.1 修改、验证和遗留项记录 |
 
 ## 完成判定
 

@@ -5,8 +5,8 @@
 - 版本名称：`V4.4 性能、资源与稳定性收敛`
 - 当前日期：`2026-06-17`
 - 当前状态：已关闭
-- 对应计划：`docs/design/V4_4_plan.md`
-- 修改台账：`docs/design/zhongkexin_migration_change_log.md`
+- 对应计划：`docs/migration/zhongkexin/plans/V4_4_plan.md`
+- 修改台账：`docs/migration/zhongkexin/change_log.md`
 
 ## 版本目标
 
