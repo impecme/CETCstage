@@ -2,7 +2,7 @@
 
 ## 状态与目标
 
-- 状态：待开始；进入条件：V5.2 关闭；对应交付：`docs/submission/READMEV5_3.md`。
+- 状态：进行中；V5.2 已关闭；对应交付：`docs/submission/READMEV5_3.md`。
 - 目标：任务每一步均调用公共算子库，逐步记录 CPU/GPU 时间和精度，并优化两任务与 27 个依赖算子。
 
 ## 工作包
@@ -19,6 +19,18 @@
 
 ## 步骤审计与公共化
 
+V5.3-01 固定入口：
+
+```bash
+cd /CETC
+python3 scripts/test/audit_task_steps.py \
+  --contracts scripts/test/task_step_contracts.json \
+  --output-dir data/reports/zhongkexin/v5_3_task_step_audit \
+  --summary-markdown /tmp/v5_3_task_step_audit.md
+```
+
+预期 `status=passed`、2 个任务、16 个总步骤、14 个计算步骤。审计通过表示映射完整，不表示 11 个 mixed/private 步骤已经公共化。
+
 - Task1 至少审计脉冲压缩、Doppler、fftshift、power map、CA-CFAR、ambgfun 和最终检测。
 - Task2 至少审计信号生成、滤波、解调、相关、spectrogram、CWT、特征融合、峰值、测量转换和 Kalman。
 - `power_map`、`fftshift`、归一化、特征融合等任务私有函数必须迁入语义匹配模块，并补 CPU/GPU 同签名接口与独立测试。
@@ -32,6 +44,18 @@
 - GPU E2E 包含该步骤必要传输；kernel 使用 event 计时；总时间由同一批步骤求和。
 - 即使 CPU 更快也必须执行 GPU 路径，不允许按规模选择 CPU 替代 GPU。
 - 输出固定为 `latest_step_metrics.csv`、`latest_step_metrics.json` 和任务 Markdown 表。
+
+V5.3-02 验证入口：
+
+```bash
+cd /CETC
+scripts/test/run_task_demos.sh --build-dir build-zx --build --repeat 1 --skip-timing-validation
+python3 scripts/test/validate_task_step_reports.py \
+  --report-root data/reports/demo \
+  --output data/reports/zhongkexin/v5_3_step_reports_summary.json
+```
+
+不得用 E2E 时间填充缺失的 kernel 字段；未公共化步骤的不可用误差必须显式标记。该 smoke 跳过历史 timing gate，但保留实际耗时并登记热点，不得据此宣布性能通过。
 
 ## 基线命令
 

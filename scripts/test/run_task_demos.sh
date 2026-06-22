@@ -1,20 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BUILD_DIR="build"
+BUILD_DIR="build-zx"
 DO_BUILD=1
 REPEAT=5
 LEAK_CHECK=0
 SCALE_SWEEP=0
 SCALES="1,2,3,4,5,6"
 REQUIRE_VISUALIZATION_DEPS=0
+SKIP_TIMING_VALIDATION=0
 
 usage() {
   cat <<'USAGE'
 Usage: scripts/test/run_task_demos.sh [options]
 
 Options:
-  --build-dir DIR       Build directory (default: build)
+  --build-dir DIR       Build directory (default: build-zx)
   --build               Build task demo targets before running (default)
   --no-build            Skip build
   --repeat N            Repeat count passed to each demo (default: 5)
@@ -23,6 +24,8 @@ Options:
   --leak-check          Also run compute-sanitizer memcheck when available
   --require-visualization-deps
                         Fail instead of skipping when numpy/matplotlib/scipy are missing
+  --skip-timing-validation
+                        Keep timing metrics but skip task timing pass/fail gates
   -h, --help            Show this help
 USAGE
 }
@@ -59,6 +62,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --require-visualization-deps)
       REQUIRE_VISUALIZATION_DEPS=1
+      shift
+      ;;
+    --skip-timing-validation)
+      SKIP_TIMING_VALIDATION=1
       shift
       ;;
     -h|--help)
@@ -102,6 +109,22 @@ LEAK_ROOT="${REPORT_ROOT}/leak_check"
 mkdir -p "${REPORT_ROOT}" "${LEAK_ROOT}"
 
 if [[ "${DO_BUILD}" -eq 1 ]]; then
+  if ! command -v dlcc >/dev/null 2>&1 && [[ -f /zq500/sdk/env.sh ]]; then
+    set +u
+    # shellcheck source=/dev/null
+    source /zq500/sdk/env.sh
+    set -u
+  fi
+  ZHONGKEXIN_CXX="${ZHONGKEXIN_CXX_COMPILER:-$(command -v dlcc || true)}"
+  if [[ -z "${ZHONGKEXIN_CXX}" ]]; then
+    echo "[task-demos] error: dlcc was not found for ZHONGKEXIN build" >&2
+    exit 2
+  fi
+  echo "[task-demos] configuring ${BUILD_PATH} with ${ZHONGKEXIN_CXX}"
+  cmake -S "${REPO_ROOT}" -B "${BUILD_PATH}" \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCUSIGNAL_PLATFORM=ZHONGKEXIN \
+    -DCMAKE_CXX_COMPILER="${ZHONGKEXIN_CXX}"
   cmake --build "${BUILD_PATH}" --target task1_radar_demo task2_features_demo --parallel
 fi
 
@@ -154,6 +177,9 @@ run_demo() {
   local viz="$3"
   local scale_level="${4:-}"
   local args=(--repeat "${REPEAT}" --invalid-input-checks)
+  if [[ "${SKIP_TIMING_VALIDATION}" -eq 1 ]]; then
+    args+=(--skip-timing-validation)
+  fi
   if [[ -n "${scale_level}" ]]; then
     args+=(--scale-level "${scale_level}")
   fi
@@ -167,6 +193,9 @@ run_scale_case() {
   local exe="$2"
   local scale_level="$3"
   local args=(--repeat "${REPEAT}" --scale-level "${scale_level}" --invalid-input-checks)
+  if [[ "${SKIP_TIMING_VALIDATION}" -eq 1 ]]; then
+    args+=(--skip-timing-validation)
+  fi
   local scale_dir="${REPORT_ROOT}/${name}/scales/L${scale_level}"
   echo "[task-demos] scale L${scale_level} ${name}: ${exe} ${args[*]}"
   "${exe}" "${args[@]}"
@@ -174,6 +203,9 @@ run_scale_case() {
   cp "${REPORT_ROOT}/${name}/latest_metrics.json" "${scale_dir}/latest_metrics.json"
   cp "${REPORT_ROOT}/${name}/latest_summary.md" "${scale_dir}/latest_summary.md"
   cp "${REPORT_ROOT}/${name}/latest_stage_timings.csv" "${scale_dir}/latest_stage_timings.csv"
+  cp "${REPORT_ROOT}/${name}/latest_step_metrics.csv" "${scale_dir}/latest_step_metrics.csv"
+  cp "${REPORT_ROOT}/${name}/latest_step_metrics.json" "${scale_dir}/latest_step_metrics.json"
+  cp "${REPORT_ROOT}/${name}/latest_step_metrics.md" "${scale_dir}/latest_step_metrics.md"
   if [[ -f "${GENERATED_ROOT}/${name}/input/scenario.json" ]]; then
     cp "${GENERATED_ROOT}/${name}/input/scenario.json" "${scale_dir}/input_scenario.json"
   fi
@@ -198,9 +230,13 @@ if [[ "${LEAK_CHECK}" -eq 1 ]]; then
   cp "${REPORT_ROOT}/task1_radar/latest_metrics.json" "${LEAK_ROOT}/task1_radar_latest_metrics.normal.json"
   cp "${REPORT_ROOT}/task1_radar/latest_summary.md" "${LEAK_ROOT}/task1_radar_latest_summary.normal.md"
   cp "${REPORT_ROOT}/task1_radar/latest_stage_timings.csv" "${LEAK_ROOT}/task1_radar_latest_stage_timings.normal.csv"
+  cp "${REPORT_ROOT}/task1_radar/latest_step_metrics.csv" "${LEAK_ROOT}/task1_radar_latest_step_metrics.normal.csv"
+  cp "${REPORT_ROOT}/task1_radar/latest_step_metrics.json" "${LEAK_ROOT}/task1_radar_latest_step_metrics.normal.json"
   cp "${REPORT_ROOT}/task2_features/latest_metrics.json" "${LEAK_ROOT}/task2_features_latest_metrics.normal.json"
   cp "${REPORT_ROOT}/task2_features/latest_summary.md" "${LEAK_ROOT}/task2_features_latest_summary.normal.md"
   cp "${REPORT_ROOT}/task2_features/latest_stage_timings.csv" "${LEAK_ROOT}/task2_features_latest_stage_timings.normal.csv"
+  cp "${REPORT_ROOT}/task2_features/latest_step_metrics.csv" "${LEAK_ROOT}/task2_features_latest_step_metrics.normal.csv"
+  cp "${REPORT_ROOT}/task2_features/latest_step_metrics.json" "${LEAK_ROOT}/task2_features_latest_step_metrics.normal.json"
   if command -v compute-sanitizer >/dev/null 2>&1; then
     COMPUTE_SANITIZER_STATUS="passed"
     for item in "task1_radar:${TASK1_EXE}" "task2_features:${TASK2_EXE}"; do
@@ -218,9 +254,13 @@ if [[ "${LEAK_CHECK}" -eq 1 ]]; then
   cp "${LEAK_ROOT}/task1_radar_latest_metrics.normal.json" "${REPORT_ROOT}/task1_radar/latest_metrics.json"
   cp "${LEAK_ROOT}/task1_radar_latest_summary.normal.md" "${REPORT_ROOT}/task1_radar/latest_summary.md"
   cp "${LEAK_ROOT}/task1_radar_latest_stage_timings.normal.csv" "${REPORT_ROOT}/task1_radar/latest_stage_timings.csv"
+  cp "${LEAK_ROOT}/task1_radar_latest_step_metrics.normal.csv" "${REPORT_ROOT}/task1_radar/latest_step_metrics.csv"
+  cp "${LEAK_ROOT}/task1_radar_latest_step_metrics.normal.json" "${REPORT_ROOT}/task1_radar/latest_step_metrics.json"
   cp "${LEAK_ROOT}/task2_features_latest_metrics.normal.json" "${REPORT_ROOT}/task2_features/latest_metrics.json"
   cp "${LEAK_ROOT}/task2_features_latest_summary.normal.md" "${REPORT_ROOT}/task2_features/latest_summary.md"
   cp "${LEAK_ROOT}/task2_features_latest_stage_timings.normal.csv" "${REPORT_ROOT}/task2_features/latest_stage_timings.csv"
+  cp "${LEAK_ROOT}/task2_features_latest_step_metrics.normal.csv" "${REPORT_ROOT}/task2_features/latest_step_metrics.csv"
+  cp "${LEAK_ROOT}/task2_features_latest_step_metrics.normal.json" "${REPORT_ROOT}/task2_features/latest_step_metrics.json"
 fi
 
 TASK_DEMO_REPEAT="${REPEAT}" \

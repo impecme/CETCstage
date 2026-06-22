@@ -2,7 +2,7 @@
 
 ## 状态与目标
 
-- 状态：进行中；对应交付：`docs/submission/READMEV5_2.md`。
+- 状态：已完成；对应交付：`docs/submission/READMEV5_2.md`。
 - 目标：在任务和算子优化前关闭目录、算子契约、五种实数类型、`complex64` 和中科芯完整 API 兼容基础。
 
 ## 工作包
@@ -59,6 +59,8 @@ python3 scripts/test/validate_operator_sets.py \
 - 仅浮点算子把整数标为 `not_applicable`，测试必须验证明确异常或编译期不提供重载。
 - complex 输出算子仅登记 `complex64`；精度字段固定包含 real、imag、magnitude/overall。
 - 每个适用组合必须有 CPU/GPU 对应；不允许 CPU 支持但 GPU 静默回退 CPU。
+- 本工作包冻结目标类型、输出规则、累加/溢出策略和当前实现状态，不在一个 patch 中模板化 81 个算子。
+- 具体实现和 dtype 测试按优先级随 V5.3 task27、V5.4 core53、V5.5 extended28 分批关闭；契约中的 `current_types` 用于区分当前能力和目标能力。
 
 ## V5.2-05/06 平台兼容
 
@@ -69,11 +71,12 @@ python3 scripts/platform/generate_zx_compat_matrix.py \
   --driver "复赛说明文件/CUDA 11.7 driver api.xlsx" \
   --runtime "复赛说明文件/CUDA 11.7 runtime API.xlsx" \
   --libraries "复赛说明文件/科学计算库实现列表.xlsx" \
-  --output data/reports/zhongkexin/v5_2_compatibility
+  --output data/reports/zhongkexin/v5_2_compatibility \
+  --summary-markdown /tmp/v5_2_platform_compatibility.md
 ```
 
 - 脚本使用 Python 标准库读取 XLSX ZIP/XML，不新增容器 Python 依赖。
-- 输出 `compatibility.csv`、`compatibility.json`、`compatibility.md` 和 `forbidden_apis.txt`。
+- 输出 `compatibility.csv`、`compatibility.json`、`compatibility.md`、`summary.json` 和 `forbidden_apis.txt`。
 - 每行保留 source、sheet、row、module、API、support、restriction、probe_mode、probe_status。
 - CMake 固定目标：`zx_compat_compile_probes`、`zx_compat_runtime_probes`、`zx_forbidden_api_scan`。
 - supported 运行安全最小用例；partial 验证限制边界；unsupported 只做声明/禁止引用检查。
@@ -93,6 +96,16 @@ ctest --test-dir build-zx -R '^(cusignal_type_contract|zx_compat_runtime_)' --ou
 ```
 
 ## 阶段关闭与回传
+
+V5.2-07 统一入口：
+
+```bash
+cd /CETC
+scripts/platform/run_v5_2_gate.sh 2>&1 | tee /tmp/v5_2_gate.log
+cat data/reports/zhongkexin/v5_2_gate_latest/summary.json
+```
+
+该入口会重建并执行 81 个算子的 accuracy case，以及类型和平台 CTest；任何失败均阻止生成通过结论。
 
 用户回传：构建日志、CTest 输出、四个集合计数、81 条契约状态汇总、兼容矩阵 summary、禁止 API 扫描结果。
 

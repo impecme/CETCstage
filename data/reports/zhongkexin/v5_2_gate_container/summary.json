@@ -1,0 +1,679 @@
+{
+  "status": "passed",
+  "checks": {
+    "registry_81": true,
+    "operator_sets": true,
+    "interfaces_81": true,
+    "type_contracts_81": true,
+    "compatibility_900_rows": true,
+    "api_usage": true,
+    "operator_accuracy_81": true,
+    "type_and_platform_ctest": true
+  },
+  "operator_count": 81,
+  "operator_accuracy_passed_count": 81,
+  "missing_reports": [],
+  "failed_operators": [],
+  "compatibility": {
+    "source_row_count": 900,
+    "api_row_count": 816,
+    "unique_api_count": 830,
+    "forbidden_api_count": 315
+  },
+  "api_usage": {
+    "used_api_count": 39,
+    "violation_count": 0,
+    "unresolved_count": 0,
+    "documented_exception_count": 3
+  },
+  "operators": [
+    {
+      "operator": "waveforms/chirp",
+      "passed": true,
+      "accuracy_cases": 6,
+      "max_abs_error": 1.92219e-06,
+      "mixed_error": 1.92219e-06,
+      "report": "data/reports/unit/waveforms/chirp/latest_metrics.json"
+    },
+    {
+      "operator": "waveforms/gausspulse",
+      "passed": true,
+      "accuracy_cases": 4,
+      "max_abs_error": 0,
+      "mixed_error": 0,
+      "report": "data/reports/unit/waveforms/gausspulse/latest_metrics.json"
+    },
+    {
+      "operator": "waveforms/sawtooth",
+      "passed": true,
+      "accuracy_cases": 2,
+      "max_abs_error": 7.5891e-08,
+      "mixed_error": 7.5891e-08,
+      "report": "data/reports/unit/waveforms/sawtooth/latest_metrics.json"
+    },
+    {
+      "operator": "waveforms/square",
+      "passed": true,
+      "accuracy_cases": 2,
+      "max_abs_error": 0,
+      "mixed_error": 0,
+      "report": "data/reports/unit/waveforms/square/latest_metrics.json"
+    },
+    {
+      "operator": "waveforms/unit_impulse",
+      "passed": true,
+      "accuracy_cases": 4,
+      "max_abs_error": 0,
+      "mixed_error": 0,
+      "report": "data/reports/unit/waveforms/unit_impulse/latest_metrics.json"
+    },
+    {
+      "operator": "bsplines/cubic",
+      "passed": true,
+      "accuracy_cases": 2,
+      "max_abs_error": 0,
+      "mixed_error": 0,
+      "report": "data/reports/unit/bsplines/cubic/latest_metrics.json"
+    },
+    {
+      "operator": "bsplines/quadratic",
+      "passed": true,
+      "accuracy_cases": 2,
+      "max_abs_error": 0,
+      "mixed_error": 0,
+      "report": "data/reports/unit/bsplines/quadratic/latest_metrics.json"
+    },
+    {
+      "operator": "bsplines/gauss_spline",
+      "passed": true,
+      "accuracy_cases": 3,
+      "max_abs_error": 2.98023e-08,
+      "mixed_error": 0,
+      "report": "data/reports/unit/bsplines/gauss_spline/latest_metrics.json"
+    },
+    {
+      "operator": "windows/get_window",
+      "passed": true,
+      "accuracy_cases": 5,
+      "max_abs_error": 8.9407e-08,
+      "mixed_error": 0,
+      "report": "data/reports/unit/windows/get_window/latest_metrics.json"
+    },
+    {
+      "operator": "windows/barthann",
+      "passed": true,
+      "accuracy_cases": 1,
+      "max_abs_error": 0,
+      "mixed_error": 0,
+      "report": "data/reports/unit/windows/barthann/latest_metrics.json"
+    },
+    {
+      "operator": "windows/bartlett",
+      "passed": true,
+      "accuracy_cases": 1,
+      "max_abs_error": 0,
+      "mixed_error": 0,
+      "report": "data/reports/unit/windows/bartlett/latest_metrics.json"
+    },
+    {
+      "operator": "windows/blackman",
+      "passed": true,
+      "accuracy_cases": 1,
+      "max_abs_error": 5.96046e-08,
+      "mixed_error": 0,
+      "report": "data/reports/unit/windows/blackman/latest_metrics.json"
+    },
+    {
+      "operator": "windows/blackmanharris",
+      "passed": true,
+      "accuracy_cases": 1,
+      "max_abs_error": 5.96046e-08,
+      "mixed_error": 0,
+      "report": "data/reports/unit/windows/blackmanharris/latest_metrics.json"
+    },
+    {
+      "operator": "windows/bohman",
+      "passed": true,
+      "accuracy_cases": 1,
+      "max_abs_error": 5.96046e-08,
+      "mixed_error": 0,
+      "report": "data/reports/unit/windows/bohman/latest_metrics.json"
+    },
+    {
+      "operator": "windows/boxcar",
+      "passed": true,
+      "accuracy_cases": 1,
+      "max_abs_error": 0,
+      "mixed_error": 0,
+      "report": "data/reports/unit/windows/boxcar/latest_metrics.json"
+    },
+    {
+      "operator": "windows/chebwin",
+      "passed": true,
+      "accuracy_cases": 1,
+      "max_abs_error": 5.66244e-07,
+      "mixed_error": 0,
+      "report": "data/reports/unit/windows/chebwin/latest_metrics.json"
+    },
+    {
+      "operator": "windows/cosine",
+      "passed": true,
+      "accuracy_cases": 1,
+      "max_abs_error": 0,
+      "mixed_error": 0,
+      "report": "data/reports/unit/windows/cosine/latest_metrics.json"
+    },
+    {
+      "operator": "windows/exponential",
+      "passed": true,
+      "accuracy_cases": 2,
+      "max_abs_error": 5.96046e-08,
+      "mixed_error": 0,
+      "report": "data/reports/unit/windows/exponential/latest_metrics.json"
+    },
+    {
+      "operator": "windows/flattop",
+      "passed": true,
+      "accuracy_cases": 1,
+      "max_abs_error": 8.19564e-08,
+      "mixed_error": 0,
+      "report": "data/reports/unit/windows/flattop/latest_metrics.json"
+    },
+    {
+      "operator": "windows/gaussian",
+      "passed": true,
+      "accuracy_cases": 1,
+      "max_abs_error": 0,
+      "mixed_error": 0,
+      "report": "data/reports/unit/windows/gaussian/latest_metrics.json"
+    },
+    {
+      "operator": "windows/general_cosine",
+      "passed": true,
+      "accuracy_cases": 1,
+      "max_abs_error": 5.96046e-08,
+      "mixed_error": 0,
+      "report": "data/reports/unit/windows/general_cosine/latest_metrics.json"
+    },
+    {
+      "operator": "windows/general_gaussian",
+      "passed": true,
+      "accuracy_cases": 1,
+      "max_abs_error": 5.96046e-08,
+      "mixed_error": 0,
+      "report": "data/reports/unit/windows/general_gaussian/latest_metrics.json"
+    },
+    {
+      "operator": "windows/general_hamming",
+      "passed": true,
+      "accuracy_cases": 1,
+      "max_abs_error": 1.19209e-07,
+      "mixed_error": 0,
+      "report": "data/reports/unit/windows/general_hamming/latest_metrics.json"
+    },
+    {
+      "operator": "windows/hamming",
+      "passed": true,
+      "accuracy_cases": 1,
+      "max_abs_error": 1.19209e-07,
+      "mixed_error": 0,
+      "report": "data/reports/unit/windows/hamming/latest_metrics.json"
+    },
+    {
+      "operator": "windows/hann",
+      "passed": true,
+      "accuracy_cases": 1,
+      "max_abs_error": 1.19209e-07,
+      "mixed_error": 0,
+      "report": "data/reports/unit/windows/hann/latest_metrics.json"
+    },
+    {
+      "operator": "windows/kaiser",
+      "passed": true,
+      "accuracy_cases": 1,
+      "max_abs_error": 5.96046e-08,
+      "mixed_error": 0,
+      "report": "data/reports/unit/windows/kaiser/latest_metrics.json"
+    },
+    {
+      "operator": "windows/nuttall",
+      "passed": true,
+      "accuracy_cases": 1,
+      "max_abs_error": 5.96046e-08,
+      "mixed_error": 0,
+      "report": "data/reports/unit/windows/nuttall/latest_metrics.json"
+    },
+    {
+      "operator": "windows/parzen",
+      "passed": true,
+      "accuracy_cases": 1,
+      "max_abs_error": 0,
+      "mixed_error": 0,
+      "report": "data/reports/unit/windows/parzen/latest_metrics.json"
+    },
+    {
+      "operator": "windows/taylor",
+      "passed": true,
+      "accuracy_cases": 1,
+      "max_abs_error": 5.96046e-08,
+      "mixed_error": 0,
+      "report": "data/reports/unit/windows/taylor/latest_metrics.json"
+    },
+    {
+      "operator": "windows/triang",
+      "passed": true,
+      "accuracy_cases": 1,
+      "max_abs_error": 0,
+      "mixed_error": 0,
+      "report": "data/reports/unit/windows/triang/latest_metrics.json"
+    },
+    {
+      "operator": "windows/tukey",
+      "passed": true,
+      "accuracy_cases": 1,
+      "max_abs_error": 0,
+      "mixed_error": 0,
+      "report": "data/reports/unit/windows/tukey/latest_metrics.json"
+    },
+    {
+      "operator": "filter_design/kaiser_beta",
+      "passed": true,
+      "accuracy_cases": 2,
+      "max_abs_error": 0,
+      "mixed_error": 0,
+      "report": "data/reports/unit/filter_design/kaiser_beta/latest_metrics.json"
+    },
+    {
+      "operator": "filter_design/kaiser_atten",
+      "passed": true,
+      "accuracy_cases": 2,
+      "max_abs_error": 0,
+      "mixed_error": 0,
+      "report": "data/reports/unit/filter_design/kaiser_atten/latest_metrics.json"
+    },
+    {
+      "operator": "filter_design/cmplx_sort",
+      "passed": true,
+      "accuracy_cases": 2,
+      "max_abs_error": 0,
+      "mixed_error": 0,
+      "report": "data/reports/unit/filter_design/cmplx_sort/latest_metrics.json"
+    },
+    {
+      "operator": "filter_design/firwin",
+      "passed": true,
+      "accuracy_cases": 3,
+      "max_abs_error": 2.98023e-08,
+      "mixed_error": 1.33188e-06,
+      "report": "data/reports/unit/filter_design/firwin/latest_metrics.json"
+    },
+    {
+      "operator": "filter_design/firwin2",
+      "passed": true,
+      "accuracy_cases": 2,
+      "max_abs_error": 5.96046e-08,
+      "mixed_error": 4.23805e-07,
+      "report": "data/reports/unit/filter_design/firwin2/latest_metrics.json"
+    },
+    {
+      "operator": "filtering/wiener",
+      "passed": true,
+      "accuracy_cases": 1,
+      "max_abs_error": 5.96046e-08,
+      "mixed_error": 2.09228e-07,
+      "report": "data/reports/unit/filtering/wiener/latest_metrics.json"
+    },
+    {
+      "operator": "filtering/firfilter",
+      "passed": true,
+      "accuracy_cases": 1,
+      "max_abs_error": 0,
+      "mixed_error": 0,
+      "report": "data/reports/unit/filtering/firfilter/latest_metrics.json"
+    },
+    {
+      "operator": "filtering/lfilter",
+      "passed": true,
+      "accuracy_cases": 1,
+      "max_abs_error": 0,
+      "mixed_error": 0,
+      "report": "data/reports/unit/filtering/lfilter/latest_metrics.json"
+    },
+    {
+      "operator": "filtering/firfilter_zi",
+      "passed": true,
+      "accuracy_cases": 1,
+      "max_abs_error": 0,
+      "mixed_error": 0,
+      "report": "data/reports/unit/filtering/firfilter_zi/latest_metrics.json"
+    },
+    {
+      "operator": "filtering/lfilter_zi",
+      "passed": true,
+      "accuracy_cases": 1,
+      "max_abs_error": 0,
+      "mixed_error": 0,
+      "report": "data/reports/unit/filtering/lfilter_zi/latest_metrics.json"
+    },
+    {
+      "operator": "filtering/firfilter2",
+      "passed": true,
+      "accuracy_cases": 1,
+      "max_abs_error": 1.19209e-07,
+      "mixed_error": 1.44126e-07,
+      "report": "data/reports/unit/filtering/firfilter2/latest_metrics.json"
+    },
+    {
+      "operator": "filtering/filtfilt",
+      "passed": true,
+      "accuracy_cases": 1,
+      "max_abs_error": 0,
+      "mixed_error": 0,
+      "report": "data/reports/unit/filtering/filtfilt/latest_metrics.json"
+    },
+    {
+      "operator": "filtering/sosfilt",
+      "passed": true,
+      "accuracy_cases": 1,
+      "max_abs_error": 5.96046e-08,
+      "mixed_error": 1.09537e-07,
+      "report": "data/reports/unit/filtering/sosfilt/latest_metrics.json"
+    },
+    {
+      "operator": "filtering/hilbert",
+      "passed": true,
+      "accuracy_cases": 1,
+      "max_abs_error": 2.98023e-07,
+      "mixed_error": 2.98023e-07,
+      "report": "data/reports/unit/filtering/hilbert/latest_metrics.json"
+    },
+    {
+      "operator": "filtering/hilbert2",
+      "passed": true,
+      "accuracy_cases": 1,
+      "max_abs_error": 1.22878e-07,
+      "mixed_error": 1.98682e-07,
+      "report": "data/reports/unit/filtering/hilbert2/latest_metrics.json"
+    },
+    {
+      "operator": "filtering/detrend",
+      "passed": true,
+      "accuracy_cases": 1,
+      "max_abs_error": 0,
+      "mixed_error": 0,
+      "report": "data/reports/unit/filtering/detrend/latest_metrics.json"
+    },
+    {
+      "operator": "filtering/freq_shift",
+      "passed": true,
+      "accuracy_cases": 1,
+      "max_abs_error": 8.42937e-08,
+      "mixed_error": 8.42937e-08,
+      "report": "data/reports/unit/filtering/freq_shift/latest_metrics.json"
+    },
+    {
+      "operator": "filtering/channelize_poly",
+      "passed": true,
+      "accuracy_cases": 1,
+      "max_abs_error": 7.02886e-08,
+      "mixed_error": 6.12421e-07,
+      "report": "data/reports/unit/filtering/channelize_poly/latest_metrics.json"
+    },
+    {
+      "operator": "filtering/decimate",
+      "passed": true,
+      "accuracy_cases": 1,
+      "max_abs_error": 2.38419e-07,
+      "mixed_error": 4.4581e-07,
+      "report": "data/reports/unit/filtering/decimate/latest_metrics.json"
+    },
+    {
+      "operator": "filtering/resample",
+      "passed": true,
+      "accuracy_cases": 2,
+      "max_abs_error": 2.98023e-07,
+      "mixed_error": 3.94825e-07,
+      "report": "data/reports/unit/filtering/resample/latest_metrics.json"
+    },
+    {
+      "operator": "filtering/resample_poly",
+      "passed": true,
+      "accuracy_cases": 1,
+      "max_abs_error": 1.19209e-07,
+      "mixed_error": 4.31156e-07,
+      "report": "data/reports/unit/filtering/resample_poly/latest_metrics.json"
+    },
+    {
+      "operator": "filtering/upfirdn",
+      "passed": true,
+      "accuracy_cases": 1,
+      "max_abs_error": 0,
+      "mixed_error": 0,
+      "report": "data/reports/unit/filtering/upfirdn/latest_metrics.json"
+    },
+    {
+      "operator": "radartools/pulse_compression",
+      "passed": true,
+      "accuracy_cases": 2,
+      "max_abs_error": 1.06624e-06,
+      "mixed_error": 0,
+      "report": "data/reports/unit/radartools/pulse_compression/latest_metrics.json"
+    },
+    {
+      "operator": "radartools/pulse_doppler",
+      "passed": true,
+      "accuracy_cases": 2,
+      "max_abs_error": 2.38419e-07,
+      "mixed_error": 0,
+      "report": "data/reports/unit/radartools/pulse_doppler/latest_metrics.json"
+    },
+    {
+      "operator": "radartools/ambgfun",
+      "passed": true,
+      "accuracy_cases": 3,
+      "max_abs_error": 3.72529e-07,
+      "mixed_error": 0,
+      "report": "data/reports/unit/radartools/ambgfun/latest_metrics.json"
+    },
+    {
+      "operator": "radartools/cfar_alpha",
+      "passed": true,
+      "accuracy_cases": 1,
+      "max_abs_error": 0,
+      "mixed_error": 0,
+      "report": "data/reports/unit/radartools/cfar_alpha/latest_metrics.json"
+    },
+    {
+      "operator": "radartools/ca_cfar",
+      "passed": true,
+      "accuracy_cases": 2,
+      "max_abs_error": 0,
+      "mixed_error": 0,
+      "report": "data/reports/unit/radartools/ca_cfar/latest_metrics.json"
+    },
+    {
+      "operator": "radartools/mvdr",
+      "passed": true,
+      "accuracy_cases": 2,
+      "max_abs_error": 0.000340406,
+      "mixed_error": 0,
+      "report": "data/reports/unit/radartools/mvdr/latest_metrics.json"
+    },
+    {
+      "operator": "spectral/lombscargle",
+      "passed": true,
+      "accuracy_cases": 1,
+      "max_abs_error": 2.38419e-07,
+      "mixed_error": 4.06405e-07,
+      "report": "data/reports/unit/spectral/lombscargle/latest_metrics.json"
+    },
+    {
+      "operator": "spectral/periodogram",
+      "passed": true,
+      "accuracy_cases": 1,
+      "max_abs_error": 1.11759e-08,
+      "mixed_error": 1.85237e-07,
+      "report": "data/reports/unit/spectral/periodogram/latest_metrics.json"
+    },
+    {
+      "operator": "spectral/welch",
+      "passed": true,
+      "accuracy_cases": 1,
+      "max_abs_error": 3.72529e-09,
+      "mixed_error": 7.33595e-08,
+      "report": "data/reports/unit/spectral/welch/latest_metrics.json"
+    },
+    {
+      "operator": "spectral/csd",
+      "passed": true,
+      "accuracy_cases": 1,
+      "max_abs_error": 4.165e-09,
+      "mixed_error": 1.81576e-07,
+      "report": "data/reports/unit/spectral/csd/latest_metrics.json"
+    },
+    {
+      "operator": "spectral/spectrogram",
+      "passed": true,
+      "accuracy_cases": 2,
+      "max_abs_error": 5.96046e-08,
+      "mixed_error": 1.18282e-06,
+      "report": "data/reports/unit/spectral/spectrogram/latest_metrics.json"
+    },
+    {
+      "operator": "spectral/stft",
+      "passed": true,
+      "accuracy_cases": 1,
+      "max_abs_error": 1.24887e-07,
+      "mixed_error": 1.62672e-07,
+      "report": "data/reports/unit/spectral/stft/latest_metrics.json"
+    },
+    {
+      "operator": "spectral/istft",
+      "passed": true,
+      "accuracy_cases": 1,
+      "max_abs_error": 2.38419e-07,
+      "mixed_error": 7.43921e-07,
+      "report": "data/reports/unit/spectral/istft/latest_metrics.json"
+    },
+    {
+      "operator": "spectral/coherence",
+      "passed": true,
+      "accuracy_cases": 1,
+      "max_abs_error": 0.0490961,
+      "mixed_error": 0.0497491,
+      "report": "data/reports/unit/spectral/coherence/latest_metrics.json"
+    },
+    {
+      "operator": "spectral/vectorstrength",
+      "passed": true,
+      "accuracy_cases": 2,
+      "max_abs_error": 9.53674e-07,
+      "mixed_error": 4.55329e-06,
+      "report": "data/reports/unit/spectral/vectorstrength/latest_metrics.json"
+    },
+    {
+      "operator": "wavelets/qmf",
+      "passed": true,
+      "accuracy_cases": 3,
+      "max_abs_error": 0,
+      "mixed_error": 0,
+      "report": "data/reports/unit/wavelets/qmf/latest_metrics.json"
+    },
+    {
+      "operator": "wavelets/morlet",
+      "passed": true,
+      "accuracy_cases": 5,
+      "max_abs_error": 5.96046e-08,
+      "mixed_error": 0,
+      "report": "data/reports/unit/wavelets/morlet/latest_metrics.json"
+    },
+    {
+      "operator": "wavelets/ricker",
+      "passed": true,
+      "accuracy_cases": 3,
+      "max_abs_error": 0,
+      "mixed_error": 0,
+      "report": "data/reports/unit/wavelets/ricker/latest_metrics.json"
+    },
+    {
+      "operator": "wavelets/morlet2",
+      "passed": true,
+      "accuracy_cases": 3,
+      "max_abs_error": 1.49012e-08,
+      "mixed_error": 0,
+      "report": "data/reports/unit/wavelets/morlet2/latest_metrics.json"
+    },
+    {
+      "operator": "wavelets/cwt",
+      "passed": true,
+      "accuracy_cases": 5,
+      "max_abs_error": 0,
+      "mixed_error": 0,
+      "report": "data/reports/unit/wavelets/cwt/latest_metrics.json"
+    },
+    {
+      "operator": "correlate/correlate",
+      "passed": true,
+      "accuracy_cases": 2,
+      "max_abs_error": 0,
+      "mixed_error": 0,
+      "report": "data/reports/unit/correlate/correlate/latest_metrics.json"
+    },
+    {
+      "operator": "correlate/correlate2d",
+      "passed": true,
+      "accuracy_cases": 2,
+      "max_abs_error": 0,
+      "mixed_error": 0,
+      "report": "data/reports/unit/correlate/correlate2d/latest_metrics.json"
+    },
+    {
+      "operator": "correlate/correlation_lags",
+      "passed": true,
+      "accuracy_cases": 3,
+      "max_abs_error": 0,
+      "mixed_error": 0,
+      "report": "data/reports/unit/correlate/correlation_lags/latest_metrics.json"
+    },
+    {
+      "operator": "demod/fm_demod",
+      "passed": true,
+      "accuracy_cases": 4,
+      "max_abs_error": 1.78814e-07,
+      "mixed_error": 0,
+      "report": "data/reports/unit/demod/fm_demod/latest_metrics.json"
+    },
+    {
+      "operator": "estimation/kalman_filter",
+      "passed": true,
+      "accuracy_cases": 7,
+      "max_abs_error": 1.19209e-07,
+      "mixed_error": 0,
+      "report": "data/reports/unit/estimation/kalman_filter/latest_metrics.json"
+    },
+    {
+      "operator": "peak_finding/argrelextrema",
+      "passed": true,
+      "accuracy_cases": 3,
+      "max_abs_error": 0,
+      "mixed_error": 0,
+      "report": "data/reports/unit/peak_finding/argrelextrema/latest_metrics.json"
+    },
+    {
+      "operator": "peak_finding/argrelmin",
+      "passed": true,
+      "accuracy_cases": 2,
+      "max_abs_error": 0,
+      "mixed_error": 0,
+      "report": "data/reports/unit/peak_finding/argrelmin/latest_metrics.json"
+    },
+    {
+      "operator": "peak_finding/argrelmax",
+      "passed": true,
+      "accuracy_cases": 3,
+      "max_abs_error": 0,
+      "mixed_error": 0,
+      "report": "data/reports/unit/peak_finding/argrelmax/latest_metrics.json"
+    }
+  ]
+}

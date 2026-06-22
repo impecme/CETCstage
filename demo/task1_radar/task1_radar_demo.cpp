@@ -1,4 +1,4 @@
-#include "task1_radar_zx_gpu.hpp"
+#include "../common/task_step_report.hpp"
 
 #include <cuda_runtime_api.h>
 
@@ -39,6 +39,7 @@ namespace cusignal_demo::task1_radar
     using cusignal::core::RealSignal;
     using cusignal::core::Shape;
     using cusignal::radartools_api::AmbgfunSurfaceResult;
+    using DetectionSummary = cusignal::radartools_api::DetectionSummary;
     using cusignal::radartools_api::ZxGpuAmbgfunSurfaceResult;
 
     struct ScenarioConfig
@@ -66,23 +67,12 @@ namespace cusignal_demo::task1_radar
         float cfar_pfa = 1.0e-3f;                // CA-CFAR 虚警概率，用于计算门限因子。
     };
 
-    struct ErrorMetrics
-    {
-        float mixed_error = 0.0f;
-        float max_abs = 0.0f;
-        float max_rel = 0.0f;
-        float rmse = 0.0f;
-    };
+    using ErrorMetrics = cusignal_demo::report::ErrorMetrics;
 
     constexpr float kMixedErrorAtol = 1.0e-5f;
     constexpr float kMixedErrorScale = 1.0e-2f;
 
-    struct StageTiming
-    {
-        std::string name;
-        float cpu_ms = 0.0;
-        float gpu_ms = 0.0;
-    };
+    using StageTiming = cusignal_demo::report::StageTiming;
 
     struct DemoOptions
     {
@@ -235,15 +225,6 @@ namespace cusignal_demo::task1_radar
 #endif
         return thresholds;
     }
-
-    struct DetectionSummary
-    {
-        bool found = false;
-        int range_bin = -1;
-        int doppler_bin = -1;
-        float doppler_hz = 0.0f;
-        float power = 0.0f;
-    };
 
     struct CpuArtifacts
     {
@@ -756,81 +737,10 @@ namespace cusignal_demo::task1_radar
         return rx;
     }
 
-    RealArray power_map_cpu(const ComplexArray &input)
-    {
-        RealArray output = cusignal::core::make_real_array(input.shape);
-        for (std::size_t index = 0; index < input.values.size(); ++index)
-        {
-            output.values[index] = std::norm(input.values[index]);
-        }
-        return output;
-    }
-
-    ComplexArray fftshift_rows_complex_cpu(const ComplexArray &input)
-    {
-        if (input.shape.size() != 2)
-        {
-            throw std::invalid_argument("fftshift_rows_complex_cpu expects rank-2 input");
-        }
-
-        const std::size_t rows = input.shape[0];
-        const std::size_t cols = input.shape[1];
-        ComplexArray output = cusignal::core::make_complex_array(input.shape, Complex(0.0f, 0.0f));
-        for (std::size_t row = 0; row < rows; ++row)
-        {
-            const std::size_t shifted_row = (row + rows / 2) % rows;
-            const std::size_t src_base = row * cols;
-            const std::size_t dst_base = shifted_row * cols;
-            for (std::size_t col = 0; col < cols; ++col)
-            {
-                output.values[dst_base + col] = input.values[src_base + col];
-            }
-        }
-        return output;
-    }
-
     float centered_doppler_bin_to_hz(int bin, int nfft, float prf)
     {
         const int centered = bin - (nfft / 2);
         return static_cast<float>(centered) * prf / static_cast<float>(nfft);
-    }
-
-    DetectionSummary detect_peak(
-        const RealArray &power,
-        const RealArray &detections,
-        int nfft,
-        float prf)
-    {
-        if (power.shape.size() != 2 || detections.shape != power.shape)
-        {
-            throw std::invalid_argument("power/detections shape mismatch");
-        }
-
-        const std::size_t rows = power.shape[0];
-        const std::size_t cols = power.shape[1];
-        DetectionSummary summary;
-        float best_power = -1.0f;
-        for (std::size_t row = 0; row < rows; ++row)
-        {
-            for (std::size_t col = 0; col < cols; ++col)
-            {
-                const std::size_t index = row * cols + col;
-                if (detections.values[index] <= 0.5f)
-                {
-                    continue;
-                }
-                if (power.values[index] > best_power)
-                {
-                    best_power = power.values[index];
-                    summary.found = true;
-                    summary.range_bin = static_cast<int>(col);
-                    summary.doppler_bin = static_cast<int>(row);
-                    summary.doppler_hz = centered_doppler_bin_to_hz(summary.doppler_bin, nfft, prf);
-                    summary.power = power.values[index];
-                }
-            }
-        }
-        return summary;
     }
 
     DetectionSummary strongest_bin(
@@ -948,6 +858,12 @@ namespace cusignal_demo::task1_radar
         for (std::size_t index = 0; index < lhs.size(); ++index)
         {
             const float diff = std::abs(lhs[index] - rhs[index]);
+            metrics.real_max_abs = std::isfinite(metrics.real_max_abs)
+                ? std::max(metrics.real_max_abs, std::fabs(lhs[index].real() - rhs[index].real()))
+                : std::fabs(lhs[index].real() - rhs[index].real());
+            metrics.imag_max_abs = std::isfinite(metrics.imag_max_abs)
+                ? std::max(metrics.imag_max_abs, std::fabs(lhs[index].imag() - rhs[index].imag()))
+                : std::fabs(lhs[index].imag() - rhs[index].imag());
             const float expected_norm = std::abs(lhs[index]);
             const float denom = std::max(expected_norm, 1.0e-12f);
             metrics.max_abs = std::max(metrics.max_abs, diff);
@@ -1207,8 +1123,8 @@ namespace cusignal_demo::task1_radar
             artifacts.pulse_compression,
             config.pulse_doppler_window,
             config.pulse_doppler_nfft);
-        artifacts.pulse_doppler = fftshift_rows_complex_cpu(artifacts.pulse_doppler);
-        artifacts.range_doppler_power = power_map_cpu(artifacts.pulse_doppler);
+        artifacts.pulse_doppler = cusignal::cpu::radartools::fftshift_rows(artifacts.pulse_doppler);
+        artifacts.range_doppler_power = cusignal::cpu::radartools::power_map(artifacts.pulse_doppler);
         const auto cfar = cusignal::cpu::radartools::ca_cfar(
             artifacts.range_doppler_power,
             config.cfar_guard_cells,
@@ -1257,13 +1173,13 @@ namespace cusignal_demo::task1_radar
                 artifacts.pulse_compression,
                 config.pulse_doppler_window,
                 config.pulse_doppler_nfft);
-            return fftshift_rows_complex_zx_gpu(shifted);
+            return cusignal::zx_gpu_backend::radartools::fftshift_rows(shifted);
         });
         timings.push_back({"pulse_doppler", 0.0, pulse_doppler_ms});
         artifacts.pulse_doppler = std::move(pulse_doppler);
 
         auto [range_doppler_power, power_ms] = measure_gpu_ms([&]() {
-            return power_map_zx_gpu(artifacts.pulse_doppler);
+            return cusignal::zx_gpu_backend::radartools::power_map(artifacts.pulse_doppler);
         });
         timings.push_back({"power_map", 0.0, power_ms});
         artifacts.range_doppler_power = std::move(range_doppler_power);
@@ -1395,6 +1311,93 @@ namespace cusignal_demo::task1_radar
             output << timing.name << ',' << timing.cpu_ms << ',' << timing.gpu_ms << '\n';
         }
         output << "total," << cpu_total_ms << ',' << gpu_total_ms << '\n';
+    }
+
+    void write_unified_step_metrics(
+        const ScenarioConfig &config,
+        const DemoRunResult &run,
+        const ValidationThresholds &thresholds)
+    {
+        using cusignal_demo::report::StepMetric;
+        const auto timing_for = [&](const std::string &name) -> const StageTiming & {
+            const auto iter = std::find_if(run.stage_timings.begin(), run.stage_timings.end(),
+                [&](const StageTiming &timing) { return timing.name == name; });
+            if (iter == run.stage_timings.end())
+                throw std::runtime_error("missing stage timing: " + name);
+            return *iter;
+        };
+        const auto shape_text = [](const Shape &shape) {
+            std::ostringstream stream;
+            for (std::size_t index = 0; index < shape.size(); ++index)
+            {
+                if (index)
+                    stream << 'x';
+                stream << shape[index];
+            }
+            return stream.str();
+        };
+        const auto make = [&](const std::string &name, const std::string &op,
+                              const std::string &input_shape, const std::string &output_shape,
+                              const std::string &input_dtype, const std::string &output_dtype,
+                              const ErrorMetrics *error, bool complex_error, float limit,
+                              const std::string &note) {
+            const auto &timing = timing_for(name);
+            StepMetric metric;
+            metric.step = name;
+            metric.operator_name = op;
+            metric.input_shape = input_shape;
+            metric.output_shape = output_shape;
+            metric.input_dtype = input_dtype;
+            metric.output_dtype = output_dtype;
+            metric.cpu_ms = timing.cpu_ms;
+            metric.gpu_e2e_ms = timing.gpu_ms;
+            metric.error_available = error != nullptr;
+            metric.complex_error = complex_error;
+            if (error)
+                metric.error = *error;
+            metric.pass = error && error->mixed_error <= limit;
+            metric.note = note + "; gpu_kernel_ms pending V5.3 operator timing exposure";
+            return metric;
+        };
+
+        const ErrorMetrics power_error = compute_real_error(
+            run.cpu.range_doppler_power.values, run.gpu.range_doppler_power.values);
+        std::vector<StepMetric> steps;
+        steps.push_back(make("pulse_compression", "radartools/pulse_compression",
+            shape_text(run.cpu.rx_matrix.shape), shape_text(run.cpu.pulse_compression.shape),
+            "complex64", "complex64", &run.pulse_compression_error, true,
+            thresholds.pulse_compression_mixed, "public operator"));
+        steps.push_back(make("pulse_doppler", "radartools/pulse_doppler + radartools/fftshift_rows",
+            shape_text(run.cpu.pulse_compression.shape), shape_text(run.cpu.pulse_doppler.shape),
+            "complex64", "complex64", &run.pulse_doppler_error, true,
+            thresholds.pulse_doppler_mixed, "public operators"));
+        steps.push_back(make("power_map", "radartools/power_map",
+            shape_text(run.cpu.pulse_doppler.shape), shape_text(run.cpu.range_doppler_power.shape),
+            "complex64", "float32", &power_error, false, thresholds.cfar_threshold_mixed,
+            "public operator; error added by unified report"));
+        steps.push_back(make("ca_cfar", "radartools/ca_cfar",
+            shape_text(run.cpu.range_doppler_power.shape), shape_text(run.cpu.cfar_threshold.shape),
+            "float32", "float32", &run.cfar_threshold_error, false,
+            thresholds.cfar_threshold_mixed, "public operator"));
+        steps.push_back(make("ambgfun", "radartools/ambgfun",
+            std::to_string(run.cpu.tx_template.size()), shape_text(run.cpu.ambgfun.values.shape),
+            "complex64", "float32", &run.ambgfun_error, false,
+            thresholds.ambgfun_surface_mixed, "public operator"));
+
+        StepMetric detection;
+        detection.step = "final_detection";
+        const auto &detection_timing = timing_for("final_detection");
+        detection.operator_name = "radartools/detect_peak";
+        detection.input_shape = shape_text(run.cpu.range_doppler_power.shape);
+        detection.output_shape = "scalar_detection";
+        detection.input_dtype = "float32";
+        detection.output_dtype = "int32+float32";
+        detection.cpu_ms = detection_timing.cpu_ms;
+        detection.gpu_e2e_ms = detection_timing.gpu_ms;
+        detection.pass = detection_matches(run.cpu_detection, run.gpu_detection);
+        detection.note = "public operator; exact business-bin comparison, numeric error not applicable";
+        steps.push_back(std::move(detection));
+        cusignal_demo::report::write_step_metrics(report_root(), "task1_radar", steps);
     }
 
     std::string build_summary_markdown(
@@ -1609,7 +1612,7 @@ namespace cusignal_demo::task1_radar
         const float pulse_cpu_ms = pulse_cpu_measured.second;
 
         auto doppler_cpu_measured = measure_cpu_ms([&]() {
-            return fftshift_rows_complex_cpu(cusignal::cpu::radartools::pulse_doppler(
+            return cusignal::cpu::radartools::fftshift_rows(cusignal::cpu::radartools::pulse_doppler(
                 pulse_cpu,
                 config.pulse_doppler_window,
                 config.pulse_doppler_nfft));
@@ -1618,7 +1621,7 @@ namespace cusignal_demo::task1_radar
         const float doppler_cpu_ms = doppler_cpu_measured.second;
 
         auto power_cpu_measured = measure_cpu_ms([&]() {
-            return power_map_cpu(doppler_cpu);
+            return cusignal::cpu::radartools::power_map(doppler_cpu);
         });
         auto power_cpu = std::move(power_cpu_measured.first);
         const float power_cpu_ms = power_cpu_measured.second;
@@ -1642,9 +1645,22 @@ namespace cusignal_demo::task1_radar
         (void)ambg_cpu;
 
         const auto [gpu_warmup_device, gpu_warmup_timings] = run_gpu_pipeline(config, cpu.rx_matrix, cpu.tx_template);
-        (void)gpu_warmup_device;
         (void)gpu_warmup_timings;
-        const auto [gpu_device, gpu_stage_times] = run_gpu_pipeline(config, cpu.rx_matrix, cpu.tx_template);
+        (void)cusignal::zx_gpu_backend::radartools::detect_peak(
+            gpu_warmup_device.range_doppler_power,
+            gpu_warmup_device.cfar_detections,
+            config.pulse_doppler_nfft,
+            config.prf);
+        auto gpu_pipeline_result = run_gpu_pipeline(config, cpu.rx_matrix, cpu.tx_template);
+        GpuArtifacts gpu_device = std::move(gpu_pipeline_result.first);
+        std::vector<StageTiming> gpu_stage_times = std::move(gpu_pipeline_result.second);
+        auto [gpu_detection, detection_gpu_ms] = measure_gpu_ms([&]() {
+            return cusignal::zx_gpu_backend::radartools::detect_peak(
+                gpu_device.range_doppler_power,
+                gpu_device.cfar_detections,
+                config.pulse_doppler_nfft,
+                config.prf);
+        });
         HostGpuArtifacts gpu = materialize_gpu_artifacts(gpu_device);
 
         stage_timings.push_back({"pulse_compression", pulse_cpu_ms, gpu_stage_times[0].gpu_ms});
@@ -1652,6 +1668,15 @@ namespace cusignal_demo::task1_radar
         stage_timings.push_back({"power_map", power_cpu_ms, gpu_stage_times[2].gpu_ms});
         stage_timings.push_back({"ca_cfar", cfar_cpu_ms, gpu_stage_times[3].gpu_ms});
         stage_timings.push_back({"ambgfun", ambg_cpu_ms, gpu_stage_times[4].gpu_ms});
+
+        auto [cpu_detection, detection_cpu_ms] = measure_cpu_ms([&]() {
+            return cusignal::cpu::radartools::detect_peak(
+                cpu.range_doppler_power,
+                cpu.cfar_detections,
+                config.pulse_doppler_nfft,
+                config.prf);
+        });
+        stage_timings.push_back({"final_detection", detection_cpu_ms, detection_gpu_ms});
 
         float cpu_total_ms = 0.0;
         float gpu_total_ms = 0.0;
@@ -1663,17 +1688,6 @@ namespace cusignal_demo::task1_radar
 
         const DetectionSummary expected_detection =
             strongest_bin(noiseless.range_doppler_power, config.pulse_doppler_nfft, config.prf);
-        const DetectionSummary cpu_detection = detect_peak(
-            cpu.range_doppler_power,
-            cpu.cfar_detections,
-            config.pulse_doppler_nfft,
-            config.prf);
-        const DetectionSummary gpu_detection = detect_peak(
-            gpu.range_doppler_power,
-            gpu.cfar_detections,
-            config.pulse_doppler_nfft,
-            config.prf);
-
         const ErrorMetrics pulse_compression_error =
             compute_complex_error(cpu.pulse_compression.values, gpu.pulse_compression.values);
         const ErrorMetrics pulse_doppler_error =
@@ -1739,6 +1753,7 @@ namespace cusignal_demo::task1_radar
         write_generated_inputs(config, final_run.cpu.tx_template, final_run.cpu.rx_matrix);
         write_output_samples(final_run.cpu, final_run.gpu);
         write_stage_timings_csv(final_run.stage_timings, final_run.cpu_total_ms, final_run.gpu_total_ms);
+        write_unified_step_metrics(config, final_run, thresholds);
         write_text_file(
             report_root() / "latest_summary.md",
             build_summary_markdown(

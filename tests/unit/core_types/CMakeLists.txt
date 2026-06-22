@@ -1,0 +1,6 @@
+add_executable(cusignal_type_contract_tests test_type_contracts.cu)
+target_link_libraries(cusignal_type_contract_tests PRIVATE cusignal_zx_gpu)
+target_compile_features(cusignal_type_contract_tests PRIVATE cxx_std_17)
+cusignal_configure_zx_gpu_source_target(cusignal_type_contract_tests)
+
+add_test(NAME cusignal_type_contract COMMAND cusignal_type_contract_tests)

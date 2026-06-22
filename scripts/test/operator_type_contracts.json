@@ -1,0 +1,157 @@
+{
+  "schema_version": 1,
+  "real_types": ["float32", "float16", "int32", "int16", "int8"],
+  "complex_types": ["complex64"],
+  "forbidden_types": ["float64", "complex128", "complex32", "complex_int32", "complex_int16", "complex_int8"],
+  "policies": {
+    "floating_real": {
+      "input_types": ["float32", "float16"],
+      "output_types": ["float32", "float16"],
+      "current_types": ["float32"],
+      "accumulator": "float32",
+      "integer_policy": "not_applicable",
+      "output_rule": "preserve floating input type"
+    },
+    "floating_generator_real": {
+      "input_types": [],
+      "output_types": ["float32", "float16"],
+      "current_types": ["float32"],
+      "accumulator": "float32",
+      "integer_policy": "not_applicable",
+      "output_rule": "dtype selects floating output type"
+    },
+    "floating_generator_complex64": {
+      "input_types": [],
+      "output_types": ["complex64"],
+      "current_types": ["complex64"],
+      "accumulator": "float32",
+      "integer_policy": "not_applicable",
+      "output_rule": "complex output is always complex64"
+    },
+    "floating_generator_real_or_complex64": {
+      "input_types": [],
+      "output_types": ["float32", "float16", "complex64"],
+      "current_types": ["float32", "complex64"],
+      "accumulator": "float32",
+      "integer_policy": "not_applicable",
+      "output_rule": "real mode follows floating dtype; complex mode is complex64"
+    },
+    "floating_real_to_complex64": {
+      "input_types": ["float32", "float16"],
+      "output_types": ["complex64"],
+      "current_types": ["float32", "complex64"],
+      "accumulator": "float32",
+      "integer_policy": "not_applicable",
+      "output_rule": "all complex outputs use complex64"
+    },
+    "floating_real_to_real_or_complex64": {
+      "input_types": ["float32", "float16"],
+      "output_types": ["float32", "float16", "complex64"],
+      "current_types": ["float32", "complex64"],
+      "accumulator": "float32",
+      "integer_policy": "not_applicable",
+      "output_rule": "mode selects real output or complex64"
+    },
+    "complex64_pipeline": {
+      "input_types": ["complex64"],
+      "output_types": ["complex64", "float32"],
+      "current_types": ["complex64", "float32"],
+      "accumulator": "float32",
+      "integer_policy": "not_applicable",
+      "output_rule": "complex values remain complex64; real diagnostics use float32"
+    },
+    "complex64_to_real": {
+      "input_types": ["complex64"],
+      "output_types": ["float32"],
+      "current_types": ["complex64", "float32"],
+      "accumulator": "float32",
+      "integer_policy": "not_applicable",
+      "output_rule": "complex64 input produces float32 output"
+    },
+    "numeric_identity": {
+      "input_types": [],
+      "output_types": ["float32", "float16", "int32", "int16", "int8"],
+      "current_types": ["float32"],
+      "accumulator": "none",
+      "integer_policy": "exact representable constants",
+      "output_rule": "dtype selects output type"
+    },
+    "numeric_correlate": {
+      "input_types": ["float32", "float16", "int32", "int16", "int8", "complex64"],
+      "output_types": ["float32", "float16", "int32", "int16", "int8", "complex64"],
+      "current_types": ["float32", "complex64"],
+      "accumulator": "float32 for FP16; int64 for INT32; int32 for INT16/INT8",
+      "integer_policy": "widened accumulation then saturating cast to input type",
+      "output_rule": "preserve input type and domain"
+    },
+    "numeric_to_indices": {
+      "input_types": ["float32", "float16", "int32", "int16", "int8"],
+      "output_types": ["int32"],
+      "current_types": ["float32", "int32"],
+      "accumulator": "none",
+      "integer_policy": "exact comparisons without conversion",
+      "output_rule": "indices are int32"
+    },
+    "index_metadata": {
+      "input_types": ["int32"],
+      "output_types": ["int32"],
+      "current_types": ["int32"],
+      "accumulator": "int64 for length arithmetic",
+      "integer_policy": "range-check before int32 output",
+      "output_rule": "indices are int32"
+    },
+    "sort_real_or_complex": {
+      "input_types": ["float32", "float16", "complex64"],
+      "output_types": ["float32", "float16", "complex64", "int32"],
+      "current_types": ["float32", "complex64", "int32"],
+      "accumulator": "float32 magnitude",
+      "integer_policy": "not_applicable",
+      "output_rule": "values preserve domain; indices are int32"
+    }
+  },
+  "assignments": {
+    "floating_generator_real_or_complex64": ["waveforms/chirp"],
+    "floating_generator_real": [
+      "waveforms/gausspulse",
+      "windows/get_window", "windows/barthann", "windows/bartlett", "windows/blackman",
+      "windows/blackmanharris", "windows/bohman", "windows/boxcar", "windows/chebwin",
+      "windows/cosine", "windows/exponential", "windows/flattop", "windows/gaussian",
+      "windows/general_cosine", "windows/general_gaussian", "windows/general_hamming",
+      "windows/hamming", "windows/hann", "windows/kaiser", "windows/nuttall",
+      "windows/parzen", "windows/taylor", "windows/triang", "windows/tukey",
+      "filter_design/kaiser_beta", "filter_design/kaiser_atten",
+      "filter_design/firwin", "filter_design/firwin2",
+      "wavelets/ricker"
+    ],
+    "floating_real": [
+      "waveforms/sawtooth", "waveforms/square",
+      "bsplines/cubic", "bsplines/quadratic", "bsplines/gauss_spline",
+      "filtering/wiener", "filtering/firfilter", "filtering/lfilter",
+      "filtering/firfilter_zi", "filtering/lfilter_zi", "filtering/firfilter2",
+      "filtering/filtfilt", "filtering/sosfilt", "filtering/detrend",
+      "filtering/decimate", "filtering/resample", "filtering/resample_poly",
+      "filtering/upfirdn", "radartools/cfar_alpha", "radartools/ca_cfar",
+      "spectral/lombscargle", "spectral/periodogram", "spectral/welch",
+      "spectral/coherence", "spectral/vectorstrength", "wavelets/qmf",
+      "estimation/kalman_filter"
+    ],
+    "floating_real_to_complex64": [
+      "filtering/hilbert", "filtering/hilbert2", "spectral/stft", "wavelets/cwt"
+    ],
+    "floating_real_to_real_or_complex64": ["spectral/spectrogram", "spectral/csd"],
+    "floating_generator_complex64": ["wavelets/morlet", "wavelets/morlet2"],
+    "complex64_pipeline": [
+      "filtering/freq_shift", "filtering/channelize_poly",
+      "radartools/pulse_compression", "radartools/pulse_doppler",
+      "radartools/ambgfun", "radartools/mvdr"
+    ],
+    "complex64_to_real": ["spectral/istft", "demod/fm_demod"],
+    "numeric_identity": ["waveforms/unit_impulse"],
+    "numeric_correlate": ["correlate/correlate", "correlate/correlate2d"],
+    "numeric_to_indices": [
+      "peak_finding/argrelextrema", "peak_finding/argrelmin", "peak_finding/argrelmax"
+    ],
+    "index_metadata": ["correlate/correlation_lags"],
+    "sort_real_or_complex": ["filter_design/cmplx_sort"]
+  }
+}

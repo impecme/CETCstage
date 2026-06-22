@@ -115,12 +115,18 @@ set(CUSIGNAL_ZX_GPU_RUNTIME_TARGET CUSIGNAL::zx_gpu_runtime)
 set(CUSIGNAL_ZX_GPU_FFT_TARGET CUSIGNAL::zx_gpu_fft)
 set(CUSIGNAL_ZX_GPU_BLAS_TARGET CUSIGNAL::zx_gpu_blas)
 set(CUSIGNAL_ZX_GPU_SOLVER_TARGET CUSIGNAL::zx_gpu_solver)
+set(CUSIGNAL_ZX_GPU_DNN_TARGET CUSIGNAL::zx_gpu_dnn)
+set(CUSIGNAL_ZX_GPU_SPARSE_TARGET CUSIGNAL::zx_gpu_sparse)
+set(CUSIGNAL_ZX_GPU_RAND_TARGET CUSIGNAL::zx_gpu_rand)
 set(CUSIGNAL_ZHONGKEXIN_EXTRA_LINK_LIBRARIES "")
 
 set(CUSIGNAL_ZHONGKEXIN_RUNTIME_LIBRARY "" CACHE FILEPATH "Optional Zhongkexin runtime-compatible library")
 set(CUSIGNAL_ZHONGKEXIN_FFT_LIBRARY "" CACHE FILEPATH "Optional Zhongkexin FFT-compatible library")
 set(CUSIGNAL_ZHONGKEXIN_BLAS_LIBRARY "" CACHE FILEPATH "Optional Zhongkexin BLAS-compatible library")
 set(CUSIGNAL_ZHONGKEXIN_SOLVER_LIBRARY "" CACHE FILEPATH "Optional Zhongkexin solver-compatible library")
+set(CUSIGNAL_ZHONGKEXIN_DNN_LIBRARY "" CACHE FILEPATH "Optional Zhongkexin DNN-compatible library")
+set(CUSIGNAL_ZHONGKEXIN_SPARSE_LIBRARY "" CACHE FILEPATH "Optional Zhongkexin sparse-compatible library")
+set(CUSIGNAL_ZHONGKEXIN_RAND_LIBRARY "" CACHE FILEPATH "Optional Zhongkexin random-compatible library")
 set(CUSIGNAL_ZHONGKEXIN_DLEOL_LIBRARY "" CACHE FILEPATH "Optional Zhongkexin DLEOL support library")
 
 set(CUSIGNAL_ZHONGKEXIN_SDK_ROOT_CANDIDATES
@@ -162,12 +168,18 @@ cusignal_find_zhongkexin_library(CUSIGNAL_ZHONGKEXIN_RUNTIME_LIBRARY "ZQ500 runt
 cusignal_find_zhongkexin_library(CUSIGNAL_ZHONGKEXIN_FFT_LIBRARY "ZQ500 FFT" dlfft cufft)
 cusignal_find_zhongkexin_library(CUSIGNAL_ZHONGKEXIN_BLAS_LIBRARY "ZQ500 BLAS" dlblas cublas)
 cusignal_find_zhongkexin_library(CUSIGNAL_ZHONGKEXIN_SOLVER_LIBRARY "ZQ500 solver" dlsolver cusolver)
+cusignal_find_zhongkexin_library(CUSIGNAL_ZHONGKEXIN_DNN_LIBRARY "ZQ500 DNN" dldnn cudnn)
+cusignal_find_zhongkexin_library(CUSIGNAL_ZHONGKEXIN_SPARSE_LIBRARY "ZQ500 sparse" dlsparse cusparse)
+cusignal_find_zhongkexin_library(CUSIGNAL_ZHONGKEXIN_RAND_LIBRARY "ZQ500 random" dlrand curand)
 cusignal_find_zhongkexin_library(CUSIGNAL_ZHONGKEXIN_DLEOL_LIBRARY "DLEOL" dleol)
 
 set(CUSIGNAL_ZX_GPU_RUNTIME_TARGET "${CUSIGNAL_ZHONGKEXIN_RUNTIME_LIBRARY}")
 set(CUSIGNAL_ZX_GPU_FFT_TARGET "${CUSIGNAL_ZHONGKEXIN_FFT_LIBRARY}")
 set(CUSIGNAL_ZX_GPU_BLAS_TARGET "${CUSIGNAL_ZHONGKEXIN_BLAS_LIBRARY}")
 set(CUSIGNAL_ZX_GPU_SOLVER_TARGET "${CUSIGNAL_ZHONGKEXIN_SOLVER_LIBRARY}")
+set(CUSIGNAL_ZX_GPU_DNN_TARGET "${CUSIGNAL_ZHONGKEXIN_DNN_LIBRARY}")
+set(CUSIGNAL_ZX_GPU_SPARSE_TARGET "${CUSIGNAL_ZHONGKEXIN_SPARSE_LIBRARY}")
+set(CUSIGNAL_ZX_GPU_RAND_TARGET "${CUSIGNAL_ZHONGKEXIN_RAND_LIBRARY}")
 set(CUSIGNAL_ZHONGKEXIN_EXTRA_LINK_LIBRARIES
     "${CUSIGNAL_ZHONGKEXIN_DLEOL_LIBRARY}"
     Threads::Threads
@@ -176,6 +188,9 @@ message(STATUS "Using Zhongkexin ZQ500 runtime compatibility library: ${CUSIGNAL
 message(STATUS "Using Zhongkexin ZQ500 FFT compatibility library: ${CUSIGNAL_ZHONGKEXIN_FFT_LIBRARY}")
 message(STATUS "Using Zhongkexin ZQ500 BLAS compatibility library: ${CUSIGNAL_ZHONGKEXIN_BLAS_LIBRARY}")
 message(STATUS "Using Zhongkexin ZQ500 solver compatibility library: ${CUSIGNAL_ZHONGKEXIN_SOLVER_LIBRARY}")
+message(STATUS "Using Zhongkexin ZQ500 DNN compatibility library: ${CUSIGNAL_ZHONGKEXIN_DNN_LIBRARY}")
+message(STATUS "Using Zhongkexin ZQ500 sparse compatibility library: ${CUSIGNAL_ZHONGKEXIN_SPARSE_LIBRARY}")
+message(STATUS "Using Zhongkexin ZQ500 random compatibility library: ${CUSIGNAL_ZHONGKEXIN_RAND_LIBRARY}")
 
 # 显式列出源文件，避免文件结构变化时出现不可预期的自动收集行为。
 set(CUSIGNAL_CPU_SOURCES
@@ -209,7 +224,6 @@ set(CUSIGNAL_ZHONGKEXIN_GPU_SOURCES
 )
 
 list(APPEND CUSIGNAL_ZHONGKEXIN_GPU_SOURCES
-    demo/task1_radar/task1_radar_zx_gpu.cu
     demo/task2_features/task2_features_zx_gpu.cu
 )
 set_source_files_properties(${CUSIGNAL_ZHONGKEXIN_GPU_SOURCES} PROPERTIES LANGUAGE CXX)
@@ -287,4 +301,5 @@ include(CTest)
 if(BUILD_TESTING)
     add_subdirectory(tests/smoke)
     add_subdirectory(tests/unit)
+    add_subdirectory(tests/platform)
 endif()

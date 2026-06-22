@@ -76,12 +76,54 @@ namespace cusignal
             core::ZxGpuRealArray detections;
         };
 
+        /**
+         * @brief 二维距离-多普勒峰值检测结果。
+         */
+        struct DetectionSummary
+        {
+            bool found = false;
+            int range_bin = -1;
+            int doppler_bin = -1;
+            float doppler_hz = 0.0f;
+            float power = 0.0f;
+        };
+
     } // namespace radartools_api
 
     namespace cpu
     {
         namespace radartools
         {
+
+            /**
+             * @brief 对复数二维矩阵的行维执行 FFT shift。
+             * @param input rank-2 complex64 输入，形状为行数乘列数。
+             * @return 形状不变的 complex64 矩阵，行维循环平移一半长度。
+             * @throws std::invalid_argument 当输入不是二维时抛出异常。
+             */
+            core::ComplexArray fftshift_rows(const core::ComplexArray &input);
+
+            /**
+             * @brief 计算 complex64 矩阵的逐元素模平方功率图。
+             * @param input 任意形状 complex64 输入。
+             * @return 与输入形状一致的 FP32 功率图。
+             */
+            core::RealArray power_map(const core::ComplexArray &input);
+
+            /**
+             * @brief 在二维检测掩码内选择功率最大的距离-多普勒单元。
+             * @param power rank-2 FP32 功率图。
+             * @param detections 与功率图同形状的 FP32 检测掩码，大于 0.5 表示候选。
+             * @param nfft 多普勒 FFT 长度，必须为正数。
+             * @param prf 脉冲重复频率，必须为正数。
+             * @return 峰值是否存在、距离/多普勒 bin、多普勒频率及功率。
+             * @throws std::invalid_argument 当 shape 或采样参数非法时抛出异常。
+             */
+            radartools_api::DetectionSummary detect_peak(
+                const core::RealArray &power,
+                const core::RealArray &detections,
+                int nfft,
+                float prf);
 
             /**
              * @brief 执行脉冲压缩。
@@ -218,6 +260,36 @@ namespace cusignal
     {
         namespace radartools
         {
+
+            /**
+             * @brief 在 ZQ500 上对复数二维矩阵的行维执行 FFT shift。
+             * @param input host/device rank-2 complex64 输入。
+             * @return 设备驻留、形状不变的 complex64 矩阵。
+             * @throws std::invalid_argument 当输入不是二维时抛出异常。
+             */
+            core::ZxGpuComplexArray fftshift_rows(const core::ComplexArrayLike &input);
+
+            /**
+             * @brief 在 ZQ500 上计算 complex64 输入的逐元素模平方功率图。
+             * @param input host/device complex64 输入。
+             * @return 设备驻留且与输入同形状的 FP32 功率图。
+             */
+            core::ZxGpuRealArray power_map(const core::ComplexArrayLike &input);
+
+            /**
+             * @brief 在 ZQ500 上从二维检测掩码选择最大功率单元。
+             * @param power host/device rank-2 FP32 功率图。
+             * @param detections 与功率图同形状的 host/device FP32 检测掩码。
+             * @param nfft 多普勒 FFT 长度，必须为正数。
+             * @param prf 脉冲重复频率，必须为正数。
+             * @return 与 CPU 接口语义一致的标量检测结果。
+             * @throws std::invalid_argument 当 shape 或采样参数非法时抛出异常。
+             */
+            radartools_api::DetectionSummary detect_peak(
+                const core::RealArrayLike &power,
+                const core::RealArrayLike &detections,
+                int nfft,
+                float prf);
 
             /**
              * @brief 执行脉冲压缩。

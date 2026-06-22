@@ -1,3 +1,4 @@
+add_subdirectory(core_types)
 add_subdirectory(waveforms)
 add_subdirectory(windows)
 add_subdirectory(filter_design)

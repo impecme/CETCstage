@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <complex>
 #include <cstddef>
+#include <cstdint>
 #include <cstdlib>
 #include <limits>
 #include <memory>
@@ -16,19 +17,107 @@
 
 #include "cusignal/core/platform_zx_gpu_compat.hpp"
 
+#include <cuComplex.h>
+#include <cuda_fp16.h>
+
 namespace cusignal
 {
     namespace core
     {
+        using Float32 = float;
+        using Float16 = __half;
+        using Int32 = std::int32_t;
+        using Int16 = std::int16_t;
+        using Int8 = std::int8_t;
+
+        static_assert(sizeof(Float32) == 4, "FP32 must occupy 4 bytes");
+        static_assert(sizeof(Float16) == 2, "FP16 must occupy 2 bytes");
+        static_assert(sizeof(Int32) == 4, "INT32 must occupy 4 bytes");
+        static_assert(sizeof(Int16) == 2, "INT16 must occupy 2 bytes");
+        static_assert(sizeof(Int8) == 1, "INT8 must occupy 1 byte");
+
+        template <typename T>
+        struct ScalarTypeTraits;
+
+        template <>
+        struct ScalarTypeTraits<Float32>
+        {
+            using accumulator_type = Float32;
+            static constexpr const char *name = "float32";
+        };
+
+        template <>
+        struct ScalarTypeTraits<Float16>
+        {
+            using accumulator_type = Float32;
+            static constexpr const char *name = "float16";
+        };
+
+        template <>
+        struct ScalarTypeTraits<Int32>
+        {
+            using accumulator_type = std::int64_t;
+            static constexpr const char *name = "int32";
+        };
+
+        template <>
+        struct ScalarTypeTraits<Int16>
+        {
+            using accumulator_type = Int32;
+            static constexpr const char *name = "int16";
+        };
+
+        template <>
+        struct ScalarTypeTraits<Int8>
+        {
+            using accumulator_type = Int32;
+            static constexpr const char *name = "int8";
+        };
+
+        template <typename T>
+        struct IsSupportedRealScalar : std::false_type
+        {
+        };
+
+        template <>
+        struct IsSupportedRealScalar<Float32> : std::true_type
+        {
+        };
+
+        template <>
+        struct IsSupportedRealScalar<Float16> : std::true_type
+        {
+        };
+
+        template <>
+        struct IsSupportedRealScalar<Int32> : std::true_type
+        {
+        };
+
+        template <>
+        struct IsSupportedRealScalar<Int16> : std::true_type
+        {
+        };
+
+        template <>
+        struct IsSupportedRealScalar<Int8> : std::true_type
+        {
+        };
+
+        template <typename T>
+        inline constexpr bool is_supported_real_scalar_v = IsSupportedRealScalar<T>::value;
+
         /**
-         * @brief 项目默认实数标量类型，统一采用 FP32。
+         * @brief 项目默认实数标量类型，保留 FP32 兼容别名。
          */
-        using Scalar = float;
+        using Scalar = Float32;
 
         /**
          * @brief 项目默认复数标量类型，统一采用 FP32。
          */
-        using Complex = std::complex<Scalar>;
+        using Complex = std::complex<Float32>;
+
+        static_assert(sizeof(Complex) == sizeof(cuFloatComplex), "complex64 host/device size mismatch");
 
         /**
          * @brief 通用形状描述，按各维长度顺序存放。
@@ -89,15 +178,27 @@ namespace cusignal
             }
         };
 
+        template <typename T>
+        using Signal = std::vector<T>;
+
+        template <typename T>
+        using Array = Tensor<T>;
+
         /**
          * @brief 一维实数信号便捷类型。
          */
-        using RealSignal = std::vector<Scalar>;
+        using RealSignal = Signal<Scalar>;
+
+        using Float32Signal = Signal<Float32>;
+        using Float16Signal = Signal<Float16>;
+        using Int32Signal = Signal<Int32>;
+        using Int16Signal = Signal<Int16>;
+        using Int8Signal = Signal<Int8>;
 
         /**
          * @brief 一维复数信号便捷类型。
          */
-        using ComplexSignal = std::vector<Complex>;
+        using ComplexSignal = Signal<Complex>;
 
         /**
          * @brief 一维整数索引序列。
@@ -122,12 +223,18 @@ namespace cusignal
         /**
          * @brief 通用 N 维实数张量。
          */
-        using RealArray = Tensor<Scalar>;
+        using RealArray = Array<Scalar>;
+
+        using Float32Array = Array<Float32>;
+        using Float16Array = Array<Float16>;
+        using Int32Array = Array<Int32>;
+        using Int16Array = Array<Int16>;
+        using Int8Array = Array<Int8>;
 
         /**
          * @brief 通用 N 维复数张量。
          */
-        using ComplexArray = Tensor<Complex>;
+        using ComplexArray = Array<Complex>;
 
         /**
          * @brief 通用 N 维整型张量。
@@ -164,15 +271,18 @@ namespace cusignal
         template <>
         struct DeviceValueTraits<Complex>
         {
-            using device_value_type = float2;
+            using device_value_type = cuFloatComplex;
 
             static std::vector<device_value_type> pack(const std::vector<Complex> &values)
             {
-                std::vector<device_value_type> packed(values.size(), float2{0.0f, 0.0f});
+                std::vector<device_value_type> packed(
+                    values.size(),
+                    make_cuFloatComplex(0.0f, 0.0f));
                 for (std::size_t index = 0; index < values.size(); ++index)
                 {
-                    packed[index].x = values[index].real();
-                    packed[index].y = values[index].imag();
+                    packed[index] = make_cuFloatComplex(
+                        values[index].real(),
+                        values[index].imag());
                 }
                 return packed;
             }
@@ -182,7 +292,9 @@ namespace cusignal
                 std::vector<Complex> unpacked(values.size(), Complex(0.0f, 0.0f));
                 for (std::size_t index = 0; index < values.size(); ++index)
                 {
-                    unpacked[index] = Complex(values[index].x, values[index].y);
+                    unpacked[index] = Complex(
+                        cuCrealf(values[index]),
+                        cuCimagf(values[index]));
                 }
                 return unpacked;
             }
@@ -757,10 +869,22 @@ namespace cusignal
             std::size_t size_ = 0;
         };
 
+        template <typename T>
+        using SignalLike = std::variant<Signal<T>, DeviceSignal<T>>;
+
+        template <typename T>
+        using ArrayLike = std::variant<Array<T>, DeviceArray<T>>;
+
         /**
          * @brief 一维实数 device 信号便捷类型。
          */
         using ZxGpuRealSignal = DeviceSignal<Scalar>;
+
+        using ZxGpuFloat32Signal = DeviceSignal<Float32>;
+        using ZxGpuFloat16Signal = DeviceSignal<Float16>;
+        using ZxGpuInt32Signal = DeviceSignal<Int32>;
+        using ZxGpuInt16Signal = DeviceSignal<Int16>;
+        using ZxGpuInt8Signal = DeviceSignal<Int8>;
 
         /**
          * @brief 一维复数 device 信号便捷类型。
@@ -776,6 +900,12 @@ namespace cusignal
          * @brief 通用 N 维实数 device 张量。
          */
         using ZxGpuRealArray = DeviceArray<Scalar>;
+
+        using ZxGpuFloat32Array = DeviceArray<Float32>;
+        using ZxGpuFloat16Array = DeviceArray<Float16>;
+        using ZxGpuInt32Array = DeviceArray<Int32>;
+        using ZxGpuInt16Array = DeviceArray<Int16>;
+        using ZxGpuInt8Array = DeviceArray<Int8>;
 
         /**
          * @brief 通用 N 维复数 device 张量。

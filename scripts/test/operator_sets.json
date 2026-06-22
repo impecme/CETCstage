@@ -1,6 +1,12 @@
 {
   "schema_version": 1,
   "operator_key_format": "module/operator",
+  "operator_overrides": {
+    "estimation/kalman_filter": {
+      "api_kind": "class",
+      "api_symbol": "KalmanFilter"
+    }
+  },
   "sets": {
     "all81": {
       "expected_count": 81,

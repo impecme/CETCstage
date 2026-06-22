@@ -2,6 +2,7 @@
 
 #include <fftw3.h>
 
+#include <algorithm>
 #include <cmath>
 #include <complex>
 #include <stdexcept>
@@ -178,6 +179,61 @@ namespace cusignal
     {
         namespace radartools
         {
+
+            core::ComplexArray fftshift_rows(const core::ComplexArray &input)
+            {
+                detail::ensure_rank(input, 2, "input");
+                const std::size_t rows = input.shape[0];
+                const std::size_t cols = input.shape[1];
+                core::ComplexArray output = core::make_complex_array(input.shape, core::Complex(0.0f, 0.0f));
+                for (std::size_t row = 0; row < rows; ++row)
+                {
+                    const std::size_t shifted_row = (row + rows / 2) % rows;
+                    std::copy_n(
+                        input.values.begin() + static_cast<std::ptrdiff_t>(row * cols),
+                        cols,
+                        output.values.begin() + static_cast<std::ptrdiff_t>(shifted_row * cols));
+                }
+                return output;
+            }
+
+            core::RealArray power_map(const core::ComplexArray &input)
+            {
+                core::RealArray output = core::make_real_array(input.shape);
+                for (std::size_t index = 0; index < input.values.size(); ++index)
+                    output.values[index] = std::norm(input.values[index]);
+                return output;
+            }
+
+            radartools_api::DetectionSummary detect_peak(
+                const core::RealArray &power,
+                const core::RealArray &detections,
+                int nfft,
+                float prf)
+            {
+                detail::ensure_rank(power, 2, "power");
+                if (detections.shape != power.shape)
+                    throw std::invalid_argument("power and detections shape mismatch");
+                if (nfft <= 0 || !(prf > 0.0f))
+                    throw std::invalid_argument("nfft and prf must be positive");
+                radartools_api::DetectionSummary result;
+                for (std::size_t index = 0; index < power.values.size(); ++index)
+                {
+                    if (detections.values[index] <= 0.5f ||
+                        (result.found && power.values[index] <= result.power))
+                        continue;
+                    result.found = true;
+                    result.power = power.values[index];
+                    result.range_bin = static_cast<int>(index % power.shape[1]);
+                    result.doppler_bin = static_cast<int>(index / power.shape[1]);
+                }
+                if (result.found)
+                {
+                    result.doppler_hz = static_cast<float>(result.doppler_bin - nfft / 2) *
+                        prf / static_cast<float>(nfft);
+                }
+                return result;
+            }
 
             core::ComplexArray pulse_compression(
                 const core::ComplexArray &x,

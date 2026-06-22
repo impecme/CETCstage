@@ -63,3 +63,4 @@
 - 阶段关闭时必须重新核对集合数量，不允许通过删除注册项满足通过率。
 - V5.2 必须把模块级范围展开为 81 条逐算子契约记录；本表的模块清单是数量源，不替代逐项审计结果。
 - 81 条逐项路径和状态见 `operator_contract_inventory.md`，该文件由注册表和 `scripts/test/operator_sets.json` 生成。
+- 81 条逐算子输入、输出、累加和整数规则见 `operator_type_contracts.md`，由 `operator_type_contracts.json` 校验生成。

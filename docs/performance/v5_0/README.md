@@ -11,27 +11,157 @@ V5 在 CPU reference 与中科芯 ZQ500 GPU 正确性不退化的前提下，完
 | 阶段 | 计划 | 交付文件 | 状态 | 关闭门禁 |
 | --- | --- | --- | --- | --- |
 | V5.1 | `plans/V5_1_plan.md` | `docs/submission/READMEV5_1.md` | 已完成 | cache、显存和 benchmark schema 可复现 |
-| V5.2 | `plans/V5_2_plan.md` | `docs/submission/READMEV5_2.md` | 进行中 | 目录、81 算子契约、类型矩阵和完整平台兼容审计完成 |
-| V5.3 | `plans/V5_3_plan.md` | `docs/submission/READMEV5_3.md` | 待开始 | 两任务每步调用算子库，27 个依赖算子和逐步计时/精度闭环 |
+| V5.2 | `plans/V5_2_plan.md` | `docs/submission/READMEV5_2.md` | 已完成 | 目录、81 算子契约、类型矩阵和完整平台兼容审计完成 |
+| V5.3 | `plans/V5_3_plan.md` | `docs/submission/READMEV5_3.md` | 进行中 | 两任务每步调用算子库，27 个依赖算子和逐步计时/精度闭环 |
 | V5.4 | `plans/V5_4_plan.md` | `docs/submission/READMEV5_4.md` | 待开始 | 核心 53/53 完成规范化、独立测试和性能结论 |
 | V5.5 | `plans/V5_5_plan.md` | `docs/submission/READMEV5_5.md` | 待开始 | 全库 81/81、486 行 benchmark、任务和平台最终验收完成 |
 
 ## 当前执行点
 
-- 当前阶段：V5.2 工程规范与平台兼容。
+- 当前阶段：V5.3 Task1/Task2 与 27 个依赖算子。
 - 已完成基线：V5.1 可观测性、cache 统计和整卡显存采样。
 - 已提前完成：`filtering/wiener` 二维 shared-memory tiled 快路径，归入 V5.4 核心 53。
-- 下一门禁：完成目录职责、81 算子契约字段、类型适用性和三个复赛表的全量兼容矩阵设计。
+- 下一门禁：V5.3-03 Task1 六个计算步骤全部公共化并通过独立测试。
 - 后续顺序：V5.3 两任务与 27 依赖，V5.4 核心 53，V5.5 扩展 28 和全库最终验收。
 
 ## 当前执行队列
 
-1. `V5.2-01`：从现有测试注册表生成并校验 `task27/core53/extended28/all81` 四个机器可读集合。
-2. `V5.2-02`：把模块级矩阵展开为 81 条真实路径契约。
-3. `V5.2-03`：在现有模板容器上补齐五种实数与 complex64 类型基础测试。
-4. `V5.2-04` 至 `V5.2-07`：类型契约、复赛表解析、平台探针和阶段回归。
+1. `V5.2-01`：已关闭；四集合和 81 行契约骨架通过宿主机及容器验证。
+2. `V5.2-02`：已关闭；接口、实现、独立测试和 Doxygen 容器审计 81/81 通过。
+3. `V5.2-03`：已关闭；五种实数和 complex64 的 CTest 及直接运行通过。
+4. `V5.2-04`：已关闭；81 条类型契约通过容器校验。
+5. `V5.2-05`：已关闭；三个复赛表通过容器复验。
+6. `V5.2-06`：已关闭；编译、七项平台类别运行和禁止扫描通过。
+7. `V5.2-07`：已关闭；81/81 accuracy 和全部阶段门禁通过。
+8. `V5.3-01`：已关闭；16 个任务步骤映射通过容器复验。
+9. `V5.3-02`：已关闭；两任务 14 条统一步骤报告通过。
+10. `V5.3-03`：当前工作包；Task1 公共算子化等待容器验证。
 
-当前只执行 `V5.2-01`：集合、校验脚本、81 行契约骨架和 `OPERATOR_SET` benchmark 接口已完成宿主机 L0，等待容器 smoke；回填通过后才进入 `V5.2-02`。兼容矩阵脚本和 CMake probe target 分别由 V5.2-05 和 V5.2-06 创建，不得提前作为现有能力使用。
+V5.2、V5.3-01/02 已关闭。当前执行 `V5.3-03` Task1 算子化；完成后剩余迁移队列全部属于 Task2。
+
+### V5.2-01 已关闭命令
+
+```bash
+cd /CETC
+scripts/test/run_all_tests.sh --list > /tmp/v5_2_all81.tsv
+
+python3 scripts/test/validate_operator_sets.py \
+  --registry /tmp/v5_2_all81.tsv \
+  --sets scripts/test/operator_sets.json \
+  --summary-json /tmp/v5_2_operator_sets_summary.json
+
+for name in task27 core53 extended28 all81; do
+  printf '%s=' "$name"
+  python3 scripts/test/validate_operator_sets.py \
+    --registry /tmp/v5_2_all81.tsv \
+    --sets scripts/test/operator_sets.json \
+    --list-set "$name" | wc -l
+done
+
+cat /tmp/v5_2_operator_sets_summary.json
+```
+
+实测计数为 27、53、28、81，summary 的 `status`、`source_path_check` 均为 `passed`。该命令作为 V5.2-01 复现入口保留。
+
+### V5.2-02 容器命令
+
+```bash
+cd /CETC
+scripts/test/run_all_tests.sh --list > /tmp/v5_2_all81.tsv
+
+python3 scripts/test/audit_operator_interfaces.py \
+  --registry /tmp/v5_2_all81.tsv \
+  --sets scripts/test/operator_sets.json \
+  --output-dir data/reports/zhongkexin/v5_2_interface_audit \
+  --contract-markdown /tmp/v5_2_operator_contract_inventory.md
+
+python3 - <<'PY'
+import json
+from pathlib import Path
+payload = json.loads(Path(
+    "data/reports/zhongkexin/v5_2_interface_audit/latest_interface_audit.json"
+).read_text())
+print(json.dumps(payload["summary"], indent=2))
+PY
+```
+
+2026-06-21 容器实测为 `operator_count=81`、`passed_count=81`、`failed_count=0`、`status=passed`。该命令作为 V5.2-02 复现入口保留。
+
+### V5.2-03 容器命令
+
+```bash
+cd /CETC
+source /zq500/sdk/env.sh
+cmake -S . -B build-zx \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCUSIGNAL_PLATFORM=ZHONGKEXIN \
+  -DCMAKE_CXX_COMPILER="$(command -v dlcc)"
+cmake --build build-zx --target cusignal_type_contract_tests --parallel
+ctest --test-dir build-zx -R '^cusignal_type_contract$' --output-on-failure
+./build-zx/tests/unit/core_types/cusignal_type_contract_tests
+```
+
+预期 CTest 1/1 通过，并输出 `[core/types] PASS real_types=5 complex_types=1`。
+
+2026-06-21 容器实测 CTest 1/1 通过，直接运行输出与预期一致，本工作包已关闭。
+
+### V5.2-04 容器命令
+
+```bash
+cd /CETC
+scripts/test/run_all_tests.sh --list > /tmp/v5_2_all81.tsv
+python3 scripts/test/validate_operator_type_contracts.py \
+  --registry /tmp/v5_2_all81.tsv \
+  --contracts scripts/test/operator_type_contracts.json \
+  --output-dir data/reports/zhongkexin/v5_2_type_contracts \
+  --contract-markdown /tmp/v5_2_operator_type_contracts.md
+python3 - <<'PY'
+import json
+from pathlib import Path
+payload = json.loads(Path(
+    "data/reports/zhongkexin/v5_2_type_contracts/latest_type_contracts.json"
+).read_text())
+print(json.dumps(payload["summary"], indent=2))
+PY
+```
+
+预期为 81 个算子、13 个类型策略、五种实数且复数仅 complex64。
+
+2026-06-21 容器实测 `status=passed`、81 个算子、13 个策略、8 个整数相关算子和 20 个 complex64 相关算子，本工作包已关闭。
+
+### V5.2-05 容器命令
+
+根 `README.md` 的“V5.2-05 当前阶段验证”是唯一执行入口。预期完整覆盖 900 个非空源行、816 个 API 行和 830 个唯一 API；本阶段生成的 315 项禁止清单将在 V5.2-06 扫描项目引用。
+
+2026-06-21 容器结果全部符合预期，本工作包已关闭。
+
+### V5.2-06 容器命令
+
+根 `README.md` 的“V5.2-06 当前阶段验证”是唯一执行入口。宿主机已确认三个 CMake target 均可构建，六类科学计算库可链接，315 项禁止 API 扫描无命中；容器负责执行安全运行探针并复验 CTest。
+
+2026-06-21 容器两个 CTest 2/2 通过，Runtime、FFT、BLAS、DNN、SOLVER、SPARSE、RAND 均通过，禁止引用和未解析 API 均为 0，本工作包已关闭。
+
+### V5.2-07 容器命令
+
+执行根 `README.md` 的“V5.2-07 当前阶段验证”。统一脚本完成全部静态门禁、三个 CTest 和 81 算子 accuracy，并输出 `data/reports/zhongkexin/v5_2_gate_latest/summary.{json,md}`。
+
+2026-06-21 容器 `operator_accuracy_passed_count=81`，全部 8 项 checks 为 true，V5.2 阶段关闭。
+
+### V5.3-01 容器命令
+
+执行根 `README.md` 的“V5.3-01 当前阶段验证”。该审计只冻结当前事实和迁移清单，不修改任务数值路径。
+
+2026-06-21 容器结果为 2 个任务、16 个步骤、11 个迁移步骤，状态 passed，本工作包已关闭。
+
+### V5.3-02 容器命令
+
+执行根 `README.md` 的“V5.3-02 当前阶段验证”。两任务继续保留历史报告，同时新增相同 schema 的 `latest_step_metrics.csv/json/md`；不可用的 kernel 和误差字段必须为 null/available=false。
+
+2026-06-22 容器两任务和 14 条报告 schema 均通过，本工作包已关闭。Task2 `spectrogram` 约 3.5 秒热点保留到 V5.3-04/06，不调整历史阈值。
+
+### V5.3-03 容器命令
+
+执行根 `README.md` 的“V5.3-03 当前阶段验证”。三个 pipeline helper 有独立 CTest，但不改变赛题固定的 81 算子注册表数量。
 
 ## 类型原则
 
@@ -56,4 +186,7 @@ V5 在 CPU reference 与中科芯 ZQ500 GPU 正确性不退化的前提下，完
 | `optimization_change_log.md` | 优化措施、工程变更、验证证据和状态台账 |
 | `operator_optimization_matrix.md` | 81 算子范围、类型/接口/测试契约和性能状态 |
 | `operator_contract_inventory.md` | 由测试注册表生成的 81 条声明、CPU/GPU、测试和审计状态 |
+| `operator_type_contracts.md` | 81 算子的五种实数适用性、complex64、累加和整数转换契约 |
+| `platform_compatibility_matrix.md` | 三个复赛表的覆盖统计、分类口径和 V5.2-06 探针边界 |
+| `task_step_audit.md` | Task1/Task2 步骤、公共算子映射、私有实现和报告缺口 |
 | `plans/V5_0_plan.md` 至 `plans/V5_5_plan.md` | 总计划与各阶段门禁 |

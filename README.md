@@ -163,6 +163,254 @@ BENCH_OUTPUT_DIR=data/reports/unit/benchmarks/zhongkexin_stage4_full \
 scripts/platform/run_zhongkexin_stage4.sh 2>&1 | tee stage4_full.log
 ```
 
+### V5.2-01 当前阶段验证
+
+当前性能优化工作包为 `V5.2-01`，用于校验任务 27、核心 53、扩展 28 和全库 81 四个机器可读算子集合。完成宿主机同步并执行同步脚本打印的项目替换命令后，在容器运行：
+
+```bash
+cd /CETC
+
+scripts/test/run_all_tests.sh --list > /tmp/v5_2_all81.tsv
+
+python3 scripts/test/validate_operator_sets.py \
+  --registry /tmp/v5_2_all81.tsv \
+  --sets scripts/test/operator_sets.json \
+  --summary-json /tmp/v5_2_operator_sets_summary.json
+
+for name in task27 core53 extended28 all81; do
+  printf '%s=' "$name"
+  python3 scripts/test/validate_operator_sets.py \
+    --registry /tmp/v5_2_all81.tsv \
+    --sets scripts/test/operator_sets.json \
+    --list-set "$name" | wc -l
+done
+
+cat /tmp/v5_2_operator_sets_summary.json
+```
+
+预期结果：`task27=27`、`core53=53`、`extended28=28`、`all81=81`，summary 中 `status=passed`、`registry_count=81`、`source_path_check=passed`。该命令不运行 GPU 算子，只验证阶段范围、测试注册和代码路径。
+
+### V5.2-02 当前阶段验证
+
+`V5.2-02` 对 81 个算子的公共声明、CPU/ZQ500 GPU 定义、独立测试 target 和 Doxygen 输入输出说明执行静态审计。同步并替换项目后，在容器运行：
+
+```bash
+cd /CETC
+scripts/test/run_all_tests.sh --list > /tmp/v5_2_all81.tsv
+
+python3 scripts/test/audit_operator_interfaces.py \
+  --registry /tmp/v5_2_all81.tsv \
+  --sets scripts/test/operator_sets.json \
+  --output-dir data/reports/zhongkexin/v5_2_interface_audit \
+  --contract-markdown /tmp/v5_2_operator_contract_inventory.md
+
+python3 - <<'PY'
+import json
+from pathlib import Path
+
+path = Path("data/reports/zhongkexin/v5_2_interface_audit/latest_interface_audit.json")
+payload = json.loads(path.read_text())
+print(json.dumps(payload["summary"], indent=2))
+PY
+```
+
+预期结果：`operator_count=81`、`passed_count=81`、`failed_count=0`、`status=passed`。详细报告位于同目录的 `latest_interface_audit.json` 和 `latest_interface_audit.md`。
+
+### V5.2-03 当前阶段验证
+
+`V5.2-03` 建立 FP32、FP16、INT32、INT16、INT8 和 complex64 的公共 host/device 类型基础。同步并替换项目后，在容器运行：
+
+```bash
+cd /CETC
+source /zq500/sdk/env.sh
+
+cmake -S . -B build-zx \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCUSIGNAL_PLATFORM=ZHONGKEXIN \
+  -DCMAKE_CXX_COMPILER="$(command -v dlcc)"
+
+cmake --build build-zx --target cusignal_type_contract_tests --parallel
+ctest --test-dir build-zx -R '^cusignal_type_contract$' --output-on-failure
+./build-zx/tests/unit/core_types/cusignal_type_contract_tests
+```
+
+预期 CTest 为 1/1 通过，直接执行输出 `[core/types] PASS real_types=5 complex_types=1`。该测试验证类型大小、累加类型、空输入、shape 和 H2D/D2H roundtrip；逐算子适用类型由 V5.2-04 确定。
+
+### V5.2-04 当前阶段验证
+
+`V5.2-04` 冻结 81 个算子的目标输入/输出类型、complex64 规则、累加类型、整数转换策略和当前实现类型。同步并替换项目后，在容器运行：
+
+```bash
+cd /CETC
+scripts/test/run_all_tests.sh --list > /tmp/v5_2_all81.tsv
+
+python3 scripts/test/validate_operator_type_contracts.py \
+  --registry /tmp/v5_2_all81.tsv \
+  --contracts scripts/test/operator_type_contracts.json \
+  --output-dir data/reports/zhongkexin/v5_2_type_contracts \
+  --contract-markdown /tmp/v5_2_operator_type_contracts.md
+
+python3 - <<'PY'
+import json
+from pathlib import Path
+payload = json.loads(Path(
+    "data/reports/zhongkexin/v5_2_type_contracts/latest_type_contracts.json"
+).read_text())
+print(json.dumps(payload["summary"], indent=2))
+PY
+```
+
+预期：`status=passed`、`operator_count=81`、`policy_count=13`，实数类型恰好为五种，复数类型只有 complex64。该契约区分目标类型和 `current_types`，不会把待实现类型写成已支持。
+
+2026-06-21 容器实测通过：81 个算子唯一归入 13 个策略，整数相关算子 8 个，complex64 相关算子 20 个。V5.2-04 已关闭。
+
+### V5.2-05 当前阶段验证
+
+`V5.2-05` 逐行解析 CUDA 11.7 Driver、Runtime 和六类科学计算库兼容表。同步并替换项目后，在容器运行：
+
+```bash
+cd /CETC
+python3 scripts/platform/generate_zx_compat_matrix.py \
+  --driver "复赛说明文件/CUDA 11.7 driver api.xlsx" \
+  --runtime "复赛说明文件/CUDA 11.7 runtime API.xlsx" \
+  --libraries "复赛说明文件/科学计算库实现列表.xlsx" \
+  --output data/reports/zhongkexin/v5_2_compatibility \
+  --summary-markdown /tmp/v5_2_platform_compatibility.md
+
+python3 - <<'PY'
+import json
+from pathlib import Path
+payload = json.loads(Path(
+    "data/reports/zhongkexin/v5_2_compatibility/summary.json"
+).read_text())
+print(json.dumps(payload, ensure_ascii=False, indent=2))
+PY
+```
+
+预期：`status=passed`、`source_row_count=900`、`api_row_count=816`、`unique_api_count=830`、`forbidden_api_count=315`。完整 CSV/JSON/Markdown、禁止 API 清单均写入同一报告目录；本工作包只关闭源表覆盖和分类，实际编译、运行及禁止引用扫描由 V5.2-06 完成。
+
+2026-06-21 容器实测计数全部符合预期，V5.2-05 已关闭。
+
+### V5.2-06 当前阶段验证
+
+`V5.2-06` 验证 Runtime/Driver 声明、六类科学计算库链接、安全运行调用，以及项目不存在禁止 API 引用。同步并替换项目后，在容器运行：
+
+```bash
+cd /CETC
+source /zq500/sdk/env.sh
+
+cmake -S . -B build-zx \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCUSIGNAL_PLATFORM=ZHONGKEXIN \
+  -DCMAKE_CXX_COMPILER="$(command -v dlcc)"
+
+cmake --build build-zx --target \
+  zx_compat_compile_probes \
+  zx_compat_runtime_probes \
+  zx_forbidden_api_scan --parallel
+
+ctest --test-dir build-zx \
+  -R '^(zx_compat_runtime_safe|zx_forbidden_api_scan_test)$' \
+  --output-on-failure
+
+./build-zx/tests/platform/zx_compat_runtime_probes
+cat build-zx/reports/zx_compatibility/api_usage.json
+```
+
+预期两个 CTest 均通过；运行探针输出 `[zx/compat] PASS`，并显示 Runtime、FFT、BLAS、DNN、SOLVER、SPARSE、RAND 全部 passed；API 使用报告应为 `status=passed`、`violation_count=0`、`unresolved_count=0`。
+
+2026-06-21 容器实测两个 CTest 2/2 通过，七项平台类别均为 passed，315 个禁止 API 零命中、零未解析，V5.2-06 已关闭。
+
+### V5.2-07 当前阶段验证
+
+`V5.2-07` 执行 V5.2 最终阶段门禁：四集合、81 项接口、81 项类型契约、兼容矩阵、类型/平台 CTest 和全库 81 算子 accuracy 回归。同步并替换项目后，在容器运行：
+
+```bash
+cd /CETC
+scripts/platform/run_v5_2_gate.sh 2>&1 | tee /tmp/v5_2_gate.log
+
+cat data/reports/zhongkexin/v5_2_gate_latest/summary.json
+```
+
+预期最后输出 `[v5.2-gate] PASS`；summary 为 `status=passed`、`operator_count=81`、`operator_accuracy_passed_count=81`，且所有 `checks` 均为 `true`。任一算子 accuracy、契约、CTest 或 API 门禁失败时脚本立即停止，不生成通过结论。
+
+2026-06-21 容器实测 81/81 accuracy、3/3 CTest 以及全部 8 项 checks 通过，V5.2 阶段已关闭。
+
+### V5.3-01 当前阶段验证
+
+`V5.3-01` 审计 Task1/Task2 每个步骤的 CPU/GPU 来源、公共算子映射、任务私有计算及当前计时/精度缺口。同步并替换项目后，在容器运行：
+
+```bash
+cd /CETC
+python3 scripts/test/audit_task_steps.py \
+  --contracts scripts/test/task_step_contracts.json \
+  --output-dir data/reports/zhongkexin/v5_3_task_step_audit \
+  --summary-markdown /tmp/v5_3_task_step_audit.md
+
+python3 - <<'PY'
+import json
+from pathlib import Path
+payload = json.loads(Path(
+    "data/reports/zhongkexin/v5_3_task_step_audit/latest_task_step_audit.json"
+).read_text())
+print(json.dumps(payload["summary"], ensure_ascii=False, indent=2))
+PY
+```
+
+预期 `status=passed`、`task_count=2`、`step_count=16`、`calculation_step_count=14`、`migration_step_count=11`、`timing_gap_count=2`、`accuracy_gap_count=5`。这里的 passed 表示审计映射完整；11 个 mixed/private 步骤尚未公共化，将由 V5.3-03/04 处理。
+
+2026-06-21 容器审计结果与预期一致，V5.3-01 已关闭。
+
+### V5.3-02 当前阶段验证
+
+`V5.3-02` 为两任务生成统一的 `latest_step_metrics.csv/json/md`，保留原有报告并明确不可用字段。同步后在容器运行：
+
+```bash
+cd /CETC
+scripts/test/run_task_demos.sh \
+  --build-dir build-zx --build --repeat 1 --skip-timing-validation
+
+python3 scripts/test/validate_task_step_reports.py \
+  --report-root data/reports/demo \
+  --output data/reports/zhongkexin/v5_3_step_reports_summary.json
+
+cat data/reports/zhongkexin/v5_3_step_reports_summary.json
+```
+
+预期两个任务均 PASS，schema 验证为 `status=passed`、`task_count=2`、`step_count=14`。本轮 `--skip-timing-validation` 只跳过既有硬阈值判定，仍完整记录耗时；已确认 Task2 `spectrogram` 为约 3.5 秒热点，后续单独优化。`gpu_kernel_ms=null` 不用 E2E 时间伪造；Task1 power-map 误差已补齐。
+
+2026-06-22 容器两任务均 PASS，步骤报告 14/14、已有误差 11 项、schema 零失败，V5.3-02 已关闭。
+
+### V5.3-03 当前阶段验证
+
+`V5.3-03` 将 Task1 的行维 FFT shift、功率图和最终检测迁入公共 `radartools` CPU/GPU 接口，并删除任务私有 CUDA 文件。同步后在容器运行：
+
+```bash
+cd /CETC
+source /zq500/sdk/env.sh
+
+cmake -S . -B build-zx \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCUSIGNAL_PLATFORM=ZHONGKEXIN \
+  -DCMAKE_CXX_COMPILER="$(command -v dlcc)"
+
+cmake --build build-zx --target \
+  task1_radar_demo \
+  radartools_task_test_fftshift_rows \
+  radartools_task_test_power_map \
+  radartools_task_test_detect_peak --parallel
+
+ctest --test-dir build-zx -R '^radartools_task_test_' --output-on-failure
+./build-zx/demo/task1_radar/task1_radar_demo --repeat 1 --invalid-input-checks
+
+python3 scripts/test/audit_task_steps.py \
+  --contracts scripts/test/task_step_contracts.json \
+  --output-dir data/reports/zhongkexin/v5_3_task_step_audit \
+  --summary-markdown /tmp/v5_3_task_step_audit.md
+```
+
+预期 3/3 CTest 和 Task1 均 PASS；审计应为 `public_calculation_step_count=6`、`migration_step_count=8`、`timing_gap_count=1`、`failure_count=0`。
+
 `run_zhongkexin_stage4.sh` 会自动检查依赖、配置中科芯 `build-zx`、运行 Task1/Task2 L1-L6 scale sweep、执行全量算子多规模 benchmark，并生成报告和图件。当前交付验收只面向 CPU reference + 容器内 ZQ500 GPU。
 
 ## 精度与数据类型约定

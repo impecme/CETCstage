@@ -245,6 +245,61 @@ namespace
         GenericPlan fft_plan;
     };
 
+    __global__ void fftshift_rows_kernel(
+        const float2 *input,
+        float2 *output,
+        std::size_t rows,
+        std::size_t cols)
+    {
+        const std::size_t index = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+        const std::size_t total = rows * cols;
+        if (index >= total)
+            return;
+        const std::size_t row = index / cols;
+        const std::size_t col = index % cols;
+        const std::size_t shifted_row = (row + rows / 2) % rows;
+        output[shifted_row * cols + col] = input[index];
+    }
+
+    __global__ void power_map_kernel(const float2 *input, float *output, std::size_t size)
+    {
+        const std::size_t index = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+        if (index >= size)
+            return;
+        const float2 value = input[index];
+        output[index] = value.x * value.x + value.y * value.y;
+    }
+
+    __global__ void detect_peak_kernel(
+        const float *power,
+        const float *detections,
+        std::size_t rows,
+        std::size_t cols,
+        int nfft,
+        float prf,
+        cusignal::radartools_api::DetectionSummary *result)
+    {
+        if (blockIdx.x != 0 || threadIdx.x != 0)
+            return;
+        cusignal::radartools_api::DetectionSummary local;
+        const std::size_t size = rows * cols;
+        for (std::size_t index = 0; index < size; ++index)
+        {
+            if (detections[index] <= 0.5f || (local.found && power[index] <= local.power))
+                continue;
+            local.found = true;
+            local.power = power[index];
+            local.range_bin = static_cast<int>(index % cols);
+            local.doppler_bin = static_cast<int>(index / cols);
+        }
+        if (local.found)
+        {
+            local.doppler_hz = static_cast<float>(local.doppler_bin - nfft / 2) *
+                prf / static_cast<float>(nfft);
+        }
+        *result = local;
+    }
+
     struct BeamformerWorkspace
     {
         ZxGpuComplexArray x_storage;
@@ -284,12 +339,21 @@ namespace
         }
     };
 
+    struct TaskPipelineWorkspace
+    {
+        ZxGpuComplexArray complex_storage;
+        ZxGpuRealArray power_storage;
+        ZxGpuRealArray detections_storage;
+        DeviceBuffer<cusignal::radartools_api::DetectionSummary> detection_result;
+    };
+
     struct RadartoolsWorkspace
     {
         PulseWorkspace pulse;
         AmbgfunWorkspace ambgfun;
         CfarWorkspace cfar;
         BeamformerWorkspace beamformer;
+        TaskPipelineWorkspace task_pipeline;
     };
 
     thread_local RadartoolsWorkspace g_workspace;
@@ -1122,6 +1186,73 @@ namespace cusignal
     {
         namespace radartools
         {
+
+            core::ZxGpuComplexArray fftshift_rows(const core::ComplexArrayLike &input)
+            {
+                const ZxGpuComplexArray &device =
+                    core::as_device_array(input, g_workspace.task_pipeline.complex_storage);
+                detail::ensure_rank(device, 2, "input");
+                core::ZxGpuComplexArray output(device.shape(), false);
+                if (device.empty())
+                    return output;
+                ScopedZxGpuEvents events;
+                g_last_kernel_ms = events.measure([&]() {
+                    fftshift_rows_kernel<<<block_count(device.size()), kThreadsPerBlock>>>(
+                        reinterpret_cast<const float2 *>(device.data()),
+                        reinterpret_cast<float2 *>(output.data()),
+                        device.shape()[0],
+                        device.shape()[1]);
+                    check_kernel_launch("fftshift_rows_kernel");
+                });
+                return output;
+            }
+
+            core::ZxGpuRealArray power_map(const core::ComplexArrayLike &input)
+            {
+                const ZxGpuComplexArray &device =
+                    core::as_device_array(input, g_workspace.task_pipeline.complex_storage);
+                core::ZxGpuRealArray output(device.shape(), false);
+                if (device.empty())
+                    return output;
+                ScopedZxGpuEvents events;
+                g_last_kernel_ms = events.measure([&]() {
+                    power_map_kernel<<<block_count(device.size()), kThreadsPerBlock>>>(
+                        reinterpret_cast<const float2 *>(device.data()), output.data(), device.size());
+                    check_kernel_launch("power_map_kernel");
+                });
+                return output;
+            }
+
+            radartools_api::DetectionSummary detect_peak(
+                const core::RealArrayLike &power,
+                const core::RealArrayLike &detections,
+                int nfft,
+                float prf)
+            {
+                const ZxGpuRealArray &power_device =
+                    core::as_device_array(power, g_workspace.task_pipeline.power_storage);
+                const ZxGpuRealArray &detections_device =
+                    core::as_device_array(detections, g_workspace.task_pipeline.detections_storage);
+                detail::ensure_rank(power_device, 2, "power");
+                if (detections_device.shape() != power_device.shape())
+                    throw std::invalid_argument("power and detections shape mismatch");
+                if (nfft <= 0 || !(prf > 0.0f))
+                    throw std::invalid_argument("nfft and prf must be positive");
+
+                g_workspace.task_pipeline.detection_result.reserve(1);
+                ScopedZxGpuEvents events;
+                g_last_kernel_ms = events.measure([&]() {
+                    detect_peak_kernel<<<1, 1>>>(
+                        power_device.data(), detections_device.data(), power_device.shape()[0],
+                        power_device.shape()[1], nfft, prf, g_workspace.task_pipeline.detection_result.get());
+                    check_kernel_launch("detect_peak_kernel");
+                });
+                radartools_api::DetectionSummary result;
+                throw_on_zx_gpu_error(
+                    cudaMemcpy(&result, g_workspace.task_pipeline.detection_result.get(), sizeof(result), cudaMemcpyDeviceToHost),
+                    "cudaMemcpy(detect_peak D2H)");
+                return result;
+            }
 
             core::ZxGpuComplexArray pulse_compression(
                 const core::ComplexArrayLike &x,

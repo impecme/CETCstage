@@ -1,4 +1,5 @@
 #include "task2_features_zx_gpu.hpp"
+#include "../common/task_step_report.hpp"
 
 #include <cuda_runtime_api.h>
 
@@ -86,24 +87,13 @@ namespace cusignal_demo::task2_features
         float kalman_rmse_tolerance = 2.0f; // Kalman 轨迹 RMSE 容忍阈值，单位为采样点。
     };
 
-    struct ErrorMetrics
-    {
-        float mixed_error = 0.0f;
-        float max_abs = 0.0f;
-        float max_rel = 0.0f;
-        float rmse = 0.0f;
-    };
+    using ErrorMetrics = cusignal_demo::report::ErrorMetrics;
 
     constexpr float kMixedErrorAtol = 1.0e-5f;
     constexpr float kDefaultMixedScale = 1.0e-2f;
     constexpr float kSpectralMixedScale = 1.0e-1f;
 
-    struct StageTiming
-    {
-        std::string name;
-        float cpu_ms = 0.0;
-        float gpu_ms = 0.0;
-    };
+    using StageTiming = cusignal_demo::report::StageTiming;
 
     struct DemoOptions
     {
@@ -877,6 +867,12 @@ namespace cusignal_demo::task2_features
         for (std::size_t index = 0; index < lhs.size(); ++index)
         {
             const float diff = std::abs(lhs[index] - rhs[index]);
+            metrics.real_max_abs = std::isfinite(metrics.real_max_abs)
+                ? std::max(metrics.real_max_abs, std::fabs(lhs[index].real() - rhs[index].real()))
+                : std::fabs(lhs[index].real() - rhs[index].real());
+            metrics.imag_max_abs = std::isfinite(metrics.imag_max_abs)
+                ? std::max(metrics.imag_max_abs, std::fabs(lhs[index].imag() - rhs[index].imag()))
+                : std::fabs(lhs[index].imag() - rhs[index].imag());
             const float expected_norm = std::abs(lhs[index]);
             const float denom = std::max(expected_norm, 1.0e-12f);
             metrics.max_abs = std::max(metrics.max_abs, diff);
@@ -2049,6 +2045,98 @@ namespace cusignal_demo::task2_features
         output << "total," << cpu_total_ms << ',' << gpu_total_ms << '\n';
     }
 
+    void write_unified_step_metrics(
+        const ScenarioConfig &config,
+        const DemoRunResult &run,
+        const ValidationThresholds &thresholds)
+    {
+        using cusignal_demo::report::StepMetric;
+        const auto timing_for = [&](const std::string &name) -> const StageTiming & {
+            const auto iter = std::find_if(run.stage_timings.begin(), run.stage_timings.end(),
+                [&](const StageTiming &timing) { return timing.name == name; });
+            if (iter == run.stage_timings.end())
+                throw std::runtime_error("missing stage timing: " + name);
+            return *iter;
+        };
+        const auto shape_text = [](const Shape &shape) {
+            std::ostringstream stream;
+            for (std::size_t index = 0; index < shape.size(); ++index)
+            {
+                if (index)
+                    stream << 'x';
+                stream << shape[index];
+            }
+            return stream.str();
+        };
+        const auto make = [&](const std::string &name, const std::string &op,
+                              const std::string &input_shape, const std::string &output_shape,
+                              const std::string &input_dtype, const std::string &output_dtype,
+                              const ErrorMetrics *error, bool complex_error, float limit,
+                              const std::string &note) {
+            const auto &timing = timing_for(name);
+            StepMetric metric;
+            metric.step = name;
+            metric.operator_name = op;
+            metric.input_shape = input_shape;
+            metric.output_shape = output_shape;
+            metric.input_dtype = input_dtype;
+            metric.output_dtype = output_dtype;
+            metric.cpu_ms = timing.cpu_ms;
+            metric.gpu_e2e_ms = timing.gpu_ms;
+            metric.error_available = error != nullptr;
+            metric.complex_error = complex_error;
+            if (error)
+                metric.error = *error;
+            metric.pass = error && error->mixed_error <= limit;
+            metric.note = note + "; gpu_kernel_ms pending V5.3 operator timing exposure";
+            return metric;
+        };
+
+        const std::string frame_shape = std::to_string(config.num_frames) + "x" +
+            std::to_string(config.samples_per_frame);
+        std::vector<StepMetric> steps;
+        steps.push_back(make("filter", "filter_design/firwin + filtering/firfilter + private complex adapter",
+            frame_shape, shape_text(run.cpu.filtered.shape), "complex64", "complex64",
+            &run.filtered_error, true, thresholds.filtered_mixed, "mixed public/private step"));
+        steps.push_back(make("demod", "demod/fm_demod + private batched score",
+            shape_text(run.cpu.filtered.shape), frame_shape, "complex64", "float32",
+            nullptr, false, 0.0f, "step output is not retained for CPU/GPU error"));
+        steps.push_back(make("correlate", "correlate/correlate + private normalization",
+            shape_text(run.cpu.filtered.shape), shape_text(run.cpu.correlate_scores.shape),
+            "complex64", "float32", &run.correlate_error, false,
+            thresholds.correlate_mixed, "mixed public/private step"));
+        steps.push_back(make("spectrogram", "spectral/spectrogram + private band score",
+            frame_shape, shape_text(run.cpu.spectrogram_values.shape), "float32", "float32",
+            &run.spectrogram_error, false, thresholds.spectrogram_mixed,
+            "representative-frame error; stage timing covers all frames"));
+        steps.push_back(make("cwt", "wavelets/cwt + private scale reduction",
+            frame_shape, shape_text(run.cpu.cwt_values.shape), "float32", "complex64",
+            &run.cwt_error, true, thresholds.cwt_mixed,
+            "representative-frame error; stage timing covers all frames"));
+        steps.push_back(make("feature_fusion", "private weighted fusion + peak selection",
+            frame_shape, shape_text(run.cpu.feature_scores.shape), "float32", "float32",
+            &run.feature_score_error, false, thresholds.feature_score_mixed,
+            "private step"));
+
+        StepMetric measurement;
+        measurement.step = "measurement_conversion";
+        measurement.operator_name = "private index_to_measurement";
+        measurement.input_shape = std::to_string(config.num_frames);
+        measurement.output_shape = std::to_string(config.num_frames);
+        measurement.input_dtype = "int32";
+        measurement.output_dtype = "float32";
+        measurement.note = "timing and error bundled into Kalman step";
+        steps.push_back(std::move(measurement));
+
+        auto kalman_metric = make("kalman", "estimation/kalman_filter + private GPU pipeline",
+            std::to_string(config.num_frames), std::to_string(config.num_frames),
+            "float32", "float32", &run.kalman_error, false, config.kalman_rmse_tolerance,
+            "error compares GPU track to truth, not CPU to GPU");
+        kalman_metric.pass = run.kalman_error.rmse <= config.kalman_rmse_tolerance;
+        steps.push_back(std::move(kalman_metric));
+        cusignal_demo::report::write_step_metrics(report_root(), "task2_features", steps);
+    }
+
     bool tracks_match(const RealSignal &lhs, const RealSignal &rhs)
     {
         if (lhs.size() != rhs.size())
@@ -2357,6 +2445,7 @@ namespace cusignal_demo::task2_features
         write_generated_inputs(config, final_run.cpu.target_template, final_run.cpu.rx_frames, final_run.cpu.truth_track);
         write_output_samples(final_run.cpu, final_run.gpu);
         write_stage_timings_csv(final_run.stage_timings, final_run.cpu_total_ms, final_run.gpu_total_ms);
+        write_unified_step_metrics(config, final_run, thresholds);
         write_text_file(
             report_root() / "latest_summary.md",
             build_summary_markdown(

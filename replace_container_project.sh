@@ -4,13 +4,23 @@ set -euo pipefail
 source_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 target="${1:-/CETC}"
 runner="/tmp/replace_container_project_$$.sh"
+preserve_dir="/tmp/cetc_replace_preserve_$$"
 
 cat >"${runner}" <<EOF
 #!/usr/bin/env bash
 set -euo pipefail
 cd /
+mkdir -p '${preserve_dir}'
+if [[ -d '${target}/build-zx' ]]; then
+    mv '${target}/build-zx' '${preserve_dir}/build-zx'
+fi
 rm -rf '${target}'
 mv '${source_dir}' '${target}'
+if [[ -d '${preserve_dir}/build-zx' ]]; then
+    mv '${preserve_dir}/build-zx' '${target}/build-zx'
+    echo "已保留 ${target}/build-zx"
+fi
+rm -rf '${preserve_dir}'
 echo "已替换 ${target}"
 grep -n "script version" '${target}/scripts/platform/run_zhongkexin_stage1.sh' || true
 grep -n "script version" '${target}/scripts/platform/run_zhongkexin_stage2.sh' || true

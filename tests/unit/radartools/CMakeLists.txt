@@ -36,3 +36,10 @@ foreach(op
 )
     add_radartools_test(radartools_test_${op})
 endforeach()
+
+foreach(op fftshift_rows power_map detect_peak)
+    add_executable(radartools_task_test_${op} test_${op}.cpp)
+    target_link_libraries(radartools_task_test_${op} PRIVATE cusignal_cpu cusignal_zx_gpu)
+    target_compile_features(radartools_task_test_${op} PRIVATE cxx_std_17)
+    add_test(NAME radartools_task_test_${op} COMMAND radartools_task_test_${op})
+endforeach()

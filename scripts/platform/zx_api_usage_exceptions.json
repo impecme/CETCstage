@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "apis": {
+    "cudnnCreate": {
+      "reason": "The DNN worksheet omits handle lifecycle APIs; the SDK header declares this API.",
+      "verification": "zx_compat_runtime_probes"
+    },
+    "cudnnDestroy": {
+      "reason": "The DNN worksheet omits handle lifecycle APIs; the SDK header declares this API.",
+      "verification": "zx_compat_runtime_probes"
+    },
+    "cusparseDestroy": {
+      "reason": "The SPARSE worksheet spells the API as cusparseDestory; the CUDA-compatible SDK spelling is cusparseDestroy.",
+      "verification": "zx_compat_runtime_probes"
+    }
+  }
+}

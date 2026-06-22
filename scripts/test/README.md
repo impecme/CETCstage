@@ -207,6 +207,30 @@
 | `--compare-baseline COMPARE_BASELINE` | 空 | 与旧 baseline CSV 做 perf delta 对比 | 修复前后对比 |
 | `--fix-notes-file FIX_NOTES_FILE` | 空 | 读取修正说明 CSV 增强报告 | 生成带修复机制说明的报告 |
 
+### `cusignal_type_contract_tests`
+
+V5.2 类型基础测试覆盖 FP32、FP16、INT32、INT16、INT8 和 complex64 的 host/device 容器：
+
+```bash
+cmake --build build-zx --target cusignal_type_contract_tests --parallel
+ctest --test-dir build-zx -R '^cusignal_type_contract$' --output-on-failure
+```
+
+该 target 只验证公共类型、shape、空输入和 H2D/D2H roundtrip，不替代逐算子 dtype 测试。
+
+### `validate_operator_type_contracts.py`
+
+校验 81 个算子是否恰好分配到一个类型策略，并禁止 FP64、complex128、FP16 复数和整数复数：
+
+```bash
+scripts/test/run_all_tests.sh --list > /tmp/v5_2_all81.tsv
+python3 scripts/test/validate_operator_type_contracts.py \
+  --registry /tmp/v5_2_all81.tsv \
+  --contracts scripts/test/operator_type_contracts.json
+```
+
+输出中的 `current_types` 表示当前代码能力，不能用目标输入/输出类型替代实现状态。
+
 ## `benchmark_all_ops_scales.py`（全量多规模采集）
 该脚本用于当前已启用的 81 个算子多规模 `perf` 自动化测试。每个算子执行 6 个规模点，脚本会按算子输入语义临时改写 `data/generated/unit/<module>/<operator>/manifest.json`，运行结束后自动恢复 manifest。
 
@@ -628,4 +652,28 @@ scripts/test/audit_all_ops_precision.py \
 ```csv
 module,operator,trigger_reason,fix_mechanism,impact_scope
 wavelets,cwt,summary.pass=false due to ...,precompute kernel + fmaf accumulation,cpu/cuda wavelets only
+```
+
+## `audit_task_steps.py`（V5.3 任务步骤审计）
+
+该脚本读取 `task_step_contracts.json`，检查 Task1/Task2 每个步骤登记的 CPU/GPU 符号确实存在，并输出公共算子、任务私有实现、计时和精度缺口。`status=passed` 只表示审计清单完整，不表示 mixed/private 步骤已完成迁移。
+
+```bash
+python3 scripts/test/audit_task_steps.py \
+  --contracts scripts/test/task_step_contracts.json \
+  --output-dir data/reports/zhongkexin/v5_3_task_step_audit \
+  --summary-markdown /tmp/v5_3_task_step_audit.md
+```
+
+正式文档位于 `docs/performance/v5_0/task_step_audit.md`；JSON 报告位于输出目录的 `latest_task_step_audit.json`。
+
+## `validate_task_step_reports.py`（V5.3 步骤报告门禁）
+
+运行两个任务后，校验 `latest_step_metrics.json` 的固定字段、步骤集合、数值有限性和 complex64 实虚分量误差。当前允许 `gpu_kernel_ms=null`，但禁止伪造数值。
+
+```bash
+scripts/test/run_task_demos.sh --build-dir build-zx --build --repeat 1 --skip-timing-validation
+python3 scripts/test/validate_task_step_reports.py \
+  --report-root data/reports/demo \
+  --output data/reports/zhongkexin/v5_3_step_reports_summary.json
 ```
