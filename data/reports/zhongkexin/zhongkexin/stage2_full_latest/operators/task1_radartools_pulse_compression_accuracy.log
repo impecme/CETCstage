@@ -1,0 +1,89 @@
+[cusignal-test] timing       : warmup=1 repeat=3 (demo-fast)
+[cusignal-test] project root : /CETC
+[cusignal-test] build dir    : /CETC/build-zx
+[cusignal-test] build type   : Release
+[cusignal-test] platform     : ZHONGKEXIN
+[cusignal-test] cuda arch    : n/a (ZHONGKEXIN uses dlcc --cuda-gpu-arch=dlgput64)
+[cusignal-test] jobs         : 255
+[cusignal-test] cxx compiler : /zq500/sdk/bin/dlcc
+-- The CXX compiler identification is Clang 15.0.6
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /zq500/sdk/bin/dlcc - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Using Zhongkexin CUDA headers without CUDAToolkit cudart target: /zq500/sdk/include
+-- CUSIGNAL_PLATFORM=ZHONGKEXIN
+-- Looking for C++ include pthread.h
+-- Looking for C++ include pthread.h - found
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+-- Found Threads: TRUE  
+-- Using Zhongkexin CUDA runtime compatibility library: /zq500/sdk/lib/libcurt.so
+-- Using Zhongkexin cuFFT compatibility library: /zq500/sdk/lib/libdlfft.so
+-- Using Zhongkexin cuBLAS compatibility library: /zq500/sdk/lib/libdlblas.so
+-- Using Zhongkexin cuSOLVER compatibility library: /zq500/sdk/lib/libdlsolver.so
+-- Using cuFFT compatibility library: /zq500/sdk/lib/libdlfft.so
+-- Using cuBLAS compatibility library: /zq500/sdk/lib/libdlblas.so
+-- Using cuSOLVER compatibility library: /zq500/sdk/lib/libdlsolver.so
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /CETC/build-zx
+[  0%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/bsplines.cpp.o
+[  6%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/correlate.cpp.o
+[  6%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/filter_design.cpp.o
+[ 13%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/estimation.cpp.o
+[ 13%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/demod.cpp.o
+[ 13%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/windows.cpp.o
+[ 13%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/peak_finding.cpp.o
+[ 20%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/filtering.cpp.o
+[ 26%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/spectral.cpp.o
+[ 33%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/radartools.cpp.o
+[ 33%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/wavelets.cpp.o
+[ 33%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/waveforms.cpp.o
+[ 40%] Linking CXX static library libcusignal_cpu.a
+[ 40%] Built target cusignal_cpu
+[ 46%] Building CXX object CMakeFiles/cusignal_cuda.dir/src/cuda/correlate.cu.o
+[ 46%] Building CXX object CMakeFiles/cusignal_cuda.dir/src/cuda/demod.cu.o
+[ 46%] Building CXX object CMakeFiles/cusignal_cuda.dir/src/cuda/filter_design.cu.o
+[ 46%] Building CXX object CMakeFiles/cusignal_cuda.dir/src/cuda/bsplines.cu.o
+[ 46%] Building CXX object CMakeFiles/cusignal_cuda.dir/src/cuda/filtering.cu.o
+[ 46%] Building CXX object CMakeFiles/cusignal_cuda.dir/src/cuda/radartools.cu.o
+[ 53%] Building CXX object CMakeFiles/cusignal_cuda.dir/src/cuda/estimation.cu.o
+[ 53%] Building CXX object CMakeFiles/cusignal_cuda.dir/src/cuda/waveforms.cu.o
+[ 60%] Building CXX object CMakeFiles/cusignal_cuda.dir/src/cuda/peak_finding.cu.o
+[ 66%] Building CXX object CMakeFiles/cusignal_cuda.dir/src/cuda/wavelets.cu.o
+[ 66%] Building CXX object CMakeFiles/cusignal_cuda.dir/src/cuda/windows.cu.o
+[ 73%] Building CXX object CMakeFiles/cusignal_cuda.dir/src/cuda/spectral.cu.o
+[ 73%] Building CXX object CMakeFiles/cusignal_cuda.dir/demo/task2_features/task2_features_cuda.cu.o
+[ 80%] Building CXX object CMakeFiles/cusignal_cuda.dir/demo/task1_radar/task1_radar_cuda.cu.o
+[ 86%] Linking CXX static library libcusignal_cuda.a
+Indexing Zhongkexin CUDA static library
+[ 86%] Built target cusignal_cuda
+[ 93%] Building CXX object tests/unit/radartools/CMakeFiles/radartools_test_support.dir/radartools_test_support.cu.o
+/CETC/tests/unit/radartools/radartools_test_support.cu:2112:49: warning: 'cudaDeviceSynchronize' is deprecated: Use of cudaDeviceSynchronize from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING. [-Wdeprecated-declarations]
+            cusignal::core::throw_on_cuda_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
+                                                ^
+/zq500/sdk/include/cuda_device_runtime_api.h:142:38: note: 'cudaDeviceSynchronize' has been explicitly marked deprecated here
+extern __device__ __cudart_builtin__ __CDPRT_DEPRECATED(cudaDeviceSynchronize) cudaError_t CUDARTAPI cudaDeviceSynchronize(void);
+                                     ^
+/zq500/sdk/include/cuda_device_runtime_api.h:120:40: note: expanded from macro '__CDPRT_DEPRECATED'
+# define __CDPRT_DEPRECATED(func_name) __DEPRECATED__("Use of "#func_name" from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING.")
+                                       ^
+/zq500/sdk/include/cuda_device_runtime_api.h:116:45: note: expanded from macro '__DEPRECATED__'
+# define __DEPRECATED__(msg) __attribute__((deprecated(msg)))
+                                            ^
+1 warning generated when compiling for dlgput64r1.
+[ 93%] Linking CXX static library libradartools_test_support.a
+[ 93%] Built target radartools_test_support
+[100%] Building CXX object tests/unit/radartools/CMakeFiles/radartools_test_pulse_compression.dir/test_pulse_compression.cpp.o
+[100%] Linking CXX executable radartools_test_pulse_compression
+[100%] Built target radartools_test_pulse_compression
+[cusignal-test] running radartools/pulse_compression
+[radartools/pulse_compression] PASS  accuracy_cases=2  perf_cases=0
+cpu_gpu_error : max_abs=1.066240e-06  max_rel=1.851013e+22  rmse=5.706062e-07
+reference_error : max_abs=1.066240e-06  max_rel=1.851013e+22  rmse=6.176347e-07
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/radartools/pulse_compression/latest_summary.md
+[cusignal-test] summary: passed 1/1

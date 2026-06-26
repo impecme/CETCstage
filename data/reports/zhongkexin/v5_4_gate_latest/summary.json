@@ -1,0 +1,119 @@
+{
+  "contracts": {
+    "interface": {
+      "failed_count": 0,
+      "failure_counts": {},
+      "operator_count": 81,
+      "passed_count": 81,
+      "status": "passed"
+    },
+    "interface_path": "/home/usr_04/CETC/data/reports/zhongkexin/v5_4_interface_audit/latest_interface_audit.json",
+    "status": "passed",
+    "type_path": "/home/usr_04/CETC/data/reports/zhongkexin/v5_4_type_contracts/latest_type_contracts.json",
+    "types": {
+      "complex64_operators": 20,
+      "complex_types": [
+        "complex64"
+      ],
+      "forbidden_types": [
+        "complex128",
+        "complex32",
+        "complex_int16",
+        "complex_int32",
+        "complex_int8",
+        "float64"
+      ],
+      "integer_enabled_operators": 8,
+      "operator_count": 81,
+      "policy_count": 13,
+      "real_types": [
+        "float16",
+        "float32",
+        "int16",
+        "int32",
+        "int8"
+      ],
+      "status": "passed"
+    }
+  },
+  "core53": {
+    "csv_path": "/home/usr_04/CETC/data/reports/unit/benchmarks/v5_4_core53_batch_close_probe/latest_all_ops_scale_benchmark.csv",
+    "failed": [],
+    "failed_count": 0,
+    "operator_count": 53,
+    "row_count": 53,
+    "status": "passed"
+  },
+  "modules": {
+    "failed_modules": [],
+    "modules": {
+      "bsplines": {
+        "expected_count": 3,
+        "failed": [],
+        "operator_count": 3,
+        "path": "/home/usr_04/CETC/data/reports/unit/bsplines/latest_metrics.json",
+        "status": "passed"
+      },
+      "filter_design": {
+        "expected_count": 5,
+        "failed": [],
+        "operator_count": 5,
+        "path": "/home/usr_04/CETC/data/reports/unit/filter_design/latest_metrics.json",
+        "status": "passed"
+      },
+      "filtering": {
+        "expected_count": 17,
+        "failed": [],
+        "operator_count": 17,
+        "path": "/home/usr_04/CETC/data/reports/unit/filtering/latest_metrics.json",
+        "status": "passed"
+      },
+      "radartools": {
+        "expected_count": 6,
+        "failed": [],
+        "operator_count": 6,
+        "path": "/home/usr_04/CETC/data/reports/unit/radartools/latest_metrics.json",
+        "status": "passed"
+      },
+      "spectral": {
+        "expected_count": 9,
+        "failed": [],
+        "operator_count": 9,
+        "path": "/home/usr_04/CETC/data/reports/unit/spectral/latest_metrics.json",
+        "status": "passed"
+      },
+      "wavelets": {
+        "expected_count": 5,
+        "failed": [],
+        "operator_count": 5,
+        "path": "/home/usr_04/CETC/data/reports/unit/wavelets/latest_metrics.json",
+        "status": "passed"
+      },
+      "windows": {
+        "expected_count": 23,
+        "failed": [],
+        "operator_count": 23,
+        "path": "/home/usr_04/CETC/data/reports/unit/windows/latest_metrics.json",
+        "status": "passed"
+      }
+    },
+    "status": "passed"
+  },
+  "plots": {
+    "manifest_path": "/home/usr_04/CETC/data/reports/unit/benchmarks/v5_4_core53_batch_close_probe/figures/operator_figures/latest_operator_curve_manifest.csv",
+    "missing_paths": [],
+    "module_figure_count": 12,
+    "operator_total": 53,
+    "source_manifest_path": "/home/usr_04/CETC/data/reports/unit/benchmarks/v5_4_core53_batch_close_probe/figures/figures/operator_figures/latest_operator_curve_manifest.csv",
+    "status": "passed"
+  },
+  "status": "passed",
+  "task_smoke": {
+    "failure_count": 0,
+    "passed": true,
+    "path": "/home/usr_04/CETC/data/reports/zhongkexin/v5_4_task_smoke_after_core53.json",
+    "status": "passed",
+    "step_count": 14,
+    "task_count": 2
+  }
+}

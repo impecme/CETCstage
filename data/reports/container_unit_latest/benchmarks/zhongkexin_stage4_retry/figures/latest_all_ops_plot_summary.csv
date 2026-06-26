@@ -1,0 +1,16 @@
+module,operator,scale_family,largest_scale_level,largest_scale_value,status,failed_scales,max_mixed_error_all_scales,gpu_e2e_speedup_at_max_scale,gpu_kernel_speedup_at_max_scale,cpu_median_ms_at_max_scale,gpu_e2e_median_ms_at_max_scale,gpu_kernel_median_ms_at_max_scale,git_commit,gpu_name
+correlate,correlation_lags,heavy_quadratic,6,8192,passed,0,0.0,0.00618888,0.0280381,0.00076,0.122801,0.027106,,ZQ500-Q QUAD-0
+filter_design,cmplx_sort,filter_design_taps,6,4097,passed,0,0.0,0.814396,0.0,0.43854,0.538485,0.0,,ZQ500-Q QUAD-0
+filter_design,firwin2,zhongkexin_firwin2_taps,6,1025,passed,0,0.000647054,0.692498,0.901479,0.263578,0.380619,0.292384,,ZQ500-Q QUAD-0
+filter_design,kaiser_atten,filter_design_taps,6,4097,passed,0,0.0,0.00142975,0.0,6e-05,0.0419655,0.0,,ZQ500-Q QUAD-0
+filter_design,kaiser_beta,filter_design_taps,6,4097,passed,0,0.0,0.000943274,0.0,4e-05,0.0424055,0.0,,ZQ500-Q QUAD-0
+filtering,filtfilt,medium_1d_fft,6,32768,passed,0,1.9675e-07,0.000613066,0.000613287,0.558175,910.464,910.137,,ZQ500-Q QUAD-0
+filtering,firfilter_zi,medium_1d_fft,6,32768,passed,0,0.0,0.0458371,0.137677,0.011395,0.248598,0.082766,,ZQ500-Q QUAD-0
+filtering,lfilter,medium_1d_fft,6,32768,passed,0,0.0,0.000450354,0.000451138,0.204947,455.079,454.288,,ZQ500-Q QUAD-0
+peak_finding,argrelmax,matrix_total,6,1048576,passed,0,0.0,3.75447,4.74284,1.00294,0.267132,0.211464,,ZQ500-Q QUAD-0
+peak_finding,argrelmin,matrix_total,6,1048576,passed,0,0.0,3.88296,4.89581,1.00799,0.259593,0.205888,,ZQ500-Q QUAD-0
+radartools,mvdr,matrix_total,6,1048576,passed,0,0.0,0.405643,0.503757,21.2321,52.3419,42.1475,,ZQ500-Q QUAD-0
+spectral,coherence,medium_1d_fft,6,32768,passed,0,0.648893,1.45852,401.865,10.9388,7.49991,0.02722,,ZQ500-Q QUAD-0
+spectral,periodogram,medium_1d_fft,6,32768,passed,0,8.97816e-07,0.0243892,0.0246622,1.78546,73.2069,72.3964,,ZQ500-Q QUAD-0
+spectral,welch,medium_1d_fft,6,32768,passed,0,8.69758e-07,1.29384,1.65157,2.72336,2.10486,1.64895,,ZQ500-Q QUAD-0
+windows,chebwin,zhongkexin_chebwin_points,6,1536,passed,0,0.0,2.27646,8.59911,0.160081,0.07032,0.018616,,ZQ500-Q QUAD-0

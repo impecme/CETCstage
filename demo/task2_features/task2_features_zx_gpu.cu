@@ -3,20 +3,26 @@
 #include <cuda_runtime_api.h>
 
 #include <algorithm>
+#include <cmath>
+#include <numeric>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 #include "cusignal/core/helpers.hpp"
 #include "cusignal/core/types.hpp"
+#include "../../src/common/wavelets_detail.hpp"
 
 namespace cusignal_demo::task2_features
 {
     namespace
     {
+        namespace wavelets_detail = cusignal::wavelets_detail;
         using cusignal::core::ZxGpuComplexArray;
         using cusignal::core::ZxGpuIndexSignal;
         using cusignal::core::ZxGpuRealArray;
         using cusignal::core::ZxGpuRealSignal;
+        using cusignal::core::RealSignal;
         using cusignal::core::Shape;
 
         constexpr int kThreadsPerBlock = 256;
@@ -30,6 +36,13 @@ namespace cusignal_demo::task2_features
             ZxGpuRealArray temp_storage_b;
             ZxGpuRealSignal temp_signal;
             ZxGpuIndexSignal temp_index;
+            ZxGpuRealArray direct_cos_table;
+            ZxGpuRealArray direct_sin_table;
+            ZxGpuIndexSignal cwt_kernel_sizes;
+            ZxGpuIndexSignal cwt_kernel_starts;
+            ZxGpuIndexSignal cwt_kernel_offsets;
+            ZxGpuRealSignal cwt_kernel_real;
+            ZxGpuRealSignal cwt_kernel_imag;
         };
 
         thread_local Task2Workspace g_workspace;
@@ -93,6 +106,40 @@ namespace cusignal_demo::task2_features
             }
         }
 
+        __global__ void complex_firfilter_kernel(
+            const float2 *input,
+            const float *taps,
+            std::size_t rows,
+            std::size_t cols,
+            std::size_t tap_count,
+            float2 *output,
+            float *real_output)
+        {
+            const std::size_t flat = static_cast<std::size_t>(blockIdx.x) * static_cast<std::size_t>(blockDim.x) +
+                static_cast<std::size_t>(threadIdx.x);
+            const std::size_t total = rows * cols;
+            if (flat >= total)
+            {
+                return;
+            }
+
+            const std::size_t row = flat / cols;
+            const std::size_t col = flat % cols;
+            const std::size_t row_offset = row * cols;
+            const std::size_t tap_limit = min(tap_count, col + 1);
+            float real = 0.0f;
+            float imag = 0.0f;
+            for (std::size_t tap = 0; tap < tap_limit; ++tap)
+            {
+                const float2 value = input[row_offset + col - tap];
+                const float coeff = taps[tap];
+                real = fmaf(coeff, value.x, real);
+                imag = fmaf(coeff, value.y, imag);
+            }
+            output[flat] = make_float2(real, imag);
+            real_output[flat] = real;
+        }
+
         __global__ void extract_row_complex_kernel(
             const float2 *input,
             std::size_t rows,
@@ -131,6 +178,28 @@ namespace cusignal_demo::task2_features
                 return;
             }
             output[index] = input[static_cast<std::size_t>(row_index) * cols + index];
+        }
+
+        __global__ void extract_frame_real_3d_kernel(
+            const float *input,
+            std::size_t frames,
+            std::size_t rows,
+            std::size_t cols,
+            int frame_index,
+            float *output)
+        {
+            const std::size_t index = static_cast<std::size_t>(blockIdx.x) * static_cast<std::size_t>(blockDim.x) +
+                static_cast<std::size_t>(threadIdx.x);
+            const std::size_t frame_size = rows * cols;
+            if (index >= frame_size)
+            {
+                return;
+            }
+            if (frame_index < 0 || static_cast<std::size_t>(frame_index) >= frames)
+            {
+                return;
+            }
+            output[index] = input[static_cast<std::size_t>(frame_index) * frame_size + index];
         }
 
         __global__ void store_row_real_kernel(
@@ -227,6 +296,45 @@ namespace cusignal_demo::task2_features
             }
         }
 
+        __global__ void normalize_rows_kernel(
+            const float *input,
+            std::size_t rows,
+            std::size_t cols,
+            float *output)
+        {
+            __shared__ float shared[kThreadsPerBlock];
+            const std::size_t row = static_cast<std::size_t>(blockIdx.x);
+            const unsigned int tid = threadIdx.x;
+            if (row >= rows)
+            {
+                return;
+            }
+
+            const std::size_t row_offset = row * cols;
+            float local_max = 0.0f;
+            for (std::size_t col = tid; col < cols; col += blockDim.x)
+            {
+                local_max = fmaxf(local_max, input[row_offset + col]);
+            }
+            shared[tid] = local_max;
+            __syncthreads();
+
+            for (unsigned int stride = blockDim.x / 2; stride > 0; stride >>= 1)
+            {
+                if (tid < stride)
+                {
+                    shared[tid] = fmaxf(shared[tid], shared[tid + stride]);
+                }
+                __syncthreads();
+            }
+
+            const float scale = shared[0] > 1.0e-12f ? (1.0f / shared[0]) : 0.0f;
+            for (std::size_t col = tid; col < cols; col += blockDim.x)
+            {
+                output[row_offset + col] = input[row_offset + col] * scale;
+            }
+        }
+
         __global__ void batched_demod_score_kernel(
             const float2 *input,
             std::size_t rows,
@@ -275,6 +383,106 @@ namespace cusignal_demo::task2_features
             {
                 output[row_offset + col] *= scale;
             }
+        }
+
+        __global__ void batched_correlate_score_kernel(
+            const float2 *frames,
+            const float2 *templ,
+            std::size_t rows,
+            std::size_t cols,
+            std::size_t templ_len,
+            int crop_start,
+            float *output)
+        {
+            __shared__ float shared_real[kThreadsPerBlock];
+            __shared__ float shared_imag[kThreadsPerBlock];
+
+            const std::size_t flat = static_cast<std::size_t>(blockIdx.x);
+            const std::size_t row = flat / cols;
+            const std::size_t col = flat % cols;
+            if (row >= rows)
+            {
+                return;
+            }
+
+            float real = 0.0f;
+            float imag = 0.0f;
+            const float2 *frame = frames + row * cols;
+            for (std::size_t k = threadIdx.x; k < templ_len; k += blockDim.x)
+            {
+                const long long input_index =
+                    static_cast<long long>(col) +
+                    static_cast<long long>(crop_start) +
+                    static_cast<long long>(k) -
+                    static_cast<long long>(templ_len - 1);
+                if (input_index < 0 || input_index >= static_cast<long long>(cols))
+                {
+                    continue;
+                }
+                const float2 lhs = frame[static_cast<std::size_t>(input_index)];
+                const float2 rhs = templ[k];
+                real += lhs.x * rhs.x + lhs.y * rhs.y;
+                imag += lhs.y * rhs.x - lhs.x * rhs.y;
+            }
+
+            shared_real[threadIdx.x] = real;
+            shared_imag[threadIdx.x] = imag;
+            __syncthreads();
+            for (unsigned int stride = blockDim.x / 2; stride > 0; stride >>= 1)
+            {
+                if (threadIdx.x < stride)
+                {
+                    shared_real[threadIdx.x] += shared_real[threadIdx.x + stride];
+                    shared_imag[threadIdx.x] += shared_imag[threadIdx.x + stride];
+                }
+                __syncthreads();
+            }
+            if (threadIdx.x == 0)
+            {
+                output[flat] = hypotf(shared_real[0], shared_imag[0]);
+            }
+        }
+
+        __global__ void batched_correlate_score_tiled_kernel(
+            const float2 *frames,
+            const float2 *templ,
+            std::size_t rows,
+            std::size_t cols,
+            std::size_t templ_len,
+            int crop_start,
+            float *output)
+        {
+            const std::size_t row = static_cast<std::size_t>(blockIdx.y);
+            const std::size_t col =
+                static_cast<std::size_t>(blockIdx.x) * static_cast<std::size_t>(blockDim.x) +
+                static_cast<std::size_t>(threadIdx.x);
+            if (row >= rows || col >= cols)
+            {
+                return;
+            }
+
+            float real = 0.0f;
+            float imag = 0.0f;
+            const float2 *frame = frames + row * cols;
+            for (std::size_t k = 0; k < templ_len; ++k)
+            {
+                const long long input_index =
+                    static_cast<long long>(col) +
+                    static_cast<long long>(crop_start) +
+                    static_cast<long long>(k) -
+                    static_cast<long long>(templ_len - 1);
+                if (input_index < 0 || input_index >= static_cast<long long>(cols))
+                {
+                    continue;
+                }
+                const float2 lhs = frame[static_cast<std::size_t>(input_index)];
+                const float2 rhs = templ[k];
+                real = fmaf(lhs.x, rhs.x, real);
+                real = fmaf(lhs.y, rhs.y, real);
+                imag = fmaf(lhs.y, rhs.x, imag);
+                imag = fmaf(-lhs.x, rhs.y, imag);
+            }
+            output[row * cols + col] = hypotf(real, imag);
         }
 
         __global__ void spectrogram_band_energy_kernel(
@@ -335,6 +543,400 @@ namespace cusignal_demo::task2_features
             output[sample] = time_energy[best_index];
         }
 
+        __global__ void batched_spectrogram_band_score_kernel(
+            const float *values,
+            const float *freqs,
+            const float *times,
+            std::size_t frames,
+            std::size_t freq_count,
+            std::size_t time_count,
+            int sample_count,
+            float band_low,
+            float band_high,
+            float fs,
+            float *output)
+        {
+            const std::size_t flat = static_cast<std::size_t>(blockIdx.x) * static_cast<std::size_t>(blockDim.x) +
+                static_cast<std::size_t>(threadIdx.x);
+            const std::size_t total = frames * static_cast<std::size_t>(sample_count);
+            if (flat >= total)
+            {
+                return;
+            }
+
+            const std::size_t frame = flat / static_cast<std::size_t>(sample_count);
+            const std::size_t sample = flat % static_cast<std::size_t>(sample_count);
+            const float target_time = static_cast<float>(sample) / fs;
+            std::size_t best_time = 0;
+            float best_distance = fabsf(times[0] - target_time);
+            for (std::size_t time_index = 1; time_index < time_count; ++time_index)
+            {
+                const float distance = fabsf(times[time_index] - target_time);
+                if (distance < best_distance)
+                {
+                    best_distance = distance;
+                    best_time = time_index;
+                }
+            }
+
+            float sum = 0.0f;
+            const std::size_t frame_offset = frame * freq_count * time_count;
+            for (std::size_t freq_index = 0; freq_index < freq_count; ++freq_index)
+            {
+                const float freq = freqs[freq_index];
+                if (freq >= band_low && freq <= band_high)
+                {
+                    sum += values[frame_offset + freq_index * time_count + best_time];
+                }
+            }
+            output[flat] = sum;
+        }
+
+        __global__ void direct_spectrogram_band_energy_kernel(
+            const float *frames,
+            const float *cos_table,
+            const float *sin_table,
+            std::size_t frame_count,
+            std::size_t sample_count,
+            int nperseg,
+            int step,
+            int nseg,
+            int band_bin_count,
+            float scale,
+            float *time_energy)
+        {
+            const std::size_t flat = static_cast<std::size_t>(blockIdx.x) * static_cast<std::size_t>(blockDim.x) +
+                static_cast<std::size_t>(threadIdx.x);
+            const std::size_t total = frame_count * static_cast<std::size_t>(nseg);
+            if (flat >= total)
+            {
+                return;
+            }
+
+            const std::size_t frame = flat / static_cast<std::size_t>(nseg);
+            const int seg = static_cast<int>(flat % static_cast<std::size_t>(nseg));
+            const float *frame_ptr = frames + frame * sample_count;
+            float mean = 0.0f;
+            const int start = seg * step;
+            for (int sample = 0; sample < nperseg; ++sample)
+            {
+                mean += frame_ptr[static_cast<std::size_t>(start + sample)];
+            }
+            mean /= static_cast<float>(nperseg);
+
+            float band_sum = 0.0f;
+            for (int bin = 0; bin < band_bin_count; ++bin)
+            {
+                float real = 0.0f;
+                float imag = 0.0f;
+                const std::size_t table_offset = static_cast<std::size_t>(bin) * static_cast<std::size_t>(nperseg);
+                for (int sample = 0; sample < nperseg; ++sample)
+                {
+                    const float value = frame_ptr[static_cast<std::size_t>(start + sample)] - mean;
+                    real += value * cos_table[table_offset + static_cast<std::size_t>(sample)];
+                    imag += value * sin_table[table_offset + static_cast<std::size_t>(sample)];
+                }
+                band_sum += hypotf(real, imag) * scale;
+            }
+            time_energy[flat] = band_sum;
+        }
+
+        __global__ void map_batched_time_energy_kernel(
+            const float *time_energy,
+            std::size_t frame_count,
+            int nseg,
+            int nperseg,
+            int step,
+            int sample_count,
+            float fs,
+            float *output)
+        {
+            const std::size_t flat = static_cast<std::size_t>(blockIdx.x) * static_cast<std::size_t>(blockDim.x) +
+                static_cast<std::size_t>(threadIdx.x);
+            const std::size_t total = frame_count * static_cast<std::size_t>(sample_count);
+            if (flat >= total)
+            {
+                return;
+            }
+
+            const std::size_t frame = flat / static_cast<std::size_t>(sample_count);
+            const int sample = static_cast<int>(flat % static_cast<std::size_t>(sample_count));
+            const float target_time = static_cast<float>(sample) / fs;
+            int best_index = 0;
+            float best_distance = fabsf(
+                (0.5f * static_cast<float>(nperseg)) / fs - target_time);
+            for (int time_index = 1; time_index < nseg; ++time_index)
+            {
+                const float segment_time =
+                    (0.5f * static_cast<float>(nperseg) +
+                     static_cast<float>(time_index * step)) / fs;
+                const float distance = fabsf(segment_time - target_time);
+                if (distance < best_distance)
+                {
+                    best_distance = distance;
+                    best_index = time_index;
+                }
+            }
+            output[flat] = time_energy[frame * static_cast<std::size_t>(nseg) + static_cast<std::size_t>(best_index)];
+        }
+
+        __global__ void direct_spectrogram_bin_energy_kernel(
+            const float *frames,
+            const float *cos_table,
+            const float *sin_table,
+            std::size_t sample_count,
+            int nperseg,
+            int step,
+            int nseg,
+            int band_bin_count,
+            float scale,
+            float *bin_energy)
+        {
+            __shared__ float shared_real[kThreadsPerBlock];
+            __shared__ float shared_imag[kThreadsPerBlock];
+            __shared__ float shared_sum[kThreadsPerBlock];
+
+            const std::size_t block = static_cast<std::size_t>(blockIdx.x);
+            const int bin = static_cast<int>(block % static_cast<std::size_t>(band_bin_count));
+            const std::size_t segment_flat = block / static_cast<std::size_t>(band_bin_count);
+            const int seg = static_cast<int>(segment_flat % static_cast<std::size_t>(nseg));
+            const std::size_t frame = segment_flat / static_cast<std::size_t>(nseg);
+            const float *frame_ptr = frames + frame * sample_count;
+            const int start = seg * step;
+
+            float local_sum = 0.0f;
+            for (int sample = threadIdx.x; sample < nperseg; sample += blockDim.x)
+            {
+                local_sum += frame_ptr[static_cast<std::size_t>(start + sample)];
+            }
+            shared_sum[threadIdx.x] = local_sum;
+            __syncthreads();
+            for (unsigned int stride = blockDim.x / 2; stride > 0; stride >>= 1)
+            {
+                if (threadIdx.x < stride)
+                {
+                    shared_sum[threadIdx.x] += shared_sum[threadIdx.x + stride];
+                }
+                __syncthreads();
+            }
+            const float mean = shared_sum[0] / static_cast<float>(nperseg);
+
+            float real = 0.0f;
+            float imag = 0.0f;
+            const std::size_t table_offset = static_cast<std::size_t>(bin) * static_cast<std::size_t>(nperseg);
+            for (int sample = threadIdx.x; sample < nperseg; sample += blockDim.x)
+            {
+                const float value = frame_ptr[static_cast<std::size_t>(start + sample)] - mean;
+                real += value * cos_table[table_offset + static_cast<std::size_t>(sample)];
+                imag += value * sin_table[table_offset + static_cast<std::size_t>(sample)];
+            }
+            shared_real[threadIdx.x] = real;
+            shared_imag[threadIdx.x] = imag;
+            __syncthreads();
+            for (unsigned int stride = blockDim.x / 2; stride > 0; stride >>= 1)
+            {
+                if (threadIdx.x < stride)
+                {
+                    shared_real[threadIdx.x] += shared_real[threadIdx.x + stride];
+                    shared_imag[threadIdx.x] += shared_imag[threadIdx.x + stride];
+                }
+                __syncthreads();
+            }
+            if (threadIdx.x == 0)
+            {
+                bin_energy[block] = hypotf(shared_real[0], shared_imag[0]) * scale;
+            }
+        }
+
+        __global__ void reduce_spectrogram_band_bins_kernel(
+            const float *bin_energy,
+            std::size_t segment_count,
+            int band_bin_count,
+            float *time_energy)
+        {
+            __shared__ float shared[kThreadsPerBlock];
+            const std::size_t segment = static_cast<std::size_t>(blockIdx.x);
+            if (segment >= segment_count)
+            {
+                return;
+            }
+
+            float sum = 0.0f;
+            for (int bin = threadIdx.x; bin < band_bin_count; bin += blockDim.x)
+            {
+                sum += bin_energy[segment * static_cast<std::size_t>(band_bin_count) + static_cast<std::size_t>(bin)];
+            }
+            shared[threadIdx.x] = sum;
+            __syncthreads();
+            for (unsigned int stride = blockDim.x / 2; stride > 0; stride >>= 1)
+            {
+                if (threadIdx.x < stride)
+                {
+                    shared[threadIdx.x] += shared[threadIdx.x + stride];
+                }
+                __syncthreads();
+            }
+            if (threadIdx.x == 0)
+            {
+                time_energy[segment] = shared[0];
+            }
+        }
+
+        __global__ void direct_spectrogram_segment_energy_kernel(
+            const float *frames,
+            const float *cos_table,
+            const float *sin_table,
+            std::size_t sample_count,
+            int nperseg,
+            int step,
+            int nseg,
+            int band_bin_count,
+            float scale,
+            float *time_energy)
+        {
+            __shared__ float shared[kThreadsPerBlock];
+            __shared__ float shared_bin_energy[512];
+
+            const std::size_t segment_flat = static_cast<std::size_t>(blockIdx.x);
+            const int seg = static_cast<int>(segment_flat % static_cast<std::size_t>(nseg));
+            const std::size_t frame = segment_flat / static_cast<std::size_t>(nseg);
+            const float *frame_ptr = frames + frame * sample_count;
+            const int start = seg * step;
+
+            float mean_sum = 0.0f;
+            for (int sample = threadIdx.x; sample < nperseg; sample += blockDim.x)
+            {
+                mean_sum += frame_ptr[static_cast<std::size_t>(start + sample)];
+            }
+            shared[threadIdx.x] = mean_sum;
+            __syncthreads();
+            for (unsigned int stride = blockDim.x / 2; stride > 0; stride >>= 1)
+            {
+                if (threadIdx.x < stride)
+                {
+                    shared[threadIdx.x] += shared[threadIdx.x + stride];
+                }
+                __syncthreads();
+            }
+            const float mean = shared[0] / static_cast<float>(nperseg);
+
+            for (int bin = threadIdx.x; bin < band_bin_count; bin += blockDim.x)
+            {
+                float real = 0.0f;
+                float imag = 0.0f;
+                const std::size_t table_offset = static_cast<std::size_t>(bin) * static_cast<std::size_t>(nperseg);
+                for (int sample = 0; sample < nperseg; ++sample)
+                {
+                    const float value = frame_ptr[static_cast<std::size_t>(start + sample)] - mean;
+                    real += value * cos_table[table_offset + static_cast<std::size_t>(sample)];
+                    imag += value * sin_table[table_offset + static_cast<std::size_t>(sample)];
+                }
+                shared_bin_energy[bin] = hypotf(real, imag) * scale;
+            }
+            __syncthreads();
+
+            float local_sum = 0.0f;
+            for (int bin = threadIdx.x; bin < band_bin_count; bin += blockDim.x)
+            {
+                local_sum += shared_bin_energy[bin];
+            }
+            shared[threadIdx.x] = local_sum;
+            __syncthreads();
+            for (unsigned int stride = blockDim.x / 2; stride > 0; stride >>= 1)
+            {
+                if (threadIdx.x < stride)
+                {
+                    shared[threadIdx.x] += shared[threadIdx.x + stride];
+                }
+                __syncthreads();
+            }
+            if (threadIdx.x == 0)
+            {
+                time_energy[segment_flat] = shared[0];
+            }
+        }
+
+        __global__ void direct_spectrogram_segment_energy_large_kernel(
+            const float *frames,
+            const float *cos_table,
+            const float *sin_table,
+            std::size_t sample_count,
+            int nperseg,
+            int step,
+            int nseg,
+            int band_bin_count,
+            float scale,
+            float *time_energy)
+        {
+            __shared__ float shared[kThreadsPerBlock];
+            __shared__ float shared_real[512];
+            __shared__ float shared_imag[512];
+
+            const std::size_t segment_flat = static_cast<std::size_t>(blockIdx.x);
+            const int seg = static_cast<int>(segment_flat % static_cast<std::size_t>(nseg));
+            const std::size_t frame = segment_flat / static_cast<std::size_t>(nseg);
+            const float *frame_ptr = frames + frame * sample_count;
+            const int start = seg * step;
+
+            float mean_sum = 0.0f;
+            for (int sample = threadIdx.x; sample < nperseg; sample += blockDim.x)
+            {
+                mean_sum += frame_ptr[static_cast<std::size_t>(start + sample)];
+            }
+            shared[threadIdx.x] = mean_sum;
+            __syncthreads();
+            for (unsigned int stride = blockDim.x / 2; stride > 0; stride >>= 1)
+            {
+                if (threadIdx.x < stride)
+                {
+                    shared[threadIdx.x] += shared[threadIdx.x + stride];
+                }
+                __syncthreads();
+            }
+            const float mean = shared[0] / static_cast<float>(nperseg);
+
+            for (int bin = threadIdx.x; bin < band_bin_count; bin += blockDim.x)
+            {
+                shared_real[bin] = 0.0f;
+                shared_imag[bin] = 0.0f;
+            }
+            __syncthreads();
+
+            const int total_terms = band_bin_count * nperseg;
+            for (int term = threadIdx.x; term < total_terms; term += blockDim.x)
+            {
+                const int bin = term / nperseg;
+                const int sample = term % nperseg;
+                const std::size_t table_index =
+                    static_cast<std::size_t>(bin) * static_cast<std::size_t>(nperseg) +
+                    static_cast<std::size_t>(sample);
+                const float value = frame_ptr[static_cast<std::size_t>(start + sample)] - mean;
+                atomicAdd(&shared_real[bin], value * cos_table[table_index]);
+                atomicAdd(&shared_imag[bin], value * sin_table[table_index]);
+            }
+            __syncthreads();
+
+            float local_sum = 0.0f;
+            for (int bin = threadIdx.x; bin < band_bin_count; bin += blockDim.x)
+            {
+                local_sum += hypotf(shared_real[bin], shared_imag[bin]) * scale;
+            }
+            shared[threadIdx.x] = local_sum;
+            __syncthreads();
+            for (unsigned int stride = blockDim.x / 2; stride > 0; stride >>= 1)
+            {
+                if (threadIdx.x < stride)
+                {
+                    shared[threadIdx.x] += shared[threadIdx.x + stride];
+                }
+                __syncthreads();
+            }
+            if (threadIdx.x == 0)
+            {
+                time_energy[segment_flat] = shared[0];
+            }
+        }
+
         __global__ void cwt_max_kernel(
             const float2 *values,
             std::size_t widths,
@@ -356,6 +958,139 @@ namespace cusignal_demo::task2_features
                 best = fmaxf(best, magnitude);
             }
             output[sample] = best;
+        }
+
+        __global__ void batched_cwt_kernel(
+            const float *frames,
+            std::size_t frame_count,
+            std::size_t sample_count,
+            std::size_t width_count,
+            const int *kernel_sizes,
+            const int *kernel_starts,
+            const int *kernel_offsets,
+            const float *kernel_real,
+            const float *kernel_imag,
+            float2 *output)
+        {
+            const std::size_t flat = static_cast<std::size_t>(blockIdx.x) * static_cast<std::size_t>(blockDim.x) +
+                static_cast<std::size_t>(threadIdx.x);
+            const std::size_t total = frame_count * width_count * sample_count;
+            if (flat >= total)
+            {
+                return;
+            }
+
+            const std::size_t sample = flat % sample_count;
+            const std::size_t width_index = (flat / sample_count) % width_count;
+            const std::size_t frame = flat / (sample_count * width_count);
+            const int kernel_size = kernel_sizes[width_index];
+            if (kernel_size <= 0 || sample_count == 0)
+            {
+                output[flat] = make_float2(0.0f, 0.0f);
+                return;
+            }
+
+            const int start = kernel_starts[width_index];
+            const int kernel_offset = kernel_offsets[width_index];
+            const float *frame_ptr = frames + frame * sample_count;
+            float real = 0.0f;
+            float imag = 0.0f;
+            for (int kernel_index = 0; kernel_index < kernel_size; ++kernel_index)
+            {
+                const long sample_index =
+                    static_cast<long>(sample) + static_cast<long>(start) -
+                    static_cast<long>(kernel_index);
+                if (sample_index < 0 || sample_index >= static_cast<long>(sample_count))
+                {
+                    continue;
+                }
+                const float value = frame_ptr[static_cast<std::size_t>(sample_index)];
+                const std::size_t table_index = static_cast<std::size_t>(kernel_offset + kernel_index);
+                real = fmaf(value, kernel_real[table_index], real);
+                imag = fmaf(value, kernel_imag[table_index], imag);
+            }
+            output[flat] = make_float2(real, imag);
+        }
+
+        __global__ void batched_cwt_max_kernel(
+            const float2 *values,
+            std::size_t frame_count,
+            std::size_t width_count,
+            std::size_t sample_count,
+            float *output)
+        {
+            const std::size_t flat = static_cast<std::size_t>(blockIdx.x) * static_cast<std::size_t>(blockDim.x) +
+                static_cast<std::size_t>(threadIdx.x);
+            const std::size_t total = frame_count * sample_count;
+            if (flat >= total)
+            {
+                return;
+            }
+
+            const std::size_t frame = flat / sample_count;
+            const std::size_t sample = flat % sample_count;
+            const std::size_t frame_offset = frame * width_count * sample_count;
+            float best = 0.0f;
+            for (std::size_t width_index = 0; width_index < width_count; ++width_index)
+            {
+                const float2 value = values[frame_offset + width_index * sample_count + sample];
+                best = fmaxf(best, hypotf(value.x, value.y));
+            }
+            output[flat] = best;
+        }
+
+        __global__ void batched_cwt_max_score_fused_kernel(
+            const float *frames,
+            std::size_t frame_count,
+            std::size_t sample_count,
+            std::size_t width_count,
+            const int *kernel_sizes,
+            const int *kernel_starts,
+            const int *kernel_offsets,
+            const float *kernel_real,
+            const float *kernel_imag,
+            float *output)
+        {
+            const std::size_t flat = static_cast<std::size_t>(blockIdx.x) * static_cast<std::size_t>(blockDim.x) +
+                static_cast<std::size_t>(threadIdx.x);
+            const std::size_t total = frame_count * sample_count;
+            if (flat >= total)
+            {
+                return;
+            }
+
+            const std::size_t frame = flat / sample_count;
+            const std::size_t sample = flat % sample_count;
+            const float *frame_ptr = frames + frame * sample_count;
+            float best_sq = 0.0f;
+            for (std::size_t width_index = 0; width_index < width_count; ++width_index)
+            {
+                const int kernel_size = kernel_sizes[width_index];
+                if (kernel_size <= 0)
+                {
+                    continue;
+                }
+                const int start = kernel_starts[width_index];
+                const int kernel_offset = kernel_offsets[width_index];
+                float real = 0.0f;
+                float imag = 0.0f;
+                for (int kernel_index = 0; kernel_index < kernel_size; ++kernel_index)
+                {
+                    const long sample_index =
+                        static_cast<long>(sample) + static_cast<long>(start) -
+                        static_cast<long>(kernel_index);
+                    if (sample_index < 0 || sample_index >= static_cast<long>(sample_count))
+                    {
+                        continue;
+                    }
+                    const float value = frame_ptr[static_cast<std::size_t>(sample_index)];
+                    const std::size_t table_index = static_cast<std::size_t>(kernel_offset + kernel_index);
+                    real = fmaf(value, kernel_real[table_index], real);
+                    imag = fmaf(value, kernel_imag[table_index], imag);
+                }
+                best_sq = fmaxf(best_sq, fmaf(real, real, imag * imag));
+            }
+            output[flat] = sqrtf(best_sq);
         }
 
         __global__ void weighted_sum_kernel(
@@ -773,6 +1508,36 @@ namespace cusignal_demo::task2_features
         return output;
     }
 
+    ZxGpuComplexArray complex_firfilter_zx_gpu(
+        const ZxGpuComplexArray &input,
+        const ZxGpuRealSignal &taps,
+        ZxGpuRealArray &real_output)
+    {
+        if (input.rank() != 2)
+        {
+            throw std::invalid_argument("complex_firfilter_zx_gpu expects rank-2 input");
+        }
+        if (taps.empty())
+        {
+            throw std::invalid_argument("complex_firfilter_zx_gpu requires non-empty taps");
+        }
+        ZxGpuComplexArray output = cusignal::core::make_zx_gpu_complex_array(input.shape());
+        real_output = cusignal::core::make_zx_gpu_real_array(input.shape());
+        if (!input.empty())
+        {
+            complex_firfilter_kernel<<<block_count(input.size()), kThreadsPerBlock>>>(
+                reinterpret_cast<const float2 *>(input.data()),
+                taps.data(),
+                input.shape()[0],
+                input.shape()[1],
+                taps.size(),
+                reinterpret_cast<float2 *>(output.data()),
+                real_output.data());
+            check_kernel_launch("complex_firfilter_kernel");
+        }
+        return output;
+    }
+
     ZxGpuComplexArray extract_row_complex_zx_gpu(const ZxGpuComplexArray &input, int row_index)
     {
         if (input.rank() != 2)
@@ -821,6 +1586,24 @@ namespace cusignal_demo::task2_features
             row_index,
             output.data());
         check_kernel_launch("extract_row_real_signal_kernel");
+        return output;
+    }
+
+    ZxGpuRealArray extract_frame_real_3d_zx_gpu(const ZxGpuRealArray &input, int frame_index)
+    {
+        if (input.rank() != 3)
+        {
+            throw std::invalid_argument("extract_frame_real_3d_zx_gpu expects rank-3 input");
+        }
+        ZxGpuRealArray output = cusignal::core::make_zx_gpu_real_array(Shape{input.shape()[1], input.shape()[2]});
+        extract_frame_real_3d_kernel<<<block_count(output.size()), kThreadsPerBlock>>>(
+            input.data(),
+            input.shape()[0],
+            input.shape()[1],
+            input.shape()[2],
+            frame_index,
+            output.data());
+        check_kernel_launch("extract_frame_real_3d_kernel");
         return output;
     }
 
@@ -895,6 +1678,25 @@ namespace cusignal_demo::task2_features
         return output;
     }
 
+    ZxGpuRealArray normalize_rows_nonnegative_zx_gpu(const ZxGpuRealArray &input)
+    {
+        if (input.rank() != 2)
+        {
+            throw std::invalid_argument("normalize_rows_nonnegative_zx_gpu expects rank-2 input");
+        }
+        ZxGpuRealArray output = cusignal::core::make_zx_gpu_real_array(input.shape());
+        if (!input.empty())
+        {
+            normalize_rows_kernel<<<input.shape()[0], kThreadsPerBlock>>>(
+                input.data(),
+                input.shape()[0],
+                input.shape()[1],
+                output.data());
+            check_kernel_launch("normalize_rows_kernel");
+        }
+        return output;
+    }
+
     ZxGpuRealArray batched_demod_score_zx_gpu(const ZxGpuComplexArray &input)
     {
         if (input.rank() != 2)
@@ -910,6 +1712,57 @@ namespace cusignal_demo::task2_features
                 input.shape()[1],
                 output.data());
             check_kernel_launch("batched_demod_score_kernel");
+        }
+        return output;
+    }
+
+    ZxGpuRealArray batched_correlate_score_zx_gpu(
+        const ZxGpuComplexArray &frames,
+        const ZxGpuComplexArray &templ)
+    {
+        if (frames.rank() != 2 || templ.rank() != 1)
+        {
+            throw std::invalid_argument("batched_correlate_score_zx_gpu expects rank-2 frames and rank-1 template");
+        }
+        if (templ.empty())
+        {
+            throw std::invalid_argument("batched_correlate_score_zx_gpu requires non-empty template");
+        }
+        ZxGpuRealArray output = cusignal::core::make_zx_gpu_real_array(frames.shape());
+        if (output.empty())
+        {
+            return output;
+        }
+        const std::size_t cols = frames.shape()[1];
+        const std::size_t templ_len = templ.shape()[0];
+        const std::size_t full_size = cols + templ_len - 1;
+        const int crop_start = static_cast<int>(full_size / 2 - cols / 2);
+        if (cols >= 2048)
+        {
+            const dim3 grid(
+                static_cast<unsigned int>(block_count(cols)),
+                static_cast<unsigned int>(frames.shape()[0]));
+            batched_correlate_score_tiled_kernel<<<grid, kThreadsPerBlock>>>(
+                reinterpret_cast<const float2 *>(frames.data()),
+                reinterpret_cast<const float2 *>(templ.data()),
+                frames.shape()[0],
+                cols,
+                templ_len,
+                crop_start,
+                output.data());
+            check_kernel_launch("batched_correlate_score_tiled_kernel");
+        }
+        else
+        {
+            batched_correlate_score_kernel<<<output.size(), kThreadsPerBlock>>>(
+                reinterpret_cast<const float2 *>(frames.data()),
+                reinterpret_cast<const float2 *>(templ.data()),
+                frames.shape()[0],
+                cols,
+                templ_len,
+                crop_start,
+                output.data());
+            check_kernel_launch("batched_correlate_score_kernel");
         }
         return output;
     }
@@ -949,6 +1802,202 @@ namespace cusignal_demo::task2_features
             fs,
             output.data());
         check_kernel_launch("map_time_energy_kernel");
+        return output;
+    }
+
+    ZxGpuRealArray batched_spectrogram_band_score_zx_gpu(
+        const ZxGpuRealArray &values,
+        const ZxGpuRealSignal &freqs,
+        const ZxGpuRealSignal &times,
+        int sample_count,
+        float band_low,
+        float band_high,
+        float fs)
+    {
+        if (values.rank() != 3)
+        {
+            throw std::invalid_argument("batched_spectrogram_band_score_zx_gpu expects rank-3 values");
+        }
+        const std::size_t frames = values.shape()[0];
+        const std::size_t freq_count = values.shape()[1];
+        const std::size_t time_count = values.shape()[2];
+        if (freqs.size() != freq_count || times.size() != time_count)
+        {
+            throw std::invalid_argument("batched_spectrogram_band_score_zx_gpu shape mismatch");
+        }
+        ZxGpuRealArray output = cusignal::core::make_zx_gpu_real_array(
+            Shape{frames, static_cast<std::size_t>(sample_count)});
+        if (!output.empty())
+        {
+            batched_spectrogram_band_score_kernel<<<block_count(output.size()), kThreadsPerBlock>>>(
+                values.data(),
+                freqs.data(),
+                times.data(),
+                frames,
+                freq_count,
+                time_count,
+                sample_count,
+                band_low,
+                band_high,
+                fs,
+                output.data());
+            check_kernel_launch("batched_spectrogram_band_score_kernel");
+        }
+        return output;
+    }
+
+    ZxGpuRealArray direct_spectrogram_band_score_zx_gpu(
+        const ZxGpuRealArray &frames,
+        const ZxGpuRealSignal &window,
+        int nperseg,
+        int noverlap,
+        int nfft,
+        float band_low,
+        float band_high,
+        float fs)
+    {
+        if (frames.rank() != 2)
+        {
+            throw std::invalid_argument("direct_spectrogram_band_score_zx_gpu expects rank-2 frames");
+        }
+        if (nperseg <= 0 || noverlap < 0 || nfft < nperseg || noverlap >= nperseg)
+        {
+            throw std::invalid_argument("direct_spectrogram_band_score_zx_gpu invalid segment config");
+        }
+        if (window.size() != static_cast<std::size_t>(nperseg))
+        {
+            throw std::invalid_argument("direct_spectrogram_band_score_zx_gpu window size mismatch");
+        }
+        const std::size_t frame_count = frames.shape()[0];
+        const std::size_t sample_count = frames.shape()[1];
+        if (sample_count < static_cast<std::size_t>(nperseg))
+        {
+            throw std::invalid_argument("direct_spectrogram_band_score_zx_gpu nperseg exceeds frame length");
+        }
+        const int step = nperseg - noverlap;
+        const int nseg = 1 + static_cast<int>((sample_count - static_cast<std::size_t>(nperseg)) /
+                                              static_cast<std::size_t>(step));
+        const int max_bin = nfft / 2;
+        const int low_bin = std::max(0, static_cast<int>(std::ceil(band_low * static_cast<float>(nfft) / fs)));
+        const int high_bin = std::min(max_bin, static_cast<int>(std::floor(band_high * static_cast<float>(nfft) / fs)));
+        ZxGpuRealArray output = cusignal::core::make_zx_gpu_real_array(Shape{frame_count, sample_count});
+        if (output.empty() || low_bin > high_bin)
+        {
+            return output;
+        }
+
+        const auto host_window = window.get();
+        const float window_sum = host_window.empty()
+            ? 0.0f
+            : std::accumulate(host_window.begin(), host_window.end(), 0.0f);
+        const float scale = std::fabs(window_sum) > 1.0e-12f ? (1.0f / std::fabs(window_sum)) : 0.0f;
+        const int band_bin_count = high_bin - low_bin + 1;
+        std::vector<float> cos_table(static_cast<std::size_t>(band_bin_count) * static_cast<std::size_t>(nperseg));
+        std::vector<float> sin_table(cos_table.size());
+        for (int bin_index = 0; bin_index < band_bin_count; ++bin_index)
+        {
+            const int bin = low_bin + bin_index;
+            const std::size_t table_offset = static_cast<std::size_t>(bin_index) * static_cast<std::size_t>(nperseg);
+            for (int sample = 0; sample < nperseg; ++sample)
+            {
+                const float angle =
+                    -2.0f * 3.14159265358979323846f *
+                    static_cast<float>(bin * sample) / static_cast<float>(nfft);
+                const float win = host_window[static_cast<std::size_t>(sample)];
+                cos_table[table_offset + static_cast<std::size_t>(sample)] = win * std::cos(angle);
+                sin_table[table_offset + static_cast<std::size_t>(sample)] = win * std::sin(angle);
+            }
+        }
+        g_workspace.direct_cos_table = ZxGpuRealArray::from_host({Shape{static_cast<std::size_t>(band_bin_count),
+                                                                        static_cast<std::size_t>(nperseg)},
+                                                                  std::move(cos_table)});
+        g_workspace.direct_sin_table = ZxGpuRealArray::from_host({Shape{static_cast<std::size_t>(band_bin_count),
+                                                                        static_cast<std::size_t>(nperseg)},
+                                                                  std::move(sin_table)});
+        g_workspace.temp_storage_a.resize(Shape{frame_count, static_cast<std::size_t>(nseg)}, false);
+        if (nperseg >= 256)
+        {
+            direct_spectrogram_segment_energy_large_kernel<<<g_workspace.temp_storage_a.size(), kThreadsPerBlock>>>(
+                frames.data(),
+                g_workspace.direct_cos_table.data(),
+                g_workspace.direct_sin_table.data(),
+                sample_count,
+                nperseg,
+                step,
+                nseg,
+                band_bin_count,
+                scale,
+                g_workspace.temp_storage_a.data());
+            check_kernel_launch("direct_spectrogram_segment_energy_large_kernel");
+        }
+        else
+        {
+            direct_spectrogram_segment_energy_kernel<<<g_workspace.temp_storage_a.size(), kThreadsPerBlock>>>(
+                frames.data(),
+                g_workspace.direct_cos_table.data(),
+                g_workspace.direct_sin_table.data(),
+                sample_count,
+                nperseg,
+                step,
+                nseg,
+                band_bin_count,
+                scale,
+                g_workspace.temp_storage_a.data());
+            check_kernel_launch("direct_spectrogram_segment_energy_kernel");
+        }
+
+        map_batched_time_energy_kernel<<<block_count(output.size()), kThreadsPerBlock>>>(
+            g_workspace.temp_storage_a.data(),
+            frame_count,
+            nseg,
+            nperseg,
+            step,
+            static_cast<int>(sample_count),
+            fs,
+            output.data());
+        check_kernel_launch("map_batched_time_energy_kernel");
+        return output;
+    }
+
+    ZxGpuRealArray batched_cwt_max_score_zx_gpu(
+        const ZxGpuRealArray &frames,
+        const RealSignal &widths)
+    {
+        if (frames.rank() != 2)
+        {
+            throw std::invalid_argument("batched_cwt_max_score_zx_gpu expects rank-2 frames");
+        }
+        wavelets_detail::ensure_non_empty_widths(widths.size());
+        wavelets_detail::ensure_positive_widths(widths);
+        ZxGpuRealArray output = cusignal::core::make_zx_gpu_real_array(frames.shape());
+        if (output.empty())
+        {
+            return output;
+        }
+
+        const std::size_t frame_count = frames.shape()[0];
+        const std::size_t sample_count = frames.shape()[1];
+        const std::size_t width_count = widths.size();
+        const wavelets_detail::CwtKernelTable kernel_table =
+            wavelets_detail::build_cwt_kernel_table(widths, sample_count, "morlet2");
+        g_workspace.cwt_kernel_sizes = ZxGpuIndexSignal::from_host(kernel_table.kernel_sizes);
+        g_workspace.cwt_kernel_starts = ZxGpuIndexSignal::from_host(kernel_table.kernel_starts);
+        g_workspace.cwt_kernel_offsets = ZxGpuIndexSignal::from_host(kernel_table.kernel_offsets);
+        g_workspace.cwt_kernel_real = ZxGpuRealSignal::from_host(kernel_table.kernel_real);
+        g_workspace.cwt_kernel_imag = ZxGpuRealSignal::from_host(kernel_table.kernel_imag);
+
+        batched_cwt_max_score_fused_kernel<<<block_count(output.size()), kThreadsPerBlock>>>(
+            frames.data(),
+            frame_count,
+            sample_count,
+            width_count,
+            g_workspace.cwt_kernel_sizes.data(),
+            g_workspace.cwt_kernel_starts.data(),
+            g_workspace.cwt_kernel_offsets.data(),
+            g_workspace.cwt_kernel_real.data(),
+            g_workspace.cwt_kernel_imag.data(),
+            output.data());
+        check_kernel_launch("batched_cwt_max_score_fused_kernel");
         return output;
     }
 

@@ -1,0 +1,32 @@
+[zx-stage3] script version: diagnostics-20260617-stage3-full-ops-v2
+[zx-stage3] build dir: build-zx
+[zx-stage3] case set: accuracy
+[zx-stage3] report root: data/reports/zhongkexin/stage3
+Activate Release Package @ /zq500/sdk
+[zx-deps] cmake: 3.22.1
+[zx-deps] dlcc: /zq500/sdk/bin/dlcc
+[zx-deps] sdk env: /zq500/sdk/env.sh
+[zx-deps] sdk headers/libs: ok
+[zx-deps] fftw: already installed
+[zx-deps] python modules: already installed
+[zx-deps] dependency preparation complete
+[zx-stage3] resetting build dir: /CETC/build-zx
+[zx-stage3] module waveforms case_set=accuracy active=5
+[zx-stage3] module bsplines case_set=accuracy active=3
+[zx-stage3] module windows case_set=accuracy active=23
+[zx-stage3] module filter_design case_set=accuracy active=5
+[zx-stage3] module filtering case_set=accuracy active=17
+[zx-stage3] module radartools case_set=accuracy active=6
+[zx-stage3] module spectral case_set=accuracy active=9
+[zx-stage3] module wavelets case_set=accuracy active=5
+[zx-stage3] module correlate case_set=accuracy active=3
+[zx-stage3] module demod case_set=accuracy active=1
+[zx-stage3] module estimation case_set=accuracy active=1
+[zx-stage3] module peak_finding case_set=accuracy active=3
+[zx-stage3] wrote data/reports/zhongkexin/stage3/latest_full_operator_module_report.json
+[zx-stage3] wrote data/reports/zhongkexin/stage3/latest_full_operator_module_report.md
+[zx-stage3] wrote data/reports/zhongkexin/stage3/latest_full_operator_detail_report.json
+[zx-stage3] wrote data/reports/zhongkexin/stage3/latest_full_operator_detail_report.md
+[zx-stage3] module failures: 0
+[zx-stage3] operator failures: 0
+[zx-stage3] PASS

@@ -1,0 +1,67 @@
+[cusignal-test] timing       : warmup=1 repeat=3 (demo-fast)
+[cusignal-test] project root : /CETC
+[cusignal-test] build dir    : /CETC/build-zx
+[cusignal-test] build type   : Release
+[cusignal-test] platform     : ZHONGKEXIN
+[cusignal-test] cuda arch    : n/a (ZHONGKEXIN uses dlcc --cuda-gpu-arch=dlgput64)
+[cusignal-test] jobs         : 255
+-- Using Zhongkexin CUDA headers without CUDAToolkit cudart target: /zq500/sdk/include
+-- CUSIGNAL_PLATFORM=ZHONGKEXIN
+-- Using Zhongkexin CUDA runtime compatibility library: /zq500/sdk/lib/libcurt.so
+-- Using Zhongkexin cuFFT compatibility library: /zq500/sdk/lib/libdlfft.so
+-- Using Zhongkexin cuBLAS compatibility library: /zq500/sdk/lib/libdlblas.so
+-- Using Zhongkexin cuSOLVER compatibility library: /zq500/sdk/lib/libdlsolver.so
+-- Using cuFFT compatibility library: /zq500/sdk/lib/libdlfft.so
+-- Using cuBLAS compatibility library: /zq500/sdk/lib/libdlblas.so
+-- Using cuSOLVER compatibility library: /zq500/sdk/lib/libdlsolver.so
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /CETC/build-zx
+Consolidate compiler generated dependencies of target cusignal_cpu
+[ 37%] Built target cusignal_cpu
+[ 37%] Building CXX object CMakeFiles/cusignal_cuda.dir/src/cuda/correlate.cu.o
+[ 43%] Building CXX object CMakeFiles/cusignal_cuda.dir/src/cuda/bsplines.cu.o
+[ 43%] Building CXX object CMakeFiles/cusignal_cuda.dir/src/cuda/filtering.cu.o
+[ 50%] Building CXX object CMakeFiles/cusignal_cuda.dir/src/cuda/demod.cu.o
+[ 56%] Building CXX object CMakeFiles/cusignal_cuda.dir/src/cuda/estimation.cu.o
+[ 56%] Building CXX object CMakeFiles/cusignal_cuda.dir/src/cuda/filter_design.cu.o
+[ 62%] Building CXX object CMakeFiles/cusignal_cuda.dir/src/cuda/peak_finding.cu.o
+[ 62%] Building CXX object CMakeFiles/cusignal_cuda.dir/src/cuda/waveforms.cu.o
+[ 62%] Building CXX object CMakeFiles/cusignal_cuda.dir/src/cuda/radartools.cu.o
+[ 68%] Building CXX object CMakeFiles/cusignal_cuda.dir/src/cuda/spectral.cu.o
+[ 75%] Building CXX object CMakeFiles/cusignal_cuda.dir/src/cuda/wavelets.cu.o
+[ 81%] Building CXX object CMakeFiles/cusignal_cuda.dir/demo/task1_radar/task1_radar_cuda.cu.o
+[ 81%] Building CXX object CMakeFiles/cusignal_cuda.dir/src/cuda/windows.cu.o
+[ 81%] Building CXX object CMakeFiles/cusignal_cuda.dir/demo/task2_features/task2_features_cuda.cu.o
+c++: error: unrecognized command-line option '--cuda-gpu-arch=dlgput64'
+gmake[3]: *** [CMakeFiles/cusignal_cuda.dir/build.make:90: CMakeFiles/cusignal_cuda.dir/src/cuda/correlate.cu.o] Error 1
+gmake[3]: *** Waiting for unfinished jobs....
+c++: error: unrecognized command-line option '--cuda-gpu-arch=dlgput64'
+gmake[3]: *** [CMakeFiles/cusignal_cuda.dir/build.make:76: CMakeFiles/cusignal_cuda.dir/src/cuda/bsplines.cu.o] Error 1
+c++: error: unrecognized command-line option '--cuda-gpu-arch=dlgput64'
+gmake[3]: *** [CMakeFiles/cusignal_cuda.dir/build.make:146: CMakeFiles/cusignal_cuda.dir/src/cuda/filtering.cu.o] Error 1
+c++: error: unrecognized command-line option '--cuda-gpu-arch=dlgput64'
+c++: error: unrecognized command-line option '--cuda-gpu-arch=dlgput64'
+gmake[3]: *** [CMakeFiles/cusignal_cuda.dir/build.make:104: CMakeFiles/cusignal_cuda.dir/src/cuda/demod.cu.o] Error 1
+c++: error: unrecognized command-line option '--cuda-gpu-arch=dlgput64'
+gmake[3]: *** [CMakeFiles/cusignal_cuda.dir/build.make:118: CMakeFiles/cusignal_cuda.dir/src/cuda/estimation.cu.o] Error 1
+c++: error: unrecognized command-line option '--cuda-gpu-arch=dlgput64'
+gmake[3]: *** [CMakeFiles/cusignal_cuda.dir/build.make:132: CMakeFiles/cusignal_cuda.dir/src/cuda/filter_design.cu.o] Error 1
+gmake[3]: *** [CMakeFiles/cusignal_cuda.dir/build.make:160: CMakeFiles/cusignal_cuda.dir/src/cuda/peak_finding.cu.o] Error 1
+c++: error: unrecognized command-line option '--cuda-gpu-arch=dlgput64'
+c++: error: unrecognized command-line option '--cuda-gpu-arch=dlgput64'
+gmake[3]: *** [CMakeFiles/cusignal_cuda.dir/build.make:174: CMakeFiles/cusignal_cuda.dir/src/cuda/radartools.cu.o] Error 1
+c++: error: unrecognized command-line option '--cuda-gpu-arch=dlgput64'
+gmake[3]: *** [CMakeFiles/cusignal_cuda.dir/build.make:188: CMakeFiles/cusignal_cuda.dir/src/cuda/spectral.cu.o] Error 1
+c++: error: unrecognized command-line option '--cuda-gpu-arch=dlgput64'
+gmake[3]: *** [CMakeFiles/cusignal_cuda.dir/build.make:202: CMakeFiles/cusignal_cuda.dir/src/cuda/waveforms.cu.o] Error 1
+gmake[3]: *** [CMakeFiles/cusignal_cuda.dir/build.make:216: CMakeFiles/cusignal_cuda.dir/src/cuda/wavelets.cu.o] Error 1
+c++: error: unrecognized command-line option '--cuda-gpu-arch=dlgput64'
+c++: error: unrecognized command-line option '--cuda-gpu-arch=dlgput64'
+gmake[3]: *** [CMakeFiles/cusignal_cuda.dir/build.make:230: CMakeFiles/cusignal_cuda.dir/src/cuda/windows.cu.o] Error 1
+gmake[3]: *** [CMakeFiles/cusignal_cuda.dir/build.make:244: CMakeFiles/cusignal_cuda.dir/demo/task1_radar/task1_radar_cuda.cu.o] Error 1
+c++: error: unrecognized command-line option '--cuda-gpu-arch=dlgput64'
+gmake[3]: *** [CMakeFiles/cusignal_cuda.dir/build.make:258: CMakeFiles/cusignal_cuda.dir/demo/task2_features/task2_features_cuda.cu.o] Error 1
+gmake[2]: *** [CMakeFiles/Makefile2:585: CMakeFiles/cusignal_cuda.dir/all] Error 2
+gmake[1]: *** [CMakeFiles/Makefile2:2489: tests/unit/filtering/CMakeFiles/filtering_test_firfilter.dir/rule] Error 2
+gmake: *** [Makefile:1058: filtering_test_firfilter] Error 2

@@ -408,6 +408,13 @@ namespace
                         x6 * (1.0f / 720.0f) + x8 * (1.0f / 40320.0f));
     }
 
+    __device__ void lombscargle_sincos_fast(float angle, float &s, float &c)
+    {
+        constexpr float two_pi = 2.0f * kPi;
+        angle -= floorf(angle / two_pi) * two_pi;
+        vectorstrength_sincos_poly(angle, s, c);
+    }
+
     inline int boundary_mode_code(const std::string &boundary)
     {
         if (boundary == "none")
@@ -616,7 +623,7 @@ namespace
         {
             float s = 0.0f;
             float c = 0.0f;
-            sincosf(w * x[sample], &s, &c);
+            lombscargle_sincos_fast(w * x[sample], s, c);
             const float y_value = y[sample] - center;
             xc = fmaf(y_value, c, xc);
             xs = fmaf(y_value, s, xs);
@@ -975,6 +982,59 @@ namespace
         }
     }
 
+    __global__ void prepare_segments_complex_constant_kernel(
+        const float *x,
+        int line_count,
+        int line_len,
+        int nseg,
+        int nperseg,
+        int step,
+        int nfft,
+        const float *window,
+        cufftComplex *output)
+    {
+        const int segment_index = blockIdx.x;
+        const int total_segments = line_count * nseg;
+        if (segment_index >= total_segments)
+        {
+            return;
+        }
+
+        const int seg = segment_index % nseg;
+        const int line = segment_index / nseg;
+        const float *line_ptr = x + static_cast<std::size_t>(line) * static_cast<std::size_t>(line_len);
+
+        __shared__ float sum_cache[kThreadsPerBlock];
+        float sum = 0.0f;
+        for (int local = threadIdx.x; local < nperseg; local += blockDim.x)
+        {
+            sum += line_ptr[seg * step + local];
+        }
+        sum_cache[threadIdx.x] = sum;
+        __syncthreads();
+        for (int stride = blockDim.x / 2; stride > 0; stride >>= 1)
+        {
+            if (threadIdx.x < stride)
+            {
+                sum_cache[threadIdx.x] += sum_cache[threadIdx.x + stride];
+            }
+            __syncthreads();
+        }
+        const float mean = sum_cache[0] / static_cast<float>(nperseg);
+
+        const std::size_t base =
+            static_cast<std::size_t>(segment_index) * static_cast<std::size_t>(nfft);
+        for (int sample = threadIdx.x; sample < nfft; sample += blockDim.x)
+        {
+            float value = 0.0f;
+            if (sample < nperseg)
+            {
+                value = (line_ptr[seg * step + sample] - mean) * window[sample];
+            }
+            output[base + static_cast<std::size_t>(sample)] = cufftComplex{value, 0.0f};
+        }
+    }
+
     __global__ void average_cross_kernel(
         const cufftComplex *x_fft,
         const cufftComplex *y_fft,
@@ -1169,6 +1229,37 @@ namespace
                 static_cast<std::size_t>(nseg) +
             static_cast<std::size_t>(seg);
         output[out_index] = psd;
+    }
+
+    __global__ void spectrogram_magnitude_r2c_kernel(
+        const cufftComplex *fft_values,
+        int line_count,
+        int nseg,
+        int nfft,
+        int freq_count,
+        float scale,
+        float *output)
+    {
+        const std::size_t index = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+        const std::size_t total =
+            static_cast<std::size_t>(line_count) * static_cast<std::size_t>(nseg) * static_cast<std::size_t>(freq_count);
+        if (index >= total)
+        {
+            return;
+        }
+        const int freq = static_cast<int>(index % static_cast<std::size_t>(freq_count));
+        const int seg = static_cast<int>((index / static_cast<std::size_t>(freq_count)) % static_cast<std::size_t>(nseg));
+        const int line = static_cast<int>(index / (static_cast<std::size_t>(freq_count) * static_cast<std::size_t>(nseg)));
+        const int rfft_bins = nfft / 2 + 1;
+        const std::size_t base =
+            (static_cast<std::size_t>(line) * nseg + seg) * static_cast<std::size_t>(rfft_bins) +
+            static_cast<std::size_t>(freq);
+        const cufftComplex value = fft_values[base];
+        const std::size_t out_index =
+            (static_cast<std::size_t>(line) * static_cast<std::size_t>(freq_count) + static_cast<std::size_t>(freq)) *
+                static_cast<std::size_t>(nseg) +
+            static_cast<std::size_t>(seg);
+        output[out_index] = hypotf(value.x, value.y) * scale;
     }
 
     __global__ void spectrogram_complex_kernel(
@@ -1850,33 +1941,61 @@ namespace cusignal
                     }
                     else
                     {
-                        prepare_segments_kernel<<<block_count(total_fft), kThreadsPerBlock>>>(
-                            x_device.data(),
-                            static_cast<int>(line_count),
-                            static_cast<int>(line_len),
-                            static_cast<int>(nseg),
-                            config.nperseg,
-                            config.step,
-                            config.nfft,
-                            0,
-                            0,
-                            window_values->data(),
-                            detrend_code,
-                            workspace.fft_x.get());
-                        prepare_segments_kernel<<<block_count(total_fft), kThreadsPerBlock>>>(
-                            y_device.data(),
-                            static_cast<int>(line_count),
-                            static_cast<int>(line_len),
-                            static_cast<int>(nseg),
-                            config.nperseg,
-                            config.step,
-                            config.nfft,
-                            0,
-                            0,
-                            window_values->data(),
-                            detrend_code,
-                            workspace.fft_y.get());
-                        check_kernel_launch("prepare_segments_kernel(csd)");
+                        if (detrend_code == 1)
+                        {
+                            const int segment_count = static_cast<int>(line_count * nseg);
+                            prepare_segments_complex_constant_kernel<<<segment_count, kThreadsPerBlock>>>(
+                                x_device.data(),
+                                static_cast<int>(line_count),
+                                static_cast<int>(line_len),
+                                static_cast<int>(nseg),
+                                config.nperseg,
+                                config.step,
+                                config.nfft,
+                                window_values->data(),
+                                workspace.fft_x.get());
+                            prepare_segments_complex_constant_kernel<<<segment_count, kThreadsPerBlock>>>(
+                                y_device.data(),
+                                static_cast<int>(line_count),
+                                static_cast<int>(line_len),
+                                static_cast<int>(nseg),
+                                config.nperseg,
+                                config.step,
+                                config.nfft,
+                                window_values->data(),
+                                workspace.fft_y.get());
+                            check_kernel_launch("prepare_segments_complex_constant_kernel(csd)");
+                        }
+                        else
+                        {
+                            prepare_segments_kernel<<<block_count(total_fft), kThreadsPerBlock>>>(
+                                x_device.data(),
+                                static_cast<int>(line_count),
+                                static_cast<int>(line_len),
+                                static_cast<int>(nseg),
+                                config.nperseg,
+                                config.step,
+                                config.nfft,
+                                0,
+                                0,
+                                window_values->data(),
+                                detrend_code,
+                                workspace.fft_x.get());
+                            prepare_segments_kernel<<<block_count(total_fft), kThreadsPerBlock>>>(
+                                y_device.data(),
+                                static_cast<int>(line_count),
+                                static_cast<int>(line_len),
+                                static_cast<int>(nseg),
+                                config.nperseg,
+                                config.step,
+                                config.nfft,
+                                0,
+                                0,
+                                window_values->data(),
+                                detrend_code,
+                                workspace.fft_y.get());
+                            check_kernel_launch("prepare_segments_kernel(csd)");
+                        }
                         workspace.forward_plan.ensure(config.nfft, static_cast<int>(line_count * nseg));
                         throw_on_cufft_error(
                             cufftExecC2C(workspace.forward_plan.handle, workspace.fft_x.get(), workspace.fft_x.get(), CUFFT_FORWARD),
@@ -1978,7 +2097,13 @@ namespace cusignal
                 // path, while the C2C spectrogram path matches within the existing tolerance.
                 use_r2c_psd = false;
 #endif
-                if (use_r2c_psd)
+                bool use_r2c_magnitude = return_onesided && normalized_mode == "magnitude";
+#ifdef CUSIGNAL_PLATFORM_ZHONGKEXIN
+                // ZQ500 dlfft R2C magnitude produced Task2-level numerical divergence and
+                // lower throughput than the C2C path during V5.3-04 validation.
+                use_r2c_magnitude = false;
+#endif
+                if (use_r2c_psd || use_r2c_magnitude)
                 {
                     const std::size_t rfft_count =
                         total_segments(line_count, nseg) * static_cast<std::size_t>(config.nfft / 2 + 1);
@@ -2002,7 +2127,7 @@ namespace cusignal
                 ScopedZxGpuEvents events;
                 measure_gpu_compute(events, [&]() {
                     const int detrend_code = detrend_mode_code(detrend);
-                    if (use_r2c_psd)
+                    if (use_r2c_psd || use_r2c_magnitude)
                     {
                         if (detrend_code == 1)
                         {
@@ -2041,15 +2166,30 @@ namespace cusignal
                             cufftExecR2C(workspace.real_forward_plan.handle, workspace.real_fft_x.get(), workspace.rfft_x.get()),
                             "cufftExecR2C(spectrogram)");
                         ZxGpuRealArray values(time_shape, false);
-                        spectrogram_psd_r2c_kernel<<<block_count(values.size()), kThreadsPerBlock>>>(
-                            workspace.rfft_x.get(),
-                            static_cast<int>(line_count),
-                            static_cast<int>(nseg),
-                            config.nfft,
-                            static_cast<int>(freq_count),
-                            scale,
-                            values.data());
-                        check_kernel_launch("spectrogram_psd_r2c_kernel");
+                        if (use_r2c_psd)
+                        {
+                            spectrogram_psd_r2c_kernel<<<block_count(values.size()), kThreadsPerBlock>>>(
+                                workspace.rfft_x.get(),
+                                static_cast<int>(line_count),
+                                static_cast<int>(nseg),
+                                config.nfft,
+                                static_cast<int>(freq_count),
+                                scale,
+                                values.data());
+                            check_kernel_launch("spectrogram_psd_r2c_kernel");
+                        }
+                        else
+                        {
+                            spectrogram_magnitude_r2c_kernel<<<block_count(values.size()), kThreadsPerBlock>>>(
+                                workspace.rfft_x.get(),
+                                static_cast<int>(line_count),
+                                static_cast<int>(nseg),
+                                config.nfft,
+                                static_cast<int>(freq_count),
+                                scale,
+                                values.data());
+                            check_kernel_launch("spectrogram_magnitude_r2c_kernel");
+                        }
                         result.values = std::move(values);
                     }
                     else

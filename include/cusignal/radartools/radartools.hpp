@@ -88,6 +88,33 @@ namespace cusignal
             float power = 0.0f;
         };
 
+        /**
+         * @brief ZQ500 GPU 二维距离-多普勒峰值检测结果。
+         *
+         * `indices` 依次保存 found、range bin、doppler bin，`values` 保存 doppler Hz 和 power。
+         */
+        struct ZxGpuDetectionSummary
+        {
+            core::ZxGpuIndexSignal indices;
+            core::ZxGpuRealSignal values;
+
+            DetectionSummary get() const
+            {
+                const core::IndexVector host_indices = indices.get();
+                const core::RealSignal host_values = values.get();
+                DetectionSummary output;
+                if (host_indices.size() == 3 && host_values.size() == 2)
+                {
+                    output.found = host_indices[0] != 0;
+                    output.range_bin = host_indices[1];
+                    output.doppler_bin = host_indices[2];
+                    output.doppler_hz = host_values[0];
+                    output.power = host_values[1];
+                }
+                return output;
+            }
+        };
+
     } // namespace radartools_api
 
     namespace cpu
@@ -282,10 +309,10 @@ namespace cusignal
              * @param detections 与功率图同形状的 host/device FP32 检测掩码。
              * @param nfft 多普勒 FFT 长度，必须为正数。
              * @param prf 脉冲重复频率，必须为正数。
-             * @return 与 CPU 接口语义一致的标量检测结果。
+             * @return 设备驻留结果；调用 `.get()` 后得到与 CPU 接口语义一致的标量结果。
              * @throws std::invalid_argument 当 shape 或采样参数非法时抛出异常。
              */
-            radartools_api::DetectionSummary detect_peak(
+            radartools_api::ZxGpuDetectionSummary detect_peak(
                 const core::RealArrayLike &power,
                 const core::RealArrayLike &detections,
                 int nfft,

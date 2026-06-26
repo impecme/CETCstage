@@ -1,0 +1,132 @@
+{
+  "module": "wavelets",
+  "operator": "qmf",
+  "generated_at": "2026-06-25 15:17:59",
+  "git_commit": "",
+  "gpu_name": "ZQ500-Q QUAD-0",
+  "compile_config": {
+    "cxx_standard": 201703,
+    "runtime_version": 11070
+  },
+  "summary": {
+    "pass": true,
+    "accuracy_cases": 0,
+    "perf_cases": 1,
+    "max_abs_error": 0,
+    "max_rel_error": 0,
+    "mixed_error": 0,
+    "rmse": 0,
+    "gpu_e2e_speedup": 17.9609,
+    "gpu_kernel_speedup": 26.3257,
+    "cpu_perf": {
+      "warmup": 1,
+      "repeat": 3,
+      "mean_ms": 3.31398,
+      "median_ms": 3.31398,
+      "p95_ms": 3.31398,
+      "min_ms": 3.31398,
+      "max_ms": 3.31398,
+      "std_ms": 0
+    },
+    "gpu_e2e_perf": {
+      "warmup": 1,
+      "repeat": 3,
+      "mean_ms": 0.184511,
+      "median_ms": 0.184511,
+      "p95_ms": 0.184511,
+      "min_ms": 0.184511,
+      "max_ms": 0.184511,
+      "std_ms": 0
+    },
+    "gpu_kernel_perf": {
+      "warmup": 1,
+      "repeat": 3,
+      "mean_ms": 0.125884,
+      "median_ms": 0.125884,
+      "p95_ms": 0.125884,
+      "min_ms": 0.125884,
+      "max_ms": 0.125884,
+      "std_ms": 0
+    },
+    "device_storage_cache": {
+      "cache_enabled": true,
+      "allocation_calls": 2,
+      "allocation_bytes": 8388608,
+      "allocation_mib": 8,
+      "cache_hits": 8,
+      "cache_misses": 2,
+      "recycled_blocks": 10,
+      "recycled_bytes": 41943040,
+      "recycled_mib": 40,
+      "evicted_blocks": 0,
+      "evicted_bytes": 0,
+      "evicted_mib": 0,
+      "freed_blocks": 0,
+      "freed_bytes": 0,
+      "freed_mib": 0,
+      "cached_blocks": 2,
+      "cached_bytes": 8388608,
+      "cached_mib": 8,
+      "peak_cached_bytes": 8388608,
+      "peak_cached_mib": 8,
+      "max_cached_blocks": 8,
+      "max_cached_bytes": 536870912,
+      "max_cached_mib": 512,
+      "max_single_cached_bytes": 268435456,
+      "max_single_cached_mib": 256
+    }
+  },
+  "cases": [
+    {
+      "case_id": "perf_large_vector",
+      "category": "perf",
+      "samples": 1048576,
+      "pass": true,
+      "cpu_gpu_error": {
+        "max_abs_error": 0,
+        "max_rel_error": 0,
+        "mixed_error": 0,
+        "rmse": 0,
+        "l2_error": 0,
+        "exact_match": true,
+        "first_mismatch_index": -1
+      },
+      "cpu_perf": {
+        "warmup": 1,
+        "repeat": 3,
+        "mean_ms": 3.32124,
+        "median_ms": 3.31398,
+        "p95_ms": 3.33919,
+        "min_ms": 3.31054,
+        "max_ms": 3.33919,
+        "std_ms": 0.0127725
+      },
+      "gpu_e2e_perf": {
+        "warmup": 1,
+        "repeat": 3,
+        "mean_ms": 0.186791,
+        "median_ms": 0.184511,
+        "p95_ms": 0.196762,
+        "min_ms": 0.179101,
+        "max_ms": 0.196762,
+        "std_ms": 0.00738817
+      },
+      "gpu_kernel_perf": {
+        "warmup": 1,
+        "repeat": 3,
+        "mean_ms": 0.125567,
+        "median_ms": 0.125884,
+        "p95_ms": 0.125914,
+        "min_ms": 0.124902,
+        "max_ms": 0.125914,
+        "std_ms": 0.00047015
+      },
+      "artifacts": [
+        {"role": "case_spec", "path": "/CETC/data/generated/unit/wavelets/qmf/input/perf_large_vector__spec.json", "sha256": "e8d7252532c52dc0440676b1a1cb6d8161bfa104111973a0054090d006851031"},
+        {"role": "hk_input", "path": "/CETC/data/generated/unit/wavelets/qmf/input/perf_large_vector__hk.csv", "sha256": "c103a6da2608ab2dcd53b58d1270d64d5821ab9d8967a46648090387b8f639a4"},
+        {"role": "cpu_signal", "path": "/CETC/data/generated/unit/wavelets/qmf/output_samples/perf_large_vector__cpu__signal.csv", "sha256": "601e6c8bc7482bd29740b0967fc996ae4de4ad73309292fe624fad3f664a0de2"},
+        {"role": "gpu_signal", "path": "/CETC/data/generated/unit/wavelets/qmf/output_samples/perf_large_vector__gpu__signal.csv", "sha256": "601e6c8bc7482bd29740b0967fc996ae4de4ad73309292fe624fad3f664a0de2"}
+      ]
+    }
+  ]
+}

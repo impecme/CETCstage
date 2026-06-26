@@ -97,6 +97,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 cd "${REPO_ROOT}"
 
+if [[ -f /zq500/sdk/env.sh ]]; then
+  set +u
+  # shellcheck source=/dev/null
+  source /zq500/sdk/env.sh ""
+  set -u
+fi
+
 if [[ "${BUILD_DIR}" = /* ]]; then
   BUILD_PATH="${BUILD_DIR}"
 else
@@ -109,12 +116,6 @@ LEAK_ROOT="${REPORT_ROOT}/leak_check"
 mkdir -p "${REPORT_ROOT}" "${LEAK_ROOT}"
 
 if [[ "${DO_BUILD}" -eq 1 ]]; then
-  if ! command -v dlcc >/dev/null 2>&1 && [[ -f /zq500/sdk/env.sh ]]; then
-    set +u
-    # shellcheck source=/dev/null
-    source /zq500/sdk/env.sh
-    set -u
-  fi
   ZHONGKEXIN_CXX="${ZHONGKEXIN_CXX_COMPILER:-$(command -v dlcc || true)}"
   if [[ -z "${ZHONGKEXIN_CXX}" ]]; then
     echo "[task-demos] error: dlcc was not found for ZHONGKEXIN build" >&2

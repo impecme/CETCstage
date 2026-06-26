@@ -1,0 +1,46 @@
+{
+  "pass": true,
+  "version": "diagnostics-20260620-stage5-perf-v2",
+  "task_scales": "3",
+  "task_log": "data/reports/zhongkexin/v5_4_windows_direct_probe_latest/latest_task_scale.log",
+  "benchmark_modules": "all",
+  "benchmark_operators": "all",
+  "operator_set": "core53",
+  "benchmark_scale_levels": "6",
+  "benchmark_log": "data/reports/zhongkexin/v5_4_windows_direct_probe_latest/latest_operator_benchmark.log",
+  "benchmark_csv": "data/reports/unit/benchmarks/v5_4_windows_direct_probe/latest_all_ops_scale_benchmark.csv",
+  "benchmark_rows": 53,
+  "benchmark_failed_rows": 0,
+  "plot_status": "passed",
+  "figure_dir": "data/reports/unit/benchmarks/v5_4_windows_direct_probe/figures",
+  "gpu_memory_monitor_enabled": true,
+  "gpu_memory_csv": "data/reports/zhongkexin/v5_4_windows_direct_probe_latest/latest_gpu_memory_samples.csv",
+  "gpu_memory_json": "data/reports/zhongkexin/v5_4_windows_direct_probe_latest/latest_gpu_memory_summary.json",
+  "gpu_memory_available": true,
+  "gpu_memory_sample_count": 344,
+  "gpu_memory_used_mib_max": 1941.0,
+  "gpu_memory_used_mib_avg": 541.1569767441861,
+  "gpu_memory_free_mib_min": 14443.0,
+  "gpu_memory_util_percent_max": 100.0,
+  "gpu_memory_summary": {
+    "available": true,
+    "sample_count": 344,
+    "gpu_count": 1,
+    "started_at": "2026-06-25T13:21:01.798122+00:00",
+    "ended_at": "2026-06-25T13:23:55.278622+00:00",
+    "duration_s": 173.48693180084229,
+    "used_mib_min": 293.0,
+    "used_mib_max": 1941.0,
+    "used_mib_avg": 541.1569767441861,
+    "total_mib_max": 16384.0,
+    "free_mib_min": 14443.0,
+    "util_percent_max": 100.0,
+    "util_percent_avg": 2.2761627906976742,
+    "used_mib_delta_by_gpu": {
+      "0": 48.0
+    },
+    "used_mib_peak_by_gpu": {
+      "0": 1941.0
+    }
+  }
+}

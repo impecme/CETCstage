@@ -1,0 +1,15 @@
+# Zhongkexin V4.4 Stage4 Summary
+
+- pass: `True`
+- version: `diagnostics-20260617-stage4-perf-full-v4`
+- task_scales: `3`
+- task_log: `data/reports/zhongkexin/stage5_metrics_probe_latest/latest_task_scale.log`
+- benchmark_modules: `filtering`
+- benchmark_operators: `wiener`
+- benchmark_scale_levels: `6`
+- benchmark_log: `data/reports/zhongkexin/stage5_metrics_probe_latest/latest_operator_benchmark.log`
+- benchmark_csv: `data/reports/unit/benchmarks/v5_metrics_probe/latest_all_ops_scale_benchmark.csv`
+- benchmark_rows: `1`
+- benchmark_failed_rows: `0`
+- plot_status: `passed`
+- figure_dir: `data/reports/unit/benchmarks/v5_metrics_probe/figures`

@@ -2,6 +2,8 @@
 
 #include <cuda_runtime.h>
 
+#include <cmath>
+
 #include "cusignal/core/helpers.hpp"
 
 #include "../common/bsplines_detail.hpp"
@@ -76,6 +78,36 @@ namespace
         return size == 0 ? 0 : static_cast<int>((size + kThreadsPerBlock - 1) / kThreadsPerBlock);
     }
 
+    __device__ float cubic_value_fast(float x)
+    {
+        const float ax = fabsf(x);
+        if (ax < 1.0f)
+        {
+            return (2.0f / 3.0f) - 0.5f * ax * ax * (2.0f - ax);
+        }
+        if (ax < 2.0f)
+        {
+            const float term = 2.0f - ax;
+            return term * term * term * (1.0f / 6.0f);
+        }
+        return 0.0f;
+    }
+
+    __device__ float quadratic_value_fast(float x)
+    {
+        const float ax = fabsf(x);
+        if (ax < 0.5f)
+        {
+            return 0.75f - ax * ax;
+        }
+        if (ax < 1.5f)
+        {
+            const float term = ax - 1.5f;
+            return 0.5f * term * term;
+        }
+        return 0.0f;
+    }
+
     __global__ void cubic_kernel(const float *input, float *output, std::size_t count)
     {
         const std::size_t index = static_cast<std::size_t>(blockIdx.x) * blockDim.x +
@@ -84,7 +116,7 @@ namespace
         {
             return;
         }
-        output[index] = detail::cubic_value(input[index]);
+        output[index] = cubic_value_fast(input[index]);
     }
 
     __global__ void quadratic_kernel(const float *input, float *output, std::size_t count)
@@ -95,14 +127,15 @@ namespace
         {
             return;
         }
-        output[index] = detail::quadratic_value(input[index]);
+        output[index] = quadratic_value_fast(input[index]);
     }
 
     __global__ void gauss_spline_kernel(
         const float *input,
         float *output,
         std::size_t count,
-        int n)
+        float inv_sigma_factor,
+        float norm_factor)
     {
         const std::size_t index = static_cast<std::size_t>(blockIdx.x) * blockDim.x +
                                   static_cast<std::size_t>(threadIdx.x);
@@ -110,7 +143,8 @@ namespace
         {
             return;
         }
-        output[index] = detail::gauss_spline_value(input[index], n);
+        const float x = input[index];
+        output[index] = expf(-(x * x) * inv_sigma_factor) * norm_factor;
     }
 
     template <typename LaunchFn>
@@ -153,13 +187,16 @@ namespace cusignal
             core::ZxGpuRealArray gauss_spline(const core::RealArrayLike &x, int n)
             {
                 detail::ensure_non_negative_order(n);
+                const float sigma_squared = detail::gauss_spline_sigma_squared(n);
+                const float inv_sigma_factor = 0.5f / sigma_squared;
+                const float norm_factor = 1.0f / std::sqrt(2.0f * detail::kPi * sigma_squared);
                 const core::ZxGpuRealArray &input =
                     core::as_device_array(x, g_workspace.input_storage);
                 return launch_pointwise(
                     input,
-                    [n](const float *in, float *out, std::size_t count) {
+                    [inv_sigma_factor, norm_factor](const float *in, float *out, std::size_t count) {
                         gauss_spline_kernel<<<block_count(count), kThreadsPerBlock>>>(
-                            in, out, count, n);
+                            in, out, count, inv_sigma_factor, norm_factor);
                     });
             }
 

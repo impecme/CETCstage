@@ -122,7 +122,9 @@ namespace
         float2 *output,
         std::size_t count,
         float w,
-        float s,
+        float start,
+        float step,
+        float correction,
         bool complete)
     {
         const std::size_t index =
@@ -131,12 +133,20 @@ namespace
         {
             return;
         }
-        const detail::ComplexParts value =
-            detail::morlet_value(index, count, w, s, complete);
-        output[index] = make_complex(value.real, value.imag);
+        const float x = start + step * static_cast<float>(index);
+        const float gaussian = expf(-0.5f * x * x) * detail::kPiNegQuarter;
+        const float phase = w * x;
+        output[index] = make_complex(
+            (cosf(phase) - (complete ? correction : 0.0f)) * gaussian,
+            sinf(phase) * gaussian);
     }
 
-    __global__ void ricker_kernel(float *output, std::size_t count, float a)
+    __global__ void ricker_kernel(
+        float *output,
+        std::size_t count,
+        float amplitude,
+        float inv_a_sq,
+        float inv_two_a_sq)
     {
         const std::size_t index =
             static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
@@ -144,10 +154,18 @@ namespace
         {
             return;
         }
-        output[index] = detail::ricker_value(index, count, a);
+        const float x = detail::centered_coordinate(index, count);
+        const float xsq = x * x;
+        output[index] =
+            amplitude * (1.0f - xsq * inv_a_sq) * expf(-xsq * inv_two_a_sq);
     }
 
-    __global__ void morlet2_kernel(float2 *output, std::size_t count, float s, float w)
+    __global__ void morlet2_kernel(
+        float2 *output,
+        std::size_t count,
+        float inv_s,
+        float amplitude,
+        float w)
     {
         const std::size_t index =
             static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
@@ -155,9 +173,10 @@ namespace
         {
             return;
         }
-        const detail::ComplexParts value =
-            detail::morlet2_value(index, count, s, w);
-        output[index] = make_complex(value.real, value.imag);
+        const float x = detail::centered_coordinate(index, count) * inv_s;
+        const float scaled = amplitude * expf(-0.5f * x * x);
+        const float phase = w * x;
+        output[index] = make_complex(cosf(phase) * scaled, sinf(phase) * scaled);
     }
 
     __global__ void cwt_kernel(
@@ -352,13 +371,19 @@ namespace cusignal
                 }
 
                 ZxGpuComplexSignal output(count);
+                const float start = count <= 1 ? 0.0f : -s * detail::kTwoPi;
+                const float step =
+                    count <= 1 ? 0.0f : (2.0f * s * detail::kTwoPi) / static_cast<float>(count - 1);
+                const float correction = expf(-0.5f * w * w);
                 ScopedZxGpuEvents events;
                 g_last_kernel_ms = static_cast<float>(events.measure([&]() {
                     morlet_kernel<<<block_count(count), kThreadsPerBlock>>>(
                         reinterpret_cast<float2 *>(output.data()),
                         count,
                         w,
-                        s,
+                        start,
+                        step,
+                        correction,
                         complete);
                     check_kernel_launch("morlet_kernel");
                 }));
@@ -378,12 +403,19 @@ namespace cusignal
                 }
 
                 ZxGpuRealSignal output(count);
+                const float a_sq = a * a;
+                const float amplitude =
+                    2.0f / (std::sqrt(3.0f * a) * std::pow(detail::kPi, 0.25f));
+                const float inv_a_sq = 1.0f / a_sq;
+                const float inv_two_a_sq = 0.5f / a_sq;
                 ScopedZxGpuEvents events;
                 g_last_kernel_ms = static_cast<float>(events.measure([&]() {
                     ricker_kernel<<<block_count(count), kThreadsPerBlock>>>(
                         output.data(),
                         count,
-                        a);
+                        amplitude,
+                        inv_a_sq,
+                        inv_two_a_sq);
                     check_kernel_launch("ricker_kernel");
                 }));
                 return output;
@@ -402,12 +434,15 @@ namespace cusignal
                 }
 
                 ZxGpuComplexSignal output(count);
+                const float inv_s = 1.0f / s;
+                const float amplitude = std::sqrt(inv_s) * detail::kPiNegQuarter;
                 ScopedZxGpuEvents events;
                 g_last_kernel_ms = static_cast<float>(events.measure([&]() {
                     morlet2_kernel<<<block_count(count), kThreadsPerBlock>>>(
                         reinterpret_cast<float2 *>(output.data()),
                         count,
-                        s,
+                        inv_s,
+                        amplitude,
                         w);
                     check_kernel_launch("morlet2_kernel");
                 }));

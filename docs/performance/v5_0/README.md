@@ -12,17 +12,17 @@ V5 在 CPU reference 与中科芯 ZQ500 GPU 正确性不退化的前提下，完
 | --- | --- | --- | --- | --- |
 | V5.1 | `plans/V5_1_plan.md` | `docs/submission/READMEV5_1.md` | 已完成 | cache、显存和 benchmark schema 可复现 |
 | V5.2 | `plans/V5_2_plan.md` | `docs/submission/READMEV5_2.md` | 已完成 | 目录、81 算子契约、类型矩阵和完整平台兼容审计完成 |
-| V5.3 | `plans/V5_3_plan.md` | `docs/submission/READMEV5_3.md` | 进行中 | 两任务每步调用算子库，27 个依赖算子和逐步计时/精度闭环 |
-| V5.4 | `plans/V5_4_plan.md` | `docs/submission/READMEV5_4.md` | 待开始 | 核心 53/53 完成规范化、独立测试和性能结论 |
-| V5.5 | `plans/V5_5_plan.md` | `docs/submission/READMEV5_5.md` | 待开始 | 全库 81/81、486 行 benchmark、任务和平台最终验收完成 |
+| V5.3 | `plans/V5_3_plan.md` | `docs/submission/READMEV5_3.md` | 已完成 | 两任务每步调用算子库，27 个依赖算子和逐步计时/精度闭环 |
+| V5.4 | `plans/V5_4_plan.md` | `docs/submission/READMEV5_4.md` | 已完成 | 核心 53/53 完成规范化、独立测试和性能结论 |
+| V5.5 | `plans/V5_5_plan.md` | `docs/submission/READMEV5_5.md` | 进行中 | 全库 81/81、486 行 benchmark、任务和平台最终验收完成 |
 
 ## 当前执行点
 
-- 当前阶段：V5.3 Task1/Task2 与 27 个依赖算子。
+- 当前阶段：V5.5 扩展 28 和全库 81 算子最终验收。
 - 已完成基线：V5.1 可观测性、cache 统计和整卡显存采样。
 - 已提前完成：`filtering/wiener` 二维 shared-memory tiled 快路径，归入 V5.4 核心 53。
-- 下一门禁：V5.3-03 Task1 六个计算步骤全部公共化并通过独立测试。
-- 后续顺序：V5.3 两任务与 27 依赖，V5.4 核心 53，V5.5 扩展 28 和全库最终验收。
+- V5.4 收口：`v5_4_gate_latest` 已通过，核心 53/53、模块回归、任务 smoke、接口/类型契约和组合图件均通过。
+- 下一门禁：V5.5 扩展 28 算子 probe、全库 81 benchmark 和最终验收。
 
 ## 当前执行队列
 
@@ -35,14 +35,22 @@ V5 在 CPU reference 与中科芯 ZQ500 GPU 正确性不退化的前提下，完
 7. `V5.2-07`：已关闭；81/81 accuracy 和全部阶段门禁通过。
 8. `V5.3-01`：已关闭；16 个任务步骤映射通过容器复验。
 9. `V5.3-02`：已关闭；两任务 14 条统一步骤报告通过。
-10. `V5.3-03`：当前工作包；Task1 公共算子化等待容器验证。
+10. `V5.3-03`：已关闭；Task1 公共算子化和独立测试通过。
+11. `V5.3-04`：已关闭；Task2 优化链条、L1-L6 稳定复验和两任务联合 smoke 通过。
+12. `V5.4-01`：已关闭；core53 L6 基线和当前优化批次收口通过。
+13. `V5.4-03`：已关闭；P0/P1 热点批量优化已完成，收益记录见台账 V5-0031 至 V5-0047。
+14. `V5.4-04`：已关闭；任务 smoke、接口审计和类型契约复核通过。
+15. `V5.4-05`：已关闭；受影响模块 full 回归通过。
+16. `V5.4-06`：已关闭；阶段关闭验证与交付文档收口通过。
+17. `V5.5-01`：当前工作包；扩展 28 算子 L1-L6 probe 与热点排序。
 
-V5.2、V5.3-01/02 已关闭。当前执行 `V5.3-03` Task1 算子化；完成后剩余迁移队列全部属于 Task2。
+V5.4 已关闭。当前进入 `V5.5-01`，先执行扩展 28 算子 L1-L6 probe，再按全库 81 进行最终收口。
 
 ### V5.2-01 已关闭命令
 
 ```bash
 cd /CETC
+source /zq500/sdk/env.sh
 scripts/test/run_all_tests.sh --list > /tmp/v5_2_all81.tsv
 
 python3 scripts/test/validate_operator_sets.py \
@@ -67,6 +75,7 @@ cat /tmp/v5_2_operator_sets_summary.json
 
 ```bash
 cd /CETC
+source /zq500/sdk/env.sh
 scripts/test/run_all_tests.sh --list > /tmp/v5_2_all81.tsv
 
 python3 scripts/test/audit_operator_interfaces.py \
@@ -109,6 +118,7 @@ ctest --test-dir build-zx -R '^cusignal_type_contract$' --output-on-failure
 
 ```bash
 cd /CETC
+source /zq500/sdk/env.sh
 scripts/test/run_all_tests.sh --list > /tmp/v5_2_all81.tsv
 python3 scripts/test/validate_operator_type_contracts.py \
   --registry /tmp/v5_2_all81.tsv \
@@ -169,6 +179,9 @@ PY
 - 复数只支持 `complex64`，CPU 为 `std::complex<float>`，GPU 为 `cuFloatComplex`/`cuComplex`。
 - 不实现 FP64、`complex128`、FP16 复数或整数复数。
 - 纯浮点算子不强制实现整数版本，但必须记录不适用理由并验证拒绝行为。
+- FP16 只表示实数半精度路径；默认复数输出算子只实现 `complex64`，不实现半精度复数。
+- 适用 FP16 的实数算子允许内部使用 FP32 中间累加；整数兼容只针对原始语义允许的算子，不能用简单 cast 代替整数语义。
+- 当前实现能力与目标适用类型分开记录；V5.4/V5.5 逐项把 `current_types` 推进到目标适用范围。
 
 ## 执行规则
 

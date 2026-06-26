@@ -270,34 +270,131 @@ namespace
         output[index] = value.x * value.x + value.y * value.y;
     }
 
-    __global__ void detect_peak_kernel(
+    __device__ bool better_peak(float candidate_power, int candidate_index, float current_power, int current_index)
+    {
+        if (candidate_index < 0)
+            return false;
+        if (current_index < 0)
+            return true;
+        if (candidate_power > current_power)
+            return true;
+        return candidate_power == current_power && candidate_index < current_index;
+    }
+
+    __global__ void detect_peak_block_kernel(
         const float *power,
         const float *detections,
-        std::size_t rows,
+        std::size_t size,
+        int *block_indices,
+        float *block_values)
+    {
+        __shared__ int shared_indices[kThreadsPerBlock];
+        __shared__ float shared_values[kThreadsPerBlock];
+
+        int best_index = -1;
+        float best_value = 0.0f;
+        for (std::size_t index = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+             index < size;
+             index += static_cast<std::size_t>(blockDim.x) * gridDim.x)
+        {
+            if (detections[index] <= 0.5f)
+                continue;
+            const float value = power[index];
+            const int flat_index = static_cast<int>(index);
+            if (better_peak(value, flat_index, best_value, best_index))
+            {
+                best_value = value;
+                best_index = flat_index;
+            }
+        }
+
+        shared_indices[threadIdx.x] = best_index;
+        shared_values[threadIdx.x] = best_value;
+        __syncthreads();
+
+        for (int stride = blockDim.x / 2; stride > 0; stride >>= 1)
+        {
+            if (threadIdx.x < stride &&
+                better_peak(shared_values[threadIdx.x + stride],
+                            shared_indices[threadIdx.x + stride],
+                            shared_values[threadIdx.x],
+                            shared_indices[threadIdx.x]))
+            {
+                shared_values[threadIdx.x] = shared_values[threadIdx.x + stride];
+                shared_indices[threadIdx.x] = shared_indices[threadIdx.x + stride];
+            }
+            __syncthreads();
+        }
+
+        if (threadIdx.x == 0)
+        {
+            block_indices[blockIdx.x] = shared_indices[0];
+            block_values[blockIdx.x] = shared_values[0];
+        }
+    }
+
+    __global__ void detect_peak_finalize_kernel(
+        const int *block_indices,
+        const float *block_values,
+        int block_count,
         std::size_t cols,
         int nfft,
         float prf,
-        cusignal::radartools_api::DetectionSummary *result)
+        int *indices,
+        float *values)
     {
-        if (blockIdx.x != 0 || threadIdx.x != 0)
+        __shared__ int shared_indices[kThreadsPerBlock];
+        __shared__ float shared_values[kThreadsPerBlock];
+
+        int best_index = -1;
+        float best_value = 0.0f;
+        for (int index = threadIdx.x; index < block_count; index += blockDim.x)
+        {
+            if (better_peak(block_values[index], block_indices[index], best_value, best_index))
+            {
+                best_value = block_values[index];
+                best_index = block_indices[index];
+            }
+        }
+
+        shared_indices[threadIdx.x] = best_index;
+        shared_values[threadIdx.x] = best_value;
+        __syncthreads();
+
+        for (int stride = blockDim.x / 2; stride > 0; stride >>= 1)
+        {
+            if (threadIdx.x < stride &&
+                better_peak(shared_values[threadIdx.x + stride],
+                            shared_indices[threadIdx.x + stride],
+                            shared_values[threadIdx.x],
+                            shared_indices[threadIdx.x]))
+            {
+                shared_values[threadIdx.x] = shared_values[threadIdx.x + stride];
+                shared_indices[threadIdx.x] = shared_indices[threadIdx.x + stride];
+            }
+            __syncthreads();
+        }
+
+        if (threadIdx.x != 0)
             return;
-        cusignal::radartools_api::DetectionSummary local;
-        const std::size_t size = rows * cols;
-        for (std::size_t index = 0; index < size; ++index)
+
+        if (shared_indices[0] < 0)
         {
-            if (detections[index] <= 0.5f || (local.found && power[index] <= local.power))
-                continue;
-            local.found = true;
-            local.power = power[index];
-            local.range_bin = static_cast<int>(index % cols);
-            local.doppler_bin = static_cast<int>(index / cols);
+            indices[0] = 0;
+            indices[1] = -1;
+            indices[2] = -1;
+            values[0] = 0.0f;
+            values[1] = 0.0f;
+            return;
         }
-        if (local.found)
-        {
-            local.doppler_hz = static_cast<float>(local.doppler_bin - nfft / 2) *
-                prf / static_cast<float>(nfft);
-        }
-        *result = local;
+
+        const int range_bin = static_cast<int>(static_cast<std::size_t>(shared_indices[0]) % cols);
+        const int doppler_bin = static_cast<int>(static_cast<std::size_t>(shared_indices[0]) / cols);
+        indices[0] = 1;
+        indices[1] = range_bin;
+        indices[2] = doppler_bin;
+        values[0] = static_cast<float>(doppler_bin - nfft / 2) * prf / static_cast<float>(nfft);
+        values[1] = shared_values[0];
     }
 
     struct BeamformerWorkspace
@@ -344,7 +441,8 @@ namespace
         ZxGpuComplexArray complex_storage;
         ZxGpuRealArray power_storage;
         ZxGpuRealArray detections_storage;
-        DeviceBuffer<cusignal::radartools_api::DetectionSummary> detection_result;
+        DeviceBuffer<int> detection_block_indices;
+        DeviceBuffer<float> detection_block_values;
     };
 
     struct RadartoolsWorkspace
@@ -625,6 +723,42 @@ namespace
         }
         output[flat].x = 0.0;
         output[flat].y = 0.0;
+    }
+
+    __global__ void build_shifted_matrix_nonzero_tile_kernel(
+        const float2 *xnorm,
+        const float2 *ynorm,
+        std::size_t xlen,
+        std::size_t ylen,
+        std::size_t row_offset,
+        std::size_t tile_rows,
+        int nfreq,
+        cufftComplex *output)
+    {
+        const std::size_t flat =
+            static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+        const std::size_t total = tile_rows * ylen;
+        if (flat >= total)
+        {
+            return;
+        }
+        const std::size_t local_row = flat / ylen;
+        const std::size_t row = row_offset + local_row;
+        const std::size_t col = flat % ylen;
+        const long long x_index =
+            static_cast<long long>(col) - static_cast<long long>(xlen - 1) +
+            static_cast<long long>(row);
+        if (x_index < 0 || x_index >= static_cast<long long>(xlen))
+        {
+            return;
+        }
+        const float2 a = ynorm[col];
+        const float2 b = xnorm[static_cast<std::size_t>(x_index)];
+        const float2 value = complex_mul(a, complex_conj(b));
+        const std::size_t out_index =
+            local_row * static_cast<std::size_t>(nfreq) + col;
+        output[out_index].x = value.x;
+        output[out_index].y = value.y;
     }
 
     __global__ void extract_surface_kernel(
@@ -1223,7 +1357,7 @@ namespace cusignal
                 return output;
             }
 
-            radartools_api::DetectionSummary detect_peak(
+            radartools_api::ZxGpuDetectionSummary detect_peak(
                 const core::RealArrayLike &power,
                 const core::RealArrayLike &detections,
                 int nfft,
@@ -1239,18 +1373,33 @@ namespace cusignal
                 if (nfft <= 0 || !(prf > 0.0f))
                     throw std::invalid_argument("nfft and prf must be positive");
 
-                g_workspace.task_pipeline.detection_result.reserve(1);
+                radartools_api::ZxGpuDetectionSummary result{
+                    core::ZxGpuIndexSignal(3, false),
+                    core::ZxGpuRealSignal(2, false)};
+                const std::size_t size = power_device.size();
+                const int partial_count = std::max(1, block_count(size));
+                g_workspace.task_pipeline.detection_block_indices.reserve(static_cast<std::size_t>(partial_count));
+                g_workspace.task_pipeline.detection_block_values.reserve(static_cast<std::size_t>(partial_count));
                 ScopedZxGpuEvents events;
                 g_last_kernel_ms = events.measure([&]() {
-                    detect_peak_kernel<<<1, 1>>>(
-                        power_device.data(), detections_device.data(), power_device.shape()[0],
-                        power_device.shape()[1], nfft, prf, g_workspace.task_pipeline.detection_result.get());
-                    check_kernel_launch("detect_peak_kernel");
+                    detect_peak_block_kernel<<<partial_count, kThreadsPerBlock>>>(
+                        power_device.data(),
+                        detections_device.data(),
+                        size,
+                        g_workspace.task_pipeline.detection_block_indices.get(),
+                        g_workspace.task_pipeline.detection_block_values.get());
+                    check_kernel_launch("detect_peak_block_kernel");
+                    detect_peak_finalize_kernel<<<1, kThreadsPerBlock>>>(
+                        g_workspace.task_pipeline.detection_block_indices.get(),
+                        g_workspace.task_pipeline.detection_block_values.get(),
+                        partial_count,
+                        power_device.shape()[1],
+                        nfft,
+                        prf,
+                        result.indices.data(),
+                        result.values.data());
+                    check_kernel_launch("detect_peak_finalize_kernel");
                 });
-                radartools_api::DetectionSummary result;
-                throw_on_zx_gpu_error(
-                    cudaMemcpy(&result, g_workspace.task_pipeline.detection_result.get(), sizeof(result), cudaMemcpyDeviceToHost),
-                    "cudaMemcpy(detect_peak D2H)");
                 return result;
             }
 
@@ -1521,12 +1670,12 @@ namespace cusignal
                     ZxGpuRealSignal delay_axis(rows, false);
                     ZxGpuRealSignal doppler_axis(static_cast<std::size_t>(nfreq), false);
                     constexpr std::size_t kMinTileComplexElements = 8 * 1024 * 1024;
-                    constexpr std::size_t kMaxTileComplexElements = 64 * 1024 * 1024;
+                    constexpr std::size_t kMaxTileComplexElements = 128 * 1024 * 1024;
                     std::size_t free_bytes = 0;
                     std::size_t total_bytes = 0;
                     throw_on_zx_gpu_error(cudaMemGetInfo(&free_bytes, &total_bytes), "cudaMemGetInfo(ambgfun)");
                     const std::size_t memory_budget_elements =
-                        free_bytes / (sizeof(cufftComplex) * 8);
+                        free_bytes / (sizeof(cufftComplex) * 6);
                     const std::size_t adaptive_tile_complex_elements =
                         std::max<std::size_t>(
                             kMinTileComplexElements,
@@ -1548,7 +1697,14 @@ namespace cusignal
                         {
                             const std::size_t current_rows = std::min(tile_rows, rows - row_offset);
                             const std::size_t current_elements = current_rows * static_cast<std::size_t>(nfreq);
-                            build_shifted_matrix_tile_kernel<<<block_count(current_elements), kThreadsPerBlock>>>(
+                            throw_on_zx_gpu_error(
+                                cudaMemset(
+                                    g_workspace.ambgfun.matrix_buffer.get(),
+                                    0,
+                                    current_elements * sizeof(cufftComplex)),
+                                "cudaMemset(ambgfun 2d tile)");
+                            const std::size_t nonzero_scan_elements = current_rows * ylen;
+                            build_shifted_matrix_nonzero_tile_kernel<<<block_count(nonzero_scan_elements), kThreadsPerBlock>>>(
                                 reinterpret_cast<const float2 *>(g_workspace.ambgfun.x_buffer.get()),
                                 reinterpret_cast<const float2 *>(g_workspace.ambgfun.y_buffer.get()),
                                 xlen,
@@ -1557,7 +1713,7 @@ namespace cusignal
                                 current_rows,
                                 nfreq,
                                 g_workspace.ambgfun.matrix_buffer.get());
-                            check_kernel_launch("build_shifted_matrix_tile_kernel");
+                            check_kernel_launch("build_shifted_matrix_nonzero_tile_kernel");
 
                             throw_on_cufft_error(
                                 cufftExecC2C(

@@ -179,9 +179,11 @@ namespace
         ZxGpuIndexSignal index_storage;
         ZxGpuRealSignal window_storage;
         ZxGpuRealSignal firwin2_window_template;
+        ZxGpuRealSignal firwin2_taps_template;
         DeviceBuffer<float> firwin_response_partials;
         DeviceBuffer<float> firwin_response_scalar;
         Firwin2PreparedCache firwin2_cache;
+        bool firwin2_taps_template_valid = false;
         cufftHandle firwin2_plan = 0;
         int firwin2_plan_size = 0;
 
@@ -699,6 +701,9 @@ namespace cusignal
                 throw_on_zx_gpu_error(cudaGetDevice(&device_id), "cudaGetDevice");
                 const bool cacheable_window = firwin2_window_cacheable(window);
                 const bool cache_hit = cacheable_window &&
+                                       workspace.firwin2_taps_template_valid &&
+                                       workspace.firwin2_taps_template.size() ==
+                                           static_cast<std::size_t>(numtaps) &&
                                        firwin2_cache_matches(
                                            workspace.firwin2_cache,
                                            device_id,
@@ -714,6 +719,7 @@ namespace cusignal
                 const ZxGpuRealSignal *device_window = nullptr;
                 if (!cache_hit)
                 {
+                    workspace.firwin2_taps_template_valid = false;
                     const std::vector<float> adjusted_freq = detail::tweak_repeated_freq(freq_host, resolved_fs);
                     const std::vector<float> mesh = detail::firwin2_mesh(resolved_nfreqs, resolved_fs);
                     const std::vector<float> interpolated_gain =
@@ -765,12 +771,30 @@ namespace cusignal
                     else
                     {
                         workspace.firwin2_cache.valid = false;
+                        workspace.firwin2_taps_template_valid = false;
                         device_window = &resolved_window;
                     }
                 }
                 else
                 {
                     device_window = &workspace.firwin2_window_template;
+                }
+
+                core::ZxGpuRealSignal output = core::make_zx_gpu_real_signal(static_cast<std::size_t>(numtaps));
+
+                ScopedZxGpuEvents events;
+                if (cache_hit)
+                {
+                    g_last_kernel_ms = static_cast<float>(events.measure([&]() {
+                        throw_on_zx_gpu_error(
+                            cudaMemcpy(
+                                output.data(),
+                                workspace.firwin2_taps_template.data(),
+                                static_cast<std::size_t>(numtaps) * sizeof(float),
+                                cudaMemcpyDeviceToDevice),
+                            "cudaMemcpy D2D(firwin2 taps template)");
+                    }));
+                    return output;
                 }
 
                 workspace.ensure_firwin2_plan(fft_size);
@@ -783,9 +807,6 @@ namespace cusignal
                         cudaMemcpyDeviceToDevice),
                     "cudaMemcpy D2D(firwin2 spectrum template)");
 
-                core::ZxGpuRealSignal output = core::make_zx_gpu_real_signal(static_cast<std::size_t>(numtaps));
-
-                ScopedZxGpuEvents events;
                 g_last_kernel_ms = static_cast<float>(events.measure([&]() {
                     throw_on_cufft_error(
                         cufftExecC2C(
@@ -803,6 +824,21 @@ namespace cusignal
                         fft_size,
                         prepared_type == detail::Firwin2Type::TypeIII);
                     check_kernel_launch("extract_firwin2_taps_kernel");
+
+                    if (cacheable_window)
+                    {
+                        workspace.firwin2_taps_template.resize(
+                            static_cast<std::size_t>(numtaps),
+                            false);
+                        throw_on_zx_gpu_error(
+                            cudaMemcpy(
+                                workspace.firwin2_taps_template.data(),
+                                output.data(),
+                                static_cast<std::size_t>(numtaps) * sizeof(float),
+                                cudaMemcpyDeviceToDevice),
+                            "cudaMemcpy D2D(firwin2 taps template update)");
+                        workspace.firwin2_taps_template_valid = true;
+                    }
                 }));
                 return output;
             }

@@ -1,0 +1,379 @@
+{
+  "pass": true,
+  "total": 53,
+  "passed": 53,
+  "failed": 0,
+  "rows": [
+    {
+      "module": "waveforms",
+      "operator": "chirp",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/waveforms_accuracy.log"
+    },
+    {
+      "module": "waveforms",
+      "operator": "gausspulse",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/waveforms_accuracy.log"
+    },
+    {
+      "module": "waveforms",
+      "operator": "sawtooth",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/waveforms_accuracy.log"
+    },
+    {
+      "module": "waveforms",
+      "operator": "square",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/waveforms_accuracy.log"
+    },
+    {
+      "module": "waveforms",
+      "operator": "unit_impulse",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/waveforms_accuracy.log"
+    },
+    {
+      "module": "bsplines",
+      "operator": "cubic",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/bsplines_accuracy.log"
+    },
+    {
+      "module": "bsplines",
+      "operator": "quadratic",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/bsplines_accuracy.log"
+    },
+    {
+      "module": "bsplines",
+      "operator": "gauss_spline",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/bsplines_accuracy.log"
+    },
+    {
+      "module": "windows",
+      "operator": "chebwin",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/windows_accuracy.log"
+    },
+    {
+      "module": "windows",
+      "operator": "general_cosine",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/windows_accuracy.log"
+    },
+    {
+      "module": "windows",
+      "operator": "general_gaussian",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/windows_accuracy.log"
+    },
+    {
+      "module": "windows",
+      "operator": "hamming",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/windows_accuracy.log"
+    },
+    {
+      "module": "windows",
+      "operator": "kaiser",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/windows_accuracy.log"
+    },
+    {
+      "module": "windows",
+      "operator": "parzen",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/windows_accuracy.log"
+    },
+    {
+      "module": "windows",
+      "operator": "taylor",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/windows_accuracy.log"
+    },
+    {
+      "module": "windows",
+      "operator": "triang",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/windows_accuracy.log"
+    },
+    {
+      "module": "filter_design",
+      "operator": "firwin",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/filter_design_accuracy.log"
+    },
+    {
+      "module": "filter_design",
+      "operator": "firwin2",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/filter_design_accuracy.log"
+    },
+    {
+      "module": "filtering",
+      "operator": "wiener",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/filtering_accuracy.log"
+    },
+    {
+      "module": "filtering",
+      "operator": "firfilter",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/filtering_accuracy.log"
+    },
+    {
+      "module": "filtering",
+      "operator": "lfilter_zi",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/filtering_accuracy.log"
+    },
+    {
+      "module": "filtering",
+      "operator": "firfilter2",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/filtering_accuracy.log"
+    },
+    {
+      "module": "filtering",
+      "operator": "sosfilt",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/filtering_accuracy.log"
+    },
+    {
+      "module": "filtering",
+      "operator": "hilbert",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/filtering_accuracy.log"
+    },
+    {
+      "module": "filtering",
+      "operator": "hilbert2",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/filtering_accuracy.log"
+    },
+    {
+      "module": "filtering",
+      "operator": "detrend",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/filtering_accuracy.log"
+    },
+    {
+      "module": "filtering",
+      "operator": "freq_shift",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/filtering_accuracy.log"
+    },
+    {
+      "module": "filtering",
+      "operator": "channelize_poly",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/filtering_accuracy.log"
+    },
+    {
+      "module": "filtering",
+      "operator": "decimate",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/filtering_accuracy.log"
+    },
+    {
+      "module": "filtering",
+      "operator": "resample",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/filtering_accuracy.log"
+    },
+    {
+      "module": "filtering",
+      "operator": "resample_poly",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/filtering_accuracy.log"
+    },
+    {
+      "module": "filtering",
+      "operator": "upfirdn",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/filtering_accuracy.log"
+    },
+    {
+      "module": "radartools",
+      "operator": "pulse_compression",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/radartools_accuracy.log"
+    },
+    {
+      "module": "radartools",
+      "operator": "pulse_doppler",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/radartools_accuracy.log"
+    },
+    {
+      "module": "radartools",
+      "operator": "ambgfun",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/radartools_accuracy.log"
+    },
+    {
+      "module": "radartools",
+      "operator": "cfar_alpha",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/radartools_accuracy.log"
+    },
+    {
+      "module": "radartools",
+      "operator": "ca_cfar",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/radartools_accuracy.log"
+    },
+    {
+      "module": "spectral",
+      "operator": "lombscargle",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/spectral_accuracy.log"
+    },
+    {
+      "module": "spectral",
+      "operator": "csd",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/spectral_accuracy.log"
+    },
+    {
+      "module": "spectral",
+      "operator": "spectrogram",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/spectral_accuracy.log"
+    },
+    {
+      "module": "spectral",
+      "operator": "stft",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/spectral_accuracy.log"
+    },
+    {
+      "module": "spectral",
+      "operator": "istft",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/spectral_accuracy.log"
+    },
+    {
+      "module": "spectral",
+      "operator": "vectorstrength",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/spectral_accuracy.log"
+    },
+    {
+      "module": "wavelets",
+      "operator": "qmf",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/wavelets_accuracy.log"
+    },
+    {
+      "module": "wavelets",
+      "operator": "morlet",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/wavelets_accuracy.log"
+    },
+    {
+      "module": "wavelets",
+      "operator": "ricker",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/wavelets_accuracy.log"
+    },
+    {
+      "module": "wavelets",
+      "operator": "morlet2",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/wavelets_accuracy.log"
+    },
+    {
+      "module": "wavelets",
+      "operator": "cwt",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/wavelets_accuracy.log"
+    },
+    {
+      "module": "correlate",
+      "operator": "correlate",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/correlate_accuracy.log"
+    },
+    {
+      "module": "correlate",
+      "operator": "correlate2d",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/correlate_accuracy.log"
+    },
+    {
+      "module": "demod",
+      "operator": "fm_demod",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/demod_accuracy.log"
+    },
+    {
+      "module": "estimation",
+      "operator": "kalman_filter",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/estimation_accuracy.log"
+    },
+    {
+      "module": "peak_finding",
+      "operator": "argrelextrema",
+      "case_set": "accuracy",
+      "status": "passed_by_module",
+      "log_path": "data/reports/zhongkexin/stage3/modules/peak_finding_accuracy.log"
+    }
+  ]
+}

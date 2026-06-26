@@ -1654,13 +1654,14 @@ namespace cusignal_demo::task1_radar
         auto gpu_pipeline_result = run_gpu_pipeline(config, cpu.rx_matrix, cpu.tx_template);
         GpuArtifacts gpu_device = std::move(gpu_pipeline_result.first);
         std::vector<StageTiming> gpu_stage_times = std::move(gpu_pipeline_result.second);
-        auto [gpu_detection, detection_gpu_ms] = measure_gpu_ms([&]() {
+        auto [gpu_detection_device, detection_gpu_ms] = measure_gpu_ms([&]() {
             return cusignal::zx_gpu_backend::radartools::detect_peak(
                 gpu_device.range_doppler_power,
                 gpu_device.cfar_detections,
                 config.pulse_doppler_nfft,
                 config.prf);
         });
+        const DetectionSummary gpu_detection = gpu_detection_device.get();
         HostGpuArtifacts gpu = materialize_gpu_artifacts(gpu_device);
 
         stage_timings.push_back({"pulse_compression", pulse_cpu_ms, gpu_stage_times[0].gpu_ms});

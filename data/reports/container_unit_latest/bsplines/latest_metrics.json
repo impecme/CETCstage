@@ -1,0 +1,120 @@
+{
+  "module": "bsplines",
+  "generated_at": "2026-06-26 04:34:09",
+  "operators": [
+    {
+      "operator": "cubic",
+      "pass": true,
+      "max_abs_error": 5.96046e-08,
+      "max_rel_error": 2.67917e-07,
+      "gpu_e2e_speedup": 2.26478,
+      "gpu_kernel_speedup": 6.19322,
+      "cpu_perf": {
+        "warmup": 1,
+        "repeat": 3,
+        "mean_ms": 0.32751,
+        "median_ms": 0.32751,
+        "p95_ms": 0.32751,
+        "min_ms": 0.32751,
+        "max_ms": 0.32751,
+        "std_ms": 0
+      },
+      "gpu_e2e_perf": {
+        "warmup": 1,
+        "repeat": 3,
+        "mean_ms": 0.14461,
+        "median_ms": 0.14461,
+        "p95_ms": 0.14461,
+        "min_ms": 0.14461,
+        "max_ms": 0.14461,
+        "std_ms": 0
+      },
+      "gpu_kernel_perf": {
+        "warmup": 1,
+        "repeat": 3,
+        "mean_ms": 0.052882,
+        "median_ms": 0.052882,
+        "p95_ms": 0.052882,
+        "min_ms": 0.052882,
+        "max_ms": 0.052882,
+        "std_ms": 0
+      }
+    },
+    {
+      "operator": "gauss_spline",
+      "pass": true,
+      "max_abs_error": 1.19209e-07,
+      "max_rel_error": 3.16153e-07,
+      "gpu_e2e_speedup": 94.5726,
+      "gpu_kernel_speedup": 98.016,
+      "cpu_perf": {
+        "warmup": 1,
+        "repeat": 3,
+        "mean_ms": 159.141,
+        "median_ms": 159.141,
+        "p95_ms": 159.141,
+        "min_ms": 159.141,
+        "max_ms": 159.141,
+        "std_ms": 0
+      },
+      "gpu_e2e_perf": {
+        "warmup": 1,
+        "repeat": 3,
+        "mean_ms": 1.68274,
+        "median_ms": 1.68274,
+        "p95_ms": 1.68274,
+        "min_ms": 1.68274,
+        "max_ms": 1.68274,
+        "std_ms": 0
+      },
+      "gpu_kernel_perf": {
+        "warmup": 1,
+        "repeat": 3,
+        "mean_ms": 1.62362,
+        "median_ms": 1.62362,
+        "p95_ms": 1.62362,
+        "min_ms": 1.62362,
+        "max_ms": 1.62362,
+        "std_ms": 0
+      }
+    },
+    {
+      "operator": "quadratic",
+      "pass": true,
+      "max_abs_error": 5.96046e-08,
+      "max_rel_error": 1.19168e-07,
+      "gpu_e2e_speedup": 35.3797,
+      "gpu_kernel_speedup": 36.6549,
+      "cpu_perf": {
+        "warmup": 1,
+        "repeat": 3,
+        "mean_ms": 59.6172,
+        "median_ms": 59.6172,
+        "p95_ms": 59.6172,
+        "min_ms": 59.6172,
+        "max_ms": 59.6172,
+        "std_ms": 0
+      },
+      "gpu_e2e_perf": {
+        "warmup": 1,
+        "repeat": 3,
+        "mean_ms": 1.68507,
+        "median_ms": 1.68507,
+        "p95_ms": 1.68507,
+        "min_ms": 1.68507,
+        "max_ms": 1.68507,
+        "std_ms": 0
+      },
+      "gpu_kernel_perf": {
+        "warmup": 1,
+        "repeat": 3,
+        "mean_ms": 1.62644,
+        "median_ms": 1.62644,
+        "p95_ms": 1.62644,
+        "min_ms": 1.62644,
+        "max_ms": 1.62644,
+        "std_ms": 0
+      }
+    }
+  ]
+}

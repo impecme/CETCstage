@@ -99,6 +99,15 @@ sudo docker start gpu_04
 sudo docker exec -it gpu_04 bash
 ```
 
+每次新进入容器或新开容器 shell，都必须先初始化中科芯 SDK 环境：
+
+```bash
+cd /CETC
+source /zq500/sdk/env.sh
+```
+
+初始化会设置 `PATH`、`LD_LIBRARY_PATH` 和 SDK 相关变量。未执行时，即使项目已经编译完成，运行二进制也可能报 `libLLVM-15.so` 等动态库缺失。后续所有容器命令均以已完成该初始化为前提；看到 shell 前缀包含 `(sdk)` 可作为环境已激活的提示。
+
 退出容器：
 
 ```bash
@@ -149,10 +158,13 @@ cd /home/usr_04/CETC
 /CETC.incoming.20260615124530/replace_container_project.sh /CETC
 ```
 
+同步脚本只更新代码、脚本和文档；`data/reports/` 与 `data/generated/` 属于容器运行产物，不随宿主机同步覆盖。容器替换项目时也会保留已有 `build-zx`、`data/reports` 和 `data/generated`，避免覆盖刚跑出的 benchmark/report。
+
 然后在容器内执行当前阶段统一入口：
 
 ```bash
 cd /CETC
+source /zq500/sdk/env.sh
 TASK_SCALES=1,2,3,4,5,6 \
 BENCH_MODULES=all \
 BENCH_SCALE_LEVELS=1,2,3,4,5,6 \
@@ -169,7 +181,7 @@ scripts/platform/run_zhongkexin_stage4.sh 2>&1 | tee stage4_full.log
 
 ```bash
 cd /CETC
-
+source /zq500/sdk/env.sh
 scripts/test/run_all_tests.sh --list > /tmp/v5_2_all81.tsv
 
 python3 scripts/test/validate_operator_sets.py \
@@ -196,6 +208,7 @@ cat /tmp/v5_2_operator_sets_summary.json
 
 ```bash
 cd /CETC
+source /zq500/sdk/env.sh
 scripts/test/run_all_tests.sh --list > /tmp/v5_2_all81.tsv
 
 python3 scripts/test/audit_operator_interfaces.py \
@@ -242,6 +255,7 @@ ctest --test-dir build-zx -R '^cusignal_type_contract$' --output-on-failure
 
 ```bash
 cd /CETC
+source /zq500/sdk/env.sh
 scripts/test/run_all_tests.sh --list > /tmp/v5_2_all81.tsv
 
 python3 scripts/test/validate_operator_type_contracts.py \
@@ -270,6 +284,7 @@ PY
 
 ```bash
 cd /CETC
+source /zq500/sdk/env.sh
 python3 scripts/platform/generate_zx_compat_matrix.py \
   --driver "复赛说明文件/CUDA 11.7 driver api.xlsx" \
   --runtime "复赛说明文件/CUDA 11.7 runtime API.xlsx" \
@@ -327,6 +342,7 @@ cat build-zx/reports/zx_compatibility/api_usage.json
 
 ```bash
 cd /CETC
+source /zq500/sdk/env.sh
 scripts/platform/run_v5_2_gate.sh 2>&1 | tee /tmp/v5_2_gate.log
 
 cat data/reports/zhongkexin/v5_2_gate_latest/summary.json
@@ -342,6 +358,7 @@ cat data/reports/zhongkexin/v5_2_gate_latest/summary.json
 
 ```bash
 cd /CETC
+source /zq500/sdk/env.sh
 python3 scripts/test/audit_task_steps.py \
   --contracts scripts/test/task_step_contracts.json \
   --output-dir data/reports/zhongkexin/v5_3_task_step_audit \
@@ -367,6 +384,7 @@ PY
 
 ```bash
 cd /CETC
+source /zq500/sdk/env.sh
 scripts/test/run_task_demos.sh \
   --build-dir build-zx --build --repeat 1 --skip-timing-validation
 
@@ -410,6 +428,59 @@ python3 scripts/test/audit_task_steps.py \
 ```
 
 预期 3/3 CTest 和 Task1 均 PASS；审计应为 `public_calculation_step_count=6`、`migration_step_count=8`、`timing_gap_count=1`、`failure_count=0`。
+
+### V5.4 已关闭验证
+
+V5.4 核心 53 算子优化已关闭。`v5_4_core53_batch_close_probe` 已完成，核心 53/53 全部通过，失败 0，显存峰值 2453 MiB。复现命令：
+
+```bash
+cd /CETC
+source /zq500/sdk/env.sh
+
+OPERATOR_SET=core53 \
+RUN_TASK_SWEEP=0 \
+BENCH_SCALE_LEVELS=6 \
+BENCH_WARMUP=1 \
+BENCH_REPEAT=3 \
+BENCH_REPORT_MODE=concise \
+BENCH_OUTPUT_DIR=data/reports/unit/benchmarks/v5_4_core53_batch_close_probe \
+STAGE4_REPORT_ROOT=data/reports/zhongkexin/v5_4_core53_batch_close_probe_latest \
+scripts/platform/run_zhongkexin_stage4.sh 2>&1 | tee stage5_4_core53_batch_close_probe.log
+```
+
+任务侧 smoke 已通过：Task1/Task2 均 PASS，`status=passed`、`task_count=2`、`step_count=14`、`failure_count=0`。核心 53 契约/类型复核也已通过：interface 81/81 passed，type contracts 81/81 passed。受影响模块 full 回归已通过：`filter_design` 5/5、`filtering` 17/17、`radartools` 6/6、`spectral` 9/9、`bsplines` 3/3、`wavelets` 5/5、`windows` 23/23。关闭汇总命令：
+
+```bash
+cd /CETC
+source /zq500/sdk/env.sh
+
+python3 scripts/platform/summarize_v5_4_gate.py
+cat data/reports/zhongkexin/v5_4_gate_latest/summary.json
+cat data/reports/zhongkexin/v5_4_gate_latest/summary.md
+```
+
+实测结果为 `status=passed`、core53 `53/53`、模块回归 `passed`、任务 smoke `passed`、contracts `passed`、组合图件 `12` 个模块图覆盖 `53` 个算子。
+
+### V5.5 当前阶段验证
+
+当前性能优化阶段进入 V5.5，先执行扩展 28 算子 probe，再合并全库 81 进行最终验收。同步后在容器运行：
+
+```bash
+cd /CETC
+source /zq500/sdk/env.sh
+
+OPERATOR_SET=extended28 \
+RUN_TASK_SWEEP=0 \
+BENCH_SCALE_LEVELS=6 \
+BENCH_WARMUP=1 \
+BENCH_REPEAT=3 \
+BENCH_REPORT_MODE=concise \
+BENCH_OUTPUT_DIR=data/reports/unit/benchmarks/v5_5_extended28_probe \
+STAGE4_REPORT_ROOT=data/reports/zhongkexin/v5_5_extended28_probe_latest \
+scripts/platform/run_zhongkexin_stage4.sh 2>&1 | tee stage5_5_extended28_probe.log
+```
+
+回传 `latest_all_ops_scale_benchmark.csv` 行数、失败行、top GPU E2E、low speedup 和 `latest_stage4_summary.json` 显存字段后，按扩展 28 的热点继续优化。
 
 `run_zhongkexin_stage4.sh` 会自动检查依赖、配置中科芯 `build-zx`、运行 Task1/Task2 L1-L6 scale sweep、执行全量算子多规模 benchmark，并生成报告和图件。当前交付验收只面向 CPU reference + 容器内 ZQ500 GPU。
 
@@ -616,6 +687,7 @@ ctest --test-dir build -R '^smoke_demo1$' --output-on-failure
 
 ```bash
 cd /CETC
+source /zq500/sdk/env.sh
 TASK_SCALES=1,2,3,4,5,6 \
 BENCH_MODULES=all \
 BENCH_SCALE_LEVELS=1,2,3,4,5,6 \
@@ -646,9 +718,10 @@ python3 scripts/test/plot_all_ops_benchmark.py \
 - `figures/figure_3_e2e_speedup_heatmap.png`
 - `figures/figure_4_largest_scale_cpu_vs_gpu_scatter.png`
 - `figures/figure_5_largest_scale_speedup_rank.png`
-- `figures/operator_figures/<module>__<operator>.png`
+- `figures/operator_figures/module_operator_curves_<module>.png`
+- `figures/operator_figures/latest_operator_curve_manifest.csv`
 
-默认保留全量 benchmark CSV 和图件。CSV 追加包含 `cpu_median_ms`、`gpu_e2e_median_ms`、`gpu_kernel_median_ms`、`gpu_e2e_min_ms`、`gpu_e2e_max_ms`，用于直接绘制 CPU/GPU 耗时与加速比图。`figure_1` 到 `figure_5` 是全局总览图，行/点代表算子、列代表 L1-L6 或最大规模；每个算子的独立性能图在 `figures/operator_figures/` 下，上半部分是 CPU/GPU e2e median 耗时，下半部分是 e2e/kernel speedup。
+默认保留全量 benchmark CSV 和图件。CSV 追加包含 `cpu_median_ms`、`gpu_e2e_median_ms`、`gpu_kernel_median_ms`、`gpu_e2e_min_ms`、`gpu_e2e_max_ms`，用于直接绘制 CPU/GPU 耗时与加速比图。`figure_1` 到 `figure_5` 是全局总览图，行/点代表算子、列代表 L1-L6 或最大规模；`figures/operator_figures/` 下按模块生成组合压缩曲线图，每个算子保留 CPU/GPU e2e median 耗时和 e2e/kernel speedup 的 L1-L6 趋势，不再生成一算子一图。
 
 测试脚本、规模策略、性能图生成方式和任务级验收口径已在本文档中统一说明。提交技术文档如需引用工程说明，统一引用本文件。
 

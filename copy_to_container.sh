@@ -19,6 +19,8 @@ rsync -a \
   --exclude '/build/' \
   --exclude '/build-*/' \
   --exclude '/__cmake_systeminformation/' \
+  --exclude '/data/generated/' \
+  --exclude '/data/reports/' \
   --exclude '/*.log' \
   "${root}/" "${tmp}/project/"
 

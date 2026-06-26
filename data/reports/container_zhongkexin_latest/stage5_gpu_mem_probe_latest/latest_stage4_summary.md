@@ -1,0 +1,24 @@
+# Zhongkexin V4.4 Stage4 Summary
+
+- pass: `True`
+- version: `diagnostics-20260617-stage4-perf-full-v4`
+- task_scales: `3`
+- task_log: `data/reports/zhongkexin/stage5_gpu_mem_probe_latest/latest_task_scale.log`
+- benchmark_modules: `filtering`
+- benchmark_operators: `wiener`
+- benchmark_scale_levels: `6`
+- benchmark_log: `data/reports/zhongkexin/stage5_gpu_mem_probe_latest/latest_operator_benchmark.log`
+- benchmark_csv: `data/reports/unit/benchmarks/v5_gpu_mem_probe/latest_all_ops_scale_benchmark.csv`
+- benchmark_rows: `1`
+- benchmark_failed_rows: `0`
+- plot_status: `passed`
+- figure_dir: `data/reports/unit/benchmarks/v5_gpu_mem_probe/figures`
+- gpu_memory_monitor_enabled: `True`
+- gpu_memory_csv: `data/reports/zhongkexin/stage5_gpu_mem_probe_latest/latest_gpu_memory_samples.csv`
+- gpu_memory_json: `data/reports/zhongkexin/stage5_gpu_mem_probe_latest/latest_gpu_memory_summary.json`
+- gpu_memory_available: `True`
+- gpu_memory_sample_count: `76`
+- gpu_memory_used_mib_max: `615.0`
+- gpu_memory_used_mib_avg: `320.92105263157896`
+- gpu_memory_free_mib_min: `15769.0`
+- gpu_memory_util_percent_max: `100.0`

@@ -15,7 +15,7 @@ int main()
     detections.values[1] = 1.0f;
     detections.values[8] = 1.0f;
     const auto cpu = cpu::radartools::detect_peak(power, detections, 4, 2000.0f);
-    const auto gpu = zx_gpu_backend::radartools::detect_peak(power, detections, 4, 2000.0f);
+    const auto gpu = zx_gpu_backend::radartools::detect_peak(power, detections, 4, 2000.0f).get();
     if (!cpu.found || !gpu.found || cpu.range_bin != 2 || cpu.doppler_bin != 2 ||
         cpu.range_bin != gpu.range_bin || cpu.doppler_bin != gpu.doppler_bin ||
         std::fabs(cpu.doppler_hz) > 1.0e-6f || std::fabs(cpu.power - 11.0f) > 1.0e-6f)

@@ -1,0 +1,133 @@
+{
+  "module": "radartools",
+  "operator": "pulse_compression",
+  "generated_at": "2026-06-25 14:36:23",
+  "git_commit": "",
+  "gpu_name": "ZQ500-Q QUAD-0",
+  "compile_config": {
+    "cxx_standard": 201703,
+    "runtime_version": 11070
+  },
+  "summary": {
+    "pass": true,
+    "accuracy_cases": 0,
+    "perf_cases": 1,
+    "max_abs_error": 7.83614e-06,
+    "max_rel_error": 1.77855e-06,
+    "mixed_error": 0,
+    "rmse": 1.78759e-06,
+    "gpu_e2e_speedup": 54.4597,
+    "gpu_kernel_speedup": 57.4866,
+    "cpu_perf": {
+      "warmup": 1,
+      "repeat": 3,
+      "mean_ms": 90.7842,
+      "median_ms": 90.7842,
+      "p95_ms": 90.7842,
+      "min_ms": 90.7842,
+      "max_ms": 90.7842,
+      "std_ms": 0
+    },
+    "gpu_e2e_perf": {
+      "warmup": 1,
+      "repeat": 3,
+      "mean_ms": 1.667,
+      "median_ms": 1.667,
+      "p95_ms": 1.667,
+      "min_ms": 1.667,
+      "max_ms": 1.667,
+      "std_ms": 0
+    },
+    "gpu_kernel_perf": {
+      "warmup": 1,
+      "repeat": 3,
+      "mean_ms": 1.57922,
+      "median_ms": 1.57922,
+      "p95_ms": 1.57922,
+      "min_ms": 1.57922,
+      "max_ms": 1.57922,
+      "std_ms": 0
+    },
+    "device_storage_cache": {
+      "cache_enabled": true,
+      "allocation_calls": 3,
+      "allocation_bytes": 16779264,
+      "allocation_mib": 16.002,
+      "cache_hits": 8,
+      "cache_misses": 3,
+      "recycled_blocks": 11,
+      "recycled_bytes": 83888128,
+      "recycled_mib": 80.002,
+      "evicted_blocks": 0,
+      "evicted_bytes": 0,
+      "evicted_mib": 0,
+      "freed_blocks": 0,
+      "freed_bytes": 0,
+      "freed_mib": 0,
+      "cached_blocks": 3,
+      "cached_bytes": 16779264,
+      "cached_mib": 16.002,
+      "peak_cached_bytes": 16779264,
+      "peak_cached_mib": 16.002,
+      "max_cached_blocks": 8,
+      "max_cached_bytes": 536870912,
+      "max_cached_mib": 512,
+      "max_single_cached_bytes": 268435456,
+      "max_single_cached_mib": 256
+    }
+  },
+  "cases": [
+    {
+      "case_id": "perf_large",
+      "category": "perf",
+      "samples": 1048576,
+      "pass": true,
+      "cpu_gpu_error": {
+        "max_abs_error": 7.83614e-06,
+        "max_rel_error": 1.77855e-06,
+        "mixed_error": 0,
+        "rmse": 1.78759e-06,
+        "l2_error": 0.0018305,
+        "exact_match": false,
+        "first_mismatch_index": 0
+      },
+      "cpu_perf": {
+        "warmup": 1,
+        "repeat": 3,
+        "mean_ms": 90.7446,
+        "median_ms": 90.7842,
+        "p95_ms": 90.8198,
+        "min_ms": 90.6297,
+        "max_ms": 90.8198,
+        "std_ms": 0.0824947
+      },
+      "gpu_e2e_perf": {
+        "warmup": 1,
+        "repeat": 3,
+        "mean_ms": 1.66802,
+        "median_ms": 1.667,
+        "p95_ms": 1.67061,
+        "min_ms": 1.66647,
+        "max_ms": 1.67061,
+        "std_ms": 0.00183974
+      },
+      "gpu_kernel_perf": {
+        "warmup": 1,
+        "repeat": 3,
+        "mean_ms": 1.58033,
+        "median_ms": 1.57922,
+        "p95_ms": 1.58257,
+        "min_ms": 1.5792,
+        "max_ms": 1.58257,
+        "std_ms": 0.00158298
+      },
+      "artifacts": [
+        {"role": "case_spec", "path": "/CETC/data/generated/unit/radartools/pulse_compression/input/perf_large__spec.json", "sha256": "f0529d99a8ad8c3558e197eac9b77d0b12d4eca0447a83f205727513de29c024"},
+        {"role": "x_input", "path": "/CETC/data/generated/unit/radartools/pulse_compression/input/perf_large__x.csv", "sha256": "53c3a555af3113d94bcfb64908d8401b8256723505191ea07139e6837fc106bc"},
+        {"role": "template_input", "path": "/CETC/data/generated/unit/radartools/pulse_compression/input/perf_large__template.csv", "sha256": "e672b8d6ddb4dd926d382ac5717daed9638c0c7541e7802684247b24c3c94ccc"},
+        {"role": "cpu_signal", "path": "/CETC/data/generated/unit/radartools/pulse_compression/output_samples/perf_large__cpu__signal.csv", "sha256": "b68cabd09302ab2de752972045997103d169c8efb58570591baf5c3c05323802"},
+        {"role": "gpu_signal", "path": "/CETC/data/generated/unit/radartools/pulse_compression/output_samples/perf_large__gpu__signal.csv", "sha256": "4b088e0093c9e631163fe74e447ee37419db437ce2d097590adae44f9681f288"}
+      ]
+    }
+  ]
+}

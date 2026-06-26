@@ -1,0 +1,21 @@
+{
+  "status": "passed",
+  "task_count": 2,
+  "step_count": 14,
+  "error_available_count": 11,
+  "kernel_available_count": 0,
+  "tasks": {
+    "task1_radar": {
+      "step_count": 6,
+      "error_available_count": 5,
+      "kernel_available_count": 0
+    },
+    "task2_features": {
+      "step_count": 8,
+      "error_available_count": 6,
+      "kernel_available_count": 0
+    }
+  },
+  "failure_count": 0,
+  "failures": []
+}

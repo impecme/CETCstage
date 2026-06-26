@@ -1,0 +1,35 @@
+[cusignal-test] timing       : warmup=1 repeat=3 (demo-fast)
+[cusignal-test] project root : /CETC
+[cusignal-test] build dir    : /CETC/build-zx
+[cusignal-test] build type   : Release
+[cusignal-test] platform     : ZHONGKEXIN
+[cusignal-test] cuda arch    : n/a (ZHONGKEXIN uses dlcc --cuda-gpu-arch=dlgput64)
+[cusignal-test] jobs         : 255
+[cusignal-test] cxx compiler : /zq500/sdk/bin/dlcc
+-- Using Zhongkexin CUDA headers without CUDAToolkit cudart target: /zq500/sdk/include
+-- CUSIGNAL_PLATFORM=ZHONGKEXIN
+-- Using Zhongkexin CUDA runtime compatibility library: /zq500/sdk/lib/libcurt.so
+-- Using Zhongkexin cuFFT compatibility library: /zq500/sdk/lib/libdlfft.so
+-- Using Zhongkexin cuBLAS compatibility library: /zq500/sdk/lib/libdlblas.so
+-- Using Zhongkexin cuSOLVER compatibility library: /zq500/sdk/lib/libdlsolver.so
+-- Using cuFFT compatibility library: /zq500/sdk/lib/libdlfft.so
+-- Using cuBLAS compatibility library: /zq500/sdk/lib/libdlblas.so
+-- Using cuSOLVER compatibility library: /zq500/sdk/lib/libdlsolver.so
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /CETC/build-zx
+Consolidate compiler generated dependencies of target cusignal_cpu
+[ 40%] Built target cusignal_cpu
+Consolidate compiler generated dependencies of target cusignal_cuda
+[ 93%] Built target cusignal_cuda
+[ 93%] Built target radartools_test_support
+[ 93%] Building CXX object tests/unit/radartools/CMakeFiles/radartools_test_cfar_alpha.dir/test_cfar_alpha.cpp.o
+[100%] Linking CXX executable radartools_test_cfar_alpha
+ld.lld: error: undefined symbol: run_cfar_alpha_tests(int, char**)
+>>> referenced by test_cfar_alpha.cpp
+>>>               CMakeFiles/radartools_test_cfar_alpha.dir/test_cfar_alpha.cpp.o:(main)
+clang-15: error: linker command failed with exit code 1 (use -v to see invocation)
+gmake[3]: *** [tests/unit/radartools/CMakeFiles/radartools_test_cfar_alpha.dir/build.make:107: tests/unit/radartools/radartools_test_cfar_alpha] Error 1
+gmake[2]: *** [CMakeFiles/Makefile2:3152: tests/unit/radartools/CMakeFiles/radartools_test_cfar_alpha.dir/all] Error 2
+gmake[1]: *** [CMakeFiles/Makefile2:3159: tests/unit/radartools/CMakeFiles/radartools_test_cfar_alpha.dir/rule] Error 2
+gmake: *** [Makefile:1370: radartools_test_cfar_alpha] Error 2

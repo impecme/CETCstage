@@ -1,0 +1,83 @@
+-- Using Zhongkexin ZQ500 compatibility headers: /zq500/sdk/include
+-- CUSIGNAL_PLATFORM=ZHONGKEXIN
+-- Using Zhongkexin ZQ500 runtime compatibility library: /zq500/sdk/lib/libcurt.so
+-- Using Zhongkexin ZQ500 FFT compatibility library: /zq500/sdk/lib/libdlfft.so
+-- Using Zhongkexin ZQ500 BLAS compatibility library: /zq500/sdk/lib/libdlblas.so
+-- Using Zhongkexin ZQ500 solver compatibility library: /zq500/sdk/lib/libdlsolver.so
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /CETC/build-zx
+[  0%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/bsplines.cpp.o
+[  6%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/correlate.cpp.o
+[  6%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/demod.cpp.o
+[  6%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/peak_finding.cpp.o
+[ 13%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/filter_design.cpp.o
+[ 13%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/estimation.cpp.o
+[ 20%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/radartools.cpp.o
+[ 20%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/spectral.cpp.o
+[ 20%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/waveforms.cpp.o
+[ 26%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/filtering.cpp.o
+[ 33%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/wavelets.cpp.o
+[ 33%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/windows.cpp.o
+[ 40%] Linking CXX static library libcusignal_cpu.a
+[ 40%] Built target cusignal_cpu
+[ 40%] Building CXX object CMakeFiles/cusignal_zx_gpu.dir/src/zhongkexin/bsplines.cu.o
+[ 46%] Building CXX object CMakeFiles/cusignal_zx_gpu.dir/src/zhongkexin/correlate.cu.o
+[ 46%] Building CXX object CMakeFiles/cusignal_zx_gpu.dir/src/zhongkexin/demod.cu.o
+[ 53%] Building CXX object CMakeFiles/cusignal_zx_gpu.dir/src/zhongkexin/wavelets.cu.o
+[ 53%] Building CXX object CMakeFiles/cusignal_zx_gpu.dir/src/zhongkexin/filter_design.cu.o
+[ 60%] Building CXX object CMakeFiles/cusignal_zx_gpu.dir/src/zhongkexin/estimation.cu.o
+[ 66%] Building CXX object CMakeFiles/cusignal_zx_gpu.dir/src/zhongkexin/peak_finding.cu.o
+[ 66%] Building CXX object CMakeFiles/cusignal_zx_gpu.dir/src/zhongkexin/radartools.cu.o
+[ 66%] Building CXX object CMakeFiles/cusignal_zx_gpu.dir/src/zhongkexin/filtering.cu.o
+[ 73%] Building CXX object CMakeFiles/cusignal_zx_gpu.dir/src/zhongkexin/waveforms.cu.o
+[ 73%] Building CXX object CMakeFiles/cusignal_zx_gpu.dir/src/zhongkexin/spectral.cu.o
+[ 80%] Building CXX object CMakeFiles/cusignal_zx_gpu.dir/demo/task1_radar/task1_radar_zx_gpu.cu.o
+[ 80%] Building CXX object CMakeFiles/cusignal_zx_gpu.dir/src/zhongkexin/windows.cu.o
+[ 80%] Building CXX object CMakeFiles/cusignal_zx_gpu.dir/demo/task2_features/task2_features_zx_gpu.cu.o
+[ 86%] Linking CXX static library libcusignal_zx_gpu.a
+Indexing Zhongkexin ZQ500 static library
+[ 86%] Built target cusignal_zx_gpu
+[ 93%] Building CXX object tests/unit/filtering/CMakeFiles/filtering_test_support.dir/filtering_test_support.cu.o
+/CETC/tests/unit/filtering/filtering_test_support.cu:2448:51: warning: 'cudaDeviceSynchronize' is deprecated: Use of cudaDeviceSynchronize from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING. [-Wdeprecated-declarations]
+            cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
+                                                  ^
+/zq500/sdk/include/cuda_device_runtime_api.h:142:38: note: 'cudaDeviceSynchronize' has been explicitly marked deprecated here
+extern __device__ __cudart_builtin__ __CDPRT_DEPRECATED(cudaDeviceSynchronize) cudaError_t CUDARTAPI cudaDeviceSynchronize(void);
+                                     ^
+/zq500/sdk/include/cuda_device_runtime_api.h:120:40: note: expanded from macro '__CDPRT_DEPRECATED'
+# define __CDPRT_DEPRECATED(func_name) __DEPRECATED__("Use of "#func_name" from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING.")
+                                       ^
+/zq500/sdk/include/cuda_device_runtime_api.h:116:45: note: expanded from macro '__DEPRECATED__'
+# define __DEPRECATED__(msg) __attribute__((deprecated(msg)))
+                                            ^
+1 warning generated when compiling for dlgput64r1.
+[ 93%] Linking CXX static library libfiltering_test_support.a
+[ 93%] Built target filtering_test_support
+[100%] Building CXX object tests/unit/filtering/CMakeFiles/filtering_test_wiener.dir/test_wiener.cpp.o
+[100%] Linking CXX executable filtering_test_wiener
+[100%] Built target filtering_test_wiener
+[all-ops-bench] selected operators: 1
+[all-ops-bench] build mode: build
+[all-ops-bench] platform: ZHONGKEXIN
+[all-ops-bench] scale profile: default
+[all-ops-bench] scale levels: 6
+[all-ops-bench] report mode: concise
+[all-ops-bench] timing: warmup=1 repeat=3
+[all-ops-bench] building selected targets once: 1 targets, platform=ZHONGKEXIN, build_type=Release, gpu_arch=dlgput64, jobs=255
+[all-ops-bench] backed up manifests
+[all-ops-bench] [1/1 L6] filtering/wiener scale=1048576
+[all-ops-bench] running filtering/wiener: /CETC/scripts/test/run_all_tests.sh --module filtering --operator wiener --case-set perf --emit-report --warmup 1 --repeat 3 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=1 repeat=3
+[cusignal-test] running filtering/wiener
+[filtering/wiener] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=7.748604e-07  max_rel=9.755279e-07  rmse=2.938324e-08
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=659.597  mean=659.597  p95=659.597
+gpu_perf_ms   : e2e_median=214.436  kernel_median=212.496  p95=214.436  e2e_speedup=3.076x  kernel_speedup=3.104x
+reports       : data/reports/unit/filtering/wiener/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] restoring original manifests
+[all-ops-bench] updated /CETC/data/reports/unit/benchmarks/v5_gpu_mem_probe/latest_all_ops_scale_benchmark.csv
+[all-ops-bench] updated /CETC/data/reports/unit/benchmarks/v5_gpu_mem_probe/latest_report.md
+[all-ops-bench] rows=1

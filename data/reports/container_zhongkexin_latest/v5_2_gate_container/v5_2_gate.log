@@ -1,0 +1,1336 @@
+Activate Release Package @ /zq500/sdk
+{"registry_count": 81, "sets": {"all81": 81, "core53": 53, "extended28": 28, "task27": 27}, "source_path_check": "passed", "status": "passed"}
+{"failed_count": 0, "failure_counts": {}, "operator_count": 81, "passed_count": 81, "status": "passed"}
+{"complex64_operators": 20, "complex_types": ["complex64"], "forbidden_types": ["complex128", "complex32", "complex_int16", "complex_int32", "complex_int8", "float64"], "integer_enabled_operators": 8, "operator_count": 81, "policy_count": 13, "real_types": ["float16", "float32", "int16", "int32", "int8"], "status": "passed"}
+{"api_row_count": 816, "forbidden_api_count": 315, "probe_mode_counts": {"compile_only": 16, "forbidden_scan": 311, "none": 84, "runtime_pending": 489}, "row_kind_counts": {"api": 816, "category": 34, "header": 9, "note": 41}, "source_counts": {"driver": 361, "libraries": 261, "runtime": 278}, "source_row_count": 900, "status": "passed", "support_counts": {"documented": 38, "not_applicable": 11, "partial": 27, "supported": 493, "unsupported": 331}, "unique_api_count": 830}
+[cusignal-test] timing       : warmup=0 repeat=1
+[cusignal-test] project root : /CETC
+[cusignal-test] build dir    : /CETC/build-zx
+[cusignal-test] build type   : Release
+[cusignal-test] platform     : ZHONGKEXIN
+[cusignal-test] gpu arch     : ZQ500 dlgput64 via dlcc
+[cusignal-test] jobs         : 255
+[cusignal-test] cxx compiler : /zq500/sdk/bin/dlcc
+-- The CXX compiler identification is Clang 15.0.6
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /zq500/sdk/bin/dlcc - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Using Zhongkexin ZQ500 compatibility headers: /zq500/sdk/include
+-- CUSIGNAL_PLATFORM=ZHONGKEXIN
+-- Looking for C++ include pthread.h
+-- Looking for C++ include pthread.h - found
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+-- Found Threads: TRUE  
+-- Using Zhongkexin ZQ500 runtime compatibility library: /zq500/sdk/lib/libcurt.so
+-- Using Zhongkexin ZQ500 FFT compatibility library: /zq500/sdk/lib/libdlfft.so
+-- Using Zhongkexin ZQ500 BLAS compatibility library: /zq500/sdk/lib/libdlblas.so
+-- Using Zhongkexin ZQ500 solver compatibility library: /zq500/sdk/lib/libdlsolver.so
+-- Using Zhongkexin ZQ500 DNN compatibility library: /zq500/sdk/lib/libdldnn.so
+-- Using Zhongkexin ZQ500 sparse compatibility library: /zq500/sdk/lib/libdlsparse.so
+-- Using Zhongkexin ZQ500 random compatibility library: /zq500/sdk/lib/libdlrand.so
+-- Found Python3: /root/miniforge3/bin/python3.1 (found version "3.12.11") found components: Interpreter 
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /CETC/build-zx
+[  0%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/bsplines.cpp.o
+[  0%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/correlate.cpp.o
+[  7%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/demod.cpp.o
+[ 15%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/peak_finding.cpp.o
+[ 23%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/filter_design.cpp.o
+[ 23%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/wavelets.cpp.o
+[ 23%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/estimation.cpp.o
+[ 23%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/radartools.cpp.o
+[ 23%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/filtering.cpp.o
+[ 23%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/waveforms.cpp.o
+[ 30%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/windows.cpp.o
+[ 38%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/spectral.cpp.o
+[ 38%] Linking CXX static library libcusignal_cpu.a
+[ 38%] Built target cusignal_cpu
+[ 46%] Building CXX object CMakeFiles/cusignal_zx_gpu.dir/src/zhongkexin/bsplines.cu.o
+[ 46%] Building CXX object CMakeFiles/cusignal_zx_gpu.dir/src/zhongkexin/correlate.cu.o
+[ 46%] Building CXX object CMakeFiles/cusignal_zx_gpu.dir/src/zhongkexin/demod.cu.o
+[ 46%] Building CXX object CMakeFiles/cusignal_zx_gpu.dir/src/zhongkexin/peak_finding.cu.o
+[ 46%] Building CXX object CMakeFiles/cusignal_zx_gpu.dir/src/zhongkexin/filter_design.cu.o
+[ 53%] Building CXX object CMakeFiles/cusignal_zx_gpu.dir/src/zhongkexin/estimation.cu.o
+[ 61%] Building CXX object CMakeFiles/cusignal_zx_gpu.dir/src/zhongkexin/spectral.cu.o
+[ 61%] Building CXX object CMakeFiles/cusignal_zx_gpu.dir/src/zhongkexin/filtering.cu.o
+[ 69%] Building CXX object CMakeFiles/cusignal_zx_gpu.dir/src/zhongkexin/radartools.cu.o
+[ 76%] Building CXX object CMakeFiles/cusignal_zx_gpu.dir/src/zhongkexin/wavelets.cu.o
+[ 76%] Building CXX object CMakeFiles/cusignal_zx_gpu.dir/src/zhongkexin/waveforms.cu.o
+[ 76%] Building CXX object CMakeFiles/cusignal_zx_gpu.dir/demo/task2_features/task2_features_zx_gpu.cu.o
+[ 84%] Building CXX object CMakeFiles/cusignal_zx_gpu.dir/src/zhongkexin/windows.cu.o
+[ 84%] Building CXX object CMakeFiles/cusignal_zx_gpu.dir/demo/task1_radar/task1_radar_zx_gpu.cu.o
+[ 92%] Linking CXX static library libcusignal_zx_gpu.a
+Indexing Zhongkexin ZQ500 static library
+[ 92%] Built target cusignal_zx_gpu
+[100%] Building CXX object tests/unit/waveforms/CMakeFiles/waveforms_test_support.dir/waveform_test_support.cu.o
+/CETC/tests/unit/waveforms/waveform_test_support.cu:2411:63: warning: 'cudaDeviceSynchronize' is deprecated: Use of cudaDeviceSynchronize from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING. [-Wdeprecated-declarations]
+                        cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
+                                                              ^
+/zq500/sdk/include/cuda_device_runtime_api.h:142:38: note: 'cudaDeviceSynchronize' has been explicitly marked deprecated here
+extern __device__ __cudart_builtin__ __CDPRT_DEPRECATED(cudaDeviceSynchronize) cudaError_t CUDARTAPI cudaDeviceSynchronize(void);
+                                     ^
+/zq500/sdk/include/cuda_device_runtime_api.h:120:40: note: expanded from macro '__CDPRT_DEPRECATED'
+# define __CDPRT_DEPRECATED(func_name) __DEPRECATED__("Use of "#func_name" from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING.")
+                                       ^
+/zq500/sdk/include/cuda_device_runtime_api.h:116:45: note: expanded from macro '__DEPRECATED__'
+# define __DEPRECATED__(msg) __attribute__((deprecated(msg)))
+                                            ^
+1 warning generated when compiling for dlgput64r1.
+[100%] Linking CXX static library libwaveforms_test_support.a
+[100%] Built target waveforms_test_support
+[100%] Building CXX object tests/unit/waveforms/CMakeFiles/waveforms_test_chirp.dir/test_chirp.cpp.o
+[100%] Linking CXX executable waveforms_test_chirp
+[100%] Built target waveforms_test_chirp
+Consolidate compiler generated dependencies of target cusignal_cpu
+[ 35%] Built target cusignal_cpu
+Consolidate compiler generated dependencies of target cusignal_zx_gpu
+[ 85%] Built target cusignal_zx_gpu
+Consolidate compiler generated dependencies of target waveforms_test_support
+[ 92%] Built target waveforms_test_support
+[100%] Building CXX object tests/unit/waveforms/CMakeFiles/waveforms_test_gausspulse.dir/test_gausspulse.cpp.o
+[100%] Linking CXX executable waveforms_test_gausspulse
+[100%] Built target waveforms_test_gausspulse
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target waveforms_test_support
+[100%] Building CXX object tests/unit/waveforms/CMakeFiles/waveforms_test_sawtooth.dir/test_sawtooth.cpp.o
+[100%] Linking CXX executable waveforms_test_sawtooth
+[100%] Built target waveforms_test_sawtooth
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target waveforms_test_support
+[100%] Building CXX object tests/unit/waveforms/CMakeFiles/waveforms_test_square.dir/test_square.cpp.o
+[100%] Linking CXX executable waveforms_test_square
+[100%] Built target waveforms_test_square
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target waveforms_test_support
+[ 92%] Building CXX object tests/unit/waveforms/CMakeFiles/waveforms_test_unit_impulse.dir/test_unit_impulse.cpp.o
+[100%] Linking CXX executable waveforms_test_unit_impulse
+[100%] Built target waveforms_test_unit_impulse
+[ 38%] Built target cusignal_cpu
+[ 92%] Built target cusignal_zx_gpu
+[100%] Building CXX object tests/unit/bsplines/CMakeFiles/bsplines_test_support.dir/bsplines_test_support.cu.o
+/CETC/tests/unit/bsplines/bsplines_test_support.cu:964:51: warning: 'cudaDeviceSynchronize' is deprecated: Use of cudaDeviceSynchronize from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING. [-Wdeprecated-declarations]
+            cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
+                                                  ^
+/zq500/sdk/include/cuda_device_runtime_api.h:142:38: note: 'cudaDeviceSynchronize' has been explicitly marked deprecated here
+extern __device__ __cudart_builtin__ __CDPRT_DEPRECATED(cudaDeviceSynchronize) cudaError_t CUDARTAPI cudaDeviceSynchronize(void);
+                                     ^
+/zq500/sdk/include/cuda_device_runtime_api.h:120:40: note: expanded from macro '__CDPRT_DEPRECATED'
+# define __CDPRT_DEPRECATED(func_name) __DEPRECATED__("Use of "#func_name" from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING.")
+                                       ^
+/zq500/sdk/include/cuda_device_runtime_api.h:116:45: note: expanded from macro '__DEPRECATED__'
+# define __DEPRECATED__(msg) __attribute__((deprecated(msg)))
+                                            ^
+1 warning generated when compiling for dlgput64r1.
+[100%] Linking CXX static library libbsplines_test_support.a
+[100%] Built target bsplines_test_support
+[100%] Building CXX object tests/unit/bsplines/CMakeFiles/bsplines_test_cubic.dir/test_cubic.cpp.o
+[100%] Linking CXX executable bsplines_test_cubic
+[100%] Built target bsplines_test_cubic
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+Consolidate compiler generated dependencies of target bsplines_test_support
+[ 92%] Built target bsplines_test_support
+[100%] Building CXX object tests/unit/bsplines/CMakeFiles/bsplines_test_quadratic.dir/test_quadratic.cpp.o
+[100%] Linking CXX executable bsplines_test_quadratic
+[100%] Built target bsplines_test_quadratic
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target bsplines_test_support
+[100%] Building CXX object tests/unit/bsplines/CMakeFiles/bsplines_test_gauss_spline.dir/test_gauss_spline.cpp.o
+[100%] Linking CXX executable bsplines_test_gauss_spline
+[100%] Built target bsplines_test_gauss_spline
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 85%] Building CXX object tests/unit/windows/CMakeFiles/windows_test_support.dir/windows_test_support.cu.o
+/CETC/tests/unit/windows/windows_test_support.cu:1494:51: warning: 'cudaDeviceSynchronize' is deprecated: Use of cudaDeviceSynchronize from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING. [-Wdeprecated-declarations]
+            cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
+                                                  ^
+/zq500/sdk/include/cuda_device_runtime_api.h:142:38: note: 'cudaDeviceSynchronize' has been explicitly marked deprecated here
+extern __device__ __cudart_builtin__ __CDPRT_DEPRECATED(cudaDeviceSynchronize) cudaError_t CUDARTAPI cudaDeviceSynchronize(void);
+                                     ^
+/zq500/sdk/include/cuda_device_runtime_api.h:120:40: note: expanded from macro '__CDPRT_DEPRECATED'
+# define __CDPRT_DEPRECATED(func_name) __DEPRECATED__("Use of "#func_name" from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING.")
+                                       ^
+/zq500/sdk/include/cuda_device_runtime_api.h:116:45: note: expanded from macro '__DEPRECATED__'
+# define __DEPRECATED__(msg) __attribute__((deprecated(msg)))
+                                            ^
+1 warning generated when compiling for dlgput64r1.
+[ 92%] Linking CXX static library libwindows_test_support.a
+[ 92%] Built target windows_test_support
+[100%] Building CXX object tests/unit/windows/CMakeFiles/windows_test_get_window.dir/windows_test_main.cpp.o
+[100%] Linking CXX executable windows_test_get_window
+[100%] Built target windows_test_get_window
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+Consolidate compiler generated dependencies of target windows_test_support
+[ 92%] Built target windows_test_support
+[100%] Building CXX object tests/unit/windows/CMakeFiles/windows_test_barthann.dir/windows_test_main.cpp.o
+[100%] Linking CXX executable windows_test_barthann
+[100%] Built target windows_test_barthann
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target windows_test_support
+[ 92%] Building CXX object tests/unit/windows/CMakeFiles/windows_test_bartlett.dir/windows_test_main.cpp.o
+[100%] Linking CXX executable windows_test_bartlett
+[100%] Built target windows_test_bartlett
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target windows_test_support
+[ 92%] Building CXX object tests/unit/windows/CMakeFiles/windows_test_blackman.dir/windows_test_main.cpp.o
+[100%] Linking CXX executable windows_test_blackman
+[100%] Built target windows_test_blackman
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target windows_test_support
+[ 92%] Building CXX object tests/unit/windows/CMakeFiles/windows_test_blackmanharris.dir/windows_test_main.cpp.o
+[100%] Linking CXX executable windows_test_blackmanharris
+[100%] Built target windows_test_blackmanharris
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target windows_test_support
+[ 92%] Building CXX object tests/unit/windows/CMakeFiles/windows_test_bohman.dir/windows_test_main.cpp.o
+[100%] Linking CXX executable windows_test_bohman
+[100%] Built target windows_test_bohman
+[ 38%] Built target cusignal_cpu
+[ 92%] Built target cusignal_zx_gpu
+[100%] Built target windows_test_support
+[100%] Building CXX object tests/unit/windows/CMakeFiles/windows_test_boxcar.dir/windows_test_main.cpp.o
+[100%] Linking CXX executable windows_test_boxcar
+[100%] Built target windows_test_boxcar
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target windows_test_support
+[100%] Building CXX object tests/unit/windows/CMakeFiles/windows_test_chebwin.dir/windows_test_main.cpp.o
+[100%] Linking CXX executable windows_test_chebwin
+[100%] Built target windows_test_chebwin
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target windows_test_support
+[100%] Building CXX object tests/unit/windows/CMakeFiles/windows_test_cosine.dir/windows_test_main.cpp.o
+[100%] Linking CXX executable windows_test_cosine
+[100%] Built target windows_test_cosine
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target windows_test_support
+[100%] Building CXX object tests/unit/windows/CMakeFiles/windows_test_exponential.dir/windows_test_main.cpp.o
+[100%] Linking CXX executable windows_test_exponential
+[100%] Built target windows_test_exponential
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target windows_test_support
+[100%] Building CXX object tests/unit/windows/CMakeFiles/windows_test_flattop.dir/windows_test_main.cpp.o
+[100%] Linking CXX executable windows_test_flattop
+[100%] Built target windows_test_flattop
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target windows_test_support
+[ 92%] Building CXX object tests/unit/windows/CMakeFiles/windows_test_gaussian.dir/windows_test_main.cpp.o
+[100%] Linking CXX executable windows_test_gaussian
+[100%] Built target windows_test_gaussian
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target windows_test_support
+[ 92%] Building CXX object tests/unit/windows/CMakeFiles/windows_test_general_cosine.dir/windows_test_main.cpp.o
+[100%] Linking CXX executable windows_test_general_cosine
+[100%] Built target windows_test_general_cosine
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target windows_test_support
+[ 92%] Building CXX object tests/unit/windows/CMakeFiles/windows_test_general_gaussian.dir/windows_test_main.cpp.o
+[100%] Linking CXX executable windows_test_general_gaussian
+[100%] Built target windows_test_general_gaussian
+[ 38%] Built target cusignal_cpu
+[ 92%] Built target cusignal_zx_gpu
+[100%] Built target windows_test_support
+[100%] Building CXX object tests/unit/windows/CMakeFiles/windows_test_general_hamming.dir/windows_test_main.cpp.o
+[100%] Linking CXX executable windows_test_general_hamming
+[100%] Built target windows_test_general_hamming
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target windows_test_support
+[100%] Building CXX object tests/unit/windows/CMakeFiles/windows_test_hamming.dir/windows_test_main.cpp.o
+[100%] Linking CXX executable windows_test_hamming
+[100%] Built target windows_test_hamming
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target windows_test_support
+[100%] Building CXX object tests/unit/windows/CMakeFiles/windows_test_hann.dir/windows_test_main.cpp.o
+[100%] Linking CXX executable windows_test_hann
+[100%] Built target windows_test_hann
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target windows_test_support
+[100%] Building CXX object tests/unit/windows/CMakeFiles/windows_test_kaiser.dir/windows_test_main.cpp.o
+[100%] Linking CXX executable windows_test_kaiser
+[100%] Built target windows_test_kaiser
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target windows_test_support
+[ 92%] Building CXX object tests/unit/windows/CMakeFiles/windows_test_nuttall.dir/windows_test_main.cpp.o
+[100%] Linking CXX executable windows_test_nuttall
+[100%] Built target windows_test_nuttall
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target windows_test_support
+[ 92%] Building CXX object tests/unit/windows/CMakeFiles/windows_test_parzen.dir/windows_test_main.cpp.o
+[100%] Linking CXX executable windows_test_parzen
+[100%] Built target windows_test_parzen
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target windows_test_support
+[ 92%] Building CXX object tests/unit/windows/CMakeFiles/windows_test_taylor.dir/windows_test_main.cpp.o
+[100%] Linking CXX executable windows_test_taylor
+[100%] Built target windows_test_taylor
+[ 38%] Built target cusignal_cpu
+[ 92%] Built target cusignal_zx_gpu
+[100%] Built target windows_test_support
+[100%] Building CXX object tests/unit/windows/CMakeFiles/windows_test_triang.dir/windows_test_main.cpp.o
+[100%] Linking CXX executable windows_test_triang
+[100%] Built target windows_test_triang
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target windows_test_support
+[100%] Building CXX object tests/unit/windows/CMakeFiles/windows_test_tukey.dir/windows_test_main.cpp.o
+[100%] Linking CXX executable windows_test_tukey
+[100%] Built target windows_test_tukey
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 85%] Building CXX object tests/unit/filter_design/CMakeFiles/filter_design_test_support.dir/filter_design_test_support.cu.o
+/CETC/tests/unit/filter_design/filter_design_test_support.cu:1766:96: warning: 'cudaDeviceSynchronize' is deprecated: Use of cudaDeviceSynchronize from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING. [-Wdeprecated-declarations]
+                                                         cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
+                                                                                               ^
+/zq500/sdk/include/cuda_device_runtime_api.h:142:38: note: 'cudaDeviceSynchronize' has been explicitly marked deprecated here
+extern __device__ __cudart_builtin__ __CDPRT_DEPRECATED(cudaDeviceSynchronize) cudaError_t CUDARTAPI cudaDeviceSynchronize(void);
+                                     ^
+/zq500/sdk/include/cuda_device_runtime_api.h:120:40: note: expanded from macro '__CDPRT_DEPRECATED'
+# define __CDPRT_DEPRECATED(func_name) __DEPRECATED__("Use of "#func_name" from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING.")
+                                       ^
+/zq500/sdk/include/cuda_device_runtime_api.h:116:45: note: expanded from macro '__DEPRECATED__'
+# define __DEPRECATED__(msg) __attribute__((deprecated(msg)))
+                                            ^
+1 warning generated when compiling for dlgput64r1.
+[ 92%] Linking CXX static library libfilter_design_test_support.a
+[ 92%] Built target filter_design_test_support
+[ 92%] Building CXX object tests/unit/filter_design/CMakeFiles/filter_design_test_kaiser_beta.dir/test_kaiser_beta.cpp.o
+[100%] Linking CXX executable filter_design_test_kaiser_beta
+[100%] Built target filter_design_test_kaiser_beta
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+Consolidate compiler generated dependencies of target filter_design_test_support
+[ 92%] Built target filter_design_test_support
+[ 92%] Building CXX object tests/unit/filter_design/CMakeFiles/filter_design_test_kaiser_atten.dir/test_kaiser_atten.cpp.o
+[100%] Linking CXX executable filter_design_test_kaiser_atten
+[100%] Built target filter_design_test_kaiser_atten
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target filter_design_test_support
+[100%] Building CXX object tests/unit/filter_design/CMakeFiles/filter_design_test_cmplx_sort.dir/test_cmplx_sort.cpp.o
+[100%] Linking CXX executable filter_design_test_cmplx_sort
+[100%] Built target filter_design_test_cmplx_sort
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target filter_design_test_support
+[100%] Building CXX object tests/unit/filter_design/CMakeFiles/filter_design_test_firwin.dir/test_firwin.cpp.o
+[100%] Linking CXX executable filter_design_test_firwin
+[100%] Built target filter_design_test_firwin
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target filter_design_test_support
+[ 92%] Building CXX object tests/unit/filter_design/CMakeFiles/filter_design_test_firwin2.dir/test_firwin2.cpp.o
+[100%] Linking CXX executable filter_design_test_firwin2
+[100%] Built target filter_design_test_firwin2
+[ 38%] Built target cusignal_cpu
+[ 92%] Built target cusignal_zx_gpu
+[ 92%] Building CXX object tests/unit/filtering/CMakeFiles/filtering_test_support.dir/filtering_test_support.cu.o
+/CETC/tests/unit/filtering/filtering_test_support.cu:2448:51: warning: 'cudaDeviceSynchronize' is deprecated: Use of cudaDeviceSynchronize from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING. [-Wdeprecated-declarations]
+            cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
+                                                  ^
+/zq500/sdk/include/cuda_device_runtime_api.h:142:38: note: 'cudaDeviceSynchronize' has been explicitly marked deprecated here
+extern __device__ __cudart_builtin__ __CDPRT_DEPRECATED(cudaDeviceSynchronize) cudaError_t CUDARTAPI cudaDeviceSynchronize(void);
+                                     ^
+/zq500/sdk/include/cuda_device_runtime_api.h:120:40: note: expanded from macro '__CDPRT_DEPRECATED'
+# define __CDPRT_DEPRECATED(func_name) __DEPRECATED__("Use of "#func_name" from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING.")
+                                       ^
+/zq500/sdk/include/cuda_device_runtime_api.h:116:45: note: expanded from macro '__DEPRECATED__'
+# define __DEPRECATED__(msg) __attribute__((deprecated(msg)))
+                                            ^
+1 warning generated when compiling for dlgput64r1.
+[100%] Linking CXX static library libfiltering_test_support.a
+[100%] Built target filtering_test_support
+[100%] Building CXX object tests/unit/filtering/CMakeFiles/filtering_test_wiener.dir/test_wiener.cpp.o
+[100%] Linking CXX executable filtering_test_wiener
+[100%] Built target filtering_test_wiener
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+Consolidate compiler generated dependencies of target filtering_test_support
+[ 92%] Built target filtering_test_support
+[100%] Building CXX object tests/unit/filtering/CMakeFiles/filtering_test_firfilter.dir/test_firfilter.cpp.o
+[100%] Linking CXX executable filtering_test_firfilter
+[100%] Built target filtering_test_firfilter
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target filtering_test_support
+[100%] Building CXX object tests/unit/filtering/CMakeFiles/filtering_test_lfilter.dir/test_lfilter.cpp.o
+[100%] Linking CXX executable filtering_test_lfilter
+[100%] Built target filtering_test_lfilter
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target filtering_test_support
+[ 92%] Building CXX object tests/unit/filtering/CMakeFiles/filtering_test_firfilter_zi.dir/test_firfilter_zi.cpp.o
+[100%] Linking CXX executable filtering_test_firfilter_zi
+[100%] Built target filtering_test_firfilter_zi
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target filtering_test_support
+[100%] Building CXX object tests/unit/filtering/CMakeFiles/filtering_test_lfilter_zi.dir/test_lfilter_zi.cpp.o
+[100%] Linking CXX executable filtering_test_lfilter_zi
+[100%] Built target filtering_test_lfilter_zi
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target filtering_test_support
+[ 92%] Building CXX object tests/unit/filtering/CMakeFiles/filtering_test_firfilter2.dir/test_firfilter2.cpp.o
+[100%] Linking CXX executable filtering_test_firfilter2
+[100%] Built target filtering_test_firfilter2
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target filtering_test_support
+[100%] Building CXX object tests/unit/filtering/CMakeFiles/filtering_test_filtfilt.dir/test_filtfilt.cpp.o
+[100%] Linking CXX executable filtering_test_filtfilt
+[100%] Built target filtering_test_filtfilt
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target filtering_test_support
+[ 92%] Building CXX object tests/unit/filtering/CMakeFiles/filtering_test_sosfilt.dir/test_sosfilt.cpp.o
+[100%] Linking CXX executable filtering_test_sosfilt
+[100%] Built target filtering_test_sosfilt
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target filtering_test_support
+[ 92%] Building CXX object tests/unit/filtering/CMakeFiles/filtering_test_hilbert.dir/test_hilbert.cpp.o
+[100%] Linking CXX executable filtering_test_hilbert
+[100%] Built target filtering_test_hilbert
+[ 38%] Built target cusignal_cpu
+[ 92%] Built target cusignal_zx_gpu
+[100%] Built target filtering_test_support
+[100%] Building CXX object tests/unit/filtering/CMakeFiles/filtering_test_hilbert2.dir/test_hilbert2.cpp.o
+[100%] Linking CXX executable filtering_test_hilbert2
+[100%] Built target filtering_test_hilbert2
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target filtering_test_support
+[100%] Building CXX object tests/unit/filtering/CMakeFiles/filtering_test_detrend.dir/test_detrend.cpp.o
+[100%] Linking CXX executable filtering_test_detrend
+[100%] Built target filtering_test_detrend
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target filtering_test_support
+[ 92%] Building CXX object tests/unit/filtering/CMakeFiles/filtering_test_freq_shift.dir/test_freq_shift.cpp.o
+[100%] Linking CXX executable filtering_test_freq_shift
+[100%] Built target filtering_test_freq_shift
+[ 38%] Built target cusignal_cpu
+[ 92%] Built target cusignal_zx_gpu
+[100%] Built target filtering_test_support
+[100%] Building CXX object tests/unit/filtering/CMakeFiles/filtering_test_channelize_poly.dir/test_channelize_poly.cpp.o
+[100%] Linking CXX executable filtering_test_channelize_poly
+[100%] Built target filtering_test_channelize_poly
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target filtering_test_support
+[100%] Building CXX object tests/unit/filtering/CMakeFiles/filtering_test_decimate.dir/test_decimate.cpp.o
+[100%] Linking CXX executable filtering_test_decimate
+[100%] Built target filtering_test_decimate
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target filtering_test_support
+[100%] Building CXX object tests/unit/filtering/CMakeFiles/filtering_test_resample.dir/test_resample.cpp.o
+[100%] Linking CXX executable filtering_test_resample
+[100%] Built target filtering_test_resample
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target filtering_test_support
+[ 92%] Building CXX object tests/unit/filtering/CMakeFiles/filtering_test_resample_poly.dir/test_resample_poly.cpp.o
+[100%] Linking CXX executable filtering_test_resample_poly
+[100%] Built target filtering_test_resample_poly
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target filtering_test_support
+[ 92%] Building CXX object tests/unit/filtering/CMakeFiles/filtering_test_upfirdn.dir/test_upfirdn.cpp.o
+[100%] Linking CXX executable filtering_test_upfirdn
+[100%] Built target filtering_test_upfirdn
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Building CXX object tests/unit/radartools/CMakeFiles/radartools_test_support.dir/radartools_test_support.cu.o
+/CETC/tests/unit/radartools/radartools_test_support.cu:2112:51: warning: 'cudaDeviceSynchronize' is deprecated: Use of cudaDeviceSynchronize from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING. [-Wdeprecated-declarations]
+            cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
+                                                  ^
+/zq500/sdk/include/cuda_device_runtime_api.h:142:38: note: 'cudaDeviceSynchronize' has been explicitly marked deprecated here
+extern __device__ __cudart_builtin__ __CDPRT_DEPRECATED(cudaDeviceSynchronize) cudaError_t CUDARTAPI cudaDeviceSynchronize(void);
+                                     ^
+/zq500/sdk/include/cuda_device_runtime_api.h:120:40: note: expanded from macro '__CDPRT_DEPRECATED'
+# define __CDPRT_DEPRECATED(func_name) __DEPRECATED__("Use of "#func_name" from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING.")
+                                       ^
+/zq500/sdk/include/cuda_device_runtime_api.h:116:45: note: expanded from macro '__DEPRECATED__'
+# define __DEPRECATED__(msg) __attribute__((deprecated(msg)))
+                                            ^
+1 warning generated when compiling for dlgput64r1.
+[ 92%] Linking CXX static library libradartools_test_support.a
+[ 92%] Built target radartools_test_support
+[100%] Building CXX object tests/unit/radartools/CMakeFiles/radartools_test_pulse_compression.dir/test_pulse_compression.cpp.o
+[100%] Linking CXX executable radartools_test_pulse_compression
+[100%] Built target radartools_test_pulse_compression
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+Consolidate compiler generated dependencies of target radartools_test_support
+[ 92%] Built target radartools_test_support
+[100%] Building CXX object tests/unit/radartools/CMakeFiles/radartools_test_pulse_doppler.dir/test_pulse_doppler.cpp.o
+[100%] Linking CXX executable radartools_test_pulse_doppler
+[100%] Built target radartools_test_pulse_doppler
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target radartools_test_support
+[ 92%] Building CXX object tests/unit/radartools/CMakeFiles/radartools_test_ambgfun.dir/test_ambgfun.cpp.o
+[100%] Linking CXX executable radartools_test_ambgfun
+[100%] Built target radartools_test_ambgfun
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target radartools_test_support
+[ 92%] Building CXX object tests/unit/radartools/CMakeFiles/radartools_test_cfar_alpha.dir/test_cfar_alpha.cpp.o
+[100%] Linking CXX executable radartools_test_cfar_alpha
+[100%] Built target radartools_test_cfar_alpha
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target radartools_test_support
+[ 92%] Building CXX object tests/unit/radartools/CMakeFiles/radartools_test_ca_cfar.dir/test_ca_cfar.cpp.o
+[100%] Linking CXX executable radartools_test_ca_cfar
+[100%] Built target radartools_test_ca_cfar
+[ 38%] Built target cusignal_cpu
+[ 92%] Built target cusignal_zx_gpu
+[100%] Built target radartools_test_support
+[100%] Building CXX object tests/unit/radartools/CMakeFiles/radartools_test_mvdr.dir/test_mvdr.cpp.o
+[100%] Linking CXX executable radartools_test_mvdr
+[100%] Built target radartools_test_mvdr
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Building CXX object tests/unit/spectral/CMakeFiles/spectral_test_support.dir/spectral_test_support.cu.o
+/CETC/tests/unit/spectral/spectral_test_support.cu:2369:51: warning: 'cudaDeviceSynchronize' is deprecated: Use of cudaDeviceSynchronize from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING. [-Wdeprecated-declarations]
+            cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
+                                                  ^
+/zq500/sdk/include/cuda_device_runtime_api.h:142:38: note: 'cudaDeviceSynchronize' has been explicitly marked deprecated here
+extern __device__ __cudart_builtin__ __CDPRT_DEPRECATED(cudaDeviceSynchronize) cudaError_t CUDARTAPI cudaDeviceSynchronize(void);
+                                     ^
+/zq500/sdk/include/cuda_device_runtime_api.h:120:40: note: expanded from macro '__CDPRT_DEPRECATED'
+# define __CDPRT_DEPRECATED(func_name) __DEPRECATED__("Use of "#func_name" from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING.")
+                                       ^
+/zq500/sdk/include/cuda_device_runtime_api.h:116:45: note: expanded from macro '__DEPRECATED__'
+# define __DEPRECATED__(msg) __attribute__((deprecated(msg)))
+                                            ^
+1 warning generated when compiling for dlgput64r1.
+[ 92%] Linking CXX static library libspectral_test_support.a
+[ 92%] Built target spectral_test_support
+[ 92%] Building CXX object tests/unit/spectral/CMakeFiles/spectral_test_lombscargle.dir/test_lombscargle.cpp.o
+[100%] Linking CXX executable spectral_test_lombscargle
+[100%] Built target spectral_test_lombscargle
+[ 38%] Built target cusignal_cpu
+[ 92%] Built target cusignal_zx_gpu
+Consolidate compiler generated dependencies of target spectral_test_support
+[100%] Built target spectral_test_support
+[100%] Building CXX object tests/unit/spectral/CMakeFiles/spectral_test_periodogram.dir/test_periodogram.cpp.o
+[100%] Linking CXX executable spectral_test_periodogram
+[100%] Built target spectral_test_periodogram
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target spectral_test_support
+[ 92%] Building CXX object tests/unit/spectral/CMakeFiles/spectral_test_welch.dir/test_welch.cpp.o
+[100%] Linking CXX executable spectral_test_welch
+[100%] Built target spectral_test_welch
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target spectral_test_support
+[ 92%] Building CXX object tests/unit/spectral/CMakeFiles/spectral_test_csd.dir/test_csd.cpp.o
+[100%] Linking CXX executable spectral_test_csd
+[100%] Built target spectral_test_csd
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target spectral_test_support
+[100%] Building CXX object tests/unit/spectral/CMakeFiles/spectral_test_spectrogram.dir/test_spectrogram.cpp.o
+[100%] Linking CXX executable spectral_test_spectrogram
+[100%] Built target spectral_test_spectrogram
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target spectral_test_support
+[100%] Building CXX object tests/unit/spectral/CMakeFiles/spectral_test_stft.dir/test_stft.cpp.o
+[100%] Linking CXX executable spectral_test_stft
+[100%] Built target spectral_test_stft
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target spectral_test_support
+[ 92%] Building CXX object tests/unit/spectral/CMakeFiles/spectral_test_istft.dir/test_istft.cpp.o
+[100%] Linking CXX executable spectral_test_istft
+[100%] Built target spectral_test_istft
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target spectral_test_support
+[ 92%] Building CXX object tests/unit/spectral/CMakeFiles/spectral_test_coherence.dir/test_coherence.cpp.o
+[100%] Linking CXX executable spectral_test_coherence
+[100%] Built target spectral_test_coherence
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target spectral_test_support
+[ 92%] Building CXX object tests/unit/spectral/CMakeFiles/spectral_test_vectorstrength.dir/test_vectorstrength.cpp.o
+[100%] Linking CXX executable spectral_test_vectorstrength
+[100%] Built target spectral_test_vectorstrength
+[ 38%] Built target cusignal_cpu
+[ 92%] Built target cusignal_zx_gpu
+[100%] Building CXX object tests/unit/wavelets/CMakeFiles/wavelets_test_support.dir/wavelets_test_support.cu.o
+/CETC/tests/unit/wavelets/wavelets_test_support.cu:1397:51: warning: 'cudaDeviceSynchronize' is deprecated: Use of cudaDeviceSynchronize from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING. [-Wdeprecated-declarations]
+            cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
+                                                  ^
+/zq500/sdk/include/cuda_device_runtime_api.h:142:38: note: 'cudaDeviceSynchronize' has been explicitly marked deprecated here
+extern __device__ __cudart_builtin__ __CDPRT_DEPRECATED(cudaDeviceSynchronize) cudaError_t CUDARTAPI cudaDeviceSynchronize(void);
+                                     ^
+/zq500/sdk/include/cuda_device_runtime_api.h:120:40: note: expanded from macro '__CDPRT_DEPRECATED'
+# define __CDPRT_DEPRECATED(func_name) __DEPRECATED__("Use of "#func_name" from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING.")
+                                       ^
+/zq500/sdk/include/cuda_device_runtime_api.h:116:45: note: expanded from macro '__DEPRECATED__'
+# define __DEPRECATED__(msg) __attribute__((deprecated(msg)))
+                                            ^
+1 warning generated when compiling for dlgput64r1.
+[100%] Linking CXX static library libwavelets_test_support.a
+[100%] Built target wavelets_test_support
+[100%] Building CXX object tests/unit/wavelets/CMakeFiles/wavelets_test_qmf.dir/test_qmf.cpp.o
+[100%] Linking CXX executable wavelets_test_qmf
+[100%] Built target wavelets_test_qmf
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+Consolidate compiler generated dependencies of target wavelets_test_support
+[ 92%] Built target wavelets_test_support
+[ 92%] Building CXX object tests/unit/wavelets/CMakeFiles/wavelets_test_morlet.dir/test_morlet.cpp.o
+[100%] Linking CXX executable wavelets_test_morlet
+[100%] Built target wavelets_test_morlet
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target wavelets_test_support
+[100%] Building CXX object tests/unit/wavelets/CMakeFiles/wavelets_test_ricker.dir/test_ricker.cpp.o
+[100%] Linking CXX executable wavelets_test_ricker
+[100%] Built target wavelets_test_ricker
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target wavelets_test_support
+[ 92%] Building CXX object tests/unit/wavelets/CMakeFiles/wavelets_test_morlet2.dir/test_morlet2.cpp.o
+[100%] Linking CXX executable wavelets_test_morlet2
+[100%] Built target wavelets_test_morlet2
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target wavelets_test_support
+[ 92%] Building CXX object tests/unit/wavelets/CMakeFiles/wavelets_test_cwt.dir/test_cwt.cpp.o
+[100%] Linking CXX executable wavelets_test_cwt
+[100%] Built target wavelets_test_cwt
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 85%] Building CXX object tests/unit/correlate/CMakeFiles/correlate_test_support.dir/correlate_test_support.cu.o
+/CETC/tests/unit/correlate/correlate_test_support.cu:663:55: warning: 'cudaDeviceSynchronize' is deprecated: Use of cudaDeviceSynchronize from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING. [-Wdeprecated-declarations]
+                cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
+                                                      ^
+/zq500/sdk/include/cuda_device_runtime_api.h:142:38: note: 'cudaDeviceSynchronize' has been explicitly marked deprecated here
+extern __device__ __cudart_builtin__ __CDPRT_DEPRECATED(cudaDeviceSynchronize) cudaError_t CUDARTAPI cudaDeviceSynchronize(void);
+                                     ^
+/zq500/sdk/include/cuda_device_runtime_api.h:120:40: note: expanded from macro '__CDPRT_DEPRECATED'
+# define __CDPRT_DEPRECATED(func_name) __DEPRECATED__("Use of "#func_name" from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING.")
+                                       ^
+/zq500/sdk/include/cuda_device_runtime_api.h:116:45: note: expanded from macro '__DEPRECATED__'
+# define __DEPRECATED__(msg) __attribute__((deprecated(msg)))
+                                            ^
+/CETC/tests/unit/correlate/correlate_test_support.cu:765:55: warning: 'cudaDeviceSynchronize' is deprecated: Use of cudaDeviceSynchronize from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING. [-Wdeprecated-declarations]
+                cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
+                                                      ^
+/zq500/sdk/include/cuda_device_runtime_api.h:142:38: note: 'cudaDeviceSynchronize' has been explicitly marked deprecated here
+extern __device__ __cudart_builtin__ __CDPRT_DEPRECATED(cudaDeviceSynchronize) cudaError_t CUDARTAPI cudaDeviceSynchronize(void);
+                                     ^
+/zq500/sdk/include/cuda_device_runtime_api.h:120:40: note: expanded from macro '__CDPRT_DEPRECATED'
+# define __CDPRT_DEPRECATED(func_name) __DEPRECATED__("Use of "#func_name" from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING.")
+                                       ^
+/zq500/sdk/include/cuda_device_runtime_api.h:116:45: note: expanded from macro '__DEPRECATED__'
+# define __DEPRECATED__(msg) __attribute__((deprecated(msg)))
+                                            ^
+/CETC/tests/unit/correlate/correlate_test_support.cu:825:55: warning: 'cudaDeviceSynchronize' is deprecated: Use of cudaDeviceSynchronize from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING. [-Wdeprecated-declarations]
+                cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
+                                                      ^
+/zq500/sdk/include/cuda_device_runtime_api.h:142:38: note: 'cudaDeviceSynchronize' has been explicitly marked deprecated here
+extern __device__ __cudart_builtin__ __CDPRT_DEPRECATED(cudaDeviceSynchronize) cudaError_t CUDARTAPI cudaDeviceSynchronize(void);
+                                     ^
+/zq500/sdk/include/cuda_device_runtime_api.h:120:40: note: expanded from macro '__CDPRT_DEPRECATED'
+# define __CDPRT_DEPRECATED(func_name) __DEPRECATED__("Use of "#func_name" from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING.")
+                                       ^
+/zq500/sdk/include/cuda_device_runtime_api.h:116:45: note: expanded from macro '__DEPRECATED__'
+# define __DEPRECATED__(msg) __attribute__((deprecated(msg)))
+                                            ^
+3 warnings generated when compiling for dlgput64r1.
+[ 92%] Linking CXX static library libcorrelate_test_support.a
+[ 92%] Built target correlate_test_support
+[ 92%] Building CXX object tests/unit/correlate/CMakeFiles/correlate_test_correlate.dir/test_correlate.cpp.o
+[100%] Linking CXX executable correlate_test_correlate
+[100%] Built target correlate_test_correlate
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+Consolidate compiler generated dependencies of target correlate_test_support
+[ 92%] Built target correlate_test_support
+[ 92%] Building CXX object tests/unit/correlate/CMakeFiles/correlate_test_correlate2d.dir/test_correlate2d.cpp.o
+[100%] Linking CXX executable correlate_test_correlate2d
+[100%] Built target correlate_test_correlate2d
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target correlate_test_support
+[ 92%] Building CXX object tests/unit/correlate/CMakeFiles/correlate_test_correlation_lags.dir/test_correlation_lags.cpp.o
+[100%] Linking CXX executable correlate_test_correlation_lags
+[100%] Built target correlate_test_correlation_lags
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 85%] Building CXX object tests/unit/demod/CMakeFiles/demod_test_support.dir/demod_test_support.cu.o
+/CETC/tests/unit/demod/demod_test_support.cu:488:55: warning: 'cudaDeviceSynchronize' is deprecated: Use of cudaDeviceSynchronize from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING. [-Wdeprecated-declarations]
+                cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
+                                                      ^
+/zq500/sdk/include/cuda_device_runtime_api.h:142:38: note: 'cudaDeviceSynchronize' has been explicitly marked deprecated here
+extern __device__ __cudart_builtin__ __CDPRT_DEPRECATED(cudaDeviceSynchronize) cudaError_t CUDARTAPI cudaDeviceSynchronize(void);
+                                     ^
+/zq500/sdk/include/cuda_device_runtime_api.h:120:40: note: expanded from macro '__CDPRT_DEPRECATED'
+# define __CDPRT_DEPRECATED(func_name) __DEPRECATED__("Use of "#func_name" from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING.")
+                                       ^
+/zq500/sdk/include/cuda_device_runtime_api.h:116:45: note: expanded from macro '__DEPRECATED__'
+# define __DEPRECATED__(msg) __attribute__((deprecated(msg)))
+                                            ^
+1 warning generated when compiling for dlgput64r1.
+[ 92%] Linking CXX static library libdemod_test_support.a
+[ 92%] Built target demod_test_support
+[ 92%] Building CXX object tests/unit/demod/CMakeFiles/demod_test_fm_demod.dir/test_fm_demod.cpp.o
+[100%] Linking CXX executable demod_test_fm_demod
+[100%] Built target demod_test_fm_demod
+[ 38%] Built target cusignal_cpu
+[ 92%] Built target cusignal_zx_gpu
+[100%] Building CXX object tests/unit/estimation/CMakeFiles/estimation_test_support.dir/estimation_test_support.cu.o
+[100%] Linking CXX static library libestimation_test_support.a
+[100%] Built target estimation_test_support
+[100%] Building CXX object tests/unit/estimation/CMakeFiles/estimation_test_kalman_filter.dir/test_kalman_filter.cpp.o
+[100%] Linking CXX executable estimation_test_kalman_filter
+[100%] Built target estimation_test_kalman_filter
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Building CXX object tests/unit/peak_finding/CMakeFiles/peak_finding_test_support.dir/peak_finding_test_support.cu.o
+/CETC/tests/unit/peak_finding/peak_finding_test_support.cu:550:55: warning: 'cudaDeviceSynchronize' is deprecated: Use of cudaDeviceSynchronize from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING. [-Wdeprecated-declarations]
+                cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
+                                                      ^
+/zq500/sdk/include/cuda_device_runtime_api.h:142:38: note: 'cudaDeviceSynchronize' has been explicitly marked deprecated here
+extern __device__ __cudart_builtin__ __CDPRT_DEPRECATED(cudaDeviceSynchronize) cudaError_t CUDARTAPI cudaDeviceSynchronize(void);
+                                     ^
+/zq500/sdk/include/cuda_device_runtime_api.h:120:40: note: expanded from macro '__CDPRT_DEPRECATED'
+# define __CDPRT_DEPRECATED(func_name) __DEPRECATED__("Use of "#func_name" from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING.")
+                                       ^
+/zq500/sdk/include/cuda_device_runtime_api.h:116:45: note: expanded from macro '__DEPRECATED__'
+# define __DEPRECATED__(msg) __attribute__((deprecated(msg)))
+                                            ^
+1 warning generated when compiling for dlgput64r1.
+[ 92%] Linking CXX static library libpeak_finding_test_support.a
+[ 92%] Built target peak_finding_test_support
+[100%] Building CXX object tests/unit/peak_finding/CMakeFiles/peak_finding_test_argrelextrema.dir/test_argrelextrema.cpp.o
+[100%] Linking CXX executable peak_finding_test_argrelextrema
+[100%] Built target peak_finding_test_argrelextrema
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+Consolidate compiler generated dependencies of target peak_finding_test_support
+[ 92%] Built target peak_finding_test_support
+[100%] Building CXX object tests/unit/peak_finding/CMakeFiles/peak_finding_test_argrelmin.dir/test_argrelmin.cpp.o
+[100%] Linking CXX executable peak_finding_test_argrelmin
+[100%] Built target peak_finding_test_argrelmin
+[ 35%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target peak_finding_test_support
+[100%] Building CXX object tests/unit/peak_finding/CMakeFiles/peak_finding_test_argrelmax.dir/test_argrelmax.cpp.o
+[100%] Linking CXX executable peak_finding_test_argrelmax
+[100%] Built target peak_finding_test_argrelmax
+[cusignal-test] running waveforms/chirp
+[waveforms/chirp] PASS  accuracy_cases=6  perf_cases=0
+cpu_gpu_error : max_abs=1.922192e-06  max_rel=1.922192e-06  mixed=1.922192e-06  rmse=1.110445e-06
+reference_error : max_abs=2.188392e-06  max_rel=1.589492e-05  mixed=1.589492e-05  rmse=1.271410e-06
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/waveforms/chirp/latest_summary.md
+[cusignal-test] running waveforms/gausspulse
+[waveforms/gausspulse] PASS  accuracy_cases=4  perf_cases=0
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  mixed=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=5.960464e-08  max_rel=1.186018e-07  mixed=1.186018e-07  rmse=4.866699e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/waveforms/gausspulse/latest_summary.md
+[cusignal-test] running waveforms/sawtooth
+[waveforms/sawtooth] PASS  accuracy_cases=2  perf_cases=0
+cpu_gpu_error : max_abs=7.589099e-08  max_rel=7.589099e-08  mixed=7.589099e-08  rmse=4.824976e-08
+reference_error : max_abs=7.589099e-08  max_rel=8.940697e-08  mixed=8.940697e-08  rmse=3.794549e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/waveforms/sawtooth/latest_summary.md
+[cusignal-test] running waveforms/square
+[waveforms/square] PASS  accuracy_cases=2  perf_cases=0
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  mixed=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  mixed=0.000000e+00  rmse=0.000000e+00
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/waveforms/square/latest_summary.md
+[cusignal-test] running waveforms/unit_impulse
+[waveforms/unit_impulse] PASS  accuracy_cases=4  perf_cases=0
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  mixed=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  mixed=0.000000e+00  rmse=0.000000e+00
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/waveforms/unit_impulse/latest_summary.md
+[cusignal-test] running bsplines/cubic
+[bsplines/cubic] PASS  accuracy_cases=2  perf_cases=0
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=1.490116e-08  max_rel=6.071463e-07  rmse=7.175732e-09
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/bsplines/cubic/latest_summary.md
+[cusignal-test] running bsplines/quadratic
+[bsplines/quadratic] PASS  accuracy_cases=2  perf_cases=0
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=2.980232e-08  max_rel=9.126961e-07  rmse=1.335509e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/bsplines/quadratic/latest_summary.md
+[cusignal-test] running bsplines/gauss_spline
+[bsplines/gauss_spline] PASS  accuracy_cases=3  perf_cases=0
+cpu_gpu_error : max_abs=2.980232e-08  max_rel=1.029134e-07  rmse=1.022219e-08
+reference_error : max_abs=2.980232e-08  max_rel=2.451261e-06  rmse=1.023985e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/bsplines/gauss_spline/latest_summary.md
+[cusignal-test] running windows/get_window
+[windows/get_window] PASS  accuracy_cases=5  perf_cases=0
+cpu_gpu_error : max_abs=8.940697e-08  max_rel=6.105089e-07  rmse=5.065421e-08
+reference_error : max_abs=8.940697e-08  max_rel=6.105089e-07  rmse=4.659509e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/windows/get_window/latest_summary.md
+[cusignal-test] running windows/barthann
+[windows/barthann] PASS  accuracy_cases=1  perf_cases=0
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=5.960464e-08  max_rel=7.192543e-08  rmse=3.141441e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/windows/barthann/latest_summary.md
+[cusignal-test] running windows/bartlett
+[windows/bartlett] PASS  accuracy_cases=1  perf_cases=0
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=5.960464e-08  max_rel=2.235174e-07  rmse=2.537576e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/windows/bartlett/latest_summary.md
+[cusignal-test] running windows/blackman
+[windows/blackman] PASS  accuracy_cases=1  perf_cases=0
+cpu_gpu_error : max_abs=5.960464e-08  max_rel=1.296950e-06  rmse=2.629384e-08
+reference_error : max_abs=5.960464e-08  max_rel=1.073742e+09  rmse=3.369652e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/windows/blackman/latest_summary.md
+[cusignal-test] running windows/blackmanharris
+[windows/blackmanharris] PASS  accuracy_cases=1  perf_cases=0
+cpu_gpu_error : max_abs=5.960464e-08  max_rel=7.215172e-06  rmse=3.788992e-08
+reference_error : max_abs=5.960464e-08  max_rel=5.201097e-04  rmse=4.340905e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/windows/blackmanharris/latest_summary.md
+[cusignal-test] running windows/bohman
+[windows/bohman] PASS  accuracy_cases=1  perf_cases=0
+cpu_gpu_error : max_abs=5.960464e-08  max_rel=2.011312e-06  rmse=2.225602e-08
+reference_error : max_abs=1.192093e-07  max_rel=3.268377e-06  rmse=4.346854e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/windows/bohman/latest_summary.md
+[cusignal-test] running windows/boxcar
+[windows/boxcar] PASS  accuracy_cases=1  perf_cases=0
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/windows/boxcar/latest_summary.md
+[cusignal-test] running windows/chebwin
+[windows/chebwin] PASS  accuracy_cases=1  perf_cases=0
+cpu_gpu_error : max_abs=5.662441e-07  max_rel=1.930223e-05  rmse=3.528270e-07
+reference_error : max_abs=7.320195e-07  max_rel=4.334624e-05  rmse=4.406456e-07
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/windows/chebwin/latest_summary.md
+[cusignal-test] running windows/cosine
+[windows/cosine] PASS  accuracy_cases=1  perf_cases=0
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=5.960464e-08  max_rel=1.312905e-07  rmse=3.616070e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/windows/cosine/latest_summary.md
+[cusignal-test] running windows/exponential
+[windows/exponential] PASS  accuracy_cases=2  perf_cases=0
+cpu_gpu_error : max_abs=5.960464e-08  max_rel=9.827144e-08  rmse=4.214685e-08
+reference_error : max_abs=5.960464e-08  max_rel=1.300743e-07  rmse=4.214685e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/windows/exponential/latest_summary.md
+[cusignal-test] running windows/flattop
+[windows/flattop] PASS  accuracy_cases=1  perf_cases=0
+cpu_gpu_error : max_abs=8.195639e-08  max_rel=2.328715e-06  rmse=2.953923e-08
+reference_error : max_abs=7.450581e-08  max_rel=7.879893e-06  rmse=3.181078e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/windows/flattop/latest_summary.md
+[cusignal-test] running windows/gaussian
+[windows/gaussian] PASS  accuracy_cases=1  perf_cases=0
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/windows/gaussian/latest_summary.md
+[cusignal-test] running windows/general_cosine
+[windows/general_cosine] PASS  accuracy_cases=1  perf_cases=0
+cpu_gpu_error : max_abs=5.960464e-08  max_rel=4.359067e-07  rmse=2.781522e-08
+reference_error : max_abs=1.490116e-07  max_rel=1.382762e-06  rmse=6.670073e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/windows/general_cosine/latest_summary.md
+[cusignal-test] running windows/general_gaussian
+[windows/general_gaussian] PASS  accuracy_cases=1  perf_cases=0
+cpu_gpu_error : max_abs=5.960464e-08  max_rel=3.254352e-07  rmse=2.444061e-08
+reference_error : max_abs=5.960464e-08  max_rel=9.763048e-07  rmse=4.261172e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/windows/general_gaussian/latest_summary.md
+[cusignal-test] running windows/general_hamming
+[windows/general_hamming] PASS  accuracy_cases=1  perf_cases=0
+cpu_gpu_error : max_abs=1.192093e-07  max_rel=2.935253e-07  rmse=4.544243e-08
+reference_error : max_abs=2.086163e-07  max_rel=9.313226e-07  rmse=8.409590e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/windows/general_hamming/latest_summary.md
+[cusignal-test] running windows/hamming
+[windows/hamming] PASS  accuracy_cases=1  perf_cases=0
+cpu_gpu_error : max_abs=1.192093e-07  max_rel=5.326528e-07  rmse=4.805480e-08
+reference_error : max_abs=1.192093e-07  max_rel=5.587935e-07  rmse=4.292983e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/windows/hamming/latest_summary.md
+[cusignal-test] running windows/hann
+[windows/hann] PASS  accuracy_cases=1  perf_cases=0
+cpu_gpu_error : max_abs=1.192093e-07  max_rel=2.885195e-07  rmse=4.420399e-08
+reference_error : max_abs=1.788139e-07  max_rel=7.643072e-07  rmse=6.597026e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/windows/hann/latest_summary.md
+[cusignal-test] running windows/kaiser
+[windows/kaiser] PASS  accuracy_cases=1  perf_cases=0
+cpu_gpu_error : max_abs=5.960464e-08  max_rel=7.017131e-08  rmse=2.541551e-08
+reference_error : max_abs=1.192093e-07  max_rel=3.705745e-07  rmse=6.013156e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/windows/kaiser/latest_summary.md
+[cusignal-test] running windows/nuttall
+[windows/nuttall] PASS  accuracy_cases=1  perf_cases=0
+cpu_gpu_error : max_abs=5.960464e-08  max_rel=2.515417e-06  rmse=3.471541e-08
+reference_error : max_abs=8.940697e-08  max_rel=9.064865e-06  rmse=4.208407e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/windows/nuttall/latest_summary.md
+[cusignal-test] running windows/parzen
+[windows/parzen] PASS  accuracy_cases=1  perf_cases=0
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=5.960464e-08  max_rel=2.273462e-07  rmse=2.506469e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/windows/parzen/latest_summary.md
+[cusignal-test] running windows/taylor
+[windows/taylor] PASS  accuracy_cases=1  perf_cases=0
+cpu_gpu_error : max_abs=5.960464e-08  max_rel=1.163195e-07  rmse=2.433350e-08
+reference_error : max_abs=1.192093e-07  max_rel=2.860482e-07  rmse=8.710066e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/windows/taylor/latest_summary.md
+[cusignal-test] running windows/triang
+[windows/triang] PASS  accuracy_cases=1  perf_cases=0
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/windows/triang/latest_summary.md
+[cusignal-test] running windows/tukey
+[windows/tukey] PASS  accuracy_cases=1  perf_cases=0
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=4.768372e-07  max_rel=8.987079e-07  rmse=1.376510e-07
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/windows/tukey/latest_summary.md
+[cusignal-test] running filter_design/kaiser_beta
+[filter_design/kaiser_beta] PASS  accuracy_cases=2  perf_cases=0
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/filter_design/kaiser_beta/latest_summary.md
+[cusignal-test] running filter_design/kaiser_atten
+[filter_design/kaiser_atten] PASS  accuracy_cases=2  perf_cases=0
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/filter_design/kaiser_atten/latest_summary.md
+[cusignal-test] running filter_design/cmplx_sort
+[filter_design/cmplx_sort] PASS  accuracy_cases=2  perf_cases=0
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/filter_design/cmplx_sort/latest_summary.md
+[cusignal-test] running filter_design/firwin
+[filter_design/firwin] PASS  accuracy_cases=3  perf_cases=0
+cpu_gpu_error : max_abs=2.980232e-08  max_rel=1.331875e-06  rmse=1.452477e-08
+reference_error : max_abs=2.980232e-08  max_rel=6.808744e+06  rmse=1.215270e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/filter_design/firwin/latest_summary.md
+[cusignal-test] running filter_design/firwin2
+[filter_design/firwin2] PASS  accuracy_cases=2  perf_cases=0
+cpu_gpu_error : max_abs=5.960464e-08  max_rel=9.052222e-06  rmse=1.657231e-08
+reference_error : max_abs=4.842877e-08  max_rel=8.448581e+05  rmse=2.173021e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/filter_design/firwin2/latest_summary.md
+[cusignal-test] running filtering/wiener
+[filtering/wiener] PASS  accuracy_cases=1  perf_cases=0
+cpu_gpu_error : max_abs=5.960464e-08  max_rel=2.092282e-07  rmse=2.980232e-08
+reference_error : max_abs=5.960464e-08  max_rel=9.030185e-08  rmse=1.923732e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/filtering/wiener/latest_summary.md
+[cusignal-test] running filtering/firfilter
+[filtering/firfilter] PASS  accuracy_cases=1  perf_cases=0
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=1.192093e-07  max_rel=1.110223e-01  rmse=3.806365e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/filtering/firfilter/latest_summary.md
+[cusignal-test] running filtering/lfilter
+[filtering/lfilter] PASS  accuracy_cases=1  perf_cases=0
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=4.470348e-08  max_rel=2.006396e-07  rmse=2.787752e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/filtering/lfilter/latest_summary.md
+[cusignal-test] running filtering/firfilter_zi
+[filtering/firfilter_zi] PASS  accuracy_cases=1  perf_cases=0
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/filtering/firfilter_zi/latest_summary.md
+[cusignal-test] running filtering/lfilter_zi
+[filtering/lfilter_zi] PASS  accuracy_cases=1  perf_cases=0
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=2.980232e-08  max_rel=8.984524e-08  rmse=2.123742e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/filtering/lfilter_zi/latest_summary.md
+[cusignal-test] running filtering/firfilter2
+[filtering/firfilter2] PASS  accuracy_cases=1  perf_cases=0
+cpu_gpu_error : max_abs=1.192093e-07  max_rel=1.000000e+00  rmse=3.215460e-08
+reference_error : max_abs=1.192093e-07  max_rel=1.952754e-07  rmse=5.307722e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/filtering/firfilter2/latest_summary.md
+[cusignal-test] running filtering/filtfilt
+[filtering/filtfilt] PASS  accuracy_cases=1  perf_cases=0
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=2.980232e-08  max_rel=2.051114e-07  rmse=1.263415e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/filtering/filtfilt/latest_summary.md
+[cusignal-test] running filtering/sosfilt
+[filtering/sosfilt] PASS  accuracy_cases=1  perf_cases=0
+cpu_gpu_error : max_abs=5.960464e-08  max_rel=1.095368e-07  rmse=4.386783e-08
+reference_error : max_abs=5.960464e-08  max_rel=2.187190e-07  rmse=2.720567e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/filtering/sosfilt/latest_summary.md
+[cusignal-test] running filtering/hilbert
+[filtering/hilbert] PASS  accuracy_cases=1  perf_cases=0
+cpu_gpu_error : max_abs=2.980232e-07  max_rel=2.980233e-07  rmse=1.959264e-07
+reference_error : max_abs=5.960464e-08  max_rel=5.960464e-08  rmse=3.332001e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/filtering/hilbert/latest_summary.md
+[cusignal-test] running filtering/hilbert2
+[filtering/hilbert2] PASS  accuracy_cases=1  perf_cases=0
+cpu_gpu_error : max_abs=1.228781e-07  max_rel=1.986821e-07  rmse=6.919419e-08
+reference_error : max_abs=1.228781e-07  max_rel=1.125241e-07  rmse=4.899854e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/filtering/hilbert2/latest_summary.md
+[cusignal-test] running filtering/detrend
+[filtering/detrend] PASS  accuracy_cases=1  perf_cases=0
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=1.048669e-06  max_rel=4.230430e-05  rmse=4.495455e-07
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/filtering/detrend/latest_summary.md
+[cusignal-test] running filtering/freq_shift
+[filtering/freq_shift] PASS  accuracy_cases=1  perf_cases=0
+cpu_gpu_error : max_abs=8.429370e-08  max_rel=8.429370e-08  rmse=3.692550e-08
+reference_error : max_abs=4.915125e-07  max_rel=4.915125e-07  rmse=1.778021e-07
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/filtering/freq_shift/latest_summary.md
+[cusignal-test] running filtering/channelize_poly
+[filtering/channelize_poly] PASS  accuracy_cases=1  perf_cases=0
+cpu_gpu_error : max_abs=7.028864e-08  max_rel=6.124206e-07  rmse=3.655546e-08
+reference_error : max_abs=6.143906e-08  max_rel=2.042958e-07  rmse=2.928465e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/filtering/channelize_poly/latest_summary.md
+[cusignal-test] running filtering/decimate
+[filtering/decimate] PASS  accuracy_cases=1  perf_cases=0
+cpu_gpu_error : max_abs=2.384186e-07  max_rel=4.458093e-07  rmse=8.750592e-08
+reference_error : max_abs=1.788139e-07  max_rel=7.005583e-07  rmse=9.124228e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/filtering/decimate/latest_summary.md
+[cusignal-test] running filtering/resample
+[filtering/resample] PASS  accuracy_cases=2  perf_cases=0
+cpu_gpu_error : max_abs=2.980232e-07  max_rel=1.000000e+00  rmse=1.322600e-07
+reference_error : max_abs=1.192093e-07  max_rel=3.454027e-01  rmse=6.795975e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/filtering/resample/latest_summary.md
+[cusignal-test] running filtering/resample_poly
+[filtering/resample_poly] PASS  accuracy_cases=1  perf_cases=0
+cpu_gpu_error : max_abs=1.192093e-07  max_rel=8.510731e-04  rmse=6.771607e-08
+reference_error : max_abs=1.788139e-07  max_rel=3.104676e+07  rmse=8.184770e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/filtering/resample_poly/latest_summary.md
+[cusignal-test] running filtering/upfirdn
+[filtering/upfirdn] PASS  accuracy_cases=1  perf_cases=0
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/filtering/upfirdn/latest_summary.md
+[cusignal-test] running radartools/pulse_compression
+[radartools/pulse_compression] PASS  accuracy_cases=2  perf_cases=0
+cpu_gpu_error : max_abs=1.066240e-06  max_rel=1.851013e+22  rmse=5.706062e-07
+reference_error : max_abs=1.066240e-06  max_rel=1.851013e+22  rmse=6.176347e-07
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/radartools/pulse_compression/latest_summary.md
+[cusignal-test] running radartools/pulse_doppler
+[radartools/pulse_doppler] PASS  accuracy_cases=2  perf_cases=0
+cpu_gpu_error : max_abs=2.384186e-07  max_rel=1.874493e-07  rmse=7.826065e-08
+reference_error : max_abs=2.384186e-07  max_rel=1.874494e-07  rmse=7.826065e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/radartools/pulse_doppler/latest_summary.md
+[cusignal-test] running radartools/ambgfun
+[radartools/ambgfun] PASS  accuracy_cases=3  perf_cases=0
+cpu_gpu_error : max_abs=3.725290e-07  max_rel=1.343172e+22  rmse=1.587030e-07
+reference_error : max_abs=3.725290e-07  max_rel=6.337249e+00  rmse=1.627323e-07
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/radartools/ambgfun/latest_summary.md
+[cusignal-test] running radartools/cfar_alpha
+[radartools/cfar_alpha] PASS  accuracy_cases=1  perf_cases=0
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=9.536743e-07  max_rel=1.155864e-07  rmse=9.536743e-07
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/radartools/cfar_alpha/latest_summary.md
+[cusignal-test] running radartools/ca_cfar
+[radartools/ca_cfar] PASS  accuracy_cases=2  perf_cases=0
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=3.051758e-05  max_rel=1.618951e-07  rmse=1.206313e-05
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/radartools/ca_cfar/latest_summary.md
+[cusignal-test] running radartools/mvdr
+[radartools/mvdr] PASS  accuracy_cases=2  perf_cases=0
+cpu_gpu_error : max_abs=3.404061e-04  max_rel=9.686291e-05  rmse=2.374302e-04
+reference_error : max_abs=6.083366e-04  max_rel=1.465885e-04  rmse=4.588779e-04
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/radartools/mvdr/latest_summary.md
+[cusignal-test] running spectral/lombscargle
+[spectral/lombscargle] PASS  accuracy_cases=1  perf_cases=0
+cpu_gpu_error : max_abs=2.384186e-07  max_rel=3.607452e-06  rmse=3.511364e-08
+reference_error : max_abs=2.384186e-07  max_rel=2.123008e-06  rmse=3.725279e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/spectral/lombscargle/latest_summary.md
+[cusignal-test] running spectral/periodogram
+[spectral/periodogram] PASS  accuracy_cases=1  perf_cases=0
+cpu_gpu_error : max_abs=1.117587e-08  max_rel=8.401788e-01  rmse=1.014471e-09
+reference_error : max_abs=3.725290e-08  max_rel=3.775551e+00  rmse=3.857032e-09
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/spectral/periodogram/latest_summary.md
+[cusignal-test] running spectral/welch
+[spectral/welch] PASS  accuracy_cases=1  perf_cases=0
+cpu_gpu_error : max_abs=3.725290e-09  max_rel=3.905944e-01  rmse=4.658885e-10
+reference_error : max_abs=7.450581e-09  max_rel=5.933893e-01  rmse=9.599864e-10
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/spectral/welch/latest_summary.md
+[cusignal-test] running spectral/csd
+[spectral/csd] PASS  accuracy_cases=1  perf_cases=0
+cpu_gpu_error : max_abs=4.165001e-09  max_rel=3.893802e-01  rmse=6.864529e-10
+reference_error : max_abs=5.268356e-09  max_rel=5.265805e-01  rmse=7.173432e-10
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/spectral/csd/latest_summary.md
+[cusignal-test] running spectral/spectrogram
+[spectral/spectrogram] PASS  accuracy_cases=2  perf_cases=0
+cpu_gpu_error : max_abs=5.960464e-08  max_rel=3.833506e-01  rmse=6.500600e-09
+reference_error : max_abs=5.960464e-08  max_rel=2.490654e-01  rmse=7.162105e-09
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/spectral/spectrogram/latest_summary.md
+[cusignal-test] running spectral/stft
+[spectral/stft] PASS  accuracy_cases=1  perf_cases=0
+cpu_gpu_error : max_abs=1.248873e-07  max_rel=1.699453e-01  rmse=2.191228e-08
+reference_error : max_abs=1.299205e-07  max_rel=1.876826e-01  rmse=2.313282e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/spectral/stft/latest_summary.md
+[cusignal-test] running spectral/istft
+[spectral/istft] PASS  accuracy_cases=1  perf_cases=0
+cpu_gpu_error : max_abs=2.384186e-07  max_rel=3.098411e-05  rmse=9.304465e-08
+reference_error : max_abs=2.384186e-07  max_rel=3.098314e-05  rmse=9.656367e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/spectral/istft/latest_summary.md
+[cusignal-test] running spectral/coherence
+[spectral/coherence] PASS  accuracy_cases=1  perf_cases=0
+cpu_gpu_error : max_abs=4.909611e-02  max_rel=5.235365e-02  rmse=7.347921e-03
+reference_error : max_abs=4.971057e-02  max_rel=5.034039e-02  rmse=7.035957e-03
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/spectral/coherence/latest_summary.md
+[cusignal-test] running spectral/vectorstrength
+[spectral/vectorstrength] PASS  accuracy_cases=2  perf_cases=0
+cpu_gpu_error : max_abs=9.536743e-07  max_rel=1.204923e-05  rmse=7.877558e-07
+reference_error : max_abs=1.716614e-05  max_rel=7.192016e-05  rmse=1.716614e-05
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/spectral/vectorstrength/latest_summary.md
+[cusignal-test] running wavelets/qmf
+[wavelets/qmf] PASS  accuracy_cases=3  perf_cases=0
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/wavelets/qmf/latest_summary.md
+[cusignal-test] running wavelets/morlet
+[wavelets/morlet] PASS  accuracy_cases=5  perf_cases=0
+cpu_gpu_error : max_abs=5.960464e-08  max_rel=9.297084e-08  rmse=2.107342e-08
+reference_error : max_abs=1.464873e-07  max_rel=1.057987e-05  rmse=5.063695e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/wavelets/morlet/latest_summary.md
+[cusignal-test] running wavelets/ricker
+[wavelets/ricker] PASS  accuracy_cases=3  perf_cases=0
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=2.980232e-08  max_rel=1.693439e-07  rmse=1.142867e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/wavelets/ricker/latest_summary.md
+[cusignal-test] running wavelets/morlet2
+[wavelets/morlet2] PASS  accuracy_cases=3  perf_cases=0
+cpu_gpu_error : max_abs=1.490116e-08  max_rel=1.021131e-07  rmse=5.890201e-09
+reference_error : max_abs=4.712161e-08  max_rel=1.980636e-07  rmse=2.704517e-08
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/wavelets/morlet2/latest_summary.md
+[cusignal-test] running wavelets/cwt
+[wavelets/cwt] PASS  accuracy_cases=5  perf_cases=0
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=7.152557e-07  max_rel=1.129918e-04  rmse=1.354194e-07
+cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a
+gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a
+reports       : data/reports/unit/wavelets/cwt/latest_summary.md
+[cusignal-test] running correlate/correlate
+[correlate/correlate] PASS  accuracy_cases=2  perf_cases=0
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reports       : data/reports/unit/correlate/correlate/latest_summary.md
+[cusignal-test] running correlate/correlate2d
+[correlate/correlate2d] PASS  accuracy_cases=2  perf_cases=0
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reports       : data/reports/unit/correlate/correlate2d/latest_summary.md
+[cusignal-test] running correlate/correlation_lags
+[correlate/correlation_lags] PASS  accuracy_cases=3  perf_cases=0
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reports       : data/reports/unit/correlate/correlation_lags/latest_summary.md
+[cusignal-test] running demod/fm_demod
+[demod/fm_demod] PASS  accuracy_cases=4  perf_cases=0
+cpu_gpu_error : max_abs=1.788139e-07  max_rel=9.761364e-07  rmse=1.141342e-07
+reference_error : max_abs=1.788139e-07  max_rel=9.761354e-07  rmse=1.141342e-07
+reports       : data/reports/unit/demod/fm_demod/latest_summary.md
+[cusignal-test] running estimation/kalman_filter
+[estimation/kalman_filter] PASS  accuracy_cases=7  perf_cases=0
+cpu_gpu_error : max_abs=1.192093e-07  max_rel=3.099442e-07  rmse=7.300049e-08
+reference_error : max_abs=8.940697e-08  max_rel=3.099441e-07  rmse=6.143906e-08
+reports       : data/reports/unit/estimation/kalman_filter/latest_summary.md
+[cusignal-test] running peak_finding/argrelextrema
+[peak_finding/argrelextrema] PASS  accuracy_cases=3  perf_cases=0
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reports       : data/reports/unit/peak_finding/argrelextrema/latest_summary.md
+[cusignal-test] running peak_finding/argrelmin
+[peak_finding/argrelmin] PASS  accuracy_cases=2  perf_cases=0
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reports       : data/reports/unit/peak_finding/argrelmin/latest_summary.md
+[cusignal-test] running peak_finding/argrelmax
+[peak_finding/argrelmax] PASS  accuracy_cases=3  perf_cases=0
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reports       : data/reports/unit/peak_finding/argrelmax/latest_summary.md
+[cusignal-test] summary: passed 81/81
+[ 38%] Built target cusignal_cpu
+[ 92%] Built target cusignal_zx_gpu
+[100%] Building CXX object tests/unit/core_types/CMakeFiles/cusignal_type_contract_tests.dir/test_type_contracts.cu.o
+[100%] Linking CXX executable cusignal_type_contract_tests
+[100%] Built target cusignal_type_contract_tests
+[100%] Building CXX object tests/platform/CMakeFiles/zx_compat_compile_probes.dir/zx_compat_compile_probes.cu.o
+[100%] Built target zx_compat_compile_probes
+[  0%] Building CXX object tests/platform/CMakeFiles/zx_compat_runtime_probes.dir/zx_compat_runtime_probes.cu.o
+[100%] Linking CXX executable zx_compat_runtime_probes
+[100%] Built target zx_compat_runtime_probes
+[100%] Generating the ZQ500 compatibility matrix
+{"api_row_count": 816, "forbidden_api_count": 315, "probe_mode_counts": {"compile_only": 16, "forbidden_scan": 311, "none": 84, "runtime_pending": 489}, "row_kind_counts": {"api": 816, "category": 34, "header": 9, "note": 41}, "source_counts": {"driver": 361, "libraries": 261, "runtime": 278}, "source_row_count": 900, "status": "passed", "support_counts": {"documented": 38, "not_applicable": 11, "partial": 27, "supported": 493, "unsupported": 331}, "unique_api_count": 830}
+[100%] Scanning project sources for unsupported ZQ500 APIs
+{"documented_exception_count": 3, "forbidden_api_count": 315, "matrix_matched_api_count": 33, "status": "passed", "unresolved_count": 0, "used_api_count": 39, "used_exception_count": 3, "violation_count": 0}
+[100%] Built target zx_forbidden_api_scan
+Internal ctest changing into directory: /CETC/build-zx
+Test project /CETC/build-zx
+    Start  2: cusignal_type_contract
+1/3 Test  #2: cusignal_type_contract ...........   Passed    0.33 sec
+    Start 84: zx_compat_runtime_safe
+2/3 Test #84: zx_compat_runtime_safe ...........   Passed    0.47 sec
+    Start 85: zx_forbidden_api_scan_test
+3/3 Test #85: zx_forbidden_api_scan_test .......   Passed    0.13 sec
+
+100% tests passed, 0 tests failed out of 3
+
+Total Test time (real) =   0.94 sec
+{"api_usage": {"documented_exception_count": 3, "unresolved_count": 0, "used_api_count": 39, "violation_count": 0}, "checks": {"api_usage": true, "compatibility_900_rows": true, "interfaces_81": true, "operator_accuracy_81": true, "operator_sets": true, "registry_81": true, "type_and_platform_ctest": true, "type_contracts_81": true}, "compatibility": {"api_row_count": 816, "forbidden_api_count": 315, "source_row_count": 900, "unique_api_count": 830}, "failed_operators": [], "missing_reports": [], "operator_accuracy_passed_count": 81, "operator_count": 81, "status": "passed"}
+[v5.2-gate] PASS report=/CETC/data/reports/zhongkexin/v5_2_gate_latest/summary.json

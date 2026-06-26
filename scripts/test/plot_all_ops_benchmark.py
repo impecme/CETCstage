@@ -709,6 +709,32 @@ def safe_operator_stem(row: BenchRow) -> str:
     return "".join(ch if ch.isalnum() or ch in {"_", "-"} else "_" for ch in text)
 
 
+def append_operator_curve_manifest(
+    manifest_rows: list[dict[str, str]],
+    module: str,
+    saved_paths: list[Path],
+    operator_count: int,
+) -> None:
+    manifest_rows.append(
+        {
+            "module": module,
+            "figure": f"module_operator_curves_{safe_module_stem(module)}",
+            "path": str(primary_saved_path(saved_paths)),
+            "operator_count": str(operator_count),
+        }
+    )
+
+
+def write_operator_curve_manifest(path: Path, manifest_rows: list[dict[str, str]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    columns = ["module", "figure", "path", "operator_count"]
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=columns)
+        writer.writeheader()
+        writer.writerows(manifest_rows)
+    log(f"wrote {path}")
+
+
 def plot_operator_figures(rows: list[BenchRow], output_dir: Path, formats: list[str], dpi: int) -> None:
     by_op: dict[tuple[str, str], list[BenchRow]] = defaultdict(list)
     for row in rows:
@@ -716,57 +742,100 @@ def plot_operator_figures(rows: list[BenchRow], output_dir: Path, formats: list[
 
     operator_dir = output_dir / "operator_figures"
     operator_dir.mkdir(parents=True, exist_ok=True)
-    for key in sorted(by_op, key=lambda item: (item[0], item[1])):
-        op_rows = sorted(by_op[key], key=lambda row: (row.scale_level, row.scale_value))
-        levels = [row.scale_level for row in op_rows]
-        cpu = np.array([row.cpu_median_ms for row in op_rows], dtype=float)
-        gpu = np.array([row.gpu_e2e_median_ms for row in op_rows], dtype=float)
-        e2e_speedup = np.array([row.gpu_e2e_speedup for row in op_rows], dtype=float)
-        kernel_speedup = np.array([row.gpu_kernel_speedup for row in op_rows], dtype=float)
+    manifest_rows: list[dict[str, str]] = []
+    by_module: dict[str, list[tuple[tuple[str, str], list[BenchRow]]]] = defaultdict(list)
+    for key, op_rows in by_op.items():
+        by_module[key[0]].append((key, sorted(op_rows, key=lambda row: (row.scale_level, row.scale_value))))
 
-        fig, axes = plt.subplots(2, 1, figsize=(7.2, 6.0), sharex=True)
-        ax_time, ax_speed = axes
-        if np.isfinite(cpu).any() and np.isfinite(gpu).any():
-            ax_time.plot(levels, cpu, marker="o", linewidth=1.4, color="#A54B3D", label="CPU e2e median")
-            ax_time.plot(levels, gpu, marker="o", linewidth=1.4, color="#2F6F5E", label="GPU e2e median")
-            positive = np.concatenate([cpu[cpu > 0.0], gpu[gpu > 0.0]])
-            if positive.size:
-                ax_time.set_yscale("log")
-                ax_time.set_ylim(max(float(np.min(positive)) * 0.6, 1.0e-6), float(np.max(positive)) * 1.8)
-            ax_time.legend(loc="best", frameon=False, ncols=2)
-        else:
-            ax_time.text(0.5, 0.5, "No CPU/GPU timing columns available", ha="center", va="center", transform=ax_time.transAxes)
-        ax_time.set_ylabel("Time (ms, log)")
-        ax_time.grid(True, which="both", color="#DDDDDD", linewidth=0.45)
+    for module, module_items in sorted(by_module.items()):
+        module_items.sort(key=lambda item: item[0][1])
+        operator_count = len(module_items)
+        fig_height = max(3.0, min(24.0, 0.62 * operator_count + 1.35))
+        fig, axes = plt.subplots(
+            operator_count,
+            2,
+            figsize=(9.2, fig_height),
+            sharex="col",
+            squeeze=False,
+            gridspec_kw={"width_ratios": [1.0, 1.0], "wspace": 0.18, "hspace": 0.16},
+        )
 
-        if np.isfinite(e2e_speedup).any():
-            ax_speed.plot(levels, e2e_speedup, marker="o", linewidth=1.4, color="#375A7F", label="e2e speedup")
-        if np.isfinite(kernel_speedup).any():
-            ax_speed.plot(levels, kernel_speedup, marker="s", linewidth=1.2, color="#8A6F2A", label="kernel speedup")
-        positive_speedup = np.concatenate([
-            e2e_speedup[e2e_speedup > 0.0],
-            kernel_speedup[kernel_speedup > 0.0],
-        ])
-        if positive_speedup.size:
-            ax_speed.set_yscale("log")
-            ax_speed.set_ylim(max(float(np.min(positive_speedup)) * 0.6, 1.0e-3), float(np.max(positive_speedup)) * 1.8)
-        ax_speed.axhline(1.0, color="#333333", linewidth=0.8, linestyle="--")
-        ax_speed.set_xlabel("Scale level")
-        ax_speed.set_ylabel("CPU / GPU speedup (log)")
-        ax_speed.set_xticks(levels)
-        ax_speed.set_xticklabels([f"L{level}" for level in levels])
-        ax_speed.grid(True, which="both", color="#DDDDDD", linewidth=0.45)
-        ax_speed.legend(loc="best", frameon=False, ncols=2)
+        for row_index, (key, op_rows) in enumerate(module_items):
+            levels = [row.scale_level for row in op_rows]
+            cpu = np.array([row.cpu_median_ms for row in op_rows], dtype=float)
+            gpu = np.array([row.gpu_e2e_median_ms for row in op_rows], dtype=float)
+            e2e_speedup = np.array([row.gpu_e2e_speedup for row in op_rows], dtype=float)
+            kernel_speedup = np.array([row.gpu_kernel_speedup for row in op_rows], dtype=float)
+            ax_time, ax_speed = axes[row_index]
 
-        last = op_rows[-1]
+            ax_time.text(
+                -0.02,
+                0.5,
+                key[1],
+                transform=ax_time.transAxes,
+                ha="right",
+                va="center",
+                fontsize=5.7,
+                color="#26323A",
+                clip_on=False,
+            )
+            if np.isfinite(cpu).any() and np.isfinite(gpu).any():
+                ax_time.plot(levels, cpu, marker="o", markersize=2.2, linewidth=0.9, color="#A54B3D", label="CPU")
+                ax_time.plot(levels, gpu, marker="o", markersize=2.2, linewidth=0.9, color="#2F6F5E", label="GPU")
+                positive = np.concatenate([cpu[cpu > 0.0], gpu[gpu > 0.0]])
+                if positive.size:
+                    ax_time.set_yscale("log")
+                    ax_time.set_ylim(max(float(np.min(positive)) * 0.55, 1.0e-6), float(np.max(positive)) * 1.95)
+            else:
+                ax_time.text(0.5, 0.5, "No timing", ha="center", va="center", transform=ax_time.transAxes, fontsize=5.5)
+
+            if np.isfinite(e2e_speedup).any():
+                ax_speed.plot(levels, e2e_speedup, marker="o", markersize=2.2, linewidth=0.9, color="#375A7F", label="e2e")
+            if np.isfinite(kernel_speedup).any():
+                ax_speed.plot(levels, kernel_speedup, marker="s", markersize=2.0, linewidth=0.8, color="#8A6F2A", label="kernel")
+            positive_speedup = np.concatenate([
+                e2e_speedup[e2e_speedup > 0.0],
+                kernel_speedup[kernel_speedup > 0.0],
+            ])
+            if positive_speedup.size:
+                ax_speed.set_yscale("log")
+                ax_speed.set_ylim(max(float(np.min(positive_speedup)) * 0.55, 1.0e-3), float(np.max(positive_speedup)) * 1.95)
+            ax_speed.axhline(1.0, color="#333333", linewidth=0.55, linestyle="--")
+
+            for ax in (ax_time, ax_speed):
+                ax.grid(True, which="both", color="#DDDDDD", linewidth=0.32)
+                ax.tick_params(labelsize=5.5, length=2.0, pad=1.0)
+                ax.set_xticks(levels)
+                ax.set_xticklabels([f"L{level}" for level in levels])
+
+            if row_index == 0:
+                ax_time.set_title("CPU/GPU e2e time (ms, log)", fontsize=7.2, pad=4)
+                ax_speed.set_title("CPU/GPU speedup (log)", fontsize=7.2, pad=4)
+                ax_time.legend(loc="upper right", frameon=False, ncols=2, fontsize=5.6, handlelength=1.3)
+                ax_speed.legend(loc="upper right", frameon=False, ncols=2, fontsize=5.6, handlelength=1.3)
+            if row_index != operator_count - 1:
+                ax_time.tick_params(axis="x", labelbottom=False)
+                ax_speed.tick_params(axis="x", labelbottom=False)
+
+        axes[-1, 0].set_xlabel("Scale level", fontsize=6.5)
+        axes[-1, 1].set_xlabel("Scale level", fontsize=6.5)
         fig.suptitle(
-            f"{last.module}/{last.operator}: CPU vs GPU by scale",
-            y=0.99,
-            fontsize=11,
+            f"{module}: compact per-operator CPU/GPU curves",
+            y=0.995,
+            fontsize=10,
             fontweight="bold",
         )
-        fig.tight_layout(rect=(0, 0, 1, 0.965))
-        save_figure(fig, operator_dir, safe_operator_stem(last), formats, dpi)
+        fig.tight_layout(rect=(0.13, 0.0, 1.0, 0.975))
+        saved = save_figure(
+            fig,
+            operator_dir,
+            f"module_operator_curves_{safe_module_stem(module)}",
+            formats,
+            dpi,
+        )
+        append_operator_curve_manifest(manifest_rows, module, saved, operator_count)
+
+    write_operator_curve_manifest(operator_dir / "latest_operator_curve_manifest.csv", manifest_rows)
 
 
 def safe_module_stem(module: str) -> str:

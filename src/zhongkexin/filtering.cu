@@ -1361,24 +1361,16 @@ namespace
         const float *input,
         std::size_t axis_size,
         float *partial_sum_y,
-        float *partial_sum_ty,
-        float *partial_sum_t,
-        float *partial_sum_t2)
+        float *partial_sum_ty)
     {
         __shared__ float sum_y[kThreadsPerBlock];
         __shared__ float sum_ty[kThreadsPerBlock];
-        __shared__ float sum_t[kThreadsPerBlock];
-        __shared__ float sum_t2[kThreadsPerBlock];
         const int tid = threadIdx.x;
         const float n = static_cast<float>(axis_size);
         float local_y = 0.0f;
         float local_ty = 0.0f;
-        float local_t = 0.0f;
-        float local_t2 = 0.0f;
         float local_y_c = 0.0f;
         float local_ty_c = 0.0f;
-        float local_t_c = 0.0f;
-        float local_t2_c = 0.0f;
         for (std::size_t index =
                  static_cast<std::size_t>(blockIdx.x) * blockDim.x + static_cast<std::size_t>(tid);
              index < axis_size;
@@ -1388,13 +1380,9 @@ namespace
             const float y = input[index];
             kahan_add(y, local_y, local_y_c);
             kahan_add(t * y, local_ty, local_ty_c);
-            kahan_add(t, local_t, local_t_c);
-            kahan_add(t * t, local_t2, local_t2_c);
         }
         sum_y[tid] = local_y;
         sum_ty[tid] = local_ty;
-        sum_t[tid] = local_t;
-        sum_t2[tid] = local_t2;
         __syncthreads();
         for (int stride = blockDim.x / 2; stride > 0; stride >>= 1)
         {
@@ -1402,8 +1390,6 @@ namespace
             {
                 sum_y[tid] += sum_y[tid + stride];
                 sum_ty[tid] += sum_ty[tid + stride];
-                sum_t[tid] += sum_t[tid + stride];
-                sum_t2[tid] += sum_t2[tid + stride];
             }
             __syncthreads();
         }
@@ -1411,44 +1397,30 @@ namespace
         {
             partial_sum_y[blockIdx.x] = sum_y[0];
             partial_sum_ty[blockIdx.x] = sum_ty[0];
-            partial_sum_t[blockIdx.x] = sum_t[0];
-            partial_sum_t2[blockIdx.x] = sum_t2[0];
         }
     }
 
     __global__ void detrend_linear_coefficients_kernel(
         const float *partial_sum_y,
         const float *partial_sum_ty,
-        const float *partial_sum_t,
-        const float *partial_sum_t2,
         int partial_count,
         std::size_t axis_size,
         float *coefficients)
     {
         __shared__ float sum_y[kThreadsPerBlock];
         __shared__ float sum_ty[kThreadsPerBlock];
-        __shared__ float sum_t[kThreadsPerBlock];
-        __shared__ float sum_t2[kThreadsPerBlock];
         const int tid = threadIdx.x;
         float local_y = 0.0f;
         float local_ty = 0.0f;
-        float local_t = 0.0f;
-        float local_t2 = 0.0f;
         float local_y_c = 0.0f;
         float local_ty_c = 0.0f;
-        float local_t_c = 0.0f;
-        float local_t2_c = 0.0f;
         for (int index = tid; index < partial_count; index += blockDim.x)
         {
             kahan_add(partial_sum_y[index], local_y, local_y_c);
             kahan_add(partial_sum_ty[index], local_ty, local_ty_c);
-            kahan_add(partial_sum_t[index], local_t, local_t_c);
-            kahan_add(partial_sum_t2[index], local_t2, local_t2_c);
         }
         sum_y[tid] = local_y;
         sum_ty[tid] = local_ty;
-        sum_t[tid] = local_t;
-        sum_t2[tid] = local_t2;
         __syncthreads();
         for (int stride = blockDim.x / 2; stride > 0; stride >>= 1)
         {
@@ -1456,17 +1428,17 @@ namespace
             {
                 sum_y[tid] += sum_y[tid + stride];
                 sum_ty[tid] += sum_ty[tid + stride];
-                sum_t[tid] += sum_t[tid + stride];
-                sum_t2[tid] += sum_t2[tid + stride];
             }
             __syncthreads();
         }
         if (tid == 0)
         {
             const float n = static_cast<float>(axis_size);
-            const float det = n * sum_t2[0] - sum_t[0] * sum_t[0];
-            const float slope = (n * sum_ty[0] - sum_t[0] * sum_y[0]) / det;
-            const float intercept = (sum_y[0] - slope * sum_t[0]) / n;
+            const float sum_t = (n + 1.0f) * 0.5f;
+            const float sum_t2 = ((n + 1.0f) * (2.0f * n + 1.0f)) / (6.0f * n);
+            const float det = n * sum_t2 - sum_t * sum_t;
+            const float slope = (n * sum_ty[0] - sum_t * sum_y[0]) / det;
+            const float intercept = (sum_y[0] - slope * sum_t) / n;
             coefficients[0] = slope;
             coefficients[1] = intercept;
         }
@@ -1951,32 +1923,10 @@ namespace
         }
     }
 
-    __global__ void sosfilt_apply_block_prefix_to_tiles_kernel(
+    __global__ void sosfilt_apply_block_prefix_to_samples_kernel(
         const float *tile_prefix_transforms,
         const float *block_initial_states,
-        int tile_count,
-        float *tile_initial_states)
-    {
-        const int tile = blockIdx.x * blockDim.x + threadIdx.x;
-        if (tile >= tile_count)
-        {
-            return;
-        }
-
-        const std::size_t block = static_cast<std::size_t>(tile / kThreadsPerBlock);
-        const float block_z0 = block_initial_states[block * 2];
-        const float block_z1 = block_initial_states[block * 2 + 1];
-        const SosAffineTransform prefix =
-            sos_load_transform(tile_prefix_transforms, static_cast<std::size_t>(tile));
-        tile_initial_states[static_cast<std::size_t>(tile) * 2] =
-            prefix.m00 * block_z0 + prefix.m01 * block_z1 + prefix.v0;
-        tile_initial_states[static_cast<std::size_t>(tile) * 2 + 1] =
-            prefix.m10 * block_z0 + prefix.m11 * block_z1 + prefix.v1;
-    }
-
-    __global__ void sosfilt_apply_tile_initials_kernel(
         const float *sample_prefix_matrices,
-        const float *tile_initial_states,
         std::size_t axis_size,
         float *output)
     {
@@ -1988,8 +1938,12 @@ namespace
         }
 
         const std::size_t tile = index / static_cast<std::size_t>(kThreadsPerBlock);
-        const float z0 = tile_initial_states[tile * 2];
-        const float z1 = tile_initial_states[tile * 2 + 1];
+        const std::size_t block = tile / static_cast<std::size_t>(kThreadsPerBlock);
+        const float block_z0 = block_initial_states[block * 2];
+        const float block_z1 = block_initial_states[block * 2 + 1];
+        const SosAffineTransform prefix = sos_load_transform(tile_prefix_transforms, tile);
+        const float z0 = prefix.m00 * block_z0 + prefix.m01 * block_z1 + prefix.v0;
+        const float z1 = prefix.m10 * block_z0 + prefix.m11 * block_z1 + prefix.v1;
         const std::size_t matrix_in = index * 2;
         output[index] += sample_prefix_matrices[matrix_in + 0] * z0 +
                          sample_prefix_matrices[matrix_in + 1] * z1;
@@ -2638,7 +2592,6 @@ namespace
         ZxGpuRealArray output(x.shape(), false);
         g_workspace.matrix_buffer.reserve(plan.axis_size * 2);
         g_workspace.scalar_buffer_a.reserve(static_cast<std::size_t>(tile_count) * 6);
-        g_workspace.scalar_buffer_b.reserve(static_cast<std::size_t>(tile_count) * 2);
         g_workspace.real_signal_a.resize(static_cast<std::size_t>(tile_count) * 6);
         g_workspace.real_signal_b.resize(static_cast<std::size_t>(tile_scan_block_count) * 6);
         g_workspace.real_signal_c.resize(static_cast<std::size_t>(tile_scan_block_count) * 2);
@@ -2669,19 +2622,13 @@ namespace
                 g_workspace.real_signal_c.data());
             check_kernel_launch("sosfilt_scan_block_transforms_kernel");
 
-            sosfilt_apply_block_prefix_to_tiles_kernel<<<tile_scan_block_count, kThreadsPerBlock>>>(
+            sosfilt_apply_block_prefix_to_samples_kernel<<<tile_count, kThreadsPerBlock>>>(
                 g_workspace.real_signal_a.data(),
                 g_workspace.real_signal_c.data(),
-                tile_count,
-                g_workspace.scalar_buffer_b.get());
-            check_kernel_launch("sosfilt_apply_block_prefix_to_tiles_kernel");
-
-            sosfilt_apply_tile_initials_kernel<<<tile_count, kThreadsPerBlock>>>(
                 g_workspace.matrix_buffer.get(),
-                g_workspace.scalar_buffer_b.get(),
                 plan.axis_size,
                 output.data());
-            check_kernel_launch("sosfilt_apply_tile_initials_kernel");
+            check_kernel_launch("sosfilt_apply_block_prefix_to_samples_kernel");
 
             section_input = output.data();
         }
@@ -4146,26 +4093,20 @@ namespace cusignal
                         plan.axis_size >= 4096)
                     {
                         const int grid_blocks = block_count(plan.axis_size);
-                        g_workspace.reduction_buffer_a.reserve(static_cast<std::size_t>(2 * grid_blocks) + 2);
-                        g_workspace.reduction_buffer_b.reserve(static_cast<std::size_t>(2 * grid_blocks));
+                        g_workspace.reduction_buffer_a.reserve(static_cast<std::size_t>(grid_blocks) + 2);
+                        g_workspace.reduction_buffer_b.reserve(static_cast<std::size_t>(grid_blocks));
                         float *partial_sum_y = g_workspace.reduction_buffer_a.get();
-                        float *partial_sum_t = g_workspace.reduction_buffer_a.get() + grid_blocks;
-                        float *coefficients = g_workspace.reduction_buffer_a.get() + 2 * grid_blocks;
+                        float *coefficients = g_workspace.reduction_buffer_a.get() + grid_blocks;
                         float *partial_sum_ty = g_workspace.reduction_buffer_b.get();
-                        float *partial_sum_t2 = g_workspace.reduction_buffer_b.get() + grid_blocks;
                         detrend_linear_partials_kernel<<<grid_blocks, kThreadsPerBlock>>>(
                             data_device.data(),
                             plan.axis_size,
                             partial_sum_y,
-                            partial_sum_ty,
-                            partial_sum_t,
-                            partial_sum_t2);
+                            partial_sum_ty);
                         check_kernel_launch("detrend_linear_partials_kernel");
                         detrend_linear_coefficients_kernel<<<1, kThreadsPerBlock>>>(
                             partial_sum_y,
                             partial_sum_ty,
-                            partial_sum_t,
-                            partial_sum_t2,
                             grid_blocks,
                             plan.axis_size,
                             coefficients);

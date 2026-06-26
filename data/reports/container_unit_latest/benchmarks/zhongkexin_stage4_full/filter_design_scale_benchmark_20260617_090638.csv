@@ -1,0 +1,53 @@
+run_id,timestamp,scale_level,scale_value,scale_family,module,operator,status,pass,return_code,warmup,repeat,mixed_error,error_class,gpu_e2e_speedup,gpu_kernel_speedup,cpu_median_ms,gpu_e2e_median_ms,gpu_kernel_median_ms,gpu_e2e_min_ms,gpu_e2e_max_ms,shape_note,metrics_json_path,git_commit,gpu_name,error_note
+20260617_090638,2026-06-17 09:06:38,1,129,filter_design_taps,filter_design,kaiser_beta,failed,false,,5,30,,,,,,,,,,,/CETC/data/reports/unit/filter_design/kaiser_beta/latest_metrics.json,,,missing scale mapping for filter_design/kaiser_beta
+20260617_090638,2026-06-17 09:06:38,2,257,filter_design_taps,filter_design,kaiser_beta,failed,false,,5,30,,,,,,,,,,,/CETC/data/reports/unit/filter_design/kaiser_beta/latest_metrics.json,,,missing scale mapping for filter_design/kaiser_beta
+20260617_090638,2026-06-17 09:06:38,3,513,filter_design_taps,filter_design,kaiser_beta,failed,false,,5,30,,,,,,,,,,,/CETC/data/reports/unit/filter_design/kaiser_beta/latest_metrics.json,,,missing scale mapping for filter_design/kaiser_beta
+20260617_090638,2026-06-17 09:06:38,4,1025,filter_design_taps,filter_design,kaiser_beta,failed,false,,5,30,,,,,,,,,,,/CETC/data/reports/unit/filter_design/kaiser_beta/latest_metrics.json,,,missing scale mapping for filter_design/kaiser_beta
+20260617_090638,2026-06-17 09:06:38,5,2049,filter_design_taps,filter_design,kaiser_beta,failed,false,,5,30,,,,,,,,,,,/CETC/data/reports/unit/filter_design/kaiser_beta/latest_metrics.json,,,missing scale mapping for filter_design/kaiser_beta
+20260617_090638,2026-06-17 09:06:38,6,4097,filter_design_taps,filter_design,kaiser_beta,failed,false,,5,30,,,,,,,,,,,/CETC/data/reports/unit/filter_design/kaiser_beta/latest_metrics.json,,,missing scale mapping for filter_design/kaiser_beta
+20260617_090638,2026-06-17 09:06:38,1,129,filter_design_taps,filter_design,kaiser_atten,failed,false,,5,30,,,,,,,,,,,/CETC/data/reports/unit/filter_design/kaiser_atten/latest_metrics.json,,,missing scale mapping for filter_design/kaiser_atten
+20260617_090638,2026-06-17 09:06:38,2,257,filter_design_taps,filter_design,kaiser_atten,failed,false,,5,30,,,,,,,,,,,/CETC/data/reports/unit/filter_design/kaiser_atten/latest_metrics.json,,,missing scale mapping for filter_design/kaiser_atten
+20260617_090638,2026-06-17 09:06:38,3,513,filter_design_taps,filter_design,kaiser_atten,failed,false,,5,30,,,,,,,,,,,/CETC/data/reports/unit/filter_design/kaiser_atten/latest_metrics.json,,,missing scale mapping for filter_design/kaiser_atten
+20260617_090638,2026-06-17 09:06:38,4,1025,filter_design_taps,filter_design,kaiser_atten,failed,false,,5,30,,,,,,,,,,,/CETC/data/reports/unit/filter_design/kaiser_atten/latest_metrics.json,,,missing scale mapping for filter_design/kaiser_atten
+20260617_090638,2026-06-17 09:06:38,5,2049,filter_design_taps,filter_design,kaiser_atten,failed,false,,5,30,,,,,,,,,,,/CETC/data/reports/unit/filter_design/kaiser_atten/latest_metrics.json,,,missing scale mapping for filter_design/kaiser_atten
+20260617_090638,2026-06-17 09:06:38,6,4097,filter_design_taps,filter_design,kaiser_atten,failed,false,,5,30,,,,,,,,,,,/CETC/data/reports/unit/filter_design/kaiser_atten/latest_metrics.json,,,missing scale mapping for filter_design/kaiser_atten
+20260617_090638,2026-06-17 09:06:38,1,129,filter_design_taps,filter_design,cmplx_sort,failed,false,,5,30,,,,,,,,,,,/CETC/data/reports/unit/filter_design/cmplx_sort/latest_metrics.json,,,missing scale mapping for filter_design/cmplx_sort
+20260617_090638,2026-06-17 09:06:38,2,257,filter_design_taps,filter_design,cmplx_sort,failed,false,,5,30,,,,,,,,,,,/CETC/data/reports/unit/filter_design/cmplx_sort/latest_metrics.json,,,missing scale mapping for filter_design/cmplx_sort
+20260617_090638,2026-06-17 09:06:38,3,513,filter_design_taps,filter_design,cmplx_sort,failed,false,,5,30,,,,,,,,,,,/CETC/data/reports/unit/filter_design/cmplx_sort/latest_metrics.json,,,missing scale mapping for filter_design/cmplx_sort
+20260617_090638,2026-06-17 09:06:38,4,1025,filter_design_taps,filter_design,cmplx_sort,failed,false,,5,30,,,,,,,,,,,/CETC/data/reports/unit/filter_design/cmplx_sort/latest_metrics.json,,,missing scale mapping for filter_design/cmplx_sort
+20260617_090638,2026-06-17 09:06:38,5,2049,filter_design_taps,filter_design,cmplx_sort,failed,false,,5,30,,,,,,,,,,,/CETC/data/reports/unit/filter_design/cmplx_sort/latest_metrics.json,,,missing scale mapping for filter_design/cmplx_sort
+20260617_090638,2026-06-17 09:06:38,6,4097,filter_design_taps,filter_design,cmplx_sort,failed,false,,5,30,,,,,,,,,,,/CETC/data/reports/unit/filter_design/cmplx_sort/latest_metrics.json,,,missing scale mapping for filter_design/cmplx_sort
+20260617_090638,2026-06-17 09:06:38,1,129,filter_design_taps,filter_design,firwin,passed,true,0,5,30,5.9922000000000004e-07,performance-bound,0.042896499999999997,0.16420499999999999,0.01265,0.29489599999999999,0.077037999999999995,0.29489599999999999,0.29489599999999999,perf_lowpass_large: numtaps=129,/CETC/data/reports/unit/filter_design/firwin/latest_metrics.json,,ZQ500-Q QUAD-0,
+20260617_090638,2026-06-17 09:06:38,2,257,filter_design_taps,filter_design,firwin,passed,true,0,5,30,3.4183700000000002e-07,performance-bound,0.10462299999999999,0.39991199999999999,0.030890000000000001,0.29525099999999999,0.077242000000000005,0.29525099999999999,0.29525099999999999,perf_lowpass_large: numtaps=257,/CETC/data/reports/unit/filter_design/firwin/latest_metrics.json,,ZQ500-Q QUAD-0,
+20260617_090638,2026-06-17 09:06:38,3,513,filter_design_taps,filter_design,firwin,passed,true,0,5,30,1.37395e-06,performance-bound,0.26158399999999998,1.0139899999999999,0.078620999999999996,0.30055700000000002,0.077535999999999994,0.30055700000000002,0.30055700000000002,perf_lowpass_large: numtaps=513,/CETC/data/reports/unit/filter_design/firwin/latest_metrics.json,,ZQ500-Q QUAD-0,
+20260617_090638,2026-06-17 09:06:38,4,1025,filter_design_taps,filter_design,firwin,passed,true,0,5,30,2.2329100000000001e-06,performance-bound,0.70275200000000004,2.6678899999999999,0.208901,0.29726200000000003,0.078301999999999997,0.29726200000000003,0.29726200000000003,perf_lowpass_large: numtaps=1025,/CETC/data/reports/unit/filter_design/firwin/latest_metrics.json,,ZQ500-Q QUAD-0,
+20260617_090638,2026-06-17 09:06:38,5,2049,filter_design_taps,filter_design,firwin,passed,true,0,5,30,3.8989400000000003e-06,performance-bound,1.91954,7.23041,0.58794800000000003,0.30629600000000001,0.081315999999999999,0.30629600000000001,0.30629600000000001,perf_lowpass_large: numtaps=2049,/CETC/data/reports/unit/filter_design/firwin/latest_metrics.json,,ZQ500-Q QUAD-0,
+20260617_090638,2026-06-17 09:06:38,6,4097,filter_design_taps,filter_design,firwin,passed,true,0,5,30,1.0851300000000001e-05,ok,4.64466,20.575399999999998,1.75813,0.378527,0.085447999999999996,0.378527,0.378527,perf_lowpass_large: numtaps=4097,/CETC/data/reports/unit/filter_design/firwin/latest_metrics.json,,ZQ500-Q QUAD-0,
+20260617_090638,2026-06-17 09:06:38,1,129,filter_design_taps,filter_design,firwin2,passed,true,0,5,30,6.0646300000000002e-05,performance-bound,0.15171399999999999,0.20427100000000001,0.050570499999999997,0.33332699999999998,0.24756600000000001,0.33332699999999998,0.33332699999999998,perf_multiband_large: numtaps=129; nfreqs=259,/CETC/data/reports/unit/filter_design/firwin2/latest_metrics.json,,ZQ500-Q QUAD-0,
+20260617_090638,2026-06-17 09:06:38,2,257,filter_design_taps,filter_design,firwin2,passed,true,0,5,30,0.000188612,performance-bound,0.019220500000000001,0.019579099999999999,0.10831499999999999,5.6354300000000004,5.5321999999999996,5.6354300000000004,5.6354300000000004,perf_multiband_large: numtaps=257; nfreqs=515,/CETC/data/reports/unit/filter_design/firwin2/latest_metrics.json,,ZQ500-Q QUAD-0,
+20260617_090638,2026-06-17 09:06:38,3,513,filter_design_taps,filter_design,firwin2,passed,true,0,5,30,2.90247e-05,performance-bound,0.56931100000000001,1.0283100000000001,0.13764599999999999,0.24177599999999999,0.133856,0.24177599999999999,0.24177599999999999,perf_multiband_large: numtaps=513; nfreqs=1027,/CETC/data/reports/unit/filter_design/firwin2/latest_metrics.json,,ZQ500-Q QUAD-0,
+20260617_090638,2026-06-17 09:06:38,4,1025,filter_design_taps,filter_design,firwin2,passed,true,0,5,30,7.5762599999999999e-05,performance-bound,0.70042800000000005,0.90877600000000003,0.26444099999999998,0.37754199999999999,0.29098600000000002,0.37754199999999999,0.37754199999999999,perf_multiband_large: numtaps=1025; nfreqs=2051,/CETC/data/reports/unit/filter_design/firwin2/latest_metrics.json,,ZQ500-Q QUAD-0,
+20260617_090638,2026-06-17 09:06:38,5,2049,filter_design_taps,filter_design,firwin2,failed,false,1,5,30,,,,,,,,,,perf_multiband_large: numtaps=2049; nfreqs=4099,/CETC/data/reports/unit/filter_design/firwin2/latest_metrics.json,,,"command failed, rc=1; output_tail=limit_sgpr = 4
+[159200][159200][E][HC_CUK] -- ce_wg_limit_vgpr = 1, slice_sg_limit_vgpr = 28, slice_wg_limit_vgpr = 1
+[159200][159200][E][HC_CUK] -- ce_wg_limit_lm = 0, ce_sg_limit_lm = 0, slice_sg_limit = 0
+[159200][159200][E][HC_CUK] The kernel resources needed (one of them must have exceeded the hw limit):
+[159200][159200][E][HC_CUK] -- sgr_num = 25, wgr_num = 0, gpr_num = 32, lm_size = 131136, cr_num = 106
+[159200][159200][E][HC_CUK] -- thd_count_in_wg = 1024
+[159200][159200][E][HC_CUK] -- kernel_info.has_barrier = 1
+[cusignal-test] summary: passed 0/1
+[cusignal-test] failed : filter_design/firwin2
+
+CUDA Driver API error = 0701 from file </LocalRun/jenkins/build/V2_SOFTWARE_master_manylinux_2_28-x86_64/ai_software/dlop/dleol/dleol/src/op/cufft/cufft_npow2/cufft_npow2_op.cc>, line 152.
+ | metrics not updated"
+20260617_090638,2026-06-17 09:06:38,6,4097,filter_design_taps,filter_design,firwin2,failed,false,1,5,30,,,,,,,,,,perf_multiband_large: numtaps=4097; nfreqs=8195,/CETC/data/reports/unit/filter_design/firwin2/latest_metrics.json,,,"command failed, rc=1; output_tail=limit_sgpr = 4
+[159813][159813][E][HC_CUK] -- ce_wg_limit_vgpr = 1, slice_sg_limit_vgpr = 28, slice_wg_limit_vgpr = 1
+[159813][159813][E][HC_CUK] -- ce_wg_limit_lm = 0, ce_sg_limit_lm = 0, slice_sg_limit = 0
+[159813][159813][E][HC_CUK] The kernel resources needed (one of them must have exceeded the hw limit):
+[159813][159813][E][HC_CUK] -- sgr_num = 29, wgr_num = 0, gpr_num = 32, lm_size = 262208, cr_num = 110
+[159813][159813][E][HC_CUK] -- thd_count_in_wg = 1024
+[159813][159813][E][HC_CUK] -- kernel_info.has_barrier = 1
+[cusignal-test] summary: passed 0/1
+[cusignal-test] failed : filter_design/firwin2
+
+CUDA Driver API error = 0701 from file </LocalRun/jenkins/build/V2_SOFTWARE_master_manylinux_2_28-x86_64/ai_software/dlop/dleol/dleol/src/op/cufft/cufft_npow2/cufft_npow2_op.cc>, line 152.
+ | metrics not updated"

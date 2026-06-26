@@ -159,18 +159,11 @@ require_command() {
 }
 
 load_zhongkexin_sdk_env() {
-  if command -v dlcc >/dev/null 2>&1; then
-    return 0
-  fi
-  if [[ -n "${ZHONGKEXIN_CXX_COMPILER:-}" && -x "${ZHONGKEXIN_CXX_COMPILER}" ]]; then
-    return 0
-  fi
   if [[ -f /zq500/sdk/env.sh ]]; then
     set +u
     # shellcheck source=/dev/null
     source /zq500/sdk/env.sh ""
     set -u
-    return 0
   fi
 }
 

@@ -1,0 +1,4 @@
+case_id,backend,metric_kind,samples,warmup,repeat,mean_ms,median_ms,p95_ms,min_ms,max_ms,std_ms,max_abs_error,max_rel_error,rmse,l2_error,exact_match
+nbar5_sll35,gpu_vs_cpu,error,12,,,,,,,,,5.9604644775390625e-08,1.1631954066615435e-07,2.4333495218797907e-08,8.4293695579162886e-08,false
+nbar5_sll35,cpu_vs_ref,error,12,,,,,,,,,1.1920928955078125e-07,2.8604816293409385e-07,8.3632556879820186e-08,2.897116928579635e-07,false
+nbar5_sll35,gpu_vs_ref,error,12,,,,,,,,,1.1920928955078125e-07,2.8604816293409385e-07,8.7100659129646374e-08,3.0172552101248584e-07,false

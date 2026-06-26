@@ -245,6 +245,56 @@ namespace
         cudaEvent_t stop_ = nullptr;
     };
 
+    __device__ float general_cosine_value_fast(
+        int index,
+        int size,
+        const float *coefficients,
+        int coefficient_count)
+    {
+        constexpr float kPiF = 3.14159265358979323846f;
+        if (size <= 1)
+        {
+            return 1.0f;
+        }
+
+        const float delta = (2.0f * kPiF) / static_cast<float>(size - 1);
+        const float angle = -kPiF + delta * static_cast<float>(index);
+        float value = 0.0f;
+        for (int coefficient_index = 0; coefficient_index < coefficient_count; ++coefficient_index)
+        {
+            value += coefficients[coefficient_index] *
+                     cosf(static_cast<float>(coefficient_index) * angle);
+        }
+        return value;
+    }
+
+    __device__ float taylor_value_fast(
+        int index,
+        int size,
+        int nbar,
+        const float *coefficients,
+        int coefficient_count,
+        float scale)
+    {
+        constexpr float kPiF = 3.14159265358979323846f;
+        const float angle =
+            (2.0f * kPiF / static_cast<float>(size)) *
+            (static_cast<float>(index) - static_cast<float>(size) * 0.5f + 0.5f);
+
+        float value = 1.0f;
+        for (int coefficient_index = 0; coefficient_index < coefficient_count; ++coefficient_index)
+        {
+            const int harmonic = coefficient_index + 1;
+            if (harmonic >= nbar)
+            {
+                break;
+            }
+            value += 2.0f * coefficients[coefficient_index] *
+                     cosf(angle * static_cast<float>(harmonic));
+        }
+        return value * scale;
+    }
+
     __device__ float compute_window_value(
         detail::KernelOp op,
         int index,
@@ -261,7 +311,7 @@ namespace
         case detail::KernelOp::kBoxcar:
             return 1.0;
         case detail::KernelOp::kGeneralCosine:
-            return detail::general_cosine_value(index, size, coefficients, coefficient_count);
+            return general_cosine_value_fast(index, size, coefficients, coefficient_count);
         case detail::KernelOp::kTriang:
             return detail::triang_value(index, size);
         case detail::KernelOp::kBartlett:
@@ -285,7 +335,7 @@ namespace
         case detail::KernelOp::kExponential:
             return detail::exponential_value(index, parameter0, parameter1);
         case detail::KernelOp::kTaylor:
-            return detail::taylor_value(
+            return taylor_value_fast(
                 index,
                 size,
                 int_parameter,
@@ -380,6 +430,235 @@ namespace
             return;
         }
         output[index] = source[index];
+    }
+
+    __global__ void fill_triang_fast_kernel(
+        int output_size,
+        int effective_size,
+        float *output)
+    {
+        const int index = static_cast<int>(blockIdx.x) * blockDim.x + threadIdx.x;
+        if (index >= output_size)
+        {
+            return;
+        }
+
+        const int midpoint = effective_size / 2;
+        const bool odd = (effective_size & 1) != 0;
+        const int n = index < midpoint ? index + 1 : effective_size - index;
+        if (odd)
+        {
+            output[static_cast<std::size_t>(index)] =
+                2.0f * static_cast<float>(n) / (static_cast<float>(effective_size) + 1.0f);
+        }
+        else
+        {
+            output[static_cast<std::size_t>(index)] =
+                (2.0f * static_cast<float>(n) - 1.0f) / static_cast<float>(effective_size);
+        }
+    }
+
+    __global__ void fill_parzen_fast_kernel(
+        int output_size,
+        int effective_size,
+        float *output)
+    {
+        const int index = static_cast<int>(blockIdx.x) * blockDim.x + threadIdx.x;
+        if (index >= output_size)
+        {
+            return;
+        }
+        if (effective_size <= 1)
+        {
+            output[static_cast<std::size_t>(index)] = 1.0f;
+            return;
+        }
+
+        const float half = 0.5f * static_cast<float>(effective_size);
+        const float n = fabsf(
+            static_cast<float>(index) - 0.5f * static_cast<float>(effective_size - 1));
+        const float ratio = n / half;
+        float value = 0.0f;
+        if (ratio <= 0.5f)
+        {
+            value = 1.0f - 6.0f * ratio * ratio + 6.0f * ratio * ratio * ratio;
+        }
+        else if (ratio <= 1.0f)
+        {
+            const float inner = 1.0f - ratio;
+            value = 2.0f * inner * inner * inner;
+        }
+        output[static_cast<std::size_t>(index)] = value;
+    }
+
+    __global__ void fill_general_cosine_two_coeff_fast_kernel(
+        int output_size,
+        int effective_size,
+        float coefficient0,
+        float coefficient1,
+        float *output)
+    {
+        const int index = static_cast<int>(blockIdx.x) * blockDim.x + threadIdx.x;
+        if (index >= output_size)
+        {
+            return;
+        }
+        if (effective_size <= 1)
+        {
+            output[static_cast<std::size_t>(index)] = 1.0f;
+            return;
+        }
+
+        constexpr float kPiF = 3.14159265358979323846f;
+        const float delta = (2.0f * kPiF) / static_cast<float>(effective_size - 1);
+        const float angle = -kPiF + delta * static_cast<float>(index);
+        output[static_cast<std::size_t>(index)] = coefficient0 + coefficient1 * cosf(angle);
+    }
+
+    __global__ void fill_general_cosine_fixed_coeff_fast_kernel(
+        int output_size,
+        int effective_size,
+        int coefficient_count,
+        float coefficient0,
+        float coefficient1,
+        float coefficient2,
+        float coefficient3,
+        float coefficient4,
+        float *output)
+    {
+        const int index = static_cast<int>(blockIdx.x) * blockDim.x + threadIdx.x;
+        if (index >= output_size)
+        {
+            return;
+        }
+        if (effective_size <= 1)
+        {
+            output[static_cast<std::size_t>(index)] = 1.0f;
+            return;
+        }
+
+        constexpr float kPiF = 3.14159265358979323846f;
+        const float delta = (2.0f * kPiF) / static_cast<float>(effective_size - 1);
+        const float angle = -kPiF + delta * static_cast<float>(index);
+        float value = coefficient0;
+        if (coefficient_count > 1)
+        {
+            value += coefficient1 * cosf(angle);
+        }
+        if (coefficient_count > 2)
+        {
+            value += coefficient2 * cosf(2.0f * angle);
+        }
+        if (coefficient_count > 3)
+        {
+            value += coefficient3 * cosf(3.0f * angle);
+        }
+        if (coefficient_count > 4)
+        {
+            value += coefficient4 * cosf(4.0f * angle);
+        }
+        output[static_cast<std::size_t>(index)] = value;
+    }
+
+    __global__ void fill_general_gaussian_fast_kernel(
+        int output_size,
+        int effective_size,
+        float sig,
+        int power_mode,
+        float *output)
+    {
+        const int index = static_cast<int>(blockIdx.x) * blockDim.x + threadIdx.x;
+        if (index >= output_size)
+        {
+            return;
+        }
+
+        const float center = 0.5f * static_cast<float>(effective_size - 1);
+        const float x = fabsf((static_cast<float>(index) - center) / sig);
+        const float x2 = x * x;
+        float powered = x2;
+        switch (power_mode)
+        {
+        case 1:
+            powered = x;
+            break;
+        case 2:
+            powered = x2;
+            break;
+        case 3:
+            powered = x2 * x;
+            break;
+        case 35:
+            powered = x2 * x * sqrtf(x);
+            break;
+        case 4:
+            powered = x2 * x2;
+            break;
+        default:
+            break;
+        }
+        output[static_cast<std::size_t>(index)] = expf(-0.5f * powered);
+    }
+
+    __global__ void fill_taylor_fixed_coeff_fast_kernel(
+        int output_size,
+        int effective_size,
+        int coefficient_count,
+        float coefficient0,
+        float coefficient1,
+        float coefficient2,
+        float coefficient3,
+        float coefficient4,
+        float coefficient5,
+        float coefficient6,
+        float coefficient7,
+        float scale,
+        float *output)
+    {
+        const int index = static_cast<int>(blockIdx.x) * blockDim.x + threadIdx.x;
+        if (index >= output_size)
+        {
+            return;
+        }
+
+        constexpr float kPiF = 3.14159265358979323846f;
+        const float angle =
+            (2.0f * kPiF / static_cast<float>(effective_size)) *
+            (static_cast<float>(index) - static_cast<float>(effective_size) * 0.5f + 0.5f);
+        float value = 1.0f;
+        if (coefficient_count > 0)
+        {
+            value += 2.0f * coefficient0 * cosf(angle);
+        }
+        if (coefficient_count > 1)
+        {
+            value += 2.0f * coefficient1 * cosf(2.0f * angle);
+        }
+        if (coefficient_count > 2)
+        {
+            value += 2.0f * coefficient2 * cosf(3.0f * angle);
+        }
+        if (coefficient_count > 3)
+        {
+            value += 2.0f * coefficient3 * cosf(4.0f * angle);
+        }
+        if (coefficient_count > 4)
+        {
+            value += 2.0f * coefficient4 * cosf(5.0f * angle);
+        }
+        if (coefficient_count > 5)
+        {
+            value += 2.0f * coefficient5 * cosf(6.0f * angle);
+        }
+        if (coefficient_count > 6)
+        {
+            value += 2.0f * coefficient6 * cosf(7.0f * angle);
+        }
+        if (coefficient_count > 7)
+        {
+            value += 2.0f * coefficient7 * cosf(8.0f * angle);
+        }
+        output[static_cast<std::size_t>(index)] = value * scale;
     }
 
     __global__ void build_chebwin_frequency_response_kernel(
@@ -634,6 +913,150 @@ namespace
             int_parameter);
     }
 
+    ZxGpuRealSignal triang_fast(int size, bool sym)
+    {
+        if (detail::len_guard(size))
+        {
+            return make_trivial_window_signal(size);
+        }
+
+        const detail::ExtendedLength extended = detail::extend(size, sym);
+        ZxGpuRealSignal result(static_cast<std::size_t>(size), false);
+
+        ScopedZxGpuEvents events;
+        g_last_kernel_ms = static_cast<float>(events.measure([&]() {
+            fill_triang_fast_kernel<<<block_count(static_cast<std::size_t>(size)), kThreadsPerBlock>>>(
+                size,
+                extended.size,
+                result.data());
+            check_kernel_launch("fill_triang_fast_kernel");
+        }));
+        return result;
+    }
+
+    ZxGpuRealSignal parzen_fast(int size, bool sym)
+    {
+        if (detail::len_guard(size))
+        {
+            return make_trivial_window_signal(size);
+        }
+
+        const detail::ExtendedLength extended = detail::extend(size, sym);
+        ZxGpuRealSignal result(static_cast<std::size_t>(size), false);
+
+        ScopedZxGpuEvents events;
+        g_last_kernel_ms = static_cast<float>(events.measure([&]() {
+            fill_parzen_fast_kernel<<<block_count(static_cast<std::size_t>(size)), kThreadsPerBlock>>>(
+                size,
+                extended.size,
+                result.data());
+            check_kernel_launch("fill_parzen_fast_kernel");
+        }));
+        return result;
+    }
+
+    ZxGpuRealSignal general_cosine_two_coeff_fast(
+        int size,
+        bool sym,
+        float coefficient0,
+        float coefficient1)
+    {
+        if (detail::len_guard(size))
+        {
+            return make_trivial_window_signal(size);
+        }
+
+        const detail::ExtendedLength extended = detail::extend(size, sym);
+        ZxGpuRealSignal result(static_cast<std::size_t>(size), false);
+
+        ScopedZxGpuEvents events;
+        g_last_kernel_ms = static_cast<float>(events.measure([&]() {
+            fill_general_cosine_two_coeff_fast_kernel<<<
+                block_count(static_cast<std::size_t>(size)),
+                kThreadsPerBlock>>>(
+                size,
+                extended.size,
+                coefficient0,
+                coefficient1,
+                result.data());
+            check_kernel_launch("fill_general_cosine_two_coeff_fast_kernel");
+        }));
+        return result;
+    }
+
+    ZxGpuRealSignal general_cosine_fixed_coeff_fast(
+        int size,
+        bool sym,
+        const RealSignal &coefficients)
+    {
+        const std::size_t coefficient_count = coefficients.size();
+        if (coefficient_count == 0 || coefficient_count > 5)
+        {
+            return launch_window_kernel_impl(
+                detail::KernelOp::kGeneralCosine,
+                size,
+                sym,
+                &coefficients,
+                nullptr,
+                0);
+        }
+        if (detail::len_guard(size))
+        {
+            return make_trivial_window_signal(size);
+        }
+
+        const detail::ExtendedLength extended = detail::extend(size, sym);
+        ZxGpuRealSignal result(static_cast<std::size_t>(size), false);
+        const float coefficient0 = coefficients[0];
+        const float coefficient1 = coefficient_count > 1 ? coefficients[1] : 0.0f;
+        const float coefficient2 = coefficient_count > 2 ? coefficients[2] : 0.0f;
+        const float coefficient3 = coefficient_count > 3 ? coefficients[3] : 0.0f;
+        const float coefficient4 = coefficient_count > 4 ? coefficients[4] : 0.0f;
+
+        ScopedZxGpuEvents events;
+        g_last_kernel_ms = static_cast<float>(events.measure([&]() {
+            fill_general_cosine_fixed_coeff_fast_kernel<<<
+                block_count(static_cast<std::size_t>(size)),
+                kThreadsPerBlock>>>(
+                size,
+                extended.size,
+                static_cast<int>(coefficient_count),
+                coefficient0,
+                coefficient1,
+                coefficient2,
+                coefficient3,
+                coefficient4,
+                result.data());
+            check_kernel_launch("fill_general_cosine_fixed_coeff_fast_kernel");
+        }));
+        return result;
+    }
+
+    int general_gaussian_power_mode(float p)
+    {
+        if (p == 0.5f)
+        {
+            return 1;
+        }
+        if (p == 1.0f)
+        {
+            return 2;
+        }
+        if (p == 1.5f)
+        {
+            return 3;
+        }
+        if (p == 1.75f)
+        {
+            return 35;
+        }
+        if (p == 2.0f)
+        {
+            return 4;
+        }
+        return 0;
+    }
+
     ZxGpuRealSignal kaiser_with_symmetric_kernel(int size, float beta, bool sym)
     {
         if (detail::len_guard(size))
@@ -707,6 +1130,102 @@ namespace
             parameter1,
             parameter2,
             int_parameter);
+    }
+
+    ZxGpuRealSignal general_gaussian_fast(int size, float p, float sig, bool sym)
+    {
+        const int power_mode = general_gaussian_power_mode(p);
+        if (power_mode == 0)
+        {
+            return launch_window_kernel(
+                detail::KernelOp::kGeneralGaussian,
+                size,
+                sym,
+                p,
+                sig);
+        }
+        if (detail::len_guard(size))
+        {
+            return make_trivial_window_signal(size);
+        }
+
+        const detail::ExtendedLength extended = detail::extend(size, sym);
+        ZxGpuRealSignal result(static_cast<std::size_t>(size), false);
+
+        ScopedZxGpuEvents events;
+        g_last_kernel_ms = static_cast<float>(events.measure([&]() {
+            fill_general_gaussian_fast_kernel<<<
+                block_count(static_cast<std::size_t>(size)),
+                kThreadsPerBlock>>>(
+                size,
+                extended.size,
+                sig,
+                power_mode,
+                result.data());
+            check_kernel_launch("fill_general_gaussian_fast_kernel");
+        }));
+        return result;
+    }
+
+    ZxGpuRealSignal taylor_fixed_coeff_fast(
+        int size,
+        bool sym,
+        const RealSignal &coefficients,
+        float scale,
+        int nbar)
+    {
+        const std::size_t coefficient_count = coefficients.size();
+        if (coefficient_count > 8)
+        {
+            return launch_window_kernel_impl(
+                detail::KernelOp::kTaylor,
+                size,
+                sym,
+                &coefficients,
+                nullptr,
+                0,
+                scale,
+                0.0f,
+                0.0f,
+                nbar);
+        }
+        if (detail::len_guard(size))
+        {
+            return make_trivial_window_signal(size);
+        }
+
+        const detail::ExtendedLength extended = detail::extend(size, sym);
+        ZxGpuRealSignal result(static_cast<std::size_t>(size), false);
+        const float coefficient0 = coefficient_count > 0 ? coefficients[0] : 0.0f;
+        const float coefficient1 = coefficient_count > 1 ? coefficients[1] : 0.0f;
+        const float coefficient2 = coefficient_count > 2 ? coefficients[2] : 0.0f;
+        const float coefficient3 = coefficient_count > 3 ? coefficients[3] : 0.0f;
+        const float coefficient4 = coefficient_count > 4 ? coefficients[4] : 0.0f;
+        const float coefficient5 = coefficient_count > 5 ? coefficients[5] : 0.0f;
+        const float coefficient6 = coefficient_count > 6 ? coefficients[6] : 0.0f;
+        const float coefficient7 = coefficient_count > 7 ? coefficients[7] : 0.0f;
+
+        ScopedZxGpuEvents events;
+        g_last_kernel_ms = static_cast<float>(events.measure([&]() {
+            fill_taylor_fixed_coeff_fast_kernel<<<
+                block_count(static_cast<std::size_t>(size)),
+                kThreadsPerBlock>>>(
+                size,
+                extended.size,
+                static_cast<int>(coefficient_count),
+                coefficient0,
+                coefficient1,
+                coefficient2,
+                coefficient3,
+                coefficient4,
+                coefficient5,
+                coefficient6,
+                coefficient7,
+                scale,
+                result.data());
+            check_kernel_launch("fill_taylor_fixed_coeff_fast_kernel");
+        }));
+        return result;
     }
 
     ZxGpuRealSignal chebwin_with_cufft(int size, float at, bool sym)
@@ -1086,11 +1605,15 @@ namespace cusignal
 
                 const core::RealSignal &coefficients = std::get<core::RealSignal>(a);
                 detail::ensure_non_empty_coefficients(coefficients);
-                return launch_window_kernel(
-                    detail::KernelOp::kGeneralCosine,
-                    size,
-                    sym,
-                    coefficients);
+                if (coefficients.size() == 2)
+                {
+                    return general_cosine_two_coeff_fast(
+                        size,
+                        sym,
+                        coefficients[0],
+                        coefficients[1]);
+                }
+                return general_cosine_fixed_coeff_fast(size, sym, coefficients);
             }
 
             core::ZxGpuRealSignal general_gaussian(int size, float p, float sig, bool sym)
@@ -1103,17 +1626,12 @@ namespace cusignal
                 {
                     throw std::invalid_argument("sig must be > 0");
                 }
-                return launch_window_kernel(
-                    detail::KernelOp::kGeneralGaussian,
-                    size,
-                    sym,
-                    p,
-                    sig);
+                return general_gaussian_fast(size, p, sig, sym);
             }
 
             core::ZxGpuRealSignal general_hamming(int size, float alpha, bool sym)
             {
-                return general_cosine(size, core::RealSignal{alpha, 1.0f - alpha}, sym);
+                return general_cosine_two_coeff_fast(size, sym, alpha, 1.0f - alpha);
             }
 
             core::ZxGpuRealSignal hamming(int size, bool sym)
@@ -1123,7 +1641,7 @@ namespace cusignal
 
             core::ZxGpuRealSignal hann(int size, bool sym)
             {
-                return general_hamming(size, 0.5, sym);
+                return general_hamming(size, 0.5f, sym);
             }
 
             core::ZxGpuRealSignal kaiser(int size, float beta, bool sym)
@@ -1141,7 +1659,7 @@ namespace cusignal
 
             core::ZxGpuRealSignal parzen(int size, bool sym)
             {
-                return launch_window_kernel(detail::KernelOp::kParzen, size, sym);
+                return parzen_fast(size, sym);
             }
 
             core::ZxGpuRealSignal taylor(int size, int nbar, float sll, bool norm, bool sym)
@@ -1153,20 +1671,12 @@ namespace cusignal
                     nbar,
                     coefficients,
                     norm);
-                return launch_window_kernel(
-                    detail::KernelOp::kTaylor,
-                    size,
-                    sym,
-                    coefficients,
-                    scale,
-                    0.0,
-                    0.0,
-                    nbar);
+                return taylor_fixed_coeff_fast(size, sym, coefficients, scale, nbar);
             }
 
             core::ZxGpuRealSignal triang(int size, bool sym)
             {
-                return launch_window_kernel(detail::KernelOp::kTriang, size, sym);
+                return triang_fast(size, sym);
             }
 
             core::ZxGpuRealSignal tukey(int size, float alpha, bool sym)

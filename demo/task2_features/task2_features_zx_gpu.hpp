@@ -9,6 +9,10 @@ namespace cusignal_demo::task2_features
     cusignal::core::ZxGpuComplexArray combine_complex_zx_gpu(
         const cusignal::core::ZxGpuRealArray &real_part,
         const cusignal::core::ZxGpuRealArray &imag_part);
+    cusignal::core::ZxGpuComplexArray complex_firfilter_zx_gpu(
+        const cusignal::core::ZxGpuComplexArray &input,
+        const cusignal::core::ZxGpuRealSignal &taps,
+        cusignal::core::ZxGpuRealArray &real_output);
 
     cusignal::core::ZxGpuComplexArray extract_row_complex_zx_gpu(
         const cusignal::core::ZxGpuComplexArray &input,
@@ -29,7 +33,14 @@ namespace cusignal_demo::task2_features
         const cusignal::core::ZxGpuRealArray &input,
         std::size_t target_len);
     cusignal::core::ZxGpuRealArray normalize_nonnegative_zx_gpu(const cusignal::core::ZxGpuRealArray &input);
+    cusignal::core::ZxGpuRealArray normalize_rows_nonnegative_zx_gpu(const cusignal::core::ZxGpuRealArray &input);
     cusignal::core::ZxGpuRealArray batched_demod_score_zx_gpu(const cusignal::core::ZxGpuComplexArray &input);
+    cusignal::core::ZxGpuRealArray batched_correlate_score_zx_gpu(
+        const cusignal::core::ZxGpuComplexArray &frames,
+        const cusignal::core::ZxGpuComplexArray &templ);
+    cusignal::core::ZxGpuRealArray extract_frame_real_3d_zx_gpu(
+        const cusignal::core::ZxGpuRealArray &input,
+        int frame_index);
     cusignal::core::ZxGpuRealArray spectrogram_band_score_zx_gpu(
         const cusignal::core::ZxGpuRealArray &values,
         const cusignal::core::ZxGpuRealSignal &freqs,
@@ -38,6 +49,26 @@ namespace cusignal_demo::task2_features
         float band_low,
         float band_high,
         float fs);
+    cusignal::core::ZxGpuRealArray batched_spectrogram_band_score_zx_gpu(
+        const cusignal::core::ZxGpuRealArray &values,
+        const cusignal::core::ZxGpuRealSignal &freqs,
+        const cusignal::core::ZxGpuRealSignal &times,
+        int sample_count,
+        float band_low,
+        float band_high,
+        float fs);
+    cusignal::core::ZxGpuRealArray direct_spectrogram_band_score_zx_gpu(
+        const cusignal::core::ZxGpuRealArray &frames,
+        const cusignal::core::ZxGpuRealSignal &window,
+        int nperseg,
+        int noverlap,
+        int nfft,
+        float band_low,
+        float band_high,
+        float fs);
+    cusignal::core::ZxGpuRealArray batched_cwt_max_score_zx_gpu(
+        const cusignal::core::ZxGpuRealArray &frames,
+        const cusignal::core::RealSignal &widths);
     cusignal::core::ZxGpuRealArray cwt_max_score_zx_gpu(const cusignal::core::ZxGpuComplexArray &values);
     cusignal::core::ZxGpuRealArray weighted_sum_zx_gpu(
         const cusignal::core::ZxGpuRealArray &corr_score,

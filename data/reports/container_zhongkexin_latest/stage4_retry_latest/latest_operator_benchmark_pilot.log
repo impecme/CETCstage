@@ -1,0 +1,1240 @@
+-- Using Zhongkexin CUDA headers without CUDAToolkit cudart target: /zq500/sdk/include
+-- CUSIGNAL_PLATFORM=ZHONGKEXIN
+-- Using Zhongkexin CUDA runtime compatibility library: /zq500/sdk/lib/libcurt.so
+-- Using Zhongkexin cuFFT compatibility library: /zq500/sdk/lib/libdlfft.so
+-- Using Zhongkexin cuBLAS compatibility library: /zq500/sdk/lib/libdlblas.so
+-- Using Zhongkexin cuSOLVER compatibility library: /zq500/sdk/lib/libdlsolver.so
+-- Using cuFFT compatibility library: /zq500/sdk/lib/libdlfft.so
+-- Using cuBLAS compatibility library: /zq500/sdk/lib/libdlblas.so
+-- Using cuSOLVER compatibility library: /zq500/sdk/lib/libdlsolver.so
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /CETC/build-zx
+[  0%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/bsplines.cpp.o
+[  6%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/correlate.cpp.o
+[ 13%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/estimation.cpp.o
+[ 13%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/demod.cpp.o
+[ 13%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/radartools.cpp.o
+[ 13%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/filter_design.cpp.o
+[ 13%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/peak_finding.cpp.o
+[ 20%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/filtering.cpp.o
+[ 26%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/wavelets.cpp.o
+[ 33%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/spectral.cpp.o
+[ 33%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/waveforms.cpp.o
+[ 33%] Building CXX object CMakeFiles/cusignal_cpu.dir/src/cpu/windows.cpp.o
+[ 40%] Linking CXX static library libcusignal_cpu.a
+[ 40%] Built target cusignal_cpu
+[ 40%] Building CXX object CMakeFiles/cusignal_cuda.dir/src/cuda/bsplines.cu.o
+[ 46%] Building CXX object CMakeFiles/cusignal_cuda.dir/src/cuda/correlate.cu.o
+[ 53%] Building CXX object CMakeFiles/cusignal_cuda.dir/src/cuda/peak_finding.cu.o
+[ 53%] Building CXX object CMakeFiles/cusignal_cuda.dir/src/cuda/demod.cu.o
+[ 60%] Building CXX object CMakeFiles/cusignal_cuda.dir/src/cuda/filter_design.cu.o
+[ 66%] Building CXX object CMakeFiles/cusignal_cuda.dir/src/cuda/estimation.cu.o
+[ 66%] Building CXX object CMakeFiles/cusignal_cuda.dir/src/cuda/wavelets.cu.o
+[ 66%] Building CXX object CMakeFiles/cusignal_cuda.dir/src/cuda/filtering.cu.o
+[ 66%] Building CXX object CMakeFiles/cusignal_cuda.dir/src/cuda/radartools.cu.o
+[ 66%] Building CXX object CMakeFiles/cusignal_cuda.dir/src/cuda/windows.cu.o
+[ 73%] Building CXX object CMakeFiles/cusignal_cuda.dir/src/cuda/waveforms.cu.o
+[ 73%] Building CXX object CMakeFiles/cusignal_cuda.dir/src/cuda/spectral.cu.o
+[ 80%] Building CXX object CMakeFiles/cusignal_cuda.dir/demo/task1_radar/task1_radar_cuda.cu.o
+[ 80%] Building CXX object CMakeFiles/cusignal_cuda.dir/demo/task2_features/task2_features_cuda.cu.o
+[ 86%] Linking CXX static library libcusignal_cuda.a
+Indexing Zhongkexin CUDA static library
+[ 86%] Built target cusignal_cuda
+[ 86%] Building CXX object tests/unit/correlate/CMakeFiles/correlate_test_support.dir/correlate_test_support.cu.o
+/CETC/tests/unit/correlate/correlate_test_support.cu:663:53: warning: 'cudaDeviceSynchronize' is deprecated: Use of cudaDeviceSynchronize from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING. [-Wdeprecated-declarations]
+                cusignal::core::throw_on_cuda_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
+                                                    ^
+/zq500/sdk/include/cuda_device_runtime_api.h:142:38: note: 'cudaDeviceSynchronize' has been explicitly marked deprecated here
+extern __device__ __cudart_builtin__ __CDPRT_DEPRECATED(cudaDeviceSynchronize) cudaError_t CUDARTAPI cudaDeviceSynchronize(void);
+                                     ^
+/zq500/sdk/include/cuda_device_runtime_api.h:120:40: note: expanded from macro '__CDPRT_DEPRECATED'
+# define __CDPRT_DEPRECATED(func_name) __DEPRECATED__("Use of "#func_name" from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING.")
+                                       ^
+/zq500/sdk/include/cuda_device_runtime_api.h:116:45: note: expanded from macro '__DEPRECATED__'
+# define __DEPRECATED__(msg) __attribute__((deprecated(msg)))
+                                            ^
+/CETC/tests/unit/correlate/correlate_test_support.cu:765:53: warning: 'cudaDeviceSynchronize' is deprecated: Use of cudaDeviceSynchronize from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING. [-Wdeprecated-declarations]
+                cusignal::core::throw_on_cuda_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
+                                                    ^
+/zq500/sdk/include/cuda_device_runtime_api.h:142:38: note: 'cudaDeviceSynchronize' has been explicitly marked deprecated here
+extern __device__ __cudart_builtin__ __CDPRT_DEPRECATED(cudaDeviceSynchronize) cudaError_t CUDARTAPI cudaDeviceSynchronize(void);
+                                     ^
+/zq500/sdk/include/cuda_device_runtime_api.h:120:40: note: expanded from macro '__CDPRT_DEPRECATED'
+# define __CDPRT_DEPRECATED(func_name) __DEPRECATED__("Use of "#func_name" from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING.")
+                                       ^
+/zq500/sdk/include/cuda_device_runtime_api.h:116:45: note: expanded from macro '__DEPRECATED__'
+# define __DEPRECATED__(msg) __attribute__((deprecated(msg)))
+                                            ^
+/CETC/tests/unit/correlate/correlate_test_support.cu:825:53: warning: 'cudaDeviceSynchronize' is deprecated: Use of cudaDeviceSynchronize from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING. [-Wdeprecated-declarations]
+                cusignal::core::throw_on_cuda_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
+                                                    ^
+/zq500/sdk/include/cuda_device_runtime_api.h:142:38: note: 'cudaDeviceSynchronize' has been explicitly marked deprecated here
+extern __device__ __cudart_builtin__ __CDPRT_DEPRECATED(cudaDeviceSynchronize) cudaError_t CUDARTAPI cudaDeviceSynchronize(void);
+                                     ^
+/zq500/sdk/include/cuda_device_runtime_api.h:120:40: note: expanded from macro '__CDPRT_DEPRECATED'
+# define __CDPRT_DEPRECATED(func_name) __DEPRECATED__("Use of "#func_name" from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING.")
+                                       ^
+/zq500/sdk/include/cuda_device_runtime_api.h:116:45: note: expanded from macro '__DEPRECATED__'
+# define __DEPRECATED__(msg) __attribute__((deprecated(msg)))
+                                            ^
+3 warnings generated when compiling for dlgput64r1.
+[ 93%] Linking CXX static library libcorrelate_test_support.a
+[ 93%] Built target correlate_test_support
+[ 93%] Building CXX object tests/unit/correlate/CMakeFiles/correlate_test_correlation_lags.dir/test_correlation_lags.cpp.o
+[100%] Linking CXX executable correlate_test_correlation_lags
+[100%] Built target correlate_test_correlation_lags
+Consolidate compiler generated dependencies of target cusignal_cpu
+[ 40%] Built target cusignal_cpu
+Consolidate compiler generated dependencies of target cusignal_cuda
+[ 86%] Built target cusignal_cuda
+[ 86%] Building CXX object tests/unit/filter_design/CMakeFiles/filter_design_test_support.dir/filter_design_test_support.cu.o
+/CETC/tests/unit/filter_design/filter_design_test_support.cu:1766:94: warning: 'cudaDeviceSynchronize' is deprecated: Use of cudaDeviceSynchronize from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING. [-Wdeprecated-declarations]
+                                                         cusignal::core::throw_on_cuda_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
+                                                                                             ^
+/zq500/sdk/include/cuda_device_runtime_api.h:142:38: note: 'cudaDeviceSynchronize' has been explicitly marked deprecated here
+extern __device__ __cudart_builtin__ __CDPRT_DEPRECATED(cudaDeviceSynchronize) cudaError_t CUDARTAPI cudaDeviceSynchronize(void);
+                                     ^
+/zq500/sdk/include/cuda_device_runtime_api.h:120:40: note: expanded from macro '__CDPRT_DEPRECATED'
+# define __CDPRT_DEPRECATED(func_name) __DEPRECATED__("Use of "#func_name" from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING.")
+                                       ^
+/zq500/sdk/include/cuda_device_runtime_api.h:116:45: note: expanded from macro '__DEPRECATED__'
+# define __DEPRECATED__(msg) __attribute__((deprecated(msg)))
+                                            ^
+1 warning generated when compiling for dlgput64r1.
+[ 93%] Linking CXX static library libfilter_design_test_support.a
+[ 93%] Built target filter_design_test_support
+[100%] Building CXX object tests/unit/filter_design/CMakeFiles/filter_design_test_cmplx_sort.dir/test_cmplx_sort.cpp.o
+[100%] Linking CXX executable filter_design_test_cmplx_sort
+[100%] Built target filter_design_test_cmplx_sort
+[ 40%] Built target cusignal_cpu
+[ 86%] Built target cusignal_cuda
+Consolidate compiler generated dependencies of target filter_design_test_support
+[ 93%] Built target filter_design_test_support
+[ 93%] Building CXX object tests/unit/filter_design/CMakeFiles/filter_design_test_firwin2.dir/test_firwin2.cpp.o
+[100%] Linking CXX executable filter_design_test_firwin2
+[100%] Built target filter_design_test_firwin2
+[ 40%] Built target cusignal_cpu
+[ 86%] Built target cusignal_cuda
+[ 93%] Built target filter_design_test_support
+[ 93%] Building CXX object tests/unit/filter_design/CMakeFiles/filter_design_test_kaiser_atten.dir/test_kaiser_atten.cpp.o
+[100%] Linking CXX executable filter_design_test_kaiser_atten
+[100%] Built target filter_design_test_kaiser_atten
+[ 40%] Built target cusignal_cpu
+[ 86%] Built target cusignal_cuda
+[ 93%] Built target filter_design_test_support
+[ 93%] Building CXX object tests/unit/filter_design/CMakeFiles/filter_design_test_kaiser_beta.dir/test_kaiser_beta.cpp.o
+[100%] Linking CXX executable filter_design_test_kaiser_beta
+[100%] Built target filter_design_test_kaiser_beta
+[ 40%] Built target cusignal_cpu
+[ 86%] Built target cusignal_cuda
+[ 93%] Building CXX object tests/unit/filtering/CMakeFiles/filtering_test_support.dir/filtering_test_support.cu.o
+/CETC/tests/unit/filtering/filtering_test_support.cu:2448:49: warning: 'cudaDeviceSynchronize' is deprecated: Use of cudaDeviceSynchronize from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING. [-Wdeprecated-declarations]
+            cusignal::core::throw_on_cuda_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
+                                                ^
+/zq500/sdk/include/cuda_device_runtime_api.h:142:38: note: 'cudaDeviceSynchronize' has been explicitly marked deprecated here
+extern __device__ __cudart_builtin__ __CDPRT_DEPRECATED(cudaDeviceSynchronize) cudaError_t CUDARTAPI cudaDeviceSynchronize(void);
+                                     ^
+/zq500/sdk/include/cuda_device_runtime_api.h:120:40: note: expanded from macro '__CDPRT_DEPRECATED'
+# define __CDPRT_DEPRECATED(func_name) __DEPRECATED__("Use of "#func_name" from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING.")
+                                       ^
+/zq500/sdk/include/cuda_device_runtime_api.h:116:45: note: expanded from macro '__DEPRECATED__'
+# define __DEPRECATED__(msg) __attribute__((deprecated(msg)))
+                                            ^
+1 warning generated when compiling for dlgput64r1.
+[ 93%] Linking CXX static library libfiltering_test_support.a
+[ 93%] Built target filtering_test_support
+[100%] Building CXX object tests/unit/filtering/CMakeFiles/filtering_test_filtfilt.dir/test_filtfilt.cpp.o
+[100%] Linking CXX executable filtering_test_filtfilt
+[100%] Built target filtering_test_filtfilt
+[ 40%] Built target cusignal_cpu
+[ 86%] Built target cusignal_cuda
+Consolidate compiler generated dependencies of target filtering_test_support
+[ 93%] Built target filtering_test_support
+[100%] Building CXX object tests/unit/filtering/CMakeFiles/filtering_test_firfilter_zi.dir/test_firfilter_zi.cpp.o
+[100%] Linking CXX executable filtering_test_firfilter_zi
+[100%] Built target filtering_test_firfilter_zi
+[ 40%] Built target cusignal_cpu
+[ 86%] Built target cusignal_cuda
+[ 93%] Built target filtering_test_support
+[ 93%] Building CXX object tests/unit/filtering/CMakeFiles/filtering_test_lfilter.dir/test_lfilter.cpp.o
+[100%] Linking CXX executable filtering_test_lfilter
+[100%] Built target filtering_test_lfilter
+[ 40%] Built target cusignal_cpu
+[ 86%] Built target cusignal_cuda
+[ 86%] Building CXX object tests/unit/peak_finding/CMakeFiles/peak_finding_test_support.dir/peak_finding_test_support.cu.o
+/CETC/tests/unit/peak_finding/peak_finding_test_support.cu:550:53: warning: 'cudaDeviceSynchronize' is deprecated: Use of cudaDeviceSynchronize from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING. [-Wdeprecated-declarations]
+                cusignal::core::throw_on_cuda_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
+                                                    ^
+/zq500/sdk/include/cuda_device_runtime_api.h:142:38: note: 'cudaDeviceSynchronize' has been explicitly marked deprecated here
+extern __device__ __cudart_builtin__ __CDPRT_DEPRECATED(cudaDeviceSynchronize) cudaError_t CUDARTAPI cudaDeviceSynchronize(void);
+                                     ^
+/zq500/sdk/include/cuda_device_runtime_api.h:120:40: note: expanded from macro '__CDPRT_DEPRECATED'
+# define __CDPRT_DEPRECATED(func_name) __DEPRECATED__("Use of "#func_name" from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING.")
+                                       ^
+/zq500/sdk/include/cuda_device_runtime_api.h:116:45: note: expanded from macro '__DEPRECATED__'
+# define __DEPRECATED__(msg) __attribute__((deprecated(msg)))
+                                            ^
+1 warning generated when compiling for dlgput64r1.
+[ 93%] Linking CXX static library libpeak_finding_test_support.a
+[ 93%] Built target peak_finding_test_support
+[ 93%] Building CXX object tests/unit/peak_finding/CMakeFiles/peak_finding_test_argrelmax.dir/test_argrelmax.cpp.o
+[100%] Linking CXX executable peak_finding_test_argrelmax
+[100%] Built target peak_finding_test_argrelmax
+[ 40%] Built target cusignal_cpu
+[ 86%] Built target cusignal_cuda
+Consolidate compiler generated dependencies of target peak_finding_test_support
+[ 93%] Built target peak_finding_test_support
+[ 93%] Building CXX object tests/unit/peak_finding/CMakeFiles/peak_finding_test_argrelmin.dir/test_argrelmin.cpp.o
+[100%] Linking CXX executable peak_finding_test_argrelmin
+[100%] Built target peak_finding_test_argrelmin
+[ 40%] Built target cusignal_cpu
+[ 86%] Built target cusignal_cuda
+[ 93%] Building CXX object tests/unit/radartools/CMakeFiles/radartools_test_support.dir/radartools_test_support.cu.o
+/CETC/tests/unit/radartools/radartools_test_support.cu:2112:49: warning: 'cudaDeviceSynchronize' is deprecated: Use of cudaDeviceSynchronize from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING. [-Wdeprecated-declarations]
+            cusignal::core::throw_on_cuda_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
+                                                ^
+/zq500/sdk/include/cuda_device_runtime_api.h:142:38: note: 'cudaDeviceSynchronize' has been explicitly marked deprecated here
+extern __device__ __cudart_builtin__ __CDPRT_DEPRECATED(cudaDeviceSynchronize) cudaError_t CUDARTAPI cudaDeviceSynchronize(void);
+                                     ^
+/zq500/sdk/include/cuda_device_runtime_api.h:120:40: note: expanded from macro '__CDPRT_DEPRECATED'
+# define __CDPRT_DEPRECATED(func_name) __DEPRECATED__("Use of "#func_name" from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING.")
+                                       ^
+/zq500/sdk/include/cuda_device_runtime_api.h:116:45: note: expanded from macro '__DEPRECATED__'
+# define __DEPRECATED__(msg) __attribute__((deprecated(msg)))
+                                            ^
+1 warning generated when compiling for dlgput64r1.
+[ 93%] Linking CXX static library libradartools_test_support.a
+[ 93%] Built target radartools_test_support
+[100%] Building CXX object tests/unit/radartools/CMakeFiles/radartools_test_mvdr.dir/test_mvdr.cpp.o
+[100%] Linking CXX executable radartools_test_mvdr
+[100%] Built target radartools_test_mvdr
+[ 40%] Built target cusignal_cpu
+[ 86%] Built target cusignal_cuda
+[ 93%] Building CXX object tests/unit/spectral/CMakeFiles/spectral_test_support.dir/spectral_test_support.cu.o
+/CETC/tests/unit/spectral/spectral_test_support.cu:2369:49: warning: 'cudaDeviceSynchronize' is deprecated: Use of cudaDeviceSynchronize from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING. [-Wdeprecated-declarations]
+            cusignal::core::throw_on_cuda_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
+                                                ^
+/zq500/sdk/include/cuda_device_runtime_api.h:142:38: note: 'cudaDeviceSynchronize' has been explicitly marked deprecated here
+extern __device__ __cudart_builtin__ __CDPRT_DEPRECATED(cudaDeviceSynchronize) cudaError_t CUDARTAPI cudaDeviceSynchronize(void);
+                                     ^
+/zq500/sdk/include/cuda_device_runtime_api.h:120:40: note: expanded from macro '__CDPRT_DEPRECATED'
+# define __CDPRT_DEPRECATED(func_name) __DEPRECATED__("Use of "#func_name" from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING.")
+                                       ^
+/zq500/sdk/include/cuda_device_runtime_api.h:116:45: note: expanded from macro '__DEPRECATED__'
+# define __DEPRECATED__(msg) __attribute__((deprecated(msg)))
+                                            ^
+1 warning generated when compiling for dlgput64r1.
+[ 93%] Linking CXX static library libspectral_test_support.a
+[ 93%] Built target spectral_test_support
+[ 93%] Building CXX object tests/unit/spectral/CMakeFiles/spectral_test_coherence.dir/test_coherence.cpp.o
+[100%] Linking CXX executable spectral_test_coherence
+[100%] Built target spectral_test_coherence
+[ 42%] Built target cusignal_cpu
+[ 92%] Built target cusignal_cuda
+Consolidate compiler generated dependencies of target spectral_test_support
+[100%] Built target spectral_test_support
+[100%] Building CXX object tests/unit/spectral/CMakeFiles/spectral_test_periodogram.dir/test_periodogram.cpp.o
+[100%] Linking CXX executable spectral_test_periodogram
+[100%] Built target spectral_test_periodogram
+[ 40%] Built target cusignal_cpu
+[ 86%] Built target cusignal_cuda
+[ 93%] Built target spectral_test_support
+[100%] Building CXX object tests/unit/spectral/CMakeFiles/spectral_test_welch.dir/test_welch.cpp.o
+[100%] Linking CXX executable spectral_test_welch
+[100%] Built target spectral_test_welch
+[ 40%] Built target cusignal_cpu
+[ 86%] Built target cusignal_cuda
+[ 86%] Building CXX object tests/unit/windows/CMakeFiles/windows_test_support.dir/windows_test_support.cu.o
+/CETC/tests/unit/windows/windows_test_support.cu:1494:49: warning: 'cudaDeviceSynchronize' is deprecated: Use of cudaDeviceSynchronize from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING. [-Wdeprecated-declarations]
+            cusignal::core::throw_on_cuda_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
+                                                ^
+/zq500/sdk/include/cuda_device_runtime_api.h:142:38: note: 'cudaDeviceSynchronize' has been explicitly marked deprecated here
+extern __device__ __cudart_builtin__ __CDPRT_DEPRECATED(cudaDeviceSynchronize) cudaError_t CUDARTAPI cudaDeviceSynchronize(void);
+                                     ^
+/zq500/sdk/include/cuda_device_runtime_api.h:120:40: note: expanded from macro '__CDPRT_DEPRECATED'
+# define __CDPRT_DEPRECATED(func_name) __DEPRECATED__("Use of "#func_name" from device code is deprecated and will not be supported in a future release. Disable this warning with -D__CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING.")
+                                       ^
+/zq500/sdk/include/cuda_device_runtime_api.h:116:45: note: expanded from macro '__DEPRECATED__'
+# define __DEPRECATED__(msg) __attribute__((deprecated(msg)))
+                                            ^
+1 warning generated when compiling for dlgput64r1.
+[ 93%] Linking CXX static library libwindows_test_support.a
+[ 93%] Built target windows_test_support
+[100%] Building CXX object tests/unit/windows/CMakeFiles/windows_test_chebwin.dir/windows_test_main.cpp.o
+[100%] Linking CXX executable windows_test_chebwin
+[100%] Built target windows_test_chebwin
+[all-ops-bench] selected operators: 15
+[all-ops-bench] build mode: build
+[all-ops-bench] platform: ZHONGKEXIN
+[all-ops-bench] scale profile: default
+[all-ops-bench] scale levels: 1,2,3,4,5,6
+[all-ops-bench] report mode: full
+[all-ops-bench] timing: warmup=5 repeat=30
+[all-ops-bench] building selected targets once: 15 targets, platform=ZHONGKEXIN, build_type=Release, cuda_arch=n/a, jobs=255
+[all-ops-bench] backed up manifests
+[all-ops-bench] [1/15 L1] windows/chebwin scale=128
+[all-ops-bench] running windows/chebwin: /CETC/scripts/test/run_all_tests.sh --module windows --operator chebwin --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running windows/chebwin
+[windows/chebwin] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=5.058944e-06  max_rel=5.024690e-04  rmse=1.817750e-06
+cpu_perf_ms   : median=0.026  mean=0.026  p95=0.026
+gpu_perf_ms   : e2e_median=0.073  kernel_median=0.020  p95=0.073  e2e_speedup=0.361x  kernel_speedup=1.317x
+reports       : data/reports/unit/windows/chebwin/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [1/15 L2] windows/chebwin scale=256
+[all-ops-bench] running windows/chebwin: /CETC/scripts/test/run_all_tests.sh --module windows --operator chebwin --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running windows/chebwin
+[windows/chebwin] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=1.015887e-05  max_rel=4.177699e-03  rmse=3.348463e-06
+cpu_perf_ms   : median=0.047  mean=0.047  p95=0.047
+gpu_perf_ms   : e2e_median=0.072  kernel_median=0.019  p95=0.072  e2e_speedup=0.660x  kernel_speedup=2.536x
+reports       : data/reports/unit/windows/chebwin/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [1/15 L3] windows/chebwin scale=512
+[all-ops-bench] running windows/chebwin: /CETC/scripts/test/run_all_tests.sh --module windows --operator chebwin --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running windows/chebwin
+[windows/chebwin] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=1.549721e-06  max_rel=2.733330e-04  rmse=4.443297e-07
+cpu_perf_ms   : median=0.049  mean=0.049  p95=0.049
+gpu_perf_ms   : e2e_median=0.071  kernel_median=0.020  p95=0.071  e2e_speedup=0.684x  kernel_speedup=2.452x
+reports       : data/reports/unit/windows/chebwin/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [1/15 L4] windows/chebwin scale=768
+[all-ops-bench] running windows/chebwin: /CETC/scripts/test/run_all_tests.sh --module windows --operator chebwin --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running windows/chebwin
+[windows/chebwin] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=2.793223e-05  max_rel=7.766051e-03  rmse=8.372804e-06
+cpu_perf_ms   : median=0.122  mean=0.122  p95=0.122
+gpu_perf_ms   : e2e_median=0.063  kernel_median=0.019  p95=0.063  e2e_speedup=1.942x  kernel_speedup=6.519x
+reports       : data/reports/unit/windows/chebwin/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [1/15 L5] windows/chebwin scale=1024
+[all-ops-bench] running windows/chebwin: /CETC/scripts/test/run_all_tests.sh --module windows --operator chebwin --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running windows/chebwin
+[windows/chebwin] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=5.781651e-06  max_rel=2.700188e-04  rmse=1.305248e-06
+cpu_perf_ms   : median=0.091  mean=0.091  p95=0.091
+gpu_perf_ms   : e2e_median=0.073  kernel_median=0.020  p95=0.073  e2e_speedup=1.242x  kernel_speedup=4.539x
+reports       : data/reports/unit/windows/chebwin/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [1/15 L6] windows/chebwin scale=1536
+[all-ops-bench] running windows/chebwin: /CETC/scripts/test/run_all_tests.sh --module windows --operator chebwin --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running windows/chebwin
+[windows/chebwin] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=6.303191e-05  max_rel=4.020537e-03  rmse=1.638754e-05
+cpu_perf_ms   : median=0.160  mean=0.160  p95=0.160
+gpu_perf_ms   : e2e_median=0.070  kernel_median=0.019  p95=0.070  e2e_speedup=2.276x  kernel_speedup=8.599x
+reports       : data/reports/unit/windows/chebwin/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [2/15 L1] filter_design/kaiser_beta scale=129
+[all-ops-bench] running filter_design/kaiser_beta: /CETC/scripts/test/run_all_tests.sh --module filter_design --operator kaiser_beta --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running filter_design/kaiser_beta
+[filter_design/kaiser_beta] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.000  mean=0.000  p95=0.000
+gpu_perf_ms   : e2e_median=0.042  kernel_median=0.000  p95=0.042  e2e_speedup=0.001x  kernel_speedup=0.000x
+reports       : data/reports/unit/filter_design/kaiser_beta/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [2/15 L2] filter_design/kaiser_beta scale=257
+[all-ops-bench] running filter_design/kaiser_beta: /CETC/scripts/test/run_all_tests.sh --module filter_design --operator kaiser_beta --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running filter_design/kaiser_beta
+[filter_design/kaiser_beta] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.000  mean=0.000  p95=0.000
+gpu_perf_ms   : e2e_median=0.042  kernel_median=0.000  p95=0.042  e2e_speedup=0.001x  kernel_speedup=0.000x
+reports       : data/reports/unit/filter_design/kaiser_beta/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [2/15 L3] filter_design/kaiser_beta scale=513
+[all-ops-bench] running filter_design/kaiser_beta: /CETC/scripts/test/run_all_tests.sh --module filter_design --operator kaiser_beta --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running filter_design/kaiser_beta
+[filter_design/kaiser_beta] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.000  mean=0.000  p95=0.000
+gpu_perf_ms   : e2e_median=0.043  kernel_median=0.000  p95=0.043  e2e_speedup=0.001x  kernel_speedup=0.000x
+reports       : data/reports/unit/filter_design/kaiser_beta/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [2/15 L4] filter_design/kaiser_beta scale=1025
+[all-ops-bench] running filter_design/kaiser_beta: /CETC/scripts/test/run_all_tests.sh --module filter_design --operator kaiser_beta --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running filter_design/kaiser_beta
+[filter_design/kaiser_beta] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.000  mean=0.000  p95=0.000
+gpu_perf_ms   : e2e_median=0.042  kernel_median=0.000  p95=0.042  e2e_speedup=0.001x  kernel_speedup=0.000x
+reports       : data/reports/unit/filter_design/kaiser_beta/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [2/15 L5] filter_design/kaiser_beta scale=2049
+[all-ops-bench] running filter_design/kaiser_beta: /CETC/scripts/test/run_all_tests.sh --module filter_design --operator kaiser_beta --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running filter_design/kaiser_beta
+[filter_design/kaiser_beta] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.000  mean=0.000  p95=0.000
+gpu_perf_ms   : e2e_median=0.042  kernel_median=0.000  p95=0.042  e2e_speedup=0.001x  kernel_speedup=0.000x
+reports       : data/reports/unit/filter_design/kaiser_beta/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [2/15 L6] filter_design/kaiser_beta scale=4097
+[all-ops-bench] running filter_design/kaiser_beta: /CETC/scripts/test/run_all_tests.sh --module filter_design --operator kaiser_beta --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running filter_design/kaiser_beta
+[filter_design/kaiser_beta] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.000  mean=0.000  p95=0.000
+gpu_perf_ms   : e2e_median=0.042  kernel_median=0.000  p95=0.042  e2e_speedup=0.001x  kernel_speedup=0.000x
+reports       : data/reports/unit/filter_design/kaiser_beta/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [3/15 L1] filter_design/kaiser_atten scale=129
+[all-ops-bench] running filter_design/kaiser_atten: /CETC/scripts/test/run_all_tests.sh --module filter_design --operator kaiser_atten --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running filter_design/kaiser_atten
+[filter_design/kaiser_atten] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.000  mean=0.000  p95=0.000
+gpu_perf_ms   : e2e_median=0.042  kernel_median=0.000  p95=0.042  e2e_speedup=0.001x  kernel_speedup=0.000x
+reports       : data/reports/unit/filter_design/kaiser_atten/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [3/15 L2] filter_design/kaiser_atten scale=257
+[all-ops-bench] running filter_design/kaiser_atten: /CETC/scripts/test/run_all_tests.sh --module filter_design --operator kaiser_atten --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running filter_design/kaiser_atten
+[filter_design/kaiser_atten] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.000  mean=0.000  p95=0.000
+gpu_perf_ms   : e2e_median=0.042  kernel_median=0.000  p95=0.042  e2e_speedup=0.001x  kernel_speedup=0.000x
+reports       : data/reports/unit/filter_design/kaiser_atten/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [3/15 L3] filter_design/kaiser_atten scale=513
+[all-ops-bench] running filter_design/kaiser_atten: /CETC/scripts/test/run_all_tests.sh --module filter_design --operator kaiser_atten --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running filter_design/kaiser_atten
+[filter_design/kaiser_atten] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.000  mean=0.000  p95=0.000
+gpu_perf_ms   : e2e_median=0.042  kernel_median=0.000  p95=0.042  e2e_speedup=0.002x  kernel_speedup=0.000x
+reports       : data/reports/unit/filter_design/kaiser_atten/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [3/15 L4] filter_design/kaiser_atten scale=1025
+[all-ops-bench] running filter_design/kaiser_atten: /CETC/scripts/test/run_all_tests.sh --module filter_design --operator kaiser_atten --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running filter_design/kaiser_atten
+[filter_design/kaiser_atten] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.000  mean=0.000  p95=0.000
+gpu_perf_ms   : e2e_median=0.042  kernel_median=0.000  p95=0.042  e2e_speedup=0.001x  kernel_speedup=0.000x
+reports       : data/reports/unit/filter_design/kaiser_atten/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [3/15 L5] filter_design/kaiser_atten scale=2049
+[all-ops-bench] running filter_design/kaiser_atten: /CETC/scripts/test/run_all_tests.sh --module filter_design --operator kaiser_atten --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running filter_design/kaiser_atten
+[filter_design/kaiser_atten] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.000  mean=0.000  p95=0.000
+gpu_perf_ms   : e2e_median=0.042  kernel_median=0.000  p95=0.042  e2e_speedup=0.001x  kernel_speedup=0.000x
+reports       : data/reports/unit/filter_design/kaiser_atten/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [3/15 L6] filter_design/kaiser_atten scale=4097
+[all-ops-bench] running filter_design/kaiser_atten: /CETC/scripts/test/run_all_tests.sh --module filter_design --operator kaiser_atten --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running filter_design/kaiser_atten
+[filter_design/kaiser_atten] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.000  mean=0.000  p95=0.000
+gpu_perf_ms   : e2e_median=0.042  kernel_median=0.000  p95=0.042  e2e_speedup=0.001x  kernel_speedup=0.000x
+reports       : data/reports/unit/filter_design/kaiser_atten/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [4/15 L1] filter_design/cmplx_sort scale=129
+[all-ops-bench] running filter_design/cmplx_sort: /CETC/scripts/test/run_all_tests.sh --module filter_design --operator cmplx_sort --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running filter_design/cmplx_sort
+[filter_design/cmplx_sort] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.438  mean=0.438  p95=0.438
+gpu_perf_ms   : e2e_median=0.540  kernel_median=0.000  p95=0.540  e2e_speedup=0.810x  kernel_speedup=0.000x
+reports       : data/reports/unit/filter_design/cmplx_sort/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [4/15 L2] filter_design/cmplx_sort scale=257
+[all-ops-bench] running filter_design/cmplx_sort: /CETC/scripts/test/run_all_tests.sh --module filter_design --operator cmplx_sort --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running filter_design/cmplx_sort
+[filter_design/cmplx_sort] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.439  mean=0.439  p95=0.439
+gpu_perf_ms   : e2e_median=0.538  kernel_median=0.000  p95=0.538  e2e_speedup=0.816x  kernel_speedup=0.000x
+reports       : data/reports/unit/filter_design/cmplx_sort/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [4/15 L3] filter_design/cmplx_sort scale=513
+[all-ops-bench] running filter_design/cmplx_sort: /CETC/scripts/test/run_all_tests.sh --module filter_design --operator cmplx_sort --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running filter_design/cmplx_sort
+[filter_design/cmplx_sort] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.440  mean=0.440  p95=0.440
+gpu_perf_ms   : e2e_median=0.539  kernel_median=0.000  p95=0.539  e2e_speedup=0.816x  kernel_speedup=0.000x
+reports       : data/reports/unit/filter_design/cmplx_sort/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [4/15 L4] filter_design/cmplx_sort scale=1025
+[all-ops-bench] running filter_design/cmplx_sort: /CETC/scripts/test/run_all_tests.sh --module filter_design --operator cmplx_sort --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running filter_design/cmplx_sort
+[filter_design/cmplx_sort] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.438  mean=0.438  p95=0.438
+gpu_perf_ms   : e2e_median=0.537  kernel_median=0.000  p95=0.537  e2e_speedup=0.815x  kernel_speedup=0.000x
+reports       : data/reports/unit/filter_design/cmplx_sort/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [4/15 L5] filter_design/cmplx_sort scale=2049
+[all-ops-bench] running filter_design/cmplx_sort: /CETC/scripts/test/run_all_tests.sh --module filter_design --operator cmplx_sort --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running filter_design/cmplx_sort
+[filter_design/cmplx_sort] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.439  mean=0.439  p95=0.439
+gpu_perf_ms   : e2e_median=0.541  kernel_median=0.000  p95=0.541  e2e_speedup=0.812x  kernel_speedup=0.000x
+reports       : data/reports/unit/filter_design/cmplx_sort/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [4/15 L6] filter_design/cmplx_sort scale=4097
+[all-ops-bench] running filter_design/cmplx_sort: /CETC/scripts/test/run_all_tests.sh --module filter_design --operator cmplx_sort --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running filter_design/cmplx_sort
+[filter_design/cmplx_sort] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.439  mean=0.439  p95=0.439
+gpu_perf_ms   : e2e_median=0.538  kernel_median=0.000  p95=0.538  e2e_speedup=0.814x  kernel_speedup=0.000x
+reports       : data/reports/unit/filter_design/cmplx_sort/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [5/15 L1] filter_design/firwin2 scale=65
+[all-ops-bench] running filter_design/firwin2: /CETC/scripts/test/run_all_tests.sh --module filter_design --operator firwin2 --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running filter_design/firwin2
+[filter_design/firwin2] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=1.788139e-07  max_rel=1.539346e-01  rmse=4.004440e-08
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.016  mean=0.016  p95=0.016
+gpu_perf_ms   : e2e_median=0.233  kernel_median=0.105  p95=0.233  e2e_speedup=0.067x  kernel_speedup=0.148x
+reports       : data/reports/unit/filter_design/firwin2/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [5/15 L2] filter_design/firwin2 scale=129
+[all-ops-bench] running filter_design/firwin2: /CETC/scripts/test/run_all_tests.sh --module filter_design --operator firwin2 --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running filter_design/firwin2
+[filter_design/firwin2] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=7.804483e-07  max_rel=2.488416e-03  rmse=1.488904e-07
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.050  mean=0.050  p95=0.050
+gpu_perf_ms   : e2e_median=0.336  kernel_median=0.247  p95=0.336  e2e_speedup=0.150x  kernel_speedup=0.204x
+reports       : data/reports/unit/filter_design/firwin2/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [5/15 L3] filter_design/firwin2 scale=257
+[all-ops-bench] running filter_design/firwin2: /CETC/scripts/test/run_all_tests.sh --module filter_design --operator firwin2 --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running filter_design/firwin2
+[filter_design/firwin2] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=1.892447e-06  max_rel=6.935018e-03  rmse=4.062366e-07
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.108  mean=0.108  p95=0.108
+gpu_perf_ms   : e2e_median=5.667  kernel_median=5.536  p95=5.667  e2e_speedup=0.019x  kernel_speedup=0.020x
+reports       : data/reports/unit/filter_design/firwin2/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [5/15 L4] filter_design/firwin2 scale=513
+[all-ops-bench] running filter_design/firwin2: /CETC/scripts/test/run_all_tests.sh --module filter_design --operator firwin2 --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running filter_design/firwin2
+[filter_design/firwin2] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=3.129244e-07  max_rel=3.987478e-03  rmse=3.405031e-08
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.138  mean=0.138  p95=0.138
+gpu_perf_ms   : e2e_median=0.243  kernel_median=0.134  p95=0.243  e2e_speedup=0.568x  kernel_speedup=1.029x
+reports       : data/reports/unit/filter_design/firwin2/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [5/15 L5] filter_design/firwin2 scale=769
+[all-ops-bench] running filter_design/firwin2: /CETC/scripts/test/run_all_tests.sh --module filter_design --operator firwin2 --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running filter_design/firwin2
+[filter_design/firwin2] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=5.215406e-06  max_rel=2.995394e+00  rmse=8.350342e-07
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.315  mean=0.315  p95=0.315
+gpu_perf_ms   : e2e_median=48.871  kernel_median=48.689  p95=48.871  e2e_speedup=0.006x  kernel_speedup=0.006x
+reports       : data/reports/unit/filter_design/firwin2/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [5/15 L6] filter_design/firwin2 scale=1025
+[all-ops-bench] running filter_design/firwin2: /CETC/scripts/test/run_all_tests.sh --module filter_design --operator firwin2 --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running filter_design/firwin2
+[filter_design/firwin2] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=6.016344e-07  max_rel=2.855665e+00  rmse=5.273376e-08
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.264  mean=0.264  p95=0.264
+gpu_perf_ms   : e2e_median=0.381  kernel_median=0.292  p95=0.381  e2e_speedup=0.692x  kernel_speedup=0.901x
+reports       : data/reports/unit/filter_design/firwin2/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [6/15 L1] filtering/lfilter scale=1024
+[all-ops-bench] running filtering/lfilter: /CETC/scripts/test/run_all_tests.sh --module filtering --operator lfilter --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running filtering/lfilter
+[filtering/lfilter] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.007  mean=0.007  p95=0.007
+gpu_perf_ms   : e2e_median=14.437  kernel_median=14.244  p95=14.437  e2e_speedup=0.000x  kernel_speedup=0.000x
+reports       : data/reports/unit/filtering/lfilter/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [6/15 L2] filtering/lfilter scale=2048
+[all-ops-bench] running filtering/lfilter: /CETC/scripts/test/run_all_tests.sh --module filtering --operator lfilter --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running filtering/lfilter
+[filtering/lfilter] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.013  mean=0.013  p95=0.013
+gpu_perf_ms   : e2e_median=28.656  kernel_median=28.455  p95=28.656  e2e_speedup=0.000x  kernel_speedup=0.000x
+reports       : data/reports/unit/filtering/lfilter/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [6/15 L3] filtering/lfilter scale=4096
+[all-ops-bench] running filtering/lfilter: /CETC/scripts/test/run_all_tests.sh --module filtering --operator lfilter --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running filtering/lfilter
+[filtering/lfilter] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.026  mean=0.026  p95=0.026
+gpu_perf_ms   : e2e_median=57.088  kernel_median=56.898  p95=57.088  e2e_speedup=0.000x  kernel_speedup=0.000x
+reports       : data/reports/unit/filtering/lfilter/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [6/15 L4] filtering/lfilter scale=8192
+[all-ops-bench] running filtering/lfilter: /CETC/scripts/test/run_all_tests.sh --module filtering --operator lfilter --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running filtering/lfilter
+[filtering/lfilter] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.051  mean=0.051  p95=0.051
+gpu_perf_ms   : e2e_median=113.941  kernel_median=113.729  p95=113.941  e2e_speedup=0.000x  kernel_speedup=0.000x
+reports       : data/reports/unit/filtering/lfilter/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [6/15 L5] filtering/lfilter scale=16384
+[all-ops-bench] running filtering/lfilter: /CETC/scripts/test/run_all_tests.sh --module filtering --operator lfilter --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running filtering/lfilter
+[filtering/lfilter] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.102  mean=0.102  p95=0.102
+gpu_perf_ms   : e2e_median=227.683  kernel_median=227.430  p95=227.683  e2e_speedup=0.000x  kernel_speedup=0.000x
+reports       : data/reports/unit/filtering/lfilter/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [6/15 L6] filtering/lfilter scale=32768
+[all-ops-bench] running filtering/lfilter: /CETC/scripts/test/run_all_tests.sh --module filtering --operator lfilter --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running filtering/lfilter
+[filtering/lfilter] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.205  mean=0.205  p95=0.205
+gpu_perf_ms   : e2e_median=455.079  kernel_median=454.288  p95=455.079  e2e_speedup=0.000x  kernel_speedup=0.000x
+reports       : data/reports/unit/filtering/lfilter/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [7/15 L1] filtering/firfilter_zi scale=1024
+[all-ops-bench] running filtering/firfilter_zi: /CETC/scripts/test/run_all_tests.sh --module filtering --operator firfilter_zi --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running filtering/firfilter_zi
+[filtering/firfilter_zi] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.011  mean=0.011  p95=0.011
+gpu_perf_ms   : e2e_median=0.243  kernel_median=0.081  p95=0.243  e2e_speedup=0.046x  kernel_speedup=0.139x
+reports       : data/reports/unit/filtering/firfilter_zi/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [7/15 L2] filtering/firfilter_zi scale=2048
+[all-ops-bench] running filtering/firfilter_zi: /CETC/scripts/test/run_all_tests.sh --module filtering --operator firfilter_zi --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running filtering/firfilter_zi
+[filtering/firfilter_zi] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.011  mean=0.011  p95=0.011
+gpu_perf_ms   : e2e_median=0.249  kernel_median=0.083  p95=0.249  e2e_speedup=0.045x  kernel_speedup=0.136x
+reports       : data/reports/unit/filtering/firfilter_zi/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [7/15 L3] filtering/firfilter_zi scale=4096
+[all-ops-bench] running filtering/firfilter_zi: /CETC/scripts/test/run_all_tests.sh --module filtering --operator firfilter_zi --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running filtering/firfilter_zi
+[filtering/firfilter_zi] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.011  mean=0.011  p95=0.011
+gpu_perf_ms   : e2e_median=0.249  kernel_median=0.083  p95=0.249  e2e_speedup=0.045x  kernel_speedup=0.137x
+reports       : data/reports/unit/filtering/firfilter_zi/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [7/15 L4] filtering/firfilter_zi scale=8192
+[all-ops-bench] running filtering/firfilter_zi: /CETC/scripts/test/run_all_tests.sh --module filtering --operator firfilter_zi --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running filtering/firfilter_zi
+[filtering/firfilter_zi] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.011  mean=0.011  p95=0.011
+gpu_perf_ms   : e2e_median=0.250  kernel_median=0.083  p95=0.250  e2e_speedup=0.045x  kernel_speedup=0.137x
+reports       : data/reports/unit/filtering/firfilter_zi/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [7/15 L5] filtering/firfilter_zi scale=16384
+[all-ops-bench] running filtering/firfilter_zi: /CETC/scripts/test/run_all_tests.sh --module filtering --operator firfilter_zi --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running filtering/firfilter_zi
+[filtering/firfilter_zi] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.011  mean=0.011  p95=0.011
+gpu_perf_ms   : e2e_median=0.250  kernel_median=0.082  p95=0.250  e2e_speedup=0.045x  kernel_speedup=0.137x
+reports       : data/reports/unit/filtering/firfilter_zi/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [7/15 L6] filtering/firfilter_zi scale=32768
+[all-ops-bench] running filtering/firfilter_zi: /CETC/scripts/test/run_all_tests.sh --module filtering --operator firfilter_zi --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running filtering/firfilter_zi
+[filtering/firfilter_zi] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.011  mean=0.011  p95=0.011
+gpu_perf_ms   : e2e_median=0.249  kernel_median=0.083  p95=0.249  e2e_speedup=0.046x  kernel_speedup=0.138x
+reports       : data/reports/unit/filtering/firfilter_zi/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [8/15 L1] filtering/filtfilt scale=1024
+[all-ops-bench] running filtering/filtfilt: /CETC/scripts/test/run_all_tests.sh --module filtering --operator filtfilt --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running filtering/filtfilt
+[filtering/filtfilt] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=5.960464e-08  max_rel=1.844428e-07  rmse=4.368290e-09
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.014  mean=0.014  p95=0.014
+gpu_perf_ms   : e2e_median=29.119  kernel_median=28.924  p95=29.119  e2e_speedup=0.000x  kernel_speedup=0.000x
+reports       : data/reports/unit/filtering/filtfilt/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [8/15 L2] filtering/filtfilt scale=2048
+[all-ops-bench] running filtering/filtfilt: /CETC/scripts/test/run_all_tests.sh --module filtering --operator filtfilt --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running filtering/filtfilt
+[filtering/filtfilt] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=5.960464e-08  max_rel=1.844428e-07  rmse=3.088848e-09
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.027  mean=0.027  p95=0.027
+gpu_perf_ms   : e2e_median=57.557  kernel_median=57.352  p95=57.557  e2e_speedup=0.000x  kernel_speedup=0.000x
+reports       : data/reports/unit/filtering/filtfilt/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [8/15 L3] filtering/filtfilt scale=4096
+[all-ops-bench] running filtering/filtfilt: /CETC/scripts/test/run_all_tests.sh --module filtering --operator filtfilt --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running filtering/filtfilt
+[filtering/filtfilt] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=5.960464e-08  max_rel=1.844428e-07  rmse=2.184145e-09
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.053  mean=0.053  p95=0.053
+gpu_perf_ms   : e2e_median=114.378  kernel_median=114.136  p95=114.378  e2e_speedup=0.000x  kernel_speedup=0.000x
+reports       : data/reports/unit/filtering/filtfilt/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [8/15 L4] filtering/filtfilt scale=8192
+[all-ops-bench] running filtering/filtfilt: /CETC/scripts/test/run_all_tests.sh --module filtering --operator filtfilt --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running filtering/filtfilt
+[filtering/filtfilt] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=5.960464e-08  max_rel=1.844428e-07  rmse=1.544424e-09
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.103  mean=0.103  p95=0.103
+gpu_perf_ms   : e2e_median=228.120  kernel_median=227.904  p95=228.120  e2e_speedup=0.000x  kernel_speedup=0.000x
+reports       : data/reports/unit/filtering/filtfilt/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [8/15 L5] filtering/filtfilt scale=16384
+[all-ops-bench] running filtering/filtfilt: /CETC/scripts/test/run_all_tests.sh --module filtering --operator filtfilt --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running filtering/filtfilt
+[filtering/filtfilt] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=5.960464e-08  max_rel=1.844428e-07  rmse=1.122669e-09
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.206  mean=0.206  p95=0.206
+gpu_perf_ms   : e2e_median=455.853  kernel_median=455.609  p95=455.853  e2e_speedup=0.000x  kernel_speedup=0.000x
+reports       : data/reports/unit/filtering/filtfilt/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [8/15 L6] filtering/filtfilt scale=32768
+[all-ops-bench] running filtering/filtfilt: /CETC/scripts/test/run_all_tests.sh --module filtering --operator filtfilt --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running filtering/filtfilt
+[filtering/filtfilt] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=8.940697e-08  max_rel=1.967503e-07  rmse=1.416254e-09
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.558  mean=0.558  p95=0.558
+gpu_perf_ms   : e2e_median=910.464  kernel_median=910.137  p95=910.464  e2e_speedup=0.001x  kernel_speedup=0.001x
+reports       : data/reports/unit/filtering/filtfilt/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [9/15 L1] radartools/mvdr scale=4096
+[all-ops-bench] running radartools/mvdr: /CETC/scripts/test/run_all_tests.sh --module radartools --operator mvdr --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running radartools/mvdr
+[radartools/mvdr] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=1.981910e-06  max_rel=1.378361e-05  rmse=1.304852e-06
+cpu_perf_ms   : median=0.083  mean=0.083  p95=0.083
+gpu_perf_ms   : e2e_median=1.020  kernel_median=0.812  p95=1.020  e2e_speedup=0.082x  kernel_speedup=0.103x
+reports       : data/reports/unit/radartools/mvdr/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [9/15 L2] radartools/mvdr scale=16384
+[all-ops-bench] running radartools/mvdr: /CETC/scripts/test/run_all_tests.sh --module radartools --operator mvdr --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running radartools/mvdr
+[radartools/mvdr] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=1.513844e-06  max_rel=1.212404e-05  rmse=1.001924e-06
+cpu_perf_ms   : median=0.328  mean=0.328  p95=0.328
+gpu_perf_ms   : e2e_median=1.536  kernel_median=1.295  p95=1.536  e2e_speedup=0.213x  kernel_speedup=0.253x
+reports       : data/reports/unit/radartools/mvdr/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [9/15 L3] radartools/mvdr scale=65536
+[all-ops-bench] running radartools/mvdr: /CETC/scripts/test/run_all_tests.sh --module radartools --operator mvdr --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running radartools/mvdr
+[radartools/mvdr] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=3.747160e-06  max_rel=2.121182e-05  rmse=2.716866e-06
+cpu_perf_ms   : median=1.308  mean=1.308  p95=1.308
+gpu_perf_ms   : e2e_median=3.576  kernel_median=3.236  p95=3.576  e2e_speedup=0.366x  kernel_speedup=0.404x
+reports       : data/reports/unit/radartools/mvdr/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [9/15 L4] radartools/mvdr scale=262144
+[all-ops-bench] running radartools/mvdr: /CETC/scripts/test/run_all_tests.sh --module radartools --operator mvdr --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running radartools/mvdr
+[radartools/mvdr] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=1.517053e-05  max_rel=1.269950e-04  rmse=7.452924e-06
+cpu_perf_ms   : median=5.237  mean=5.237  p95=5.237
+gpu_perf_ms   : e2e_median=11.672  kernel_median=10.880  p95=11.672  e2e_speedup=0.449x  kernel_speedup=0.481x
+reports       : data/reports/unit/radartools/mvdr/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [9/15 L5] radartools/mvdr scale=524288
+[all-ops-bench] running radartools/mvdr: /CETC/scripts/test/run_all_tests.sh --module radartools --operator mvdr --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running radartools/mvdr
+[radartools/mvdr] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=1.346079e-05  max_rel=4.392824e-05  rmse=7.560041e-06
+cpu_perf_ms   : median=10.487  mean=10.487  p95=10.487
+gpu_perf_ms   : e2e_median=23.804  kernel_median=21.282  p95=23.804  e2e_speedup=0.441x  kernel_speedup=0.493x
+reports       : data/reports/unit/radartools/mvdr/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [9/15 L6] radartools/mvdr scale=1048576
+[all-ops-bench] running radartools/mvdr: /CETC/scripts/test/run_all_tests.sh --module radartools --operator mvdr --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running radartools/mvdr
+[radartools/mvdr] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=3.936433e-05  max_rel=1.337076e-04  rmse=1.700513e-05
+cpu_perf_ms   : median=21.232  mean=21.232  p95=21.232
+gpu_perf_ms   : e2e_median=52.342  kernel_median=42.148  p95=52.342  e2e_speedup=0.406x  kernel_speedup=0.504x
+reports       : data/reports/unit/radartools/mvdr/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [10/15 L1] spectral/periodogram scale=1024
+[all-ops-bench] running spectral/periodogram: /CETC/scripts/test/run_all_tests.sh --module spectral --operator periodogram --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running spectral/periodogram
+[spectral/periodogram] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=1.788139e-07  max_rel=4.365541e+02  rmse=9.142832e-09
+cpu_perf_ms   : median=0.048  mean=0.048  p95=0.048
+gpu_perf_ms   : e2e_median=0.882  kernel_median=0.462  p95=0.882  e2e_speedup=0.054x  kernel_speedup=0.104x
+reports       : data/reports/unit/spectral/periodogram/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [10/15 L2] spectral/periodogram scale=2048
+[all-ops-bench] running spectral/periodogram: /CETC/scripts/test/run_all_tests.sh --module spectral --operator periodogram --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running spectral/periodogram
+[spectral/periodogram] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=1.788139e-07  max_rel=9.284480e+01  rmse=5.610695e-09
+cpu_perf_ms   : median=0.088  mean=0.088  p95=0.088
+gpu_perf_ms   : e2e_median=1.297  kernel_median=0.857  p95=1.297  e2e_speedup=0.068x  kernel_speedup=0.103x
+reports       : data/reports/unit/spectral/periodogram/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [10/15 L3] spectral/periodogram scale=4096
+[all-ops-bench] running spectral/periodogram: /CETC/scripts/test/run_all_tests.sh --module spectral --operator periodogram --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running spectral/periodogram
+[spectral/periodogram] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=5.960464e-08  max_rel=1.155019e+03  rmse=1.357713e-09
+cpu_perf_ms   : median=0.175  mean=0.175  p95=0.175
+gpu_perf_ms   : e2e_median=2.129  kernel_median=1.701  p95=2.129  e2e_speedup=0.082x  kernel_speedup=0.103x
+reports       : data/reports/unit/spectral/periodogram/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [10/15 L4] spectral/periodogram scale=8192
+[all-ops-bench] running spectral/periodogram: /CETC/scripts/test/run_all_tests.sh --module spectral --operator periodogram --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running spectral/periodogram
+[spectral/periodogram] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=4.768372e-07  max_rel=1.250705e+15  rmse=7.721827e-09
+cpu_perf_ms   : median=0.369  mean=0.369  p95=0.369
+gpu_perf_ms   : e2e_median=7.341  kernel_median=6.801  p95=7.341  e2e_speedup=0.050x  kernel_speedup=0.054x
+reports       : data/reports/unit/spectral/periodogram/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [10/15 L5] spectral/periodogram scale=16384
+[all-ops-bench] running spectral/periodogram: /CETC/scripts/test/run_all_tests.sh --module spectral --operator periodogram --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running spectral/periodogram
+[spectral/periodogram] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=7.152557e-07  max_rel=1.668004e+04  rmse=9.551315e-09
+cpu_perf_ms   : median=0.951  mean=0.951  p95=0.951
+gpu_perf_ms   : e2e_median=21.632  kernel_median=21.048  p95=21.632  e2e_speedup=0.044x  kernel_speedup=0.045x
+reports       : data/reports/unit/spectral/periodogram/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [10/15 L6] spectral/periodogram scale=32768
+[all-ops-bench] running spectral/periodogram: /CETC/scripts/test/run_all_tests.sh --module spectral --operator periodogram --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running spectral/periodogram
+[spectral/periodogram] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=1.907349e-06  max_rel=4.076386e+02  rmse=1.491096e-08
+cpu_perf_ms   : median=1.785  mean=1.785  p95=1.785
+gpu_perf_ms   : e2e_median=73.207  kernel_median=72.396  p95=73.207  e2e_speedup=0.024x  kernel_speedup=0.025x
+reports       : data/reports/unit/spectral/periodogram/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [11/15 L1] spectral/welch scale=1024
+[all-ops-bench] running spectral/welch: /CETC/scripts/test/run_all_tests.sh --module spectral --operator welch --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running spectral/welch
+[spectral/welch] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=4.656613e-09  max_rel=8.012078e-01  rmse=4.181195e-10
+cpu_perf_ms   : median=0.085  mean=0.085  p95=0.085
+gpu_perf_ms   : e2e_median=0.584  kernel_median=0.181  p95=0.584  e2e_speedup=0.145x  kernel_speedup=0.469x
+reports       : data/reports/unit/spectral/welch/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [11/15 L2] spectral/welch scale=2048
+[all-ops-bench] running spectral/welch: /CETC/scripts/test/run_all_tests.sh --module spectral --operator welch --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running spectral/welch
+[spectral/welch] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=7.450581e-09  max_rel=7.081143e-01  rmse=9.358275e-10
+cpu_perf_ms   : median=0.170  mean=0.170  p95=0.170
+gpu_perf_ms   : e2e_median=0.597  kernel_median=0.204  p95=0.597  e2e_speedup=0.285x  kernel_speedup=0.834x
+reports       : data/reports/unit/spectral/welch/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [11/15 L3] spectral/welch scale=4096
+[all-ops-bench] running spectral/welch: /CETC/scripts/test/run_all_tests.sh --module spectral --operator welch --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running spectral/welch
+[spectral/welch] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=9.313226e-10  max_rel=7.471876e-01  rmse=9.169911e-11
+cpu_perf_ms   : median=0.338  mean=0.338  p95=0.338
+gpu_perf_ms   : e2e_median=0.790  kernel_median=0.351  p95=0.790  e2e_speedup=0.428x  kernel_speedup=0.963x
+reports       : data/reports/unit/spectral/welch/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [11/15 L4] spectral/welch scale=8192
+[all-ops-bench] running spectral/welch: /CETC/scripts/test/run_all_tests.sh --module spectral --operator welch --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running spectral/welch
+[spectral/welch] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=3.725290e-09  max_rel=6.476075e-01  rmse=4.280566e-10
+cpu_perf_ms   : median=0.680  mean=0.680  p95=0.680
+gpu_perf_ms   : e2e_median=0.991  kernel_median=0.538  p95=0.991  e2e_speedup=0.686x  kernel_speedup=1.262x
+reports       : data/reports/unit/spectral/welch/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [11/15 L5] spectral/welch scale=16384
+[all-ops-bench] running spectral/welch: /CETC/scripts/test/run_all_tests.sh --module spectral --operator welch --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running spectral/welch
+[spectral/welch] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=9.313226e-10  max_rel=4.799988e-01  rmse=1.159933e-10
+cpu_perf_ms   : median=1.361  mean=1.361  p95=1.361
+gpu_perf_ms   : e2e_median=1.321  kernel_median=0.911  p95=1.321  e2e_speedup=1.030x  kernel_speedup=1.494x
+reports       : data/reports/unit/spectral/welch/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [11/15 L6] spectral/welch scale=32768
+[all-ops-bench] running spectral/welch: /CETC/scripts/test/run_all_tests.sh --module spectral --operator welch --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running spectral/welch
+[spectral/welch] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=1.117587e-08  max_rel=8.045274e-02  rmse=1.018401e-09
+cpu_perf_ms   : median=2.723  mean=2.723  p95=2.723
+gpu_perf_ms   : e2e_median=2.105  kernel_median=1.649  p95=2.105  e2e_speedup=1.294x  kernel_speedup=1.652x
+reports       : data/reports/unit/spectral/welch/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [12/15 L1] spectral/coherence scale=1024
+[all-ops-bench] running spectral/coherence: /CETC/scripts/test/run_all_tests.sh --module spectral --operator coherence --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running spectral/coherence
+[spectral/coherence] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=6.147057e-01  max_rel=1.848131e+00  rmse=5.469284e-02
+cpu_perf_ms   : median=0.328  mean=0.328  p95=0.328
+gpu_perf_ms   : e2e_median=1.877  kernel_median=0.027  p95=1.877  e2e_speedup=0.175x  kernel_speedup=12.040x
+reports       : data/reports/unit/spectral/coherence/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [12/15 L2] spectral/coherence scale=2048
+[all-ops-bench] running spectral/coherence: /CETC/scripts/test/run_all_tests.sh --module spectral --operator coherence --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running spectral/coherence
+[spectral/coherence] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=1.519347e-01  max_rel=1.839565e-01  rmse=1.886742e-02
+cpu_perf_ms   : median=0.673  mean=0.673  p95=0.673
+gpu_perf_ms   : e2e_median=1.899  kernel_median=0.028  p95=1.899  e2e_speedup=0.355x  kernel_speedup=24.324x
+reports       : data/reports/unit/spectral/coherence/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [12/15 L3] spectral/coherence scale=4096
+[all-ops-bench] running spectral/coherence: /CETC/scripts/test/run_all_tests.sh --module spectral --operator coherence --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running spectral/coherence
+[spectral/coherence] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=1.478032e-01  max_rel=1.784329e-01  rmse=1.671384e-02
+cpu_perf_ms   : median=1.366  mean=1.366  p95=1.366
+gpu_perf_ms   : e2e_median=2.583  kernel_median=0.028  p95=2.583  e2e_speedup=0.529x  kernel_speedup=49.545x
+reports       : data/reports/unit/spectral/coherence/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [12/15 L4] spectral/coherence scale=8192
+[all-ops-bench] running spectral/coherence: /CETC/scripts/test/run_all_tests.sh --module spectral --operator coherence --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running spectral/coherence
+[spectral/coherence] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=1.566634e-01  max_rel=1.899254e-01  rmse=1.799458e-02
+cpu_perf_ms   : median=2.728  mean=2.728  p95=2.728
+gpu_perf_ms   : e2e_median=3.330  kernel_median=0.028  p95=3.330  e2e_speedup=0.819x  kernel_speedup=98.329x
+reports       : data/reports/unit/spectral/coherence/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [12/15 L5] spectral/coherence scale=16384
+[all-ops-bench] running spectral/coherence: /CETC/scripts/test/run_all_tests.sh --module spectral --operator coherence --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running spectral/coherence
+[spectral/coherence] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=8.790517e-02  max_rel=9.833185e-02  rmse=9.571809e-03
+cpu_perf_ms   : median=5.499  mean=5.499  p95=5.499
+gpu_perf_ms   : e2e_median=4.587  kernel_median=0.028  p95=4.587  e2e_speedup=1.199x  kernel_speedup=199.411x
+reports       : data/reports/unit/spectral/coherence/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [12/15 L6] spectral/coherence scale=32768
+[all-ops-bench] running spectral/coherence: /CETC/scripts/test/run_all_tests.sh --module spectral --operator coherence --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running spectral/coherence
+[spectral/coherence] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=3.257215e-03  max_rel=3.270775e-03  rmse=4.376202e-04
+cpu_perf_ms   : median=10.939  mean=10.939  p95=10.939
+gpu_perf_ms   : e2e_median=7.500  kernel_median=0.027  p95=7.500  e2e_speedup=1.459x  kernel_speedup=401.865x
+reports       : data/reports/unit/spectral/coherence/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [13/15 L1] correlate/correlation_lags scale=256
+[all-ops-bench] running correlate/correlation_lags: /CETC/scripts/test/run_all_tests.sh --module correlate --operator correlation_lags --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running correlate/correlation_lags
+[correlate/correlation_lags] PASS  accuracy_cases=3  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+cpu_perf_ms   : median=0.001  mean=0.001  p95=0.001
+gpu_perf_ms   : e2e_median=0.124  kernel_median=0.027  p95=0.130  e2e_speedup=0.006x  kernel_speedup=0.028x
+reports       : data/reports/unit/correlate/correlation_lags/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [13/15 L2] correlate/correlation_lags scale=512
+[all-ops-bench] running correlate/correlation_lags: /CETC/scripts/test/run_all_tests.sh --module correlate --operator correlation_lags --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running correlate/correlation_lags
+[correlate/correlation_lags] PASS  accuracy_cases=3  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+cpu_perf_ms   : median=0.001  mean=0.001  p95=0.001
+gpu_perf_ms   : e2e_median=0.121  kernel_median=0.027  p95=0.129  e2e_speedup=0.006x  kernel_speedup=0.028x
+reports       : data/reports/unit/correlate/correlation_lags/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [13/15 L3] correlate/correlation_lags scale=1024
+[all-ops-bench] running correlate/correlation_lags: /CETC/scripts/test/run_all_tests.sh --module correlate --operator correlation_lags --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running correlate/correlation_lags
+[correlate/correlation_lags] PASS  accuracy_cases=3  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+cpu_perf_ms   : median=0.001  mean=0.001  p95=0.001
+gpu_perf_ms   : e2e_median=0.124  kernel_median=0.027  p95=0.131  e2e_speedup=0.006x  kernel_speedup=0.027x
+reports       : data/reports/unit/correlate/correlation_lags/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [13/15 L4] correlate/correlation_lags scale=2048
+[all-ops-bench] running correlate/correlation_lags: /CETC/scripts/test/run_all_tests.sh --module correlate --operator correlation_lags --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running correlate/correlation_lags
+[correlate/correlation_lags] PASS  accuracy_cases=3  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+cpu_perf_ms   : median=0.001  mean=0.001  p95=0.001
+gpu_perf_ms   : e2e_median=0.123  kernel_median=0.027  p95=0.130  e2e_speedup=0.006x  kernel_speedup=0.028x
+reports       : data/reports/unit/correlate/correlation_lags/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [13/15 L5] correlate/correlation_lags scale=4096
+[all-ops-bench] running correlate/correlation_lags: /CETC/scripts/test/run_all_tests.sh --module correlate --operator correlation_lags --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running correlate/correlation_lags
+[correlate/correlation_lags] PASS  accuracy_cases=3  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+cpu_perf_ms   : median=0.001  mean=0.001  p95=0.001
+gpu_perf_ms   : e2e_median=0.124  kernel_median=0.027  p95=0.127  e2e_speedup=0.006x  kernel_speedup=0.028x
+reports       : data/reports/unit/correlate/correlation_lags/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [13/15 L6] correlate/correlation_lags scale=8192
+[all-ops-bench] running correlate/correlation_lags: /CETC/scripts/test/run_all_tests.sh --module correlate --operator correlation_lags --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running correlate/correlation_lags
+[correlate/correlation_lags] PASS  accuracy_cases=3  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+cpu_perf_ms   : median=0.001  mean=0.001  p95=0.001
+gpu_perf_ms   : e2e_median=0.123  kernel_median=0.027  p95=0.130  e2e_speedup=0.006x  kernel_speedup=0.028x
+reports       : data/reports/unit/correlate/correlation_lags/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [14/15 L1] peak_finding/argrelmin scale=4096
+[all-ops-bench] running peak_finding/argrelmin: /CETC/scripts/test/run_all_tests.sh --module peak_finding --operator argrelmin --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running peak_finding/argrelmin
+[peak_finding/argrelmin] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+cpu_perf_ms   : median=0.975  mean=0.979  p95=0.996
+gpu_perf_ms   : e2e_median=0.262  kernel_median=0.207  p95=0.274  e2e_speedup=3.726x  kernel_speedup=4.700x
+reports       : data/reports/unit/peak_finding/argrelmin/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [14/15 L2] peak_finding/argrelmin scale=16384
+[all-ops-bench] running peak_finding/argrelmin: /CETC/scripts/test/run_all_tests.sh --module peak_finding --operator argrelmin --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running peak_finding/argrelmin
+[peak_finding/argrelmin] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+cpu_perf_ms   : median=1.008  mean=1.009  p95=1.014
+gpu_perf_ms   : e2e_median=0.261  kernel_median=0.207  p95=0.282  e2e_speedup=3.867x  kernel_speedup=4.873x
+reports       : data/reports/unit/peak_finding/argrelmin/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [14/15 L3] peak_finding/argrelmin scale=65536
+[all-ops-bench] running peak_finding/argrelmin: /CETC/scripts/test/run_all_tests.sh --module peak_finding --operator argrelmin --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running peak_finding/argrelmin
+[peak_finding/argrelmin] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+cpu_perf_ms   : median=1.008  mean=1.010  p95=1.018
+gpu_perf_ms   : e2e_median=0.260  kernel_median=0.207  p95=0.263  e2e_speedup=3.875x  kernel_speedup=4.868x
+reports       : data/reports/unit/peak_finding/argrelmin/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [14/15 L4] peak_finding/argrelmin scale=262144
+[all-ops-bench] running peak_finding/argrelmin: /CETC/scripts/test/run_all_tests.sh --module peak_finding --operator argrelmin --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running peak_finding/argrelmin
+[peak_finding/argrelmin] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+cpu_perf_ms   : median=0.975  mean=0.994  p95=1.087
+gpu_perf_ms   : e2e_median=0.266  kernel_median=0.211  p95=0.271  e2e_speedup=3.670x  kernel_speedup=4.632x
+reports       : data/reports/unit/peak_finding/argrelmin/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [14/15 L5] peak_finding/argrelmin scale=524288
+[all-ops-bench] running peak_finding/argrelmin: /CETC/scripts/test/run_all_tests.sh --module peak_finding --operator argrelmin --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running peak_finding/argrelmin
+[peak_finding/argrelmin] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+cpu_perf_ms   : median=1.008  mean=1.010  p95=1.016
+gpu_perf_ms   : e2e_median=0.260  kernel_median=0.207  p95=0.264  e2e_speedup=3.882x  kernel_speedup=4.877x
+reports       : data/reports/unit/peak_finding/argrelmin/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [14/15 L6] peak_finding/argrelmin scale=1048576
+[all-ops-bench] running peak_finding/argrelmin: /CETC/scripts/test/run_all_tests.sh --module peak_finding --operator argrelmin --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running peak_finding/argrelmin
+[peak_finding/argrelmin] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+cpu_perf_ms   : median=1.008  mean=1.009  p95=1.015
+gpu_perf_ms   : e2e_median=0.260  kernel_median=0.206  p95=0.266  e2e_speedup=3.883x  kernel_speedup=4.896x
+reports       : data/reports/unit/peak_finding/argrelmin/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [15/15 L1] peak_finding/argrelmax scale=4096
+[all-ops-bench] running peak_finding/argrelmax: /CETC/scripts/test/run_all_tests.sh --module peak_finding --operator argrelmax --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running peak_finding/argrelmax
+[peak_finding/argrelmax] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+cpu_perf_ms   : median=1.003  mean=1.004  p95=1.009
+gpu_perf_ms   : e2e_median=0.264  kernel_median=0.209  p95=0.268  e2e_speedup=3.794x  kernel_speedup=4.805x
+reports       : data/reports/unit/peak_finding/argrelmax/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [15/15 L2] peak_finding/argrelmax scale=16384
+[all-ops-bench] running peak_finding/argrelmax: /CETC/scripts/test/run_all_tests.sh --module peak_finding --operator argrelmax --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running peak_finding/argrelmax
+[peak_finding/argrelmax] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+cpu_perf_ms   : median=1.004  mean=1.005  p95=1.010
+gpu_perf_ms   : e2e_median=0.267  kernel_median=0.211  p95=0.295  e2e_speedup=3.755x  kernel_speedup=4.758x
+reports       : data/reports/unit/peak_finding/argrelmax/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [15/15 L3] peak_finding/argrelmax scale=65536
+[all-ops-bench] running peak_finding/argrelmax: /CETC/scripts/test/run_all_tests.sh --module peak_finding --operator argrelmax --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running peak_finding/argrelmax
+[peak_finding/argrelmax] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+cpu_perf_ms   : median=1.003  mean=1.006  p95=1.024
+gpu_perf_ms   : e2e_median=0.265  kernel_median=0.210  p95=0.322  e2e_speedup=3.783x  kernel_speedup=4.777x
+reports       : data/reports/unit/peak_finding/argrelmax/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [15/15 L4] peak_finding/argrelmax scale=262144
+[all-ops-bench] running peak_finding/argrelmax: /CETC/scripts/test/run_all_tests.sh --module peak_finding --operator argrelmax --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running peak_finding/argrelmax
+[peak_finding/argrelmax] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+cpu_perf_ms   : median=1.003  mean=1.004  p95=1.010
+gpu_perf_ms   : e2e_median=0.266  kernel_median=0.211  p95=0.346  e2e_speedup=3.768x  kernel_speedup=4.762x
+reports       : data/reports/unit/peak_finding/argrelmax/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [15/15 L5] peak_finding/argrelmax scale=524288
+[all-ops-bench] running peak_finding/argrelmax: /CETC/scripts/test/run_all_tests.sh --module peak_finding --operator argrelmax --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running peak_finding/argrelmax
+[peak_finding/argrelmax] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+cpu_perf_ms   : median=1.003  mean=1.004  p95=1.012
+gpu_perf_ms   : e2e_median=0.268  kernel_median=0.212  p95=0.291  e2e_speedup=3.738x  kernel_speedup=4.738x
+reports       : data/reports/unit/peak_finding/argrelmax/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [15/15 L6] peak_finding/argrelmax scale=1048576
+[all-ops-bench] running peak_finding/argrelmax: /CETC/scripts/test/run_all_tests.sh --module peak_finding --operator argrelmax --case-set perf --emit-report --warmup 5 --repeat 30 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+[cusignal-test] timing       : warmup=5 repeat=30
+[cusignal-test] running peak_finding/argrelmax
+[peak_finding/argrelmax] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+cpu_perf_ms   : median=1.003  mean=1.005  p95=1.011
+gpu_perf_ms   : e2e_median=0.267  kernel_median=0.211  p95=0.277  e2e_speedup=3.754x  kernel_speedup=4.743x
+reports       : data/reports/unit/peak_finding/argrelmax/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] restoring original manifests
+[all-ops-bench] wrote /CETC/data/reports/unit/benchmarks/zhongkexin_stage4_retry/all_ops_scale_benchmark_20260617_114340.csv
+[all-ops-bench] updated /CETC/data/reports/unit/benchmarks/zhongkexin_stage4_retry/latest_all_ops_scale_benchmark.csv
+[all-ops-bench] updated /CETC/data/reports/unit/benchmarks/zhongkexin_stage4_retry/latest_report.md
+[all-ops-bench] rows=90

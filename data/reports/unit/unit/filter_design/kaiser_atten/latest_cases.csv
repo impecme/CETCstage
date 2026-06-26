@@ -1,0 +1,11 @@
+case_id,backend,metric_kind,samples,warmup,repeat,mean_ms,median_ms,p95_ms,min_ms,max_ms,std_ms,max_abs_error,max_rel_error,rmse,l2_error,exact_match
+ntaps_7_width_01,gpu_vs_cpu,error,1,,,,,,,,,0,0,0,0,true
+ntaps_7_width_01,cpu_vs_ref,error,1,,,,,,,,,0,0,0,0,true
+ntaps_7_width_01,gpu_vs_ref,error,1,,,,,,,,,0,0,0,0,true
+ntaps_51_width_008,gpu_vs_cpu,error,1,,,,,,,,,0,0,0,0,true
+ntaps_51_width_008,cpu_vs_ref,error,1,,,,,,,,,0,0,0,0,true
+ntaps_51_width_008,gpu_vs_ref,error,1,,,,,,,,,0,0,0,0,true
+perf_ntaps_127_width_004,gpu_vs_cpu,error,1,,,,,,,,,0,0,0,0,true
+perf_ntaps_127_width_004,cpu,perf,1,1,3,7.3333336331415921e-05,3.9999998989515007e-05,0.00014000000373926014,3.9999998989515007e-05,0.00014000000373926014,4.7140452807070687e-05,,,,,
+perf_ntaps_127_width_004,gpu_e2e,perf,1,1,3,0.042357336729764938,0.04236999899148941,0.043260999023914337,0.041441000998020172,0.043260999023914337,0.00074306502938270569,,,,,
+perf_ntaps_127_width_004,gpu_kernel,perf,1,1,3,0,0,0,0,0,0,,,,,

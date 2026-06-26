@@ -1,0 +1,36 @@
+[cusignal-test] timing       : warmup=1 repeat=3 (demo-fast)
+[cusignal-test] project root : /CETC
+[cusignal-test] build dir    : /CETC/build-zx
+[cusignal-test] build type   : Release
+[cusignal-test] platform     : ZHONGKEXIN
+[cusignal-test] cuda arch    : n/a (ZHONGKEXIN uses dlcc --cuda-gpu-arch=dlgput64)
+[cusignal-test] jobs         : 255
+[cusignal-test] cxx compiler : /zq500/sdk/bin/dlcc
+-- Using Zhongkexin CUDA headers without CUDAToolkit cudart target: /zq500/sdk/include
+-- CUSIGNAL_PLATFORM=ZHONGKEXIN
+-- Using Zhongkexin CUDA runtime compatibility library: /zq500/sdk/lib/libcurt.so
+-- Using Zhongkexin cuFFT compatibility library: /zq500/sdk/lib/libdlfft.so
+-- Using Zhongkexin cuBLAS compatibility library: /zq500/sdk/lib/libdlblas.so
+-- Using Zhongkexin cuSOLVER compatibility library: /zq500/sdk/lib/libdlsolver.so
+-- Using cuFFT compatibility library: /zq500/sdk/lib/libdlfft.so
+-- Using cuBLAS compatibility library: /zq500/sdk/lib/libdlblas.so
+-- Using cuSOLVER compatibility library: /zq500/sdk/lib/libdlsolver.so
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /CETC/build-zx
+Consolidate compiler generated dependencies of target cusignal_cpu
+[ 40%] Built target cusignal_cpu
+Consolidate compiler generated dependencies of target cusignal_cuda
+[ 86%] Built target cusignal_cuda
+[ 93%] Building CXX object tests/unit/estimation/CMakeFiles/estimation_test_support.dir/estimation_test_support.cu.o
+[ 93%] Linking CXX static library libestimation_test_support.a
+[ 93%] Built target estimation_test_support
+[100%] Building CXX object tests/unit/estimation/CMakeFiles/estimation_test_kalman_filter.dir/test_kalman_filter.cpp.o
+[100%] Linking CXX executable estimation_test_kalman_filter
+[100%] Built target estimation_test_kalman_filter
+[cusignal-test] running estimation/kalman_filter
+[estimation/kalman_filter] PASS  accuracy_cases=7  perf_cases=0
+cpu_gpu_error : max_abs=1.192093e-07  max_rel=3.099442e-07  rmse=7.300049e-08
+reference_error : max_abs=8.940697e-08  max_rel=3.099441e-07  rmse=6.143906e-08
+reports       : data/reports/unit/estimation/kalman_filter/latest_summary.md
+[cusignal-test] summary: passed 1/1

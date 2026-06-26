@@ -767,6 +767,34 @@ namespace cusignal_test::report
     {
         fs::create_directories(module_root);
 
+        const auto is_digit = [](char value) {
+            return value >= '0' && value <= '9';
+        };
+        const auto is_timestamped_operator_report_dir = [&](const std::string &name) {
+            constexpr std::size_t kSuffixLength = 16; // _YYYYMMDD_HHMMSS
+            if (name.size() <= kSuffixLength)
+            {
+                return false;
+            }
+            const std::size_t start = name.size() - kSuffixLength;
+            if (name[start] != '_' || name[start + 9] != '_')
+            {
+                return false;
+            }
+            for (std::size_t index = 1; index < kSuffixLength; ++index)
+            {
+                if (index == 9)
+                {
+                    continue;
+                }
+                if (!is_digit(name[start + index]))
+                {
+                    return false;
+                }
+            }
+            return true;
+        };
+
         std::vector<fs::path> operator_dirs;
         for (const auto &entry : fs::directory_iterator(module_root))
         {
@@ -775,6 +803,10 @@ namespace cusignal_test::report
                 continue;
             }
             if (entry.path().filename() == "history")
+            {
+                continue;
+            }
+            if (is_timestamped_operator_report_dir(entry.path().filename().string()))
             {
                 continue;
             }

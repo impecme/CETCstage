@@ -22,7 +22,7 @@
 
 - 全量多规模采集脚本：`benchmark_all_ops_scales.py` 已支持 `--scale-profile default,large-gpu`
 - GPU-only 全量复测选项：`benchmark_all_ops_scales.py --gpu-only` 可复用 CPU baseline，只重复采集 GPU e2e/kernel timing
-- 论文风格作图脚本：`plot_all_ops_benchmark.py --figure-set all` 生成 5 张全局总览图，并为每个算子生成一张独立 CPU/GPU 耗时与加速比图
+- 论文风格作图脚本：`plot_all_ops_benchmark.py --figure-set all` 生成 5 张全局总览图，并按模块生成组合压缩 CPU/GPU 耗时与加速比曲线图
 - 任务级 Demo 验收脚本：`run_task_demos.sh` 支持 `--scale-sweep`，Task1/Task2 各 6 档规模，输出任务级 pass、误差、耗时、稳定性和资源漂移汇总
 - 任务级 Demo 图件：`visualize_task1.py` / `visualize_task2.py` 默认覆盖生成 Word 友好 PNG；`run_task_demos.sh --scale-sweep` 会自动刷新 L1-L6 任务性能图
 - 默认输出：benchmark 默认只输出主 CSV，不再自动生成 Markdown 报告或图件
@@ -450,7 +450,7 @@ Task2 6 档规模：
 - 现场快检建议运行 `run_task_demos.sh --no-build --repeat 1`，时间允许时再跑 `--scale-sweep --repeat 1`。
 
 ## `plot_all_ops_benchmark.py`（论文风格作图）
-该脚本是可选作图步骤，读取全量 benchmark CSV。默认输出总览图与每算子 summary；`--figure-set all` 会输出 5 张全局总览图，并额外在 `operator_figures/` 下为每个算子生成一张独立性能图。脚本只依赖 `numpy + matplotlib`，不依赖 `pandas/seaborn`。
+该脚本是可选作图步骤，读取全量 benchmark CSV。默认输出总览图与每算子 summary；`--figure-set all` 会输出 5 张全局总览图，并额外在 `operator_figures/` 下按模块生成组合压缩性能图。脚本只依赖 `numpy + matplotlib`，不依赖 `pandas/seaborn`。
 
 默认读取：
 
@@ -475,10 +475,11 @@ python3 scripts/test/plot_all_ops_benchmark.py \
 - `figure_3_e2e_speedup_heatmap.png`
 - `figure_4_largest_scale_cpu_vs_gpu_scatter.png`
 - `figure_5_largest_scale_speedup_rank.png`
-- `operator_figures/<module>__<operator>.png`
+- `operator_figures/module_operator_curves_<module>.png`
+- `operator_figures/latest_operator_curve_manifest.csv`
 - `latest_all_ops_plot_summary.csv`
 
-全局热图的 y 轴直接使用完整 `module/operator` 算子名，并在每个热图 panel 内重复标注，便于单独截取任一 panel 时仍能对应具体算子。查看单个算子的 CPU/GPU 耗时曲线时，继续打开 `operator_figures/<module>__<operator>.*`。
+全局热图的 y 轴直接使用完整 `module/operator` 算子名，并在每个热图 panel 内重复标注，便于单独截取任一 panel 时仍能对应具体算子。查看单个算子的 CPU/GPU 耗时曲线时，打开对应模块的 `operator_figures/module_operator_curves_<module>.*`，每一行对应一个算子。
 
 图件含义：
 
@@ -489,7 +490,7 @@ python3 scripts/test/plot_all_ops_benchmark.py \
 | `figure_3_e2e_speedup_heatmap` | 全算子 e2e 加速比热图；y 轴直接标注完整算子名 |
 | `figure_4_largest_scale_cpu_vs_gpu_scatter` | 每个算子取最大规模点，横轴 CPU、纵轴 GPU，虚线是 `CPU=GPU` |
 | `figure_5_largest_scale_speedup_rank` | 每个算子最大规模 e2e speedup 排序 |
-| `operator_figures/<module>__<operator>` | 单算子图；上半部分是 L1-L6 CPU/GPU e2e median 耗时，下半部分是 e2e/kernel speedup |
+| `operator_figures/module_operator_curves_<module>` | 模块级组合压缩图；每行一个算子，左侧是 L1-L6 CPU/GPU e2e median 耗时，右侧是 e2e/kernel speedup |
 
 完整图件：
 

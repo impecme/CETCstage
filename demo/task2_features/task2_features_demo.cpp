@@ -37,6 +37,7 @@
 #include "cusignal/spectral/spectral.hpp"
 #include "cusignal/waveforms/waveforms.hpp"
 #include "cusignal/wavelets/wavelets.hpp"
+#include "cusignal/windows/windows.hpp"
 
 namespace cusignal_demo::task2_features
 {
@@ -94,6 +95,8 @@ namespace cusignal_demo::task2_features
     constexpr float kSpectralMixedScale = 1.0e-1f;
 
     using StageTiming = cusignal_demo::report::StageTiming;
+
+    void write_spectrogram_breakdown_csv(const std::vector<StageTiming> &timings);
 
     struct DemoOptions
     {
@@ -1751,18 +1754,21 @@ namespace cusignal_demo::task2_features
 
         ZxGpuComplexArray rx_device;
         ZxGpuRealArray filtered_real;
-        ZxGpuRealArray filtered_imag;
 
         auto [filtered_complex, filter_ms] = measure_gpu_ms([&]() {
             rx_device = ZxGpuComplexArray::from_host(rx_frames);
-            const ZxGpuRealArray real_part = extract_real_part_zx_gpu(rx_device);
-            const ZxGpuRealArray imag_part = extract_imag_part_zx_gpu(rx_device);
-            filtered_real = cusignal::zx_gpu_backend::filtering::firfilter(taps, real_part, -1);
-            filtered_imag = cusignal::zx_gpu_backend::filtering::firfilter(taps, imag_part, -1);
-            return combine_complex_zx_gpu(filtered_real, filtered_imag);
+            return complex_firfilter_zx_gpu(rx_device, taps, filtered_real);
         });
         artifacts.filtered = std::move(filtered_complex);
         timings.push_back({"filter", 0.0, filter_ms});
+
+        const ZxGpuRealArray representative_filter_input = extract_row_real_zx_gpu(
+            extract_real_part_zx_gpu(rx_device),
+            config.representative_frame_index);
+        auto representative_filter_measured = measure_gpu_ms([&]() {
+            return cusignal::zx_gpu_backend::filtering::firfilter(taps, representative_filter_input, -1);
+        });
+        (void)representative_filter_measured;
 
         artifacts.correlate_scores = cusignal::core::make_zx_gpu_real_array(
             Shape{static_cast<std::size_t>(config.num_frames), static_cast<std::size_t>(config.samples_per_frame)},
@@ -1787,80 +1793,105 @@ namespace cusignal_demo::task2_features
         float spectrogram_ms = 0.0;
         float cwt_ms = 0.0;
         float fusion_ms = 0.0;
+        std::vector<StageTiming> spectrogram_breakdown;
 
-        for (int frame = 0; frame < config.num_frames; ++frame)
-        {
-            const ZxGpuComplexArray frame_complex = extract_row_complex_zx_gpu(artifacts.filtered, frame);
-            const ZxGpuRealArray frame_real = extract_row_real_zx_gpu(filtered_real, frame);
-            const ZxGpuRealSignal frame_real_signal = extract_row_real_signal_zx_gpu(filtered_real, frame);
+        auto raw_correlate_scores_measured = measure_gpu_ms([&]() {
+            return batched_correlate_score_zx_gpu(artifacts.filtered, template_device);
+        });
+        ZxGpuRealArray raw_correlate_scores = std::move(raw_correlate_scores_measured.first);
+        correlate_ms += raw_correlate_scores_measured.second;
+        auto normalized_correlate_scores_measured = measure_gpu_ms([&]() {
+            return normalize_rows_nonnegative_zx_gpu(raw_correlate_scores);
+        });
+        correlate_ms += normalized_correlate_scores_measured.second;
+        artifacts.correlate_scores = std::move(normalized_correlate_scores_measured.first);
 
-            auto [corr_score, corr_elapsed] = measure_gpu_ms([&]() {
-                const ZxGpuComplexArray corr = cusignal::zx_gpu_backend::correlate::correlate(
-                    frame_complex,
+        const ZxGpuComplexArray representative_correlate_frame = extract_row_complex_zx_gpu(
+            artifacts.filtered,
+            config.representative_frame_index);
+        auto representative_correlate_measured = measure_gpu_ms([&]() {
+            const ZxGpuComplexArray representative_correlate =
+                cusignal::zx_gpu_backend::correlate::correlate(
+                    representative_correlate_frame,
                     template_device,
                     "same",
                     "fft");
-                return normalize_nonnegative_zx_gpu(complex_abs_zx_gpu(corr));
-            });
-            correlate_ms += corr_elapsed;
-            store_row_real_zx_gpu(corr_score, artifacts.correlate_scores, frame);
+            return normalize_nonnegative_zx_gpu(complex_abs_zx_gpu(representative_correlate));
+        });
+        (void)representative_correlate_measured;
 
-            auto spectrogram_measured = measure_gpu_ms([&]() {
-                return cusignal::zx_gpu_backend::spectral::spectrogram(
-                    frame_real,
-                    config.fs,
-                    std::string("hann"),
-                    config.spectrogram_nperseg,
-                    config.spectrogram_noverlap,
-                    config.spectrogram_nfft,
-                    std::string("constant"),
-                    true,
-                    "spectrum",
-                    -1,
-                    "magnitude");
-            });
-            auto spectrogram_result = std::move(spectrogram_measured.first);
-            const float spectrogram_elapsed = spectrogram_measured.second;
-            spectrogram_ms += spectrogram_elapsed;
-            if (!std::holds_alternative<ZxGpuRealArray>(spectrogram_result.values))
-            {
-                throw std::runtime_error("gpu spectrogram did not return real values");
-            }
+        auto raw_spectrogram_scores_measured = measure_gpu_ms([&]() {
+            const ZxGpuRealSignal window = cusignal::zx_gpu_backend::windows::get_window(
+                std::string("hann"),
+                config.spectrogram_nperseg,
+                true);
+            return direct_spectrogram_band_score_zx_gpu(
+                filtered_real,
+                window,
+                config.spectrogram_nperseg,
+                config.spectrogram_noverlap,
+                config.spectrogram_nfft,
+                config.filter_low,
+                config.filter_high,
+                config.fs);
+        });
+        ZxGpuRealArray raw_spectrogram_scores = std::move(raw_spectrogram_scores_measured.first);
+        spectrogram_ms += raw_spectrogram_scores_measured.second;
+        spectrogram_breakdown.push_back({"direct_band_score", 0.0f, raw_spectrogram_scores_measured.second});
+        auto normalized_spectrogram_scores_measured = measure_gpu_ms([&]() {
+            return normalize_rows_nonnegative_zx_gpu(raw_spectrogram_scores);
+        });
+        spectrogram_ms += normalized_spectrogram_scores_measured.second;
+        spectrogram_breakdown.push_back({"row_normalize", 0.0f, normalized_spectrogram_scores_measured.second});
+        spectrogram_scores = std::move(normalized_spectrogram_scores_measured.first);
 
-            auto [spectrogram_score, spectrogram_score_elapsed] = measure_gpu_ms([&]() {
-                return normalize_nonnegative_zx_gpu(spectrogram_band_score_zx_gpu(
-                    std::get<ZxGpuRealArray>(spectrogram_result.values),
-                    spectrogram_result.frequencies,
-                    spectrogram_result.times,
-                    config.samples_per_frame,
-                    config.filter_low,
-                    config.filter_high,
-                    config.fs));
-            });
-            spectrogram_ms += spectrogram_score_elapsed;
-            store_row_real_zx_gpu(spectrogram_score, spectrogram_scores, frame);
-
-            auto cwt_measured = measure_gpu_ms([&]() {
-                return cusignal::zx_gpu_backend::wavelets::cwt(frame_real_signal, "morlet2", widths_device);
-            });
-            auto cwt_values = std::move(cwt_measured.first);
-            const float cwt_elapsed_frame = cwt_measured.second;
-            cwt_ms += cwt_elapsed_frame;
-
-            auto [wavelet_score, wavelet_reduce_elapsed] = measure_gpu_ms([&]() {
-                return normalize_nonnegative_zx_gpu(cwt_max_score_zx_gpu(cwt_values));
-            });
-            cwt_ms += wavelet_reduce_elapsed;
-            store_row_real_zx_gpu(wavelet_score, wavelet_scores, frame);
-
-            if (frame == config.representative_frame_index)
-            {
-                artifacts.spectrogram_values = std::get<ZxGpuRealArray>(spectrogram_result.values);
-                artifacts.spectrogram_freqs = spectrogram_result.frequencies;
-                artifacts.spectrogram_times = spectrogram_result.times;
-                artifacts.cwt_values = cwt_values;
-            }
+        const ZxGpuRealArray representative_frame_real = extract_row_real_zx_gpu(
+            filtered_real,
+            config.representative_frame_index);
+        auto representative_spectrogram_measured = measure_gpu_ms([&]() {
+            return cusignal::zx_gpu_backend::spectral::spectrogram(
+                representative_frame_real,
+                config.fs,
+                std::string("hann"),
+                config.spectrogram_nperseg,
+                config.spectrogram_noverlap,
+                config.spectrogram_nfft,
+                std::string("constant"),
+                true,
+                "spectrum",
+                -1,
+                "magnitude");
+        });
+        auto spectrogram_result = std::move(representative_spectrogram_measured.first);
+        spectrogram_breakdown.push_back({"validation_representative_spectrogram", 0.0f, representative_spectrogram_measured.second});
+        if (!std::holds_alternative<ZxGpuRealArray>(spectrogram_result.values))
+        {
+            throw std::runtime_error("gpu spectrogram did not return real values");
         }
+        artifacts.spectrogram_values = std::get<ZxGpuRealArray>(spectrogram_result.values);
+        artifacts.spectrogram_freqs = spectrogram_result.frequencies;
+        artifacts.spectrogram_times = spectrogram_result.times;
+
+        auto raw_wavelet_scores_measured = measure_gpu_ms([&]() {
+            return batched_cwt_max_score_zx_gpu(filtered_real, widths);
+        });
+        ZxGpuRealArray raw_wavelet_scores = std::move(raw_wavelet_scores_measured.first);
+        cwt_ms += raw_wavelet_scores_measured.second;
+        auto normalized_wavelet_scores_measured = measure_gpu_ms([&]() {
+            return normalize_rows_nonnegative_zx_gpu(raw_wavelet_scores);
+        });
+        cwt_ms += normalized_wavelet_scores_measured.second;
+        wavelet_scores = std::move(normalized_wavelet_scores_measured.first);
+
+        const ZxGpuRealSignal representative_cwt_frame =
+            extract_row_real_signal_zx_gpu(filtered_real, config.representative_frame_index);
+        auto representative_cwt_measured = measure_gpu_ms([&]() {
+            return cusignal::zx_gpu_backend::wavelets::cwt(
+                representative_cwt_frame,
+                "morlet2",
+                widths_device);
+        });
+        artifacts.cwt_values = std::move(representative_cwt_measured.first);
 
         auto [fusion_done, fusion_elapsed] = measure_gpu_ms([&]() {
             fuse_feature_scores_zx_gpu(
@@ -1880,6 +1911,7 @@ namespace cusignal_demo::task2_features
         timings.push_back({"demod", 0.0, demod_ms});
         timings.push_back({"correlate", 0.0, correlate_ms});
         timings.push_back({"spectrogram", 0.0, spectrogram_ms});
+        write_spectrogram_breakdown_csv(spectrogram_breakdown);
         timings.push_back({"cwt", 0.0, cwt_ms});
         timings.push_back({"feature_fusion", 0.0, fusion_ms});
 
@@ -2043,6 +2075,31 @@ namespace cusignal_demo::task2_features
             output << timing.name << ',' << timing.cpu_ms << ',' << timing.gpu_ms << '\n';
         }
         output << "total," << cpu_total_ms << ',' << gpu_total_ms << '\n';
+    }
+
+    void write_spectrogram_breakdown_csv(const std::vector<StageTiming> &timings)
+    {
+        const fs::path path = report_root() / "latest_spectrogram_breakdown.csv";
+        fs::create_directories(path.parent_path());
+        std::ofstream output(path);
+        if (!output)
+        {
+            throw std::runtime_error("failed to write CSV file: " + path.string());
+        }
+        output << "substage,cpu_ms,gpu_ms,counted_in_pipeline\n";
+        output << std::fixed << std::setprecision(6);
+        float total = 0.0f;
+        for (const StageTiming &timing : timings)
+        {
+            const bool counted = timing.name.rfind("validation_", 0) != 0;
+            output << timing.name << ',' << timing.cpu_ms << ',' << timing.gpu_ms << ','
+                   << (counted ? "true" : "false") << '\n';
+            if (counted)
+            {
+                total += timing.gpu_ms;
+            }
+        }
+        output << "pipeline_total,0.000000," << total << ",true\n";
     }
 
     void write_unified_step_metrics(
