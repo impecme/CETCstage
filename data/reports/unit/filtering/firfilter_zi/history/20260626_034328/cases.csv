@@ -1,0 +1,8 @@
+case_id,backend,metric_kind,samples,warmup,repeat,mean_ms,median_ms,p95_ms,min_ms,max_ms,std_ms,max_abs_error,max_rel_error,rmse,l2_error,exact_match
+fir_steady_state,gpu_vs_cpu,error,2,,,,,,,,,0,0,0,0,true
+fir_steady_state,cpu_vs_ref,error,2,,,,,,,,,0,0,0,0,true
+fir_steady_state,gpu_vs_ref,error,2,,,,,,,,,0,0,0,0,true
+perf_fir_steady_state,gpu_vs_cpu,error,32,,,,,,,,,0,0,0,0,true
+perf_fir_steady_state,cpu,perf,32,1,3,0.013213667087256908,0.013009999878704548,0.014511000365018845,0.012120000086724758,0.014511000365018845,0.00098668830469250679,,,,,
+perf_fir_steady_state,gpu_e2e,perf,32,1,3,0.25839799642562866,0.25907498598098755,0.26417499780654907,0.25194400548934937,0.26417499780654907,0.0050161755643785,,,,,
+perf_fir_steady_state,gpu_kernel,perf,32,1,3,0.089733995497226715,0.088454000651836395,0.096597999334335327,0.084150001406669617,0.096597999334335327,0.0051618446595966816,,,,,

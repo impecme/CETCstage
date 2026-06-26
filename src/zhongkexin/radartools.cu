@@ -34,6 +34,7 @@ namespace
     constexpr int kCfarFftWindowThreshold = 256;
     constexpr int kCfarFftMinSize = 4096;
     constexpr int kCfarSmall2dFootprint = 256;
+    constexpr int kMvdrSmallMaxSensors = 8;
     thread_local float g_last_kernel_ms = 0.0;
 
     void throw_on_zx_gpu_error(cudaError_t status, const char *what)
@@ -474,6 +475,36 @@ namespace
     __device__ inline float2 complex_mul(float2 lhs, float2 rhs)
     {
         return make_complex(lhs.x * rhs.x - lhs.y * rhs.y, lhs.x * rhs.y + lhs.y * rhs.x);
+    }
+
+    __device__ inline cuComplex cu_complex_add(cuComplex lhs, cuComplex rhs)
+    {
+        return make_cuComplex(cuCrealf(lhs) + cuCrealf(rhs), cuCimagf(lhs) + cuCimagf(rhs));
+    }
+
+    __device__ inline cuComplex cu_complex_sub(cuComplex lhs, cuComplex rhs)
+    {
+        return make_cuComplex(cuCrealf(lhs) - cuCrealf(rhs), cuCimagf(lhs) - cuCimagf(rhs));
+    }
+
+    __device__ inline cuComplex cu_complex_mul(cuComplex lhs, cuComplex rhs)
+    {
+        return make_cuComplex(
+            cuCrealf(lhs) * cuCrealf(rhs) - cuCimagf(lhs) * cuCimagf(rhs),
+            cuCrealf(lhs) * cuCimagf(rhs) + cuCimagf(lhs) * cuCrealf(rhs));
+    }
+
+    __device__ inline cuComplex cu_complex_div(cuComplex lhs, cuComplex rhs)
+    {
+        const float denom = fmaf(cuCrealf(rhs), cuCrealf(rhs), cuCimagf(rhs) * cuCimagf(rhs));
+        return make_cuComplex(
+            (cuCrealf(lhs) * cuCrealf(rhs) + cuCimagf(lhs) * cuCimagf(rhs)) / denom,
+            (cuCimagf(lhs) * cuCrealf(rhs) - cuCrealf(lhs) * cuCimagf(rhs)) / denom);
+    }
+
+    __device__ inline float cu_complex_abs2(cuComplex value)
+    {
+        return fmaf(cuCrealf(value), cuCrealf(value), cuCimagf(value) * cuCimagf(value));
     }
 
     __global__ void pack_template_kernel(
@@ -1235,6 +1266,49 @@ namespace
         means[row] = make_cuComplex(accum.x * scale, accum.y * scale);
     }
 
+    __global__ void row_mean_parallel_kernel(
+        const float2 *input,
+        std::size_t sensors,
+        std::size_t snapshots,
+        cuComplex *means)
+    {
+        const std::size_t row = static_cast<std::size_t>(blockIdx.x);
+        if (row >= sensors)
+        {
+            return;
+        }
+
+        __shared__ float real_cache[kThreadsPerBlock];
+        __shared__ float imag_cache[kThreadsPerBlock];
+        float real = 0.0f;
+        float imag = 0.0f;
+        const std::size_t base = row * snapshots;
+        for (std::size_t col = threadIdx.x; col < snapshots; col += blockDim.x)
+        {
+            const float2 value = input[base + col];
+            real += value.x;
+            imag += value.y;
+        }
+
+        real_cache[threadIdx.x] = real;
+        imag_cache[threadIdx.x] = imag;
+        __syncthreads();
+        for (unsigned int stride = blockDim.x / 2; stride > 0; stride >>= 1)
+        {
+            if (threadIdx.x < stride)
+            {
+                real_cache[threadIdx.x] += real_cache[threadIdx.x + stride];
+                imag_cache[threadIdx.x] += imag_cache[threadIdx.x + stride];
+            }
+            __syncthreads();
+        }
+        if (threadIdx.x == 0)
+        {
+            const float scale = 1.0f / static_cast<float>(snapshots);
+            means[row] = make_cuComplex(real_cache[0] * scale, imag_cache[0] * scale);
+        }
+    }
+
     __global__ void center_matrix_kernel(
         const float2 *input,
         const cuComplex *means,
@@ -1253,6 +1327,80 @@ namespace
         const float2 value = input[flat];
         const cuComplex mean = means[row];
         output[flat] = make_cuComplex(value.x - cuCrealf(mean), value.y - cuCimagf(mean));
+    }
+
+    __global__ void mvdr_covariance_direct_kernel(
+        const float2 *input,
+        const cuComplex *means,
+        int sensors,
+        std::size_t snapshots,
+        cuComplex *covariance)
+    {
+        const int pair = static_cast<int>(blockIdx.x);
+        const int total_pairs = sensors * (sensors + 1) / 2;
+        if (pair >= total_pairs)
+        {
+            return;
+        }
+
+        int row = 0;
+        int first_pair_in_row = 0;
+        while (row < sensors)
+        {
+            const int row_pair_count = sensors - row;
+            if (pair < first_pair_in_row + row_pair_count)
+            {
+                break;
+            }
+            first_pair_in_row += row_pair_count;
+            ++row;
+        }
+        const int col = row + (pair - first_pair_in_row);
+        const std::size_t row_base = static_cast<std::size_t>(row) * snapshots;
+        const std::size_t col_base = static_cast<std::size_t>(col) * snapshots;
+        const cuComplex row_mean = means[row];
+        const cuComplex col_mean = means[col];
+
+        __shared__ float real_cache[kThreadsPerBlock];
+        __shared__ float imag_cache[kThreadsPerBlock];
+        float real = 0.0f;
+        float imag = 0.0f;
+        for (std::size_t sample = threadIdx.x; sample < snapshots; sample += blockDim.x)
+        {
+            const float2 row_value = input[row_base + sample];
+            const float2 col_value = input[col_base + sample];
+            const float ar = row_value.x - cuCrealf(row_mean);
+            const float ai = row_value.y - cuCimagf(row_mean);
+            const float br = col_value.x - cuCrealf(col_mean);
+            const float bi = col_value.y - cuCimagf(col_mean);
+            real = fmaf(ar, br, fmaf(ai, bi, real));
+            imag = fmaf(ai, br, imag - ar * bi);
+        }
+
+        real_cache[threadIdx.x] = real;
+        imag_cache[threadIdx.x] = imag;
+        __syncthreads();
+        for (unsigned int stride = blockDim.x / 2; stride > 0; stride >>= 1)
+        {
+            if (threadIdx.x < stride)
+            {
+                real_cache[threadIdx.x] += real_cache[threadIdx.x + stride];
+                imag_cache[threadIdx.x] += imag_cache[threadIdx.x + stride];
+            }
+            __syncthreads();
+        }
+        if (threadIdx.x == 0)
+        {
+            const float scale = 1.0f / static_cast<float>(snapshots - 1);
+            const cuComplex value = make_cuComplex(real_cache[0] * scale, imag_cache[0] * scale);
+            covariance[static_cast<std::size_t>(row) + static_cast<std::size_t>(col) * sensors] =
+                value;
+            if (row != col)
+            {
+                covariance[static_cast<std::size_t>(col) + static_cast<std::size_t>(row) * sensors] =
+                    make_cuComplex(cuCrealf(value), -cuCimagf(value));
+            }
+        }
     }
 
     __global__ void transpose_square_to_column_major_kernel(
@@ -1300,6 +1448,112 @@ namespace
         }
         const cuComplex value = cuCdivf(input[index], denom);
         output[index] = make_complex(cuCrealf(value), cuCimagf(value));
+    }
+
+    __global__ void mvdr_solve_normalize_small_kernel(
+        const cuComplex *covariance,
+        const float2 *steering,
+        int sensors,
+        float2 *output,
+        int *info)
+    {
+        if (threadIdx.x != 0 || blockIdx.x != 0)
+        {
+            return;
+        }
+        if (sensors <= 0 || sensors > kMvdrSmallMaxSensors)
+        {
+            info[0] = -2;
+            return;
+        }
+
+        cuComplex a[kMvdrSmallMaxSensors][kMvdrSmallMaxSensors];
+        cuComplex rhs[kMvdrSmallMaxSensors];
+        cuComplex solution[kMvdrSmallMaxSensors];
+        for (int row = 0; row < sensors; ++row)
+        {
+            rhs[row] = make_cuComplex(steering[row].x, steering[row].y);
+            for (int col = 0; col < sensors; ++col)
+            {
+                a[row][col] = covariance[static_cast<std::size_t>(row) +
+                                         static_cast<std::size_t>(col) * sensors];
+            }
+        }
+
+        constexpr float kPivotEpsilon = 1.0e-20f;
+        for (int col = 0; col < sensors; ++col)
+        {
+            int pivot = col;
+            float pivot_norm = cu_complex_abs2(a[col][col]);
+            for (int row = col + 1; row < sensors; ++row)
+            {
+                const float candidate = cu_complex_abs2(a[row][col]);
+                if (candidate > pivot_norm)
+                {
+                    pivot_norm = candidate;
+                    pivot = row;
+                }
+            }
+            if (pivot_norm <= kPivotEpsilon)
+            {
+                info[0] = col + 1;
+                return;
+            }
+            if (pivot != col)
+            {
+                for (int swap_col = col; swap_col < sensors; ++swap_col)
+                {
+                    const cuComplex tmp = a[col][swap_col];
+                    a[col][swap_col] = a[pivot][swap_col];
+                    a[pivot][swap_col] = tmp;
+                }
+                const cuComplex rhs_tmp = rhs[col];
+                rhs[col] = rhs[pivot];
+                rhs[pivot] = rhs_tmp;
+            }
+
+            for (int row = col + 1; row < sensors; ++row)
+            {
+                const cuComplex factor = cu_complex_div(a[row][col], a[col][col]);
+                a[row][col] = make_cuComplex(0.0f, 0.0f);
+                for (int update_col = col + 1; update_col < sensors; ++update_col)
+                {
+                    a[row][update_col] =
+                        cu_complex_sub(a[row][update_col],
+                                       cu_complex_mul(factor, a[col][update_col]));
+                }
+                rhs[row] = cu_complex_sub(rhs[row], cu_complex_mul(factor, rhs[col]));
+            }
+        }
+
+        for (int row = sensors - 1; row >= 0; --row)
+        {
+            cuComplex accum = rhs[row];
+            for (int col = row + 1; col < sensors; ++col)
+            {
+                accum = cu_complex_sub(accum, cu_complex_mul(a[row][col], solution[col]));
+            }
+            solution[row] = cu_complex_div(accum, a[row][row]);
+        }
+
+        cuComplex denom = make_cuComplex(0.0f, 0.0f);
+        for (int index = 0; index < sensors; ++index)
+        {
+            const cuComplex sv = make_cuComplex(steering[index].x, -steering[index].y);
+            denom = cu_complex_add(denom, cu_complex_mul(sv, solution[index]));
+        }
+        if (cu_complex_abs2(denom) <= kPivotEpsilon)
+        {
+            info[0] = -1;
+            return;
+        }
+
+        for (int index = 0; index < sensors; ++index)
+        {
+            const cuComplex value = cu_complex_div(solution[index], denom);
+            output[index] = make_complex(cuCrealf(value), cuCimagf(value));
+        }
+        info[0] = 0;
     }
 
     const ZxGpuRealSignal resolve_window_signal(
@@ -2104,8 +2358,8 @@ namespace cusignal
                     throw std::invalid_argument("sv must not be empty");
                 }
 
-                g_workspace.beamformer.ensure_handles();
                 const int sensors = static_cast<int>(sv_device.size());
+                const bool use_small_solver = calc_cov && sensors <= kMvdrSmallMaxSensors;
                 if (calc_cov)
                 {
                     detail::ensure_rank(x_device, 2, "x");
@@ -2135,6 +2389,10 @@ namespace cusignal
                         throw std::invalid_argument("Steering Vector and input data do not align");
                     }
                 }
+                if (!use_small_solver)
+                {
+                    g_workspace.beamformer.ensure_handles();
+                }
 
                 ZxGpuComplexArray output = core::make_zx_gpu_complex_array(sv_device.shape());
                 ScopedZxGpuEvents events;
@@ -2143,47 +2401,73 @@ namespace cusignal
                     {
                         const std::size_t snapshots = x_device.shape()[1];
                         g_workspace.beamformer.means.reserve(static_cast<std::size_t>(sensors));
-                        g_workspace.beamformer.centered.reserve(static_cast<std::size_t>(sensors) * snapshots);
-                        row_mean_kernel<<<block_count(static_cast<std::size_t>(sensors)), kThreadsPerBlock>>>(
-                            reinterpret_cast<const float2 *>(x_device.data()),
-                            static_cast<std::size_t>(sensors),
-                            snapshots,
-                            g_workspace.beamformer.means.get());
-                        check_kernel_launch("row_mean_kernel");
-                        center_matrix_kernel<<<block_count(static_cast<std::size_t>(sensors) * snapshots), kThreadsPerBlock>>>(
-                            reinterpret_cast<const float2 *>(x_device.data()),
-                            g_workspace.beamformer.means.get(),
-                            static_cast<std::size_t>(sensors),
-                            snapshots,
-                            g_workspace.beamformer.centered.get());
-                        check_kernel_launch("center_matrix_kernel");
+                        if (sensors <= 16)
+                        {
+                            row_mean_parallel_kernel<<<sensors, kThreadsPerBlock>>>(
+                                reinterpret_cast<const float2 *>(x_device.data()),
+                                static_cast<std::size_t>(sensors),
+                                snapshots,
+                                g_workspace.beamformer.means.get());
+                            check_kernel_launch("row_mean_parallel_kernel");
+                        }
+                        else
+                        {
+                            row_mean_kernel<<<block_count(static_cast<std::size_t>(sensors)), kThreadsPerBlock>>>(
+                                reinterpret_cast<const float2 *>(x_device.data()),
+                                static_cast<std::size_t>(sensors),
+                                snapshots,
+                                g_workspace.beamformer.means.get());
+                            check_kernel_launch("row_mean_kernel");
+                        }
 
                         g_workspace.beamformer.covariance.reserve(static_cast<std::size_t>(sensors) * static_cast<std::size_t>(sensors));
-                        const cuComplex alpha = make_cuComplex(
-                            1.0 / static_cast<float>(static_cast<int>(snapshots) - 1),
-                            0.0);
-                        const cuComplex beta = make_cuComplex(0.0, 0.0);
-                        throw_on_cublas_error(
-                            cublasCgemm(
-                                g_workspace.beamformer.cublas,
-                                CUBLAS_OP_C,
-                                CUBLAS_OP_N,
+                        if (sensors <= 16)
+                        {
+                            mvdr_covariance_direct_kernel<<<sensors * (sensors + 1) / 2, kThreadsPerBlock>>>(
+                                reinterpret_cast<const float2 *>(x_device.data()),
+                                g_workspace.beamformer.means.get(),
                                 sensors,
-                                sensors,
-                                static_cast<int>(snapshots),
-                                &alpha,
-                                g_workspace.beamformer.centered.get(),
-                                static_cast<int>(snapshots),
-                                g_workspace.beamformer.centered.get(),
-                                static_cast<int>(snapshots),
-                                &beta,
+                                snapshots,
+                                g_workspace.beamformer.covariance.get());
+                            check_kernel_launch("mvdr_covariance_direct_kernel");
+                        }
+                        else
+                        {
+                            g_workspace.beamformer.centered.reserve(static_cast<std::size_t>(sensors) * snapshots);
+                            center_matrix_kernel<<<block_count(static_cast<std::size_t>(sensors) * snapshots), kThreadsPerBlock>>>(
+                                reinterpret_cast<const float2 *>(x_device.data()),
+                                g_workspace.beamformer.means.get(),
+                                static_cast<std::size_t>(sensors),
+                                snapshots,
+                                g_workspace.beamformer.centered.get());
+                            check_kernel_launch("center_matrix_kernel");
+
+                            const cuComplex alpha = make_cuComplex(
+                                1.0 / static_cast<float>(static_cast<int>(snapshots) - 1),
+                                0.0);
+                            const cuComplex beta = make_cuComplex(0.0, 0.0);
+                            throw_on_cublas_error(
+                                cublasCgemm(
+                                    g_workspace.beamformer.cublas,
+                                    CUBLAS_OP_C,
+                                    CUBLAS_OP_N,
+                                    sensors,
+                                    sensors,
+                                    static_cast<int>(snapshots),
+                                    &alpha,
+                                    g_workspace.beamformer.centered.get(),
+                                    static_cast<int>(snapshots),
+                                    g_workspace.beamformer.centered.get(),
+                                    static_cast<int>(snapshots),
+                                    &beta,
+                                    g_workspace.beamformer.covariance.get(),
+                                    sensors),
+                                "cublasCgemm(covariance)");
+                            conjugate_matrix_kernel<<<block_count(static_cast<std::size_t>(sensors) * static_cast<std::size_t>(sensors)), kThreadsPerBlock>>>(
                                 g_workspace.beamformer.covariance.get(),
-                                sensors),
-                            "cublasCgemm(covariance)");
-                        conjugate_matrix_kernel<<<block_count(static_cast<std::size_t>(sensors) * static_cast<std::size_t>(sensors)), kThreadsPerBlock>>>(
-                            g_workspace.beamformer.covariance.get(),
-                            static_cast<std::size_t>(sensors) * static_cast<std::size_t>(sensors));
-                        check_kernel_launch("conjugate_matrix_kernel");
+                                static_cast<std::size_t>(sensors) * static_cast<std::size_t>(sensors));
+                            check_kernel_launch("conjugate_matrix_kernel");
+                        }
                     }
                     else
                     {
@@ -2195,87 +2479,112 @@ namespace cusignal
                         check_kernel_launch("transpose_square_to_column_major_kernel");
                     }
 
-                    g_workspace.beamformer.rhs.reserve(static_cast<std::size_t>(sensors));
-                    copy_vector_to_cucomplex_kernel<<<block_count(static_cast<std::size_t>(sensors)), kThreadsPerBlock>>>(
-                        reinterpret_cast<const float2 *>(sv_device.data()),
-                        static_cast<std::size_t>(sensors),
-                        g_workspace.beamformer.rhs.get());
-                    check_kernel_launch("copy_vector_to_cucomplex_kernel");
-
-                    int lwork = 0;
-                    throw_on_cusolver_error(
-                        cusolverDnCgetrf_bufferSize(
-                            g_workspace.beamformer.cusolver,
-                            sensors,
-                            sensors,
-                            g_workspace.beamformer.covariance.get(),
-                            sensors,
-                            &lwork),
-                        "cusolverDnCgetrf_bufferSize");
-                    g_workspace.beamformer.work.reserve(static_cast<std::size_t>(lwork));
-                    g_workspace.beamformer.ipiv.reserve(static_cast<std::size_t>(sensors));
                     g_workspace.beamformer.info.reserve(1);
-                    throw_on_cusolver_error(
-                        cusolverDnCgetrf(
-                            g_workspace.beamformer.cusolver,
-                            sensors,
-                            sensors,
-                            g_workspace.beamformer.covariance.get(),
-                            sensors,
-                            g_workspace.beamformer.work.get(),
-                            g_workspace.beamformer.ipiv.get(),
-                            g_workspace.beamformer.info.get()),
-                        "cusolverDnCgetrf");
-                    int info = 0;
-                    throw_on_zx_gpu_error(
-                        cudaMemcpy(&info, g_workspace.beamformer.info.get(), sizeof(int), cudaMemcpyDeviceToHost),
-                        "cudaMemcpy(info getrf)");
-                    if (info != 0)
+                    if (use_small_solver)
                     {
-                        throw std::runtime_error("cusolverDnCgetrf failed with info=" + std::to_string(info));
-                    }
-                    throw_on_cusolver_error(
-                        cusolverDnCgetrs(
-                            g_workspace.beamformer.cusolver,
-                            CUBLAS_OP_N,
-                            sensors,
-                            1,
+                        mvdr_solve_normalize_small_kernel<<<1, 1>>>(
                             g_workspace.beamformer.covariance.get(),
+                            reinterpret_cast<const float2 *>(sv_device.data()),
                             sensors,
-                            g_workspace.beamformer.ipiv.get(),
-                            g_workspace.beamformer.rhs.get(),
-                            sensors,
-                            g_workspace.beamformer.info.get()),
-                        "cusolverDnCgetrs");
-                    throw_on_zx_gpu_error(
-                        cudaMemcpy(&info, g_workspace.beamformer.info.get(), sizeof(int), cudaMemcpyDeviceToHost),
-                        "cudaMemcpy(info getrs)");
-                    if (info != 0)
-                    {
-                        throw std::runtime_error("cusolverDnCgetrs failed with info=" + std::to_string(info));
+                            reinterpret_cast<float2 *>(output.data()),
+                            g_workspace.beamformer.info.get());
+                        check_kernel_launch("mvdr_solve_normalize_small_kernel");
+                        int info = 0;
+                        throw_on_zx_gpu_error(
+                            cudaMemcpy(&info, g_workspace.beamformer.info.get(), sizeof(int), cudaMemcpyDeviceToHost),
+                            "cudaMemcpy(info mvdr small solve)");
+                        if (info > 0)
+                        {
+                            throw std::runtime_error("mvdr small solve failed with singular pivot info=" + std::to_string(info));
+                        }
+                        if (info < 0)
+                        {
+                            throw std::invalid_argument("mvdr denominator is zero");
+                        }
                     }
+                    else
+                    {
+                        g_workspace.beamformer.rhs.reserve(static_cast<std::size_t>(sensors));
+                        copy_vector_to_cucomplex_kernel<<<block_count(static_cast<std::size_t>(sensors)), kThreadsPerBlock>>>(
+                            reinterpret_cast<const float2 *>(sv_device.data()),
+                            static_cast<std::size_t>(sensors),
+                            g_workspace.beamformer.rhs.get());
+                        check_kernel_launch("copy_vector_to_cucomplex_kernel");
 
-                    cuComplex denom {};
-                    throw_on_cublas_error(
-                        cublasCdotc(
-                            g_workspace.beamformer.cublas,
-                            sensors,
-                            reinterpret_cast<const cuComplex *>(sv_device.data()),
-                            1,
+                        int lwork = 0;
+                        throw_on_cusolver_error(
+                            cusolverDnCgetrf_bufferSize(
+                                g_workspace.beamformer.cusolver,
+                                sensors,
+                                sensors,
+                                g_workspace.beamformer.covariance.get(),
+                                sensors,
+                                &lwork),
+                            "cusolverDnCgetrf_bufferSize");
+                        g_workspace.beamformer.work.reserve(static_cast<std::size_t>(lwork));
+                        g_workspace.beamformer.ipiv.reserve(static_cast<std::size_t>(sensors));
+                        throw_on_cusolver_error(
+                            cusolverDnCgetrf(
+                                g_workspace.beamformer.cusolver,
+                                sensors,
+                                sensors,
+                                g_workspace.beamformer.covariance.get(),
+                                sensors,
+                                g_workspace.beamformer.work.get(),
+                                g_workspace.beamformer.ipiv.get(),
+                                g_workspace.beamformer.info.get()),
+                            "cusolverDnCgetrf");
+                        int info = 0;
+                        throw_on_zx_gpu_error(
+                            cudaMemcpy(&info, g_workspace.beamformer.info.get(), sizeof(int), cudaMemcpyDeviceToHost),
+                            "cudaMemcpy(info getrf)");
+                        if (info != 0)
+                        {
+                            throw std::runtime_error("cusolverDnCgetrf failed with info=" + std::to_string(info));
+                        }
+                        throw_on_cusolver_error(
+                            cusolverDnCgetrs(
+                                g_workspace.beamformer.cusolver,
+                                CUBLAS_OP_N,
+                                sensors,
+                                1,
+                                g_workspace.beamformer.covariance.get(),
+                                sensors,
+                                g_workspace.beamformer.ipiv.get(),
+                                g_workspace.beamformer.rhs.get(),
+                                sensors,
+                                g_workspace.beamformer.info.get()),
+                            "cusolverDnCgetrs");
+                        throw_on_zx_gpu_error(
+                            cudaMemcpy(&info, g_workspace.beamformer.info.get(), sizeof(int), cudaMemcpyDeviceToHost),
+                            "cudaMemcpy(info getrs)");
+                        if (info != 0)
+                        {
+                            throw std::runtime_error("cusolverDnCgetrs failed with info=" + std::to_string(info));
+                        }
+
+                        cuComplex denom {};
+                        throw_on_cublas_error(
+                            cublasCdotc(
+                                g_workspace.beamformer.cublas,
+                                sensors,
+                                reinterpret_cast<const cuComplex *>(sv_device.data()),
+                                1,
+                                g_workspace.beamformer.rhs.get(),
+                                1,
+                                &denom),
+                            "cublasCdotc");
+                        if (cuCrealf(denom) == 0.0 && cuCimagf(denom) == 0.0)
+                        {
+                            throw std::invalid_argument("mvdr denominator is zero");
+                        }
+                        scale_solution_kernel<<<block_count(static_cast<std::size_t>(sensors)), kThreadsPerBlock>>>(
                             g_workspace.beamformer.rhs.get(),
-                            1,
-                            &denom),
-                        "cublasCdotc");
-                    if (cuCrealf(denom) == 0.0 && cuCimagf(denom) == 0.0)
-                    {
-                        throw std::invalid_argument("mvdr denominator is zero");
+                            static_cast<std::size_t>(sensors),
+                            denom,
+                            reinterpret_cast<float2 *>(output.data()));
+                        check_kernel_launch("scale_solution_kernel");
                     }
-                    scale_solution_kernel<<<block_count(static_cast<std::size_t>(sensors)), kThreadsPerBlock>>>(
-                        g_workspace.beamformer.rhs.get(),
-                        static_cast<std::size_t>(sensors),
-                        denom,
-                        reinterpret_cast<float2 *>(output.data()));
-                    check_kernel_launch("scale_solution_kernel");
                 }));
 
                 return output;

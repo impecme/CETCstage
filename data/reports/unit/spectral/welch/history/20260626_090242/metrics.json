@@ -1,0 +1,134 @@
+{
+  "module": "spectral",
+  "operator": "welch",
+  "generated_at": "2026-06-26 09:02:42",
+  "git_commit": "",
+  "gpu_name": "ZQ500-Q QUAD-0",
+  "compile_config": {
+    "cxx_standard": 201703,
+    "runtime_version": 11070
+  },
+  "summary": {
+    "pass": true,
+    "accuracy_cases": 0,
+    "perf_cases": 1,
+    "max_abs_error": 2.79397e-09,
+    "max_rel_error": 0.0802097,
+    "mixed_error": 3.16103e-07,
+    "rmse": 2.75051e-10,
+    "gpu_e2e_speedup": 1.35347,
+    "gpu_kernel_speedup": 1.66365,
+    "cpu_perf": {
+      "warmup": 1,
+      "repeat": 3,
+      "mean_ms": 2.74165,
+      "median_ms": 2.74165,
+      "p95_ms": 2.74165,
+      "min_ms": 2.74165,
+      "max_ms": 2.74165,
+      "std_ms": 0
+    },
+    "gpu_e2e_perf": {
+      "warmup": 1,
+      "repeat": 3,
+      "mean_ms": 2.02565,
+      "median_ms": 2.02565,
+      "p95_ms": 2.02565,
+      "min_ms": 2.02565,
+      "max_ms": 2.02565,
+      "std_ms": 0
+    },
+    "gpu_kernel_perf": {
+      "warmup": 1,
+      "repeat": 3,
+      "mean_ms": 1.64797,
+      "median_ms": 1.64797,
+      "p95_ms": 1.64797,
+      "min_ms": 1.64797,
+      "max_ms": 1.64797,
+      "std_ms": 0
+    },
+    "device_storage_cache": {
+      "cache_enabled": true,
+      "allocation_calls": 4,
+      "allocation_bytes": 133128,
+      "allocation_mib": 0.126961,
+      "cache_hits": 24,
+      "cache_misses": 4,
+      "recycled_blocks": 27,
+      "recycled_bytes": 18504,
+      "recycled_mib": 0.0176468,
+      "evicted_blocks": 0,
+      "evicted_bytes": 0,
+      "evicted_mib": 0,
+      "freed_blocks": 0,
+      "freed_bytes": 0,
+      "freed_mib": 0,
+      "cached_blocks": 3,
+      "cached_bytes": 2056,
+      "cached_mib": 0.00196075,
+      "peak_cached_bytes": 2056,
+      "peak_cached_mib": 0.00196075,
+      "max_cached_blocks": 8,
+      "max_cached_bytes": 536870912,
+      "max_cached_mib": 512,
+      "max_single_cached_bytes": 268435456,
+      "max_single_cached_mib": 256
+    }
+  },
+  "cases": [
+    {
+      "case_id": "perf_mean_hann",
+      "category": "perf",
+      "samples": 129,
+      "pass": true,
+      "cpu_gpu_error": {
+        "max_abs_error": 2.79397e-09,
+        "max_rel_error": 0.0802097,
+        "mixed_error": 3.16103e-07,
+        "rmse": 2.75051e-10,
+        "l2_error": 3.12397e-09,
+        "exact_match": false,
+        "first_mismatch_index": 0
+      },
+      "cpu_perf": {
+        "warmup": 1,
+        "repeat": 3,
+        "mean_ms": 2.74145,
+        "median_ms": 2.74165,
+        "p95_ms": 2.7517,
+        "min_ms": 2.731,
+        "max_ms": 2.7517,
+        "std_ms": 0.00845152
+      },
+      "gpu_e2e_perf": {
+        "warmup": 1,
+        "repeat": 3,
+        "mean_ms": 2.04149,
+        "median_ms": 2.02565,
+        "p95_ms": 2.08154,
+        "min_ms": 2.0173,
+        "max_ms": 2.08154,
+        "std_ms": 0.0285193
+      },
+      "gpu_kernel_perf": {
+        "warmup": 1,
+        "repeat": 3,
+        "mean_ms": 1.64789,
+        "median_ms": 1.64797,
+        "p95_ms": 1.65043,
+        "min_ms": 1.64526,
+        "max_ms": 1.65043,
+        "std_ms": 0.00211075
+      },
+      "artifacts": [
+        {"role": "case_spec", "path": "/CETC/data/generated/unit/spectral/welch/input/perf_mean_hann__spec.json", "sha256": "8ec4a2a7b9b15bb2175bfd8104421317c2422007b76a560f837caa105a485f8f"},
+        {"role": "x_input", "path": "/CETC/data/generated/unit/spectral/welch/input/perf_mean_hann__x.csv", "sha256": "8d06a27f29ab3659238a15982af831f45e804ad6e82b3a79d2ba7343b8828ea9"},
+        {"role": "cpu_frequencies", "path": "/CETC/data/generated/unit/spectral/welch/output_samples/perf_mean_hann__cpu__frequencies.csv", "sha256": "e479550ee404d8a92116a14e8ddecb3f40d1802659dfcb637739e35fd96021d0"},
+        {"role": "cpu_values", "path": "/CETC/data/generated/unit/spectral/welch/output_samples/perf_mean_hann__cpu__values.csv", "sha256": "467e3c788ae5cd322c961e55221943f6e5aaecbcfd72028f4fc66bac6d4b946b"},
+        {"role": "gpu_frequencies", "path": "/CETC/data/generated/unit/spectral/welch/output_samples/perf_mean_hann__gpu__frequencies.csv", "sha256": "e479550ee404d8a92116a14e8ddecb3f40d1802659dfcb637739e35fd96021d0"},
+        {"role": "gpu_values", "path": "/CETC/data/generated/unit/spectral/welch/output_samples/perf_mean_hann__gpu__values.csv", "sha256": "e67788b4e1cf162c161904fd942496066be50549b3192e35212c30af1c9e034a"}
+      ]
+    }
+  ]
+}

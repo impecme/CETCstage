@@ -1,0 +1,133 @@
+{
+  "module": "filtering",
+  "operator": "filtfilt",
+  "generated_at": "2026-06-26 06:55:49",
+  "git_commit": "",
+  "gpu_name": "ZQ500-Q QUAD-0",
+  "compile_config": {
+    "cxx_standard": 201703,
+    "runtime_version": 11070
+  },
+  "summary": {
+    "pass": true,
+    "accuracy_cases": 0,
+    "perf_cases": 1,
+    "max_abs_error": 4.17233e-07,
+    "max_rel_error": 4.85496e-05,
+    "mixed_error": 7.49257e-07,
+    "rmse": 6.52378e-08,
+    "gpu_e2e_speedup": 0.832212,
+    "gpu_kernel_speedup": 1.39671,
+    "cpu_perf": {
+      "warmup": 1,
+      "repeat": 3,
+      "mean_ms": 0.565284,
+      "median_ms": 0.565284,
+      "p95_ms": 0.565284,
+      "min_ms": 0.565284,
+      "max_ms": 0.565284,
+      "std_ms": 0
+    },
+    "gpu_e2e_perf": {
+      "warmup": 1,
+      "repeat": 3,
+      "mean_ms": 0.679255,
+      "median_ms": 0.679255,
+      "p95_ms": 0.679255,
+      "min_ms": 0.679255,
+      "max_ms": 0.679255,
+      "std_ms": 0
+    },
+    "gpu_kernel_perf": {
+      "warmup": 1,
+      "repeat": 3,
+      "mean_ms": 0.404724,
+      "median_ms": 0.404724,
+      "p95_ms": 0.404724,
+      "min_ms": 0.404724,
+      "max_ms": 0.404724,
+      "std_ms": 0
+    },
+    "device_storage_cache": {
+      "cache_enabled": true,
+      "allocation_calls": 12,
+      "allocation_bytes": 789848,
+      "allocation_mib": 0.753258,
+      "cache_hits": 67,
+      "cache_misses": 12,
+      "recycled_blocks": 74,
+      "recycled_bytes": 8260656,
+      "recycled_mib": 7.87798,
+      "evicted_blocks": 0,
+      "evicted_bytes": 0,
+      "evicted_mib": 0,
+      "freed_blocks": 0,
+      "freed_bytes": 0,
+      "freed_mib": 0,
+      "cached_blocks": 7,
+      "cached_bytes": 655620,
+      "cached_mib": 0.625248,
+      "peak_cached_bytes": 655620,
+      "peak_cached_mib": 0.625248,
+      "max_cached_blocks": 8,
+      "max_cached_bytes": 536870912,
+      "max_cached_mib": 512,
+      "max_single_cached_bytes": 268435456,
+      "max_single_cached_mib": 256
+    }
+  },
+  "cases": [
+    {
+      "case_id": "perf_iir_pad",
+      "category": "perf",
+      "samples": 32768,
+      "pass": true,
+      "cpu_gpu_error": {
+        "max_abs_error": 4.17233e-07,
+        "max_rel_error": 4.85496e-05,
+        "mixed_error": 7.49257e-07,
+        "rmse": 6.52378e-08,
+        "l2_error": 1.18093e-05,
+        "exact_match": false,
+        "first_mismatch_index": 0
+      },
+      "cpu_perf": {
+        "warmup": 1,
+        "repeat": 3,
+        "mean_ms": 0.559278,
+        "median_ms": 0.565284,
+        "p95_ms": 0.567095,
+        "min_ms": 0.545454,
+        "max_ms": 0.567095,
+        "std_ms": 0.00980272
+      },
+      "gpu_e2e_perf": {
+        "warmup": 1,
+        "repeat": 3,
+        "mean_ms": 0.692035,
+        "median_ms": 0.679255,
+        "p95_ms": 0.729016,
+        "min_ms": 0.667835,
+        "max_ms": 0.729016,
+        "std_ms": 0.0265616
+      },
+      "gpu_kernel_perf": {
+        "warmup": 1,
+        "repeat": 3,
+        "mean_ms": 0.404582,
+        "median_ms": 0.404724,
+        "p95_ms": 0.404908,
+        "min_ms": 0.404114,
+        "max_ms": 0.404908,
+        "std_ms": 0.000339342
+      },
+      "artifacts": [
+        {"role": "input_x", "path": "/CETC/data/generated/unit/filtering/filtfilt/input/x.csv", "sha256": "f7345a65e27db76392399d34cf52b7a996991c53cdf480ea8d362b9a3128c7fd"},
+        {"role": "input_b", "path": "/CETC/data/generated/unit/filtering/filtfilt/input/b.csv", "sha256": "30234548a2775f05654337aae0a6b5fd4d0d03451fca289014d65e2fade6488c"},
+        {"role": "input_a", "path": "/CETC/data/generated/unit/filtering/filtfilt/input/a.csv", "sha256": "e60ab03a7d3c74eee97eb1582b57bec0c5233b523711d4da460181d911cab0b1"},
+        {"role": "cpu_signal", "path": "/CETC/data/generated/unit/filtering/filtfilt/output_samples/perf_iir_pad__cpu__signal.csv", "sha256": "8cb2a37d1660a6c5b4fd8d287ee53964b71f6d54d8b58976e4888b03b561db01"},
+        {"role": "gpu_signal", "path": "/CETC/data/generated/unit/filtering/filtfilt/output_samples/perf_iir_pad__gpu__signal.csv", "sha256": "cf67d9ba58483a34844c1476c288a2a5e9ee8fa893f0685b5f6464000de42eba"}
+      ]
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 # windows Summary
 
-- generated_at: 2026-06-26 03:50:53
+- generated_at: 2026-06-26 12:20:32
 
 ## Operators
 
@@ -11,7 +11,7 @@
 - bohman: PASS, max_abs=1.192090e-07, max_rel=5.555560e-02
 - boxcar: PASS, max_abs=0.000000e+00, max_rel=0.000000e+00
 - chebwin: PASS, max_abs=6.303190e-05, max_rel=4.020540e-03
-- cosine: PASS, max_abs=0.000000e+00, max_rel=0.000000e+00
+- cosine: PASS, max_abs=2.384190e-07, max_rel=2.471620e-04
 - exponential: PASS, max_abs=5.960460e-08, max_rel=2.295570e-07
 - flattop: PASS, max_abs=2.682210e-07, max_rel=8.431190e-04
 - gaussian: PASS, max_abs=1.192090e-07, max_rel=2.105640e-07

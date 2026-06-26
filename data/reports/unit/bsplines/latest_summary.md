@@ -1,6 +1,6 @@
 # bsplines Summary
 
-- generated_at: 2026-06-26 03:47:12
+- generated_at: 2026-06-26 12:17:41
 
 ## Operators
 

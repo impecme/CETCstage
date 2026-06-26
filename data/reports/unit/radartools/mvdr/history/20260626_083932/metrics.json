@@ -1,0 +1,121 @@
+{
+  "module": "radartools",
+  "operator": "mvdr",
+  "generated_at": "2026-06-26 08:39:32",
+  "git_commit": "",
+  "gpu_name": "ZQ500-Q QUAD-0",
+  "compile_config": {
+    "cxx_standard": 201703,
+    "runtime_version": 11070
+  },
+  "summary": {
+    "pass": true,
+    "accuracy_cases": 2,
+    "perf_cases": 0,
+    "max_abs_error": 0.000148923,
+    "max_rel_error": 2.12077e-05,
+    "mixed_error": 0,
+    "rmse": 0.000107236,
+    "gpu_e2e_speedup": 0,
+    "gpu_kernel_speedup": 0,
+    "device_storage_cache": {
+      "cache_enabled": true,
+      "allocation_calls": 3,
+      "allocation_bytes": 576,
+      "allocation_mib": 0.000549316,
+      "cache_hits": 1,
+      "cache_misses": 3,
+      "recycled_blocks": 2,
+      "recycled_bytes": 64,
+      "recycled_mib": 6.10352e-05,
+      "evicted_blocks": 0,
+      "evicted_bytes": 0,
+      "evicted_mib": 0,
+      "freed_blocks": 0,
+      "freed_bytes": 0,
+      "freed_mib": 0,
+      "cached_blocks": 1,
+      "cached_bytes": 32,
+      "cached_mib": 3.05176e-05,
+      "peak_cached_bytes": 32,
+      "peak_cached_mib": 3.05176e-05,
+      "max_cached_blocks": 8,
+      "max_cached_bytes": 536870912,
+      "max_cached_mib": 512,
+      "max_single_cached_bytes": 268435456,
+      "max_single_cached_mib": 256
+    }
+  },
+  "cases": [
+    {
+      "case_id": "calc_cov_true",
+      "category": "accuracy",
+      "samples": 4,
+      "pass": true,
+      "cpu_gpu_error": {
+        "max_abs_error": 0.000148923,
+        "max_rel_error": 2.12077e-05,
+        "mixed_error": 0,
+        "rmse": 0.000107236,
+        "l2_error": 0.000214473,
+        "exact_match": false,
+        "first_mismatch_index": 0
+      },
+      "cpu_reference_error": {
+        "max_abs_error": 0.000432691,
+        "max_rel_error": 6.28416e-05,
+        "mixed_error": 0,
+        "rmse": 0.000299168,
+        "l2_error": 0.000598335,
+        "exact_match": false,
+        "first_mismatch_index": 0
+      },
+      "gpu_reference_error": {
+        "max_abs_error": 0.00028407,
+        "max_rel_error": 5.78573e-05,
+        "mixed_error": 0,
+        "rmse": 0.00020526,
+        "l2_error": 0.000410519,
+        "exact_match": false,
+        "first_mismatch_index": 0
+      },
+      "artifacts": [
+      ]
+    },
+    {
+      "case_id": "covariance_input",
+      "category": "accuracy",
+      "samples": 4,
+      "pass": true,
+      "cpu_gpu_error": {
+        "max_abs_error": 3.07195e-08,
+        "max_rel_error": 1.0242e-07,
+        "mixed_error": 0,
+        "rmse": 1.76706e-08,
+        "l2_error": 3.53412e-08,
+        "exact_match": false,
+        "first_mismatch_index": 0
+      },
+      "cpu_reference_error": {
+        "max_abs_error": 3.00343e-08,
+        "max_rel_error": 1.17503e-07,
+        "mixed_error": 0,
+        "rmse": 2.48682e-08,
+        "l2_error": 4.97365e-08,
+        "exact_match": false,
+        "first_mismatch_index": 0
+      },
+      "gpu_reference_error": {
+        "max_abs_error": 5.97209e-08,
+        "max_rel_error": 1.99113e-07,
+        "mixed_error": 0,
+        "rmse": 3.44086e-08,
+        "l2_error": 6.88171e-08,
+        "exact_match": false,
+        "first_mismatch_index": 0
+      },
+      "artifacts": [
+      ]
+    }
+  ]
+}

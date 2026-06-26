@@ -1,0 +1,21 @@
+{
+  "available": true,
+  "sample_count": 61,
+  "gpu_count": 1,
+  "started_at": "2026-06-26T07:42:11.872603+00:00",
+  "ended_at": "2026-06-26T07:42:42.253625+00:00",
+  "duration_s": 30.386951684951782,
+  "used_mib_min": 293.0,
+  "used_mib_max": 373.0,
+  "used_mib_avg": 316.24590163934425,
+  "total_mib_max": 16384.0,
+  "free_mib_min": 16011.0,
+  "util_percent_max": 99.0,
+  "util_percent_avg": 2.6721311475409837,
+  "used_mib_delta_by_gpu": {
+    "0": 0.0
+  },
+  "used_mib_peak_by_gpu": {
+    "0": 373.0
+  }
+}

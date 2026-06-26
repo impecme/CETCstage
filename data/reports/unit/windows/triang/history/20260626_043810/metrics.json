@@ -1,0 +1,165 @@
+{
+  "module": "windows",
+  "operator": "triang",
+  "generated_at": "2026-06-26 04:38:10",
+  "git_commit": "",
+  "gpu_name": "ZQ500-Q QUAD-0",
+  "compile_config": {
+    "cxx_standard": 201703,
+    "runtime_version": 11070
+  },
+  "summary": {
+    "pass": true,
+    "accuracy_cases": 1,
+    "perf_cases": 1,
+    "max_abs_error": 1.19209e-07,
+    "max_rel_error": 1.19209e-07,
+    "mixed_error": 0,
+    "rmse": 4.36261e-08,
+    "gpu_e2e_speedup": 52.8724,
+    "gpu_kernel_speedup": 56.1396,
+    "cpu_perf": {
+      "warmup": 1,
+      "repeat": 3,
+      "mean_ms": 57.2587,
+      "median_ms": 57.2587,
+      "p95_ms": 57.2587,
+      "min_ms": 57.2587,
+      "max_ms": 57.2587,
+      "std_ms": 0
+    },
+    "gpu_e2e_perf": {
+      "warmup": 1,
+      "repeat": 3,
+      "mean_ms": 1.08296,
+      "median_ms": 1.08296,
+      "p95_ms": 1.08296,
+      "min_ms": 1.08296,
+      "max_ms": 1.08296,
+      "std_ms": 0
+    },
+    "gpu_kernel_perf": {
+      "warmup": 1,
+      "repeat": 3,
+      "mean_ms": 1.01993,
+      "median_ms": 1.01993,
+      "p95_ms": 1.01993,
+      "min_ms": 1.01993,
+      "max_ms": 1.01993,
+      "std_ms": 0
+    },
+    "device_storage_cache": {
+      "cache_enabled": true,
+      "allocation_calls": 2,
+      "allocation_bytes": 67108900,
+      "allocation_mib": 64,
+      "cache_hits": 8,
+      "cache_misses": 2,
+      "recycled_blocks": 10,
+      "recycled_bytes": 603979812,
+      "recycled_mib": 576,
+      "evicted_blocks": 0,
+      "evicted_bytes": 0,
+      "evicted_mib": 0,
+      "freed_blocks": 0,
+      "freed_bytes": 0,
+      "freed_mib": 0,
+      "cached_blocks": 2,
+      "cached_bytes": 67108900,
+      "cached_mib": 64,
+      "peak_cached_bytes": 67108900,
+      "peak_cached_mib": 64,
+      "max_cached_blocks": 8,
+      "max_cached_bytes": 536870912,
+      "max_cached_mib": 512,
+      "max_single_cached_bytes": 268435456,
+      "max_single_cached_mib": 256
+    }
+  },
+  "cases": [
+    {
+      "case_id": "periodic_small",
+      "category": "accuracy",
+      "samples": 9,
+      "pass": true,
+      "cpu_gpu_error": {
+        "max_abs_error": 0,
+        "max_rel_error": 0,
+        "mixed_error": 0,
+        "rmse": 0,
+        "l2_error": 0,
+        "exact_match": true,
+        "first_mismatch_index": -1
+      },
+      "cpu_reference_error": {
+        "max_abs_error": 0,
+        "max_rel_error": 0,
+        "mixed_error": 0,
+        "rmse": 0,
+        "l2_error": 0,
+        "exact_match": true,
+        "first_mismatch_index": -1
+      },
+      "gpu_reference_error": {
+        "max_abs_error": 0,
+        "max_rel_error": 0,
+        "mixed_error": 0,
+        "rmse": 0,
+        "l2_error": 0,
+        "exact_match": true,
+        "first_mismatch_index": -1
+      },
+      "artifacts": [
+      ]
+    },
+    {
+      "case_id": "perf_large",
+      "category": "perf",
+      "samples": 16777216,
+      "pass": true,
+      "cpu_gpu_error": {
+        "max_abs_error": 1.19209e-07,
+        "max_rel_error": 1.19209e-07,
+        "mixed_error": 0,
+        "rmse": 4.36261e-08,
+        "l2_error": 0.000178693,
+        "exact_match": false,
+        "first_mismatch_index": 0
+      },
+      "cpu_perf": {
+        "warmup": 1,
+        "repeat": 3,
+        "mean_ms": 57.2099,
+        "median_ms": 57.2587,
+        "p95_ms": 57.2674,
+        "min_ms": 57.1036,
+        "max_ms": 57.2674,
+        "std_ms": 0.0752476
+      },
+      "gpu_e2e_perf": {
+        "warmup": 1,
+        "repeat": 3,
+        "mean_ms": 1.08426,
+        "median_ms": 1.08296,
+        "p95_ms": 1.09002,
+        "min_ms": 1.07981,
+        "max_ms": 1.09002,
+        "std_ms": 0.00426933
+      },
+      "gpu_kernel_perf": {
+        "warmup": 1,
+        "repeat": 3,
+        "mean_ms": 1.01953,
+        "median_ms": 1.01993,
+        "p95_ms": 1.02015,
+        "min_ms": 1.01851,
+        "max_ms": 1.02015,
+        "std_ms": 0.000728286
+      },
+      "artifacts": [
+        {"role": "cpu_signal", "path": "/CETC/data/generated/unit/windows/triang/output_samples/perf_large__cpu__signal.csv", "sha256": "b7bd9b6ec68bac9f0c4a7786e9a0cf553049b72515ce8a50f8eca7d6637c046a"},
+        {"role": "gpu_signal", "path": "/CETC/data/generated/unit/windows/triang/output_samples/perf_large__gpu__signal.csv", "sha256": "3f92898b723b9b6f63064d5dac679c580c413b3847fdf42f0b8b4e73c3325dc8"}
+      ]
+    }
+  ]
+}

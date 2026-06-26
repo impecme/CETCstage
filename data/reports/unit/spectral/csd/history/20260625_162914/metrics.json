@@ -1,0 +1,86 @@
+{
+  "module": "spectral",
+  "operator": "csd",
+  "generated_at": "2026-06-25 16:29:14",
+  "git_commit": "",
+  "gpu_name": "ZQ500-Q QUAD-0",
+  "compile_config": {
+    "cxx_standard": 201703,
+    "runtime_version": 11070
+  },
+  "summary": {
+    "pass": true,
+    "accuracy_cases": 1,
+    "perf_cases": 0,
+    "max_abs_error": 4.165e-09,
+    "max_rel_error": 0.333182,
+    "mixed_error": 1.81576e-07,
+    "rmse": 5.57192e-10,
+    "gpu_e2e_speedup": 0,
+    "gpu_kernel_speedup": 0,
+    "device_storage_cache": {
+      "cache_enabled": true,
+      "allocation_calls": 5,
+      "allocation_bytes": 5388,
+      "allocation_mib": 0.0051384,
+      "cache_hits": 0,
+      "cache_misses": 5,
+      "recycled_blocks": 1,
+      "recycled_bytes": 520,
+      "recycled_mib": 0.000495911,
+      "evicted_blocks": 0,
+      "evicted_bytes": 0,
+      "evicted_mib": 0,
+      "freed_blocks": 0,
+      "freed_bytes": 0,
+      "freed_mib": 0,
+      "cached_blocks": 1,
+      "cached_bytes": 520,
+      "cached_mib": 0.000495911,
+      "peak_cached_bytes": 520,
+      "peak_cached_mib": 0.000495911,
+      "max_cached_blocks": 8,
+      "max_cached_bytes": 536870912,
+      "max_cached_mib": 512,
+      "max_single_cached_bytes": 268435456,
+      "max_single_cached_mib": 256
+    }
+  },
+  "cases": [
+    {
+      "case_id": "mean_hann",
+      "category": "accuracy",
+      "samples": 65,
+      "pass": true,
+      "cpu_gpu_error": {
+        "max_abs_error": 4.165e-09,
+        "max_rel_error": 0.333182,
+        "mixed_error": 1.81576e-07,
+        "rmse": 5.57192e-10,
+        "l2_error": 4.49223e-09,
+        "exact_match": false,
+        "first_mismatch_index": 0
+      },
+      "cpu_reference_error": {
+        "max_abs_error": 5.26836e-09,
+        "max_rel_error": 0.0770599,
+        "mixed_error": 1.91398e-07,
+        "rmse": 7.17343e-10,
+        "l2_error": 5.78341e-09,
+        "exact_match": false,
+        "first_mismatch_index": 0
+      },
+      "gpu_reference_error": {
+        "max_abs_error": 2.0825e-09,
+        "max_rel_error": 0.421442,
+        "mixed_error": 8.9299e-08,
+        "rmse": 3.51627e-10,
+        "l2_error": 2.83491e-09,
+        "exact_match": false,
+        "first_mismatch_index": 0
+      },
+      "artifacts": [
+      ]
+    }
+  ]
+}

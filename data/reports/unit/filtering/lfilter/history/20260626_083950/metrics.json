@@ -1,0 +1,133 @@
+{
+  "module": "filtering",
+  "operator": "lfilter",
+  "generated_at": "2026-06-26 08:39:50",
+  "git_commit": "",
+  "gpu_name": "ZQ500-Q QUAD-0",
+  "compile_config": {
+    "cxx_standard": 201703,
+    "runtime_version": 11070
+  },
+  "summary": {
+    "pass": true,
+    "accuracy_cases": 0,
+    "perf_cases": 1,
+    "max_abs_error": 2.98023e-07,
+    "max_rel_error": 8.0132e-05,
+    "mixed_error": 1.38702e-06,
+    "rmse": 5.07245e-08,
+    "gpu_e2e_speedup": 0.560182,
+    "gpu_kernel_speedup": 1.69746,
+    "cpu_perf": {
+      "warmup": 1,
+      "repeat": 3,
+      "mean_ms": 0.205012,
+      "median_ms": 0.205012,
+      "p95_ms": 0.205012,
+      "min_ms": 0.205012,
+      "max_ms": 0.205012,
+      "std_ms": 0
+    },
+    "gpu_e2e_perf": {
+      "warmup": 1,
+      "repeat": 3,
+      "mean_ms": 0.365974,
+      "median_ms": 0.365974,
+      "p95_ms": 0.365974,
+      "min_ms": 0.365974,
+      "max_ms": 0.365974,
+      "std_ms": 0
+    },
+    "gpu_kernel_perf": {
+      "warmup": 1,
+      "repeat": 3,
+      "mean_ms": 0.120776,
+      "median_ms": 0.120776,
+      "p95_ms": 0.120776,
+      "min_ms": 0.120776,
+      "max_ms": 0.120776,
+      "std_ms": 0
+    },
+    "device_storage_cache": {
+      "cache_enabled": true,
+      "allocation_calls": 7,
+      "allocation_bytes": 265288,
+      "allocation_mib": 0.252998,
+      "cache_hits": 9,
+      "cache_misses": 7,
+      "recycled_blocks": 11,
+      "recycled_bytes": 1179672,
+      "recycled_mib": 1.12502,
+      "evicted_blocks": 0,
+      "evicted_bytes": 0,
+      "evicted_mib": 0,
+      "freed_blocks": 0,
+      "freed_bytes": 0,
+      "freed_mib": 0,
+      "cached_blocks": 2,
+      "cached_bytes": 131084,
+      "cached_mib": 0.125011,
+      "peak_cached_bytes": 131084,
+      "peak_cached_mib": 0.125011,
+      "max_cached_blocks": 8,
+      "max_cached_bytes": 536870912,
+      "max_cached_mib": 512,
+      "max_single_cached_bytes": 268435456,
+      "max_single_cached_mib": 256
+    }
+  },
+  "cases": [
+    {
+      "case_id": "perf_1d",
+      "category": "perf",
+      "samples": 32768,
+      "pass": true,
+      "cpu_gpu_error": {
+        "max_abs_error": 2.98023e-07,
+        "max_rel_error": 8.0132e-05,
+        "mixed_error": 1.38702e-06,
+        "rmse": 5.07245e-08,
+        "l2_error": 9.18211e-06,
+        "exact_match": false,
+        "first_mismatch_index": 4
+      },
+      "cpu_perf": {
+        "warmup": 1,
+        "repeat": 3,
+        "mean_ms": 0.205262,
+        "median_ms": 0.205012,
+        "p95_ms": 0.205832,
+        "min_ms": 0.204942,
+        "max_ms": 0.205832,
+        "std_ms": 0.000404065
+      },
+      "gpu_e2e_perf": {
+        "warmup": 1,
+        "repeat": 3,
+        "mean_ms": 0.370034,
+        "median_ms": 0.365974,
+        "p95_ms": 0.389544,
+        "min_ms": 0.354583,
+        "max_ms": 0.389544,
+        "std_ms": 0.0145586
+      },
+      "gpu_kernel_perf": {
+        "warmup": 1,
+        "repeat": 3,
+        "mean_ms": 0.120645,
+        "median_ms": 0.120776,
+        "p95_ms": 0.120944,
+        "min_ms": 0.120216,
+        "max_ms": 0.120944,
+        "std_ms": 0.000311237
+      },
+      "artifacts": [
+        {"role": "input_x", "path": "/CETC/data/generated/unit/filtering/lfilter/input/x.csv", "sha256": "56a80c86143da5d69fb5089023aad683d246f4d407df0ceafb31d8c48feeb8f8"},
+        {"role": "input_b", "path": "/CETC/data/generated/unit/filtering/lfilter/input/b.csv", "sha256": "30234548a2775f05654337aae0a6b5fd4d0d03451fca289014d65e2fade6488c"},
+        {"role": "input_a", "path": "/CETC/data/generated/unit/filtering/lfilter/input/a.csv", "sha256": "e60ab03a7d3c74eee97eb1582b57bec0c5233b523711d4da460181d911cab0b1"},
+        {"role": "cpu_signal", "path": "/CETC/data/generated/unit/filtering/lfilter/output_samples/perf_1d__cpu__signal.csv", "sha256": "b815d4fa7a1eec93b1a00318e8cb5d7331129888cf2b2b58b038f42048bc2174"},
+        {"role": "gpu_signal", "path": "/CETC/data/generated/unit/filtering/lfilter/output_samples/perf_1d__gpu__signal.csv", "sha256": "afd9e6bfc983eada458502789e03920cb9aaf7d0584dfd84ffa84629f0ed46cd"}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,179 @@
+{
+  "module": "waveforms",
+  "operator": "unit_impulse",
+  "generated_at": "2026-06-25 13:55:54",
+  "git_commit": "",
+  "gpu_name": "ZQ500-Q QUAD-0",
+  "compile_config": {
+    "cxx_standard": 201703,
+    "runtime_version": 11070
+  },
+  "summary": {
+    "pass": true,
+    "accuracy_cases": 0,
+    "perf_cases": 2,
+    "max_abs_error": 0,
+    "max_rel_error": 0,
+    "mixed_error": 0,
+    "rmse": 0,
+    "gpu_e2e_speedup": 21.3536,
+    "gpu_kernel_speedup": 122.686,
+    "cpu_perf": {
+      "warmup": 1,
+      "repeat": 3,
+      "mean_ms": 3.19432,
+      "median_ms": 3.22933,
+      "p95_ms": 3.22933,
+      "min_ms": 3.15931,
+      "max_ms": 3.22933,
+      "std_ms": 0.0350106
+    },
+    "gpu_e2e_perf": {
+      "warmup": 1,
+      "repeat": 3,
+      "mean_ms": 0.144306,
+      "median_ms": 0.151231,
+      "p95_ms": 0.151231,
+      "min_ms": 0.137381,
+      "max_ms": 0.151231,
+      "std_ms": 0.006925
+    },
+    "gpu_kernel_perf": {
+      "warmup": 1,
+      "repeat": 3,
+      "mean_ms": 0.026273,
+      "median_ms": 0.026322,
+      "p95_ms": 0.026322,
+      "min_ms": 0.026224,
+      "max_ms": 0.026322,
+      "std_ms": 4.89997e-05
+    },
+    "device_storage_cache": {
+      "cache_enabled": true,
+      "allocation_calls": 1,
+      "allocation_bytes": 4194304,
+      "allocation_mib": 4,
+      "cache_hits": 9,
+      "cache_misses": 1,
+      "recycled_blocks": 10,
+      "recycled_bytes": 41943040,
+      "recycled_mib": 40,
+      "evicted_blocks": 0,
+      "evicted_bytes": 0,
+      "evicted_mib": 0,
+      "freed_blocks": 0,
+      "freed_bytes": 0,
+      "freed_mib": 0,
+      "cached_blocks": 1,
+      "cached_bytes": 4194304,
+      "cached_mib": 4,
+      "peak_cached_bytes": 4194304,
+      "peak_cached_mib": 4,
+      "max_cached_blocks": 8,
+      "max_cached_bytes": 536870912,
+      "max_cached_mib": 512,
+      "max_single_cached_bytes": 268435456,
+      "max_single_cached_mib": 256
+    }
+  },
+  "cases": [
+    {
+      "case_id": "perf_1d_mid",
+      "category": "perf",
+      "samples": 1048576,
+      "pass": true,
+      "cpu_gpu_error": {
+        "max_abs_error": 0,
+        "max_rel_error": 0,
+        "mixed_error": 0,
+        "rmse": 0,
+        "l2_error": 0,
+        "exact_match": true,
+        "first_mismatch_index": -1
+      },
+      "cpu_perf": {
+        "warmup": 1,
+        "repeat": 3,
+        "mean_ms": 3.21669,
+        "median_ms": 3.15931,
+        "p95_ms": 3.38784,
+        "min_ms": 3.10293,
+        "max_ms": 3.38784,
+        "std_ms": 0.123189
+      },
+      "gpu_e2e_perf": {
+        "warmup": 1,
+        "repeat": 3,
+        "mean_ms": 0.152604,
+        "median_ms": 0.151231,
+        "p95_ms": 0.157551,
+        "min_ms": 0.149031,
+        "max_ms": 0.157551,
+        "std_ms": 0.00361129
+      },
+      "gpu_kernel_perf": {
+        "warmup": 1,
+        "repeat": 3,
+        "mean_ms": 0.0270413,
+        "median_ms": 0.026322,
+        "p95_ms": 0.028482,
+        "min_ms": 0.02632,
+        "max_ms": 0.028482,
+        "std_ms": 0.00101871
+      },
+      "artifacts": [
+        {"role": "cpu_signal", "path": "/CETC/data/generated/unit/waveforms/unit_impulse/output_samples/perf_1d_mid__cpu__signal.csv", "sha256": "44790150320c0f0e1f3ad56ab3a72b67dbed19cf6c034065955cffaef09f36fd"},
+        {"role": "gpu_signal", "path": "/CETC/data/generated/unit/waveforms/unit_impulse/output_samples/perf_1d_mid__gpu__signal.csv", "sha256": "44790150320c0f0e1f3ad56ab3a72b67dbed19cf6c034065955cffaef09f36fd"}
+      ]
+    },
+    {
+      "case_id": "perf_nd_scalar",
+      "category": "perf",
+      "samples": 1048576,
+      "pass": true,
+      "cpu_gpu_error": {
+        "max_abs_error": 0,
+        "max_rel_error": 0,
+        "mixed_error": 0,
+        "rmse": 0,
+        "l2_error": 0,
+        "exact_match": true,
+        "first_mismatch_index": -1
+      },
+      "cpu_perf": {
+        "warmup": 1,
+        "repeat": 3,
+        "mean_ms": 3.1991,
+        "median_ms": 3.22933,
+        "p95_ms": 3.23768,
+        "min_ms": 3.1303,
+        "max_ms": 3.23768,
+        "std_ms": 0.0487716
+      },
+      "gpu_e2e_perf": {
+        "warmup": 1,
+        "repeat": 3,
+        "mean_ms": 0.137134,
+        "median_ms": 0.137381,
+        "p95_ms": 0.138351,
+        "min_ms": 0.135671,
+        "max_ms": 0.138351,
+        "std_ms": 0.00110792
+      },
+      "gpu_kernel_perf": {
+        "warmup": 1,
+        "repeat": 3,
+        "mean_ms": 0.0261873,
+        "median_ms": 0.026224,
+        "p95_ms": 0.026316,
+        "min_ms": 0.026022,
+        "max_ms": 0.026316,
+        "std_ms": 0.000122793
+      },
+      "artifacts": [
+        {"role": "cpu_signal", "path": "/CETC/data/generated/unit/waveforms/unit_impulse/output_samples/perf_nd_scalar__cpu__signal.csv", "sha256": "44790150320c0f0e1f3ad56ab3a72b67dbed19cf6c034065955cffaef09f36fd"},
+        {"role": "gpu_signal", "path": "/CETC/data/generated/unit/waveforms/unit_impulse/output_samples/perf_nd_scalar__gpu__signal.csv", "sha256": "44790150320c0f0e1f3ad56ab3a72b67dbed19cf6c034065955cffaef09f36fd"}
+      ]
+    }
+  ]
+}

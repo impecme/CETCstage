@@ -1374,6 +1374,55 @@ namespace
         output[index] = (value.x * value.x + value.y * value.y) / denom;
     }
 
+    __global__ void coherence_from_fft_kernel(
+        const cufftComplex *x_fft,
+        const cufftComplex *y_fft,
+        int line_count,
+        int nseg,
+        int nfft,
+        int freq_count,
+        float scale,
+        float *output)
+    {
+        const std::size_t index = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+        const std::size_t total = static_cast<std::size_t>(line_count) * static_cast<std::size_t>(freq_count);
+        if (index >= total)
+        {
+            return;
+        }
+
+        const int freq = static_cast<int>(index % static_cast<std::size_t>(freq_count));
+        const int line = static_cast<int>(index / static_cast<std::size_t>(freq_count));
+        const bool two_bin =
+            (nfft % 2 == 0) ? (freq > 0 && freq + 1 < freq_count) : (freq > 0);
+        const float bin_scale = two_bin ? 2.0f * scale : scale;
+
+        float pxx = 0.0f;
+        float pyy = 0.0f;
+        float pxy_real = 0.0f;
+        float pxy_imag = 0.0f;
+        for (int seg = 0; seg < nseg; ++seg)
+        {
+            const std::size_t base =
+                (static_cast<std::size_t>(line) * nseg + seg) * static_cast<std::size_t>(nfft) +
+                static_cast<std::size_t>(freq);
+            const cufftComplex x_value = x_fft[base];
+            const cufftComplex y_value = y_fft[base];
+            pxx += (x_value.x * x_value.x + x_value.y * x_value.y) * bin_scale;
+            pyy += (y_value.x * y_value.x + y_value.y * y_value.y) * bin_scale;
+            pxy_real += (x_value.x * y_value.x + x_value.y * y_value.y) * bin_scale;
+            pxy_imag += (-x_value.y * y_value.x + x_value.x * y_value.y) * bin_scale;
+        }
+
+        const float inv_nseg = 1.0f / static_cast<float>(nseg);
+        pxx *= inv_nseg;
+        pyy *= inv_nseg;
+        pxy_real *= inv_nseg;
+        pxy_imag *= inv_nseg;
+        const float denom = pxx * pyy;
+        output[index] = denom <= 0.0f ? 0.0f : (pxy_real * pxy_real + pxy_imag * pxy_imag) / denom;
+    }
+
     __global__ void expand_onesided_kernel(
         const cufftComplex *input,
         int outer_count,
@@ -1630,48 +1679,113 @@ namespace cusignal
                     return_onesided};
                 const std::size_t nseg = 1;
                 const std::size_t total_fft = total_segments(line_count, nseg) * static_cast<std::size_t>(config.nfft);
-                workspace.fft_x.zero(total_fft);
+                const bool use_r2c = return_onesided;
+                const std::size_t freq_count = detail::frequency_count(config.nfft, return_onesided);
+                if (use_r2c)
+                {
+                    const std::size_t rfft_count =
+                        total_segments(line_count, nseg) * static_cast<std::size_t>(config.nfft / 2 + 1);
+                    workspace.real_fft_x.reserve(total_fft);
+                    workspace.rfft_x.reserve(rfft_count);
+                }
+                else
+                {
+                    workspace.fft_x.zero(total_fft);
+                }
                 core::ZxGpuRealArray values =
-                    core::make_zx_gpu_real_array(core::replace_axis_size(x_device.shape(), axis, detail::frequency_count(config.nfft, return_onesided)));
+                    core::make_zx_gpu_real_array(core::replace_axis_size(x_device.shape(), axis, freq_count));
                 const float scale =
                     scaling == "density" ? detail::density_scale(window_host, fs)
                                          : detail::spectrum_scale(window_host);
+                const int detrend_code = detrend_mode_code(detrend);
 
                 ScopedZxGpuEvents events;
                 measure_gpu_compute(events, [&]() {
-                    prepare_segments_kernel<<<block_count(total_fft), kThreadsPerBlock>>>(
-                        x_device.data(),
-                        static_cast<int>(line_count),
-                        static_cast<int>(line_len),
-                        static_cast<int>(nseg),
-                        config.nperseg,
-                        config.step,
-                        config.nfft,
-                        0,
-                        0,
-                        window_values.data(),
-                        detrend_mode_code(detrend),
-                        workspace.fft_x.get());
-                    check_kernel_launch("prepare_segments_kernel(periodogram)");
-                    workspace.forward_plan.ensure(config.nfft, static_cast<int>(line_count * nseg));
-                    throw_on_cufft_error(
-                        cufftExecC2C(workspace.forward_plan.handle, workspace.fft_x.get(), workspace.fft_x.get(), CUFFT_FORWARD),
-                        "cufftExecC2C(periodogram)");
-                    average_cross_kernel<<<block_count(values.size()), kThreadsPerBlock>>>(
-                        workspace.fft_x.get(),
-                        nullptr,
-                        static_cast<int>(line_count),
-                        static_cast<int>(nseg),
-                        config.nfft,
-                        static_cast<int>(detail::frequency_count(config.nfft, return_onesided)),
-                        scale,
-                        return_onesided,
-                        true,
-                        true,
-                        0,
-                        values.data(),
-                        nullptr);
-                    check_kernel_launch("average_cross_kernel(periodogram)");
+                    if (use_r2c)
+                    {
+                        if (detrend_code == 1)
+                        {
+                            prepare_segments_real_constant_kernel<<<
+                                static_cast<int>(line_count * nseg),
+                                kThreadsPerBlock>>>(
+                                x_device.data(),
+                                static_cast<int>(line_count),
+                                static_cast<int>(line_len),
+                                static_cast<int>(nseg),
+                                config.nperseg,
+                                config.step,
+                                config.nfft,
+                                window_values.data(),
+                                workspace.real_fft_x.get());
+                            check_kernel_launch("prepare_segments_real_constant_kernel(periodogram)");
+                        }
+                        else
+                        {
+                            prepare_segments_real_kernel<<<block_count(total_fft), kThreadsPerBlock>>>(
+                                x_device.data(),
+                                static_cast<int>(line_count),
+                                static_cast<int>(line_len),
+                                static_cast<int>(nseg),
+                                config.nperseg,
+                                config.step,
+                                config.nfft,
+                                0,
+                                0,
+                                window_values.data(),
+                                detrend_code,
+                                workspace.real_fft_x.get());
+                            check_kernel_launch("prepare_segments_real_kernel(periodogram)");
+                        }
+                        workspace.real_forward_plan.ensure(config.nfft, static_cast<int>(line_count * nseg));
+                        throw_on_cufft_error(
+                            cufftExecR2C(workspace.real_forward_plan.handle, workspace.real_fft_x.get(), workspace.rfft_x.get()),
+                            "cufftExecR2C(periodogram)");
+                        spectrogram_psd_r2c_kernel<<<block_count(values.size()), kThreadsPerBlock>>>(
+                            workspace.rfft_x.get(),
+                            static_cast<int>(line_count),
+                            static_cast<int>(nseg),
+                            config.nfft,
+                            static_cast<int>(freq_count),
+                            scale,
+                            values.data());
+                        check_kernel_launch("spectrogram_psd_r2c_kernel(periodogram)");
+                    }
+                    else
+                    {
+                        prepare_segments_kernel<<<block_count(total_fft), kThreadsPerBlock>>>(
+                            x_device.data(),
+                            static_cast<int>(line_count),
+                            static_cast<int>(line_len),
+                            static_cast<int>(nseg),
+                            config.nperseg,
+                            config.step,
+                            config.nfft,
+                            0,
+                            0,
+                            window_values.data(),
+                            detrend_code,
+                            workspace.fft_x.get());
+                        check_kernel_launch("prepare_segments_kernel(periodogram)");
+                        workspace.forward_plan.ensure(config.nfft, static_cast<int>(line_count * nseg));
+                        throw_on_cufft_error(
+                            cufftExecC2C(workspace.forward_plan.handle, workspace.fft_x.get(), workspace.fft_x.get(), CUFFT_FORWARD),
+                            "cufftExecC2C(periodogram)");
+                        average_cross_kernel<<<block_count(values.size()), kThreadsPerBlock>>>(
+                            workspace.fft_x.get(),
+                            nullptr,
+                            static_cast<int>(line_count),
+                            static_cast<int>(nseg),
+                            config.nfft,
+                            static_cast<int>(freq_count),
+                            scale,
+                            return_onesided,
+                            true,
+                            true,
+                            0,
+                            values.data(),
+                            nullptr);
+                        check_kernel_launch("average_cross_kernel(periodogram)");
+                    }
                 });
 
                 spectral_api::ZxGpuRealSpectrumResult result;
@@ -2502,24 +2616,144 @@ namespace cusignal
                 core::DetrendSpec detrend,
                 int axis)
             {
-                spectral_api::ZxGpuRealSpectrumResult pxx =
-                    welch(x, fs, window, nperseg, noverlap, nfft, detrend, true, "density", axis, "mean");
-                spectral_api::ZxGpuRealSpectrumResult pyy =
-                    welch(y, fs, window, nperseg, noverlap, nfft, detrend, true, "density", axis, "mean");
-                spectral_api::ZxGpuComplexSpectrumResult pxy =
-                    csd(x, y, fs, window, nperseg, noverlap, nfft, detrend, true, "density", axis, "mean");
+                thread_local SpectralWorkspace workspace;
+                const core::ZxGpuRealArray &x_device = core::as_device_array(x, workspace.x_storage);
+                const core::ZxGpuRealArray &y_device = core::as_device_array(y, workspace.y_storage);
+                require_last_axis(x_device, axis);
+                require_last_axis(y_device, axis);
+                if (x_device.shape() != y_device.shape())
+                {
+                    throw std::invalid_argument("x and y must have the same shape");
+                }
+
+                const std::size_t line_len = x_device.shape().back();
+                const std::size_t line_count = line_count_last_axis(x_device.shape());
+                const int window_size =
+                    nperseg > 0 ? std::min<int>(nperseg, static_cast<int>(line_len)) : std::min<int>(256, static_cast<int>(line_len));
+                std::string window_cache_key;
+                const bool cacheable_window =
+                    build_csd_window_cache_key(window, window_size, fs, "density", window_cache_key);
+                core::ZxGpuRealSignal transient_window;
+                const core::ZxGpuRealSignal *window_values = nullptr;
+                float scale = 0.0f;
+                if (cacheable_window &&
+                    workspace.csd_window_valid &&
+                    workspace.csd_window_key == window_cache_key)
+                {
+                    window_values = &workspace.csd_window_storage;
+                    scale = workspace.csd_window_scale;
+                }
+                else
+                {
+                    transient_window = zx_gpu_backend::windows::get_window(window, window_size, true);
+                    const RealSignal window_host = transient_window.get();
+                    scale = detail::density_scale(window_host, fs);
+                    if (cacheable_window)
+                    {
+                        workspace.csd_window_storage = std::move(transient_window);
+                        workspace.csd_window_key = window_cache_key;
+                        workspace.csd_window_scale = scale;
+                        workspace.csd_window_valid = true;
+                        window_values = &workspace.csd_window_storage;
+                    }
+                    else
+                    {
+                        window_values = &transient_window;
+                    }
+                }
+
+                const detail::SegmentConfig config = detail::resolve_segment_config(
+                    line_len,
+                    static_cast<int>(window_values->size()),
+                    noverlap,
+                    nfft,
+                    static_cast<int>(window_values->size()),
+                    static_cast<int>(window_values->size()) / 2);
+                const std::size_t nseg =
+                    1 + (line_len - static_cast<std::size_t>(config.nperseg)) / static_cast<std::size_t>(config.step);
+                const std::size_t total_fft = total_segments(line_count, nseg) * static_cast<std::size_t>(config.nfft);
+                const std::size_t freq_count = detail::frequency_count(config.nfft, true);
+                workspace.fft_x.zero(total_fft);
+                workspace.fft_y.zero(total_fft);
+
                 spectral_api::ZxGpuRealSpectrumResult result;
-                result.frequencies = pxx.frequencies;
-                result.values = core::make_zx_gpu_real_array(pxx.values.shape());
+                result.frequencies = cached_frequency_axis(workspace, config.nfft, fs, true);
+                result.values = core::make_zx_gpu_real_array(core::replace_axis_size(x_device.shape(), axis, freq_count));
+                const int detrend_code = detrend_mode_code(detrend);
                 ScopedZxGpuEvents events;
                 measure_gpu_compute(events, [&]() {
-                    coherence_kernel<<<block_count(result.values.size()), kThreadsPerBlock>>>(
-                        pxx.values.data(),
-                        pyy.values.data(),
-                        reinterpret_cast<const cufftComplex *>(pxy.values.data()),
-                        result.values.size(),
+                    if (detrend_code == 1)
+                    {
+                        const int segment_count = static_cast<int>(line_count * nseg);
+                        prepare_segments_complex_constant_kernel<<<segment_count, kThreadsPerBlock>>>(
+                            x_device.data(),
+                            static_cast<int>(line_count),
+                            static_cast<int>(line_len),
+                            static_cast<int>(nseg),
+                            config.nperseg,
+                            config.step,
+                            config.nfft,
+                            window_values->data(),
+                            workspace.fft_x.get());
+                        prepare_segments_complex_constant_kernel<<<segment_count, kThreadsPerBlock>>>(
+                            y_device.data(),
+                            static_cast<int>(line_count),
+                            static_cast<int>(line_len),
+                            static_cast<int>(nseg),
+                            config.nperseg,
+                            config.step,
+                            config.nfft,
+                            window_values->data(),
+                            workspace.fft_y.get());
+                        check_kernel_launch("prepare_segments_complex_constant_kernel(coherence)");
+                    }
+                    else
+                    {
+                        prepare_segments_kernel<<<block_count(total_fft), kThreadsPerBlock>>>(
+                            x_device.data(),
+                            static_cast<int>(line_count),
+                            static_cast<int>(line_len),
+                            static_cast<int>(nseg),
+                            config.nperseg,
+                            config.step,
+                            config.nfft,
+                            0,
+                            0,
+                            window_values->data(),
+                            detrend_code,
+                            workspace.fft_x.get());
+                        prepare_segments_kernel<<<block_count(total_fft), kThreadsPerBlock>>>(
+                            y_device.data(),
+                            static_cast<int>(line_count),
+                            static_cast<int>(line_len),
+                            static_cast<int>(nseg),
+                            config.nperseg,
+                            config.step,
+                            config.nfft,
+                            0,
+                            0,
+                            window_values->data(),
+                            detrend_code,
+                            workspace.fft_y.get());
+                        check_kernel_launch("prepare_segments_kernel(coherence)");
+                    }
+                    workspace.forward_plan.ensure(config.nfft, static_cast<int>(line_count * nseg));
+                    throw_on_cufft_error(
+                        cufftExecC2C(workspace.forward_plan.handle, workspace.fft_x.get(), workspace.fft_x.get(), CUFFT_FORWARD),
+                        "cufftExecC2C(coherence/x)");
+                    throw_on_cufft_error(
+                        cufftExecC2C(workspace.forward_plan.handle, workspace.fft_y.get(), workspace.fft_y.get(), CUFFT_FORWARD),
+                        "cufftExecC2C(coherence/y)");
+                    coherence_from_fft_kernel<<<block_count(result.values.size()), kThreadsPerBlock>>>(
+                        workspace.fft_x.get(),
+                        workspace.fft_y.get(),
+                        static_cast<int>(line_count),
+                        static_cast<int>(nseg),
+                        config.nfft,
+                        static_cast<int>(freq_count),
+                        scale,
                         result.values.data());
-                    check_kernel_launch("coherence_kernel");
+                    check_kernel_launch("coherence_from_fft_kernel");
                 });
                 return result;
             }

@@ -491,6 +491,184 @@ namespace
         output[static_cast<std::size_t>(index)] = value;
     }
 
+    __global__ void fill_boxcar_fast_kernel(int output_size, float *output)
+    {
+        const int index = static_cast<int>(blockIdx.x) * blockDim.x + threadIdx.x;
+        if (index < output_size)
+        {
+            output[static_cast<std::size_t>(index)] = 1.0f;
+        }
+    }
+
+    __global__ void fill_cosine_fast_kernel(
+        int output_size,
+        int effective_size,
+        float *output)
+    {
+        const int index = static_cast<int>(blockIdx.x) * blockDim.x + threadIdx.x;
+        if (index >= output_size)
+        {
+            return;
+        }
+        constexpr float kPiF = 3.14159265358979323846f;
+        output[static_cast<std::size_t>(index)] =
+            sinf(kPiF * (static_cast<float>(index) + 0.5f) / static_cast<float>(effective_size));
+    }
+
+    __global__ void fill_bartlett_fast_kernel(
+        int output_size,
+        int effective_size,
+        float *output)
+    {
+        const int index = static_cast<int>(blockIdx.x) * blockDim.x + threadIdx.x;
+        if (index >= output_size)
+        {
+            return;
+        }
+        if (effective_size <= 1)
+        {
+            output[static_cast<std::size_t>(index)] = 1.0f;
+            return;
+        }
+
+        const float normalized =
+            static_cast<float>(index) / static_cast<float>(effective_size - 1);
+        const float value = index <= (effective_size - 1) / 2
+                                ? 2.0f * normalized
+                                : 2.0f - 2.0f * normalized;
+        output[static_cast<std::size_t>(index)] = value;
+    }
+
+    __global__ void fill_barthann_fast_kernel(
+        int output_size,
+        int effective_size,
+        float *output)
+    {
+        const int index = static_cast<int>(blockIdx.x) * blockDim.x + threadIdx.x;
+        if (index >= output_size)
+        {
+            return;
+        }
+        if (effective_size <= 1)
+        {
+            output[static_cast<std::size_t>(index)] = 1.0f;
+            return;
+        }
+
+        constexpr float kPiF = 3.14159265358979323846f;
+        const float factor =
+            fabsf(static_cast<float>(index) / static_cast<float>(effective_size - 1) - 0.5f);
+        output[static_cast<std::size_t>(index)] =
+            0.62f - 0.48f * factor + 0.38f * cosf(2.0f * kPiF * factor);
+    }
+
+    __global__ void fill_bohman_fast_kernel(
+        int output_size,
+        int effective_size,
+        float *output)
+    {
+        const int index = static_cast<int>(blockIdx.x) * blockDim.x + threadIdx.x;
+        if (index >= output_size)
+        {
+            return;
+        }
+        if (effective_size <= 1)
+        {
+            output[static_cast<std::size_t>(index)] = 1.0f;
+            return;
+        }
+        if (index == 0 || index == effective_size - 1)
+        {
+            output[static_cast<std::size_t>(index)] = 0.0f;
+            return;
+        }
+
+        constexpr float kPiF = 3.14159265358979323846f;
+        const float factor =
+            fabsf((2.0f * static_cast<float>(index) /
+                   static_cast<float>(effective_size - 1)) -
+                  1.0f);
+        output[static_cast<std::size_t>(index)] =
+            (1.0f - factor) * cosf(kPiF * factor) + sinf(kPiF * factor) / kPiF;
+    }
+
+    __global__ void fill_tukey_fast_kernel(
+        int output_size,
+        int effective_size,
+        float alpha,
+        float *output)
+    {
+        const int index = static_cast<int>(blockIdx.x) * blockDim.x + threadIdx.x;
+        if (index >= output_size)
+        {
+            return;
+        }
+        if (effective_size <= 1 || alpha <= 0.0f)
+        {
+            output[static_cast<std::size_t>(index)] = 1.0f;
+            return;
+        }
+
+        constexpr float kPiF = 3.14159265358979323846f;
+        if (alpha >= 1.0f)
+        {
+            const float delta = (2.0f * kPiF) / static_cast<float>(effective_size - 1);
+            const float angle = -kPiF + delta * static_cast<float>(index);
+            output[static_cast<std::size_t>(index)] = 0.5f + 0.5f * cosf(angle);
+            return;
+        }
+
+        const float normalized =
+            static_cast<float>(index) / static_cast<float>(effective_size - 1);
+        const float edge = alpha * 0.5f;
+        float value = 1.0f;
+        if (normalized < edge)
+        {
+            value = 0.5f * (1.0f + cosf(kPiF * ((2.0f * normalized / alpha) - 1.0f)));
+        }
+        else if (normalized > (1.0f - edge))
+        {
+            value = 0.5f *
+                    (1.0f + cosf(kPiF * ((2.0f * normalized / alpha) -
+                                         (2.0f / alpha) + 1.0f)));
+        }
+        output[static_cast<std::size_t>(index)] = value;
+    }
+
+    __global__ void fill_gaussian_fast_kernel(
+        int output_size,
+        int effective_size,
+        float stddev,
+        float *output)
+    {
+        const int index = static_cast<int>(blockIdx.x) * blockDim.x + threadIdx.x;
+        if (index >= output_size)
+        {
+            return;
+        }
+
+        const float n =
+            static_cast<float>(index) - 0.5f * static_cast<float>(effective_size - 1);
+        const float sigma2 = 2.0f * stddev * stddev;
+        output[static_cast<std::size_t>(index)] = expf(-(n * n) / sigma2);
+    }
+
+    __global__ void fill_exponential_fast_kernel(
+        int output_size,
+        float center,
+        float tau,
+        float *output)
+    {
+        const int index = static_cast<int>(blockIdx.x) * blockDim.x + threadIdx.x;
+        if (index >= output_size)
+        {
+            return;
+        }
+
+        output[static_cast<std::size_t>(index)] =
+            expf(-fabsf(static_cast<float>(index) - center) / tau);
+    }
+
     __global__ void fill_general_cosine_two_coeff_fast_kernel(
         int output_size,
         int effective_size,
@@ -951,6 +1129,166 @@ namespace
                 extended.size,
                 result.data());
             check_kernel_launch("fill_parzen_fast_kernel");
+        }));
+        return result;
+    }
+
+    ZxGpuRealSignal boxcar_fast(int size)
+    {
+        if (detail::len_guard(size))
+        {
+            return make_trivial_window_signal(size);
+        }
+
+        ZxGpuRealSignal result(static_cast<std::size_t>(size), false);
+        ScopedZxGpuEvents events;
+        g_last_kernel_ms = static_cast<float>(events.measure([&]() {
+            fill_boxcar_fast_kernel<<<block_count(static_cast<std::size_t>(size)), kThreadsPerBlock>>>(
+                size,
+                result.data());
+            check_kernel_launch("fill_boxcar_fast_kernel");
+        }));
+        return result;
+    }
+
+    ZxGpuRealSignal cosine_fast(int size, bool sym)
+    {
+        if (detail::len_guard(size))
+        {
+            return make_trivial_window_signal(size);
+        }
+
+        const detail::ExtendedLength extended = detail::extend(size, sym);
+        ZxGpuRealSignal result(static_cast<std::size_t>(size), false);
+        ScopedZxGpuEvents events;
+        g_last_kernel_ms = static_cast<float>(events.measure([&]() {
+            fill_cosine_fast_kernel<<<block_count(static_cast<std::size_t>(size)), kThreadsPerBlock>>>(
+                size,
+                extended.size,
+                result.data());
+            check_kernel_launch("fill_cosine_fast_kernel");
+        }));
+        return result;
+    }
+
+    ZxGpuRealSignal bartlett_fast(int size, bool sym)
+    {
+        if (detail::len_guard(size))
+        {
+            return make_trivial_window_signal(size);
+        }
+
+        const detail::ExtendedLength extended = detail::extend(size, sym);
+        ZxGpuRealSignal result(static_cast<std::size_t>(size), false);
+        ScopedZxGpuEvents events;
+        g_last_kernel_ms = static_cast<float>(events.measure([&]() {
+            fill_bartlett_fast_kernel<<<block_count(static_cast<std::size_t>(size)), kThreadsPerBlock>>>(
+                size,
+                extended.size,
+                result.data());
+            check_kernel_launch("fill_bartlett_fast_kernel");
+        }));
+        return result;
+    }
+
+    ZxGpuRealSignal barthann_fast(int size, bool sym)
+    {
+        if (detail::len_guard(size))
+        {
+            return make_trivial_window_signal(size);
+        }
+
+        const detail::ExtendedLength extended = detail::extend(size, sym);
+        ZxGpuRealSignal result(static_cast<std::size_t>(size), false);
+        ScopedZxGpuEvents events;
+        g_last_kernel_ms = static_cast<float>(events.measure([&]() {
+            fill_barthann_fast_kernel<<<block_count(static_cast<std::size_t>(size)), kThreadsPerBlock>>>(
+                size,
+                extended.size,
+                result.data());
+            check_kernel_launch("fill_barthann_fast_kernel");
+        }));
+        return result;
+    }
+
+    ZxGpuRealSignal bohman_fast(int size, bool sym)
+    {
+        if (detail::len_guard(size))
+        {
+            return make_trivial_window_signal(size);
+        }
+
+        const detail::ExtendedLength extended = detail::extend(size, sym);
+        ZxGpuRealSignal result(static_cast<std::size_t>(size), false);
+        ScopedZxGpuEvents events;
+        g_last_kernel_ms = static_cast<float>(events.measure([&]() {
+            fill_bohman_fast_kernel<<<block_count(static_cast<std::size_t>(size)), kThreadsPerBlock>>>(
+                size,
+                extended.size,
+                result.data());
+            check_kernel_launch("fill_bohman_fast_kernel");
+        }));
+        return result;
+    }
+
+    ZxGpuRealSignal tukey_fast(int size, float alpha, bool sym)
+    {
+        if (detail::len_guard(size))
+        {
+            return make_trivial_window_signal(size);
+        }
+
+        const detail::ExtendedLength extended = detail::extend(size, sym);
+        ZxGpuRealSignal result(static_cast<std::size_t>(size), false);
+        ScopedZxGpuEvents events;
+        g_last_kernel_ms = static_cast<float>(events.measure([&]() {
+            fill_tukey_fast_kernel<<<block_count(static_cast<std::size_t>(size)), kThreadsPerBlock>>>(
+                size,
+                extended.size,
+                alpha,
+                result.data());
+            check_kernel_launch("fill_tukey_fast_kernel");
+        }));
+        return result;
+    }
+
+    ZxGpuRealSignal gaussian_fast(int size, float stddev, bool sym)
+    {
+        if (detail::len_guard(size))
+        {
+            return make_trivial_window_signal(size);
+        }
+
+        const detail::ExtendedLength extended = detail::extend(size, sym);
+        ZxGpuRealSignal result(static_cast<std::size_t>(size), false);
+        ScopedZxGpuEvents events;
+        g_last_kernel_ms = static_cast<float>(events.measure([&]() {
+            fill_gaussian_fast_kernel<<<block_count(static_cast<std::size_t>(size)), kThreadsPerBlock>>>(
+                size,
+                extended.size,
+                stddev,
+                result.data());
+            check_kernel_launch("fill_gaussian_fast_kernel");
+        }));
+        return result;
+    }
+
+    ZxGpuRealSignal exponential_fast(int size, float center, float tau)
+    {
+        if (detail::len_guard(size))
+        {
+            return make_trivial_window_signal(size);
+        }
+
+        ZxGpuRealSignal result(static_cast<std::size_t>(size), false);
+        ScopedZxGpuEvents events;
+        g_last_kernel_ms = static_cast<float>(events.measure([&]() {
+            fill_exponential_fast_kernel<<<block_count(static_cast<std::size_t>(size)), kThreadsPerBlock>>>(
+                size,
+                center,
+                tau,
+                result.data());
+            check_kernel_launch("fill_exponential_fast_kernel");
         }));
         return result;
     }
@@ -1500,12 +1838,12 @@ namespace cusignal
 
             core::ZxGpuRealSignal barthann(int size, bool sym)
             {
-                return launch_window_kernel(detail::KernelOp::kBarthann, size, sym);
+                return barthann_fast(size, sym);
             }
 
             core::ZxGpuRealSignal bartlett(int size, bool sym)
             {
-                return launch_window_kernel(detail::KernelOp::kBartlett, size, sym);
+                return bartlett_fast(size, sym);
             }
 
             core::ZxGpuRealSignal blackman(int size, bool sym)
@@ -1523,12 +1861,13 @@ namespace cusignal
 
             core::ZxGpuRealSignal bohman(int size, bool sym)
             {
-                return launch_window_kernel(detail::KernelOp::kBohman, size, sym);
+                return bohman_fast(size, sym);
             }
 
             core::ZxGpuRealSignal boxcar(int size, bool sym)
             {
-                return launch_window_kernel(detail::KernelOp::kBoxcar, size, sym);
+                (void)sym;
+                return boxcar_fast(size);
             }
 
             core::ZxGpuRealSignal chebwin(int size, float at, bool sym)
@@ -1538,7 +1877,7 @@ namespace cusignal
 
             core::ZxGpuRealSignal cosine(int size, bool sym)
             {
-                return launch_window_kernel(detail::KernelOp::kCosine, size, sym);
+                return cosine_fast(size, sym);
             }
 
             core::ZxGpuRealSignal exponential(int size, float tau, bool sym)
@@ -1549,7 +1888,7 @@ namespace cusignal
                 }
                 const detail::ExtendedLength extended = detail::extend(size, sym);
                 const float center = 0.5 * static_cast<float>(extended.size - 1);
-                return launch_window_kernel(detail::KernelOp::kExponential, size, sym, center, tau);
+                return exponential_fast(size, center, tau);
             }
 
             core::ZxGpuRealSignal exponential(int size, float center, float tau, bool sym)
@@ -1562,7 +1901,7 @@ namespace cusignal
                 {
                     throw std::invalid_argument("explicit center is only supported for periodic exponential windows");
                 }
-                return launch_window_kernel(detail::KernelOp::kExponential, size, sym, center, tau);
+                return exponential_fast(size, center, tau);
             }
 
             core::ZxGpuRealSignal flattop(int size, bool sym)
@@ -1584,7 +1923,7 @@ namespace cusignal
                 {
                     throw std::invalid_argument("std must be > 0");
                 }
-                return launch_window_kernel(detail::KernelOp::kGaussian, size, sym, std);
+                return gaussian_fast(size, std, sym);
             }
 
             core::ZxGpuRealSignal general_cosine(int size, const core::RealSignalLike &a, bool sym)
@@ -1681,7 +2020,7 @@ namespace cusignal
 
             core::ZxGpuRealSignal tukey(int size, float alpha, bool sym)
             {
-                return launch_window_kernel(detail::KernelOp::kTukey, size, sym, alpha);
+                return tukey_fast(size, alpha, sym);
             }
 
         } // namespace windows

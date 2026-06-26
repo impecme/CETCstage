@@ -1,0 +1,29 @@
+/CETC/scripts/test/plot_all_ops_benchmark.py:828: UserWarning: This figure includes Axes that are not compatible with tight_layout, so results might be incorrect.
+  fig.tight_layout(rect=(0.13, 0.0, 1.0, 0.975))
+/CETC/scripts/test/plot_all_ops_benchmark.py:828: UserWarning: This figure includes Axes that are not compatible with tight_layout, so results might be incorrect.
+  fig.tight_layout(rect=(0.13, 0.0, 1.0, 0.975))
+/CETC/scripts/test/plot_all_ops_benchmark.py:828: UserWarning: This figure includes Axes that are not compatible with tight_layout, so results might be incorrect.
+  fig.tight_layout(rect=(0.13, 0.0, 1.0, 0.975))
+/CETC/scripts/test/plot_all_ops_benchmark.py:828: UserWarning: This figure includes Axes that are not compatible with tight_layout, so results might be incorrect.
+  fig.tight_layout(rect=(0.13, 0.0, 1.0, 0.975))
+/CETC/scripts/test/plot_all_ops_benchmark.py:828: UserWarning: This figure includes Axes that are not compatible with tight_layout, so results might be incorrect.
+  fig.tight_layout(rect=(0.13, 0.0, 1.0, 0.975))
+/CETC/scripts/test/plot_all_ops_benchmark.py:828: UserWarning: This figure includes Axes that are not compatible with tight_layout, so results might be incorrect.
+  fig.tight_layout(rect=(0.13, 0.0, 1.0, 0.975))
+/CETC/scripts/test/plot_all_ops_benchmark.py:828: UserWarning: This figure includes Axes that are not compatible with tight_layout, so results might be incorrect.
+  fig.tight_layout(rect=(0.13, 0.0, 1.0, 0.975))
+[all-ops-plot] rows=28 operators=28
+[all-ops-plot] wrote /CETC/data/reports/unit/benchmarks/v5_5_mvdr_parallel_mean_probe/figures/latest_all_ops_plot_summary.csv
+[all-ops-plot] wrote /CETC/data/reports/unit/benchmarks/v5_5_mvdr_parallel_mean_probe/figures/figure_1_accuracy_performance_overview.png
+[all-ops-plot] wrote /CETC/data/reports/unit/benchmarks/v5_5_mvdr_parallel_mean_probe/figures/figure_2_cpu_gpu_e2e_time_heatmaps.png
+[all-ops-plot] wrote /CETC/data/reports/unit/benchmarks/v5_5_mvdr_parallel_mean_probe/figures/figure_3_e2e_speedup_heatmap.png
+[all-ops-plot] wrote /CETC/data/reports/unit/benchmarks/v5_5_mvdr_parallel_mean_probe/figures/figure_4_largest_scale_cpu_vs_gpu_scatter.png
+[all-ops-plot] wrote /CETC/data/reports/unit/benchmarks/v5_5_mvdr_parallel_mean_probe/figures/figure_5_largest_scale_speedup_rank.png
+[all-ops-plot] wrote /CETC/data/reports/unit/benchmarks/v5_5_mvdr_parallel_mean_probe/figures/operator_figures/module_operator_curves_correlate.png
+[all-ops-plot] wrote /CETC/data/reports/unit/benchmarks/v5_5_mvdr_parallel_mean_probe/figures/operator_figures/module_operator_curves_filter_design.png
+[all-ops-plot] wrote /CETC/data/reports/unit/benchmarks/v5_5_mvdr_parallel_mean_probe/figures/operator_figures/module_operator_curves_filtering.png
+[all-ops-plot] wrote /CETC/data/reports/unit/benchmarks/v5_5_mvdr_parallel_mean_probe/figures/operator_figures/module_operator_curves_peak_finding.png
+[all-ops-plot] wrote /CETC/data/reports/unit/benchmarks/v5_5_mvdr_parallel_mean_probe/figures/operator_figures/module_operator_curves_radartools.png
+[all-ops-plot] wrote /CETC/data/reports/unit/benchmarks/v5_5_mvdr_parallel_mean_probe/figures/operator_figures/module_operator_curves_spectral.png
+[all-ops-plot] wrote /CETC/data/reports/unit/benchmarks/v5_5_mvdr_parallel_mean_probe/figures/operator_figures/module_operator_curves_windows.png
+[all-ops-plot] wrote /CETC/data/reports/unit/benchmarks/v5_5_mvdr_parallel_mean_probe/figures/operator_figures/latest_operator_curve_manifest.csv

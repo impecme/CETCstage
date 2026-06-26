@@ -1,0 +1,14 @@
+case_id,backend,metric_kind,samples,warmup,repeat,mean_ms,median_ms,p95_ms,min_ms,max_ms,std_ms,max_abs_error,max_rel_error,rmse,l2_error,exact_match
+ricker_case,gpu_vs_cpu,error,160,,,,,,,,,0,0,0,0,true
+ricker_case,cpu_vs_ref,error,160,,,,,,,,,7.152557373046875e-07,2.0309682895458536e-06,1.3541939836159145e-07,1.7129349316746811e-06,false
+ricker_case,gpu_vs_ref,error,160,,,,,,,,,7.152557373046875e-07,2.0309682895458536e-06,1.3541939836159145e-07,1.7129349316746811e-06,false
+morlet2_case,gpu_vs_cpu,error,72,,,,,,,,,0,0,0,0,true
+morlet2_case,cpu_vs_ref,error,72,,,,,,,,,1.9992006627944647e-07,0.00011299175821477547,7.3390346244650573e-08,6.2273772982734954e-07,false
+morlet2_case,gpu_vs_ref,error,72,,,,,,,,,1.9992006627944647e-07,0.00011299175821477547,7.3390346244650573e-08,6.2273772982734954e-07,false
+invalid_empty_widths,gpu_vs_cpu,error,0,,,,,,,,,0,0,0,0,true
+invalid_wavelet,gpu_vs_cpu,error,0,,,,,,,,,0,0,0,0,true
+invalid_width_value,gpu_vs_cpu,error,0,,,,,,,,,0,0,0,0,true
+perf_ricker_large,gpu_vs_cpu,error,33554432,,,,,,,,,0,0,0,0,true
+perf_ricker_large,cpu,perf,33554432,5,30,24202.611328125,24199.2109375,24240.193359375,24138.703125,24263.119140625,25.91790771484375,,,,,
+perf_ricker_large,gpu_e2e,perf,33554432,5,30,105.92496490478516,105.98290252685547,106.10408782958984,105.49243927001953,106.25490570068359,0.16155563294887543,,,,,
+perf_ricker_large,gpu_kernel,perf,33554432,5,30,105.74900817871094,105.77632141113281,106.04002380371094,105.36380767822266,106.10340118408203,0.16307170689105988,,,,,

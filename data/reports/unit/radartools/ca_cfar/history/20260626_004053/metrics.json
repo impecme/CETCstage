@@ -1,0 +1,134 @@
+{
+  "module": "radartools",
+  "operator": "ca_cfar",
+  "generated_at": "2026-06-26 00:40:53",
+  "git_commit": "",
+  "gpu_name": "ZQ500-Q QUAD-0",
+  "compile_config": {
+    "cxx_standard": 201703,
+    "runtime_version": 11070
+  },
+  "summary": {
+    "pass": true,
+    "accuracy_cases": 0,
+    "perf_cases": 1,
+    "max_abs_error": 0,
+    "max_rel_error": 0,
+    "mixed_error": 0,
+    "rmse": 0,
+    "gpu_e2e_speedup": 4.48411,
+    "gpu_kernel_speedup": 4.52491,
+    "cpu_perf": {
+      "warmup": 1,
+      "repeat": 3,
+      "mean_ms": 8.41557,
+      "median_ms": 8.41557,
+      "p95_ms": 8.41557,
+      "min_ms": 8.41557,
+      "max_ms": 8.41557,
+      "std_ms": 0
+    },
+    "gpu_e2e_perf": {
+      "warmup": 1,
+      "repeat": 3,
+      "mean_ms": 1.87675,
+      "median_ms": 1.87675,
+      "p95_ms": 1.87675,
+      "min_ms": 1.87675,
+      "max_ms": 1.87675,
+      "std_ms": 0
+    },
+    "gpu_kernel_perf": {
+      "warmup": 1,
+      "repeat": 3,
+      "mean_ms": 1.85983,
+      "median_ms": 1.85983,
+      "p95_ms": 1.85983,
+      "min_ms": 1.85983,
+      "max_ms": 1.85983,
+      "std_ms": 0
+    },
+    "device_storage_cache": {
+      "cache_enabled": true,
+      "allocation_calls": 3,
+      "allocation_bytes": 12588912,
+      "allocation_mib": 12.0057,
+      "cache_hits": 16,
+      "cache_misses": 3,
+      "recycled_blocks": 19,
+      "recycled_bytes": 79729776,
+      "recycled_mib": 76.0362,
+      "evicted_blocks": 0,
+      "evicted_bytes": 0,
+      "evicted_mib": 0,
+      "freed_blocks": 0,
+      "freed_bytes": 0,
+      "freed_mib": 0,
+      "cached_blocks": 3,
+      "cached_bytes": 12588912,
+      "cached_mib": 12.0057,
+      "peak_cached_bytes": 12588912,
+      "peak_cached_mib": 12.0057,
+      "max_cached_blocks": 8,
+      "max_cached_bytes": 536870912,
+      "max_cached_mib": 512,
+      "max_single_cached_bytes": 268435456,
+      "max_single_cached_mib": 256
+    }
+  },
+  "cases": [
+    {
+      "case_id": "perf_2d",
+      "category": "perf",
+      "samples": 1049076,
+      "pass": true,
+      "cpu_gpu_error": {
+        "max_abs_error": 0,
+        "max_rel_error": 0,
+        "mixed_error": 0,
+        "rmse": 0,
+        "l2_error": 0,
+        "exact_match": true,
+        "first_mismatch_index": -1
+      },
+      "cpu_perf": {
+        "warmup": 1,
+        "repeat": 3,
+        "mean_ms": 8.43947,
+        "median_ms": 8.41557,
+        "p95_ms": 8.54783,
+        "min_ms": 8.355,
+        "max_ms": 8.54783,
+        "std_ms": 0.0805167
+      },
+      "gpu_e2e_perf": {
+        "warmup": 1,
+        "repeat": 3,
+        "mean_ms": 1.96682,
+        "median_ms": 1.87675,
+        "p95_ms": 2.1535,
+        "min_ms": 1.8702,
+        "max_ms": 2.1535,
+        "std_ms": 0.132029
+      },
+      "gpu_kernel_perf": {
+        "warmup": 1,
+        "repeat": 3,
+        "mean_ms": 1.78364,
+        "median_ms": 1.85983,
+        "p95_ms": 1.86056,
+        "min_ms": 1.63052,
+        "max_ms": 1.86056,
+        "std_ms": 0.10827
+      },
+      "artifacts": [
+        {"role": "case_spec", "path": "/CETC/data/generated/unit/radartools/ca_cfar/input/perf_2d__spec.json", "sha256": "4cdd17ee95602a7e8454fd35f638d95ea960a48437e8e5aecb9e103807eb4030"},
+        {"role": "x_input", "path": "/CETC/data/generated/unit/radartools/ca_cfar/input/perf_2d__x.csv", "sha256": "c2076caec9b1fcca35912bc023d502299de01a1a0c6146f31d79be353cf8c8ca"},
+        {"role": "cpu_threshold", "path": "/CETC/data/generated/unit/radartools/ca_cfar/output_samples/perf_2d__cpu__threshold.csv", "sha256": "8b096024e75cf4a3c7975ce62d016212b7e07d363bc8a28d092b38a312b7d9b0"},
+        {"role": "cpu_detections", "path": "/CETC/data/generated/unit/radartools/ca_cfar/output_samples/perf_2d__cpu__detections.csv", "sha256": "8b096024e75cf4a3c7975ce62d016212b7e07d363bc8a28d092b38a312b7d9b0"},
+        {"role": "gpu_threshold", "path": "/CETC/data/generated/unit/radartools/ca_cfar/output_samples/perf_2d__gpu__threshold.csv", "sha256": "8b096024e75cf4a3c7975ce62d016212b7e07d363bc8a28d092b38a312b7d9b0"},
+        {"role": "gpu_detections", "path": "/CETC/data/generated/unit/radartools/ca_cfar/output_samples/perf_2d__gpu__detections.csv", "sha256": "8b096024e75cf4a3c7975ce62d016212b7e07d363bc8a28d092b38a312b7d9b0"}
+      ]
+    }
+  ]
+}

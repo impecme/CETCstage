@@ -1,0 +1,4 @@
+case_id,backend,metric_kind,samples,warmup,repeat,mean_ms,median_ms,p95_ms,min_ms,max_ms,std_ms,max_abs_error,max_rel_error,rmse,l2_error,exact_match
+iir_gust,gpu_vs_cpu,error,32,,,,,,,,,0,0,0,0,true
+iir_gust,cpu_vs_ref,error,32,,,,,,,,,2.9802322387695312e-08,2.0511143361545692e-07,1.2634147061874046e-08,7.1469528961642936e-08,false
+iir_gust,gpu_vs_ref,error,32,,,,,,,,,2.9802322387695312e-08,2.0511143361545692e-07,1.2634147061874046e-08,7.1469528961642936e-08,false

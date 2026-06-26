@@ -1,0 +1,519 @@
+-- Using Zhongkexin ZQ500 compatibility headers: /zq500/sdk/include
+-- CUSIGNAL_PLATFORM=ZHONGKEXIN
+-- Using Zhongkexin ZQ500 runtime compatibility library: /zq500/sdk/lib/libcurt.so
+-- Using Zhongkexin ZQ500 FFT compatibility library: /zq500/sdk/lib/libdlfft.so
+-- Using Zhongkexin ZQ500 BLAS compatibility library: /zq500/sdk/lib/libdlblas.so
+-- Using Zhongkexin ZQ500 solver compatibility library: /zq500/sdk/lib/libdlsolver.so
+-- Using Zhongkexin ZQ500 DNN compatibility library: /zq500/sdk/lib/libdldnn.so
+-- Using Zhongkexin ZQ500 sparse compatibility library: /zq500/sdk/lib/libdlsparse.so
+-- Using Zhongkexin ZQ500 random compatibility library: /zq500/sdk/lib/libdlrand.so
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /CETC/build-zx
+Consolidate compiler generated dependencies of target cusignal_cpu
+[ 46%] Built target cusignal_cpu
+Consolidate compiler generated dependencies of target cusignal_zx_gpu
+[ 92%] Built target cusignal_zx_gpu
+Consolidate compiler generated dependencies of target correlate_test_support
+[ 92%] Built target correlate_test_support
+Consolidate compiler generated dependencies of target correlate_test_correlation_lags
+[100%] Linking CXX executable correlate_test_correlation_lags
+[100%] Built target correlate_test_correlation_lags
+[ 42%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+Consolidate compiler generated dependencies of target filter_design_test_support
+[ 92%] Built target filter_design_test_support
+Consolidate compiler generated dependencies of target filter_design_test_cmplx_sort
+[ 92%] Linking CXX executable filter_design_test_cmplx_sort
+[100%] Built target filter_design_test_cmplx_sort
+[ 42%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target filter_design_test_support
+Consolidate compiler generated dependencies of target filter_design_test_kaiser_atten
+[100%] Linking CXX executable filter_design_test_kaiser_atten
+[100%] Built target filter_design_test_kaiser_atten
+[ 42%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target filter_design_test_support
+Consolidate compiler generated dependencies of target filter_design_test_kaiser_beta
+[100%] Linking CXX executable filter_design_test_kaiser_beta
+[100%] Built target filter_design_test_kaiser_beta
+[ 42%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+Consolidate compiler generated dependencies of target filtering_test_support
+[ 92%] Built target filtering_test_support
+Consolidate compiler generated dependencies of target filtering_test_filtfilt
+[ 92%] Linking CXX executable filtering_test_filtfilt
+[100%] Built target filtering_test_filtfilt
+[ 42%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target filtering_test_support
+Consolidate compiler generated dependencies of target filtering_test_firfilter_zi
+[100%] Linking CXX executable filtering_test_firfilter_zi
+[100%] Built target filtering_test_firfilter_zi
+[ 42%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target filtering_test_support
+Consolidate compiler generated dependencies of target filtering_test_lfilter
+[ 92%] Linking CXX executable filtering_test_lfilter
+[100%] Built target filtering_test_lfilter
+[ 46%] Built target cusignal_cpu
+[ 92%] Built target cusignal_zx_gpu
+Consolidate compiler generated dependencies of target peak_finding_test_support
+[ 92%] Built target peak_finding_test_support
+Consolidate compiler generated dependencies of target peak_finding_test_argrelmax
+[100%] Linking CXX executable peak_finding_test_argrelmax
+[100%] Built target peak_finding_test_argrelmax
+[ 46%] Built target cusignal_cpu
+[ 92%] Built target cusignal_zx_gpu
+[ 92%] Built target peak_finding_test_support
+Consolidate compiler generated dependencies of target peak_finding_test_argrelmin
+[100%] Linking CXX executable peak_finding_test_argrelmin
+[100%] Built target peak_finding_test_argrelmin
+[ 42%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+Consolidate compiler generated dependencies of target radartools_test_support
+[ 92%] Built target radartools_test_support
+Consolidate compiler generated dependencies of target radartools_test_mvdr
+[100%] Built target radartools_test_mvdr
+[ 42%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+Consolidate compiler generated dependencies of target spectral_test_support
+[ 92%] Built target spectral_test_support
+Consolidate compiler generated dependencies of target spectral_test_coherence
+[100%] Linking CXX executable spectral_test_coherence
+[100%] Built target spectral_test_coherence
+[ 42%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target spectral_test_support
+Consolidate compiler generated dependencies of target spectral_test_periodogram
+[ 92%] Linking CXX executable spectral_test_periodogram
+[100%] Built target spectral_test_periodogram
+[ 42%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target spectral_test_support
+Consolidate compiler generated dependencies of target spectral_test_welch
+[100%] Linking CXX executable spectral_test_welch
+[100%] Built target spectral_test_welch
+[ 42%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+Consolidate compiler generated dependencies of target windows_test_support
+[ 92%] Built target windows_test_support
+Consolidate compiler generated dependencies of target windows_test_barthann
+[100%] Linking CXX executable windows_test_barthann
+[100%] Built target windows_test_barthann
+[ 46%] Built target cusignal_cpu
+[ 92%] Built target cusignal_zx_gpu
+[100%] Built target windows_test_support
+Consolidate compiler generated dependencies of target windows_test_bartlett
+[100%] Linking CXX executable windows_test_bartlett
+[100%] Built target windows_test_bartlett
+[ 42%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target windows_test_support
+Consolidate compiler generated dependencies of target windows_test_blackman
+[ 92%] Linking CXX executable windows_test_blackman
+[100%] Built target windows_test_blackman
+[ 42%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target windows_test_support
+Consolidate compiler generated dependencies of target windows_test_blackmanharris
+[ 92%] Linking CXX executable windows_test_blackmanharris
+[100%] Built target windows_test_blackmanharris
+[ 42%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target windows_test_support
+Consolidate compiler generated dependencies of target windows_test_bohman
+[ 92%] Linking CXX executable windows_test_bohman
+[100%] Built target windows_test_bohman
+[ 42%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target windows_test_support
+Consolidate compiler generated dependencies of target windows_test_boxcar
+[100%] Linking CXX executable windows_test_boxcar
+[100%] Built target windows_test_boxcar
+[ 42%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target windows_test_support
+Consolidate compiler generated dependencies of target windows_test_cosine
+[100%] Linking CXX executable windows_test_cosine
+[100%] Built target windows_test_cosine
+[ 46%] Built target cusignal_cpu
+[ 92%] Built target cusignal_zx_gpu
+[100%] Built target windows_test_support
+Consolidate compiler generated dependencies of target windows_test_exponential
+[100%] Linking CXX executable windows_test_exponential
+[100%] Built target windows_test_exponential
+[ 42%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target windows_test_support
+Consolidate compiler generated dependencies of target windows_test_flattop
+[ 92%] Linking CXX executable windows_test_flattop
+[100%] Built target windows_test_flattop
+[ 42%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target windows_test_support
+Consolidate compiler generated dependencies of target windows_test_gaussian
+[ 92%] Linking CXX executable windows_test_gaussian
+[100%] Built target windows_test_gaussian
+[ 42%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target windows_test_support
+Consolidate compiler generated dependencies of target windows_test_general_hamming
+[100%] Linking CXX executable windows_test_general_hamming
+[100%] Built target windows_test_general_hamming
+[ 42%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target windows_test_support
+Consolidate compiler generated dependencies of target windows_test_get_window
+[100%] Linking CXX executable windows_test_get_window
+[100%] Built target windows_test_get_window
+[ 42%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target windows_test_support
+Consolidate compiler generated dependencies of target windows_test_hann
+[ 92%] Linking CXX executable windows_test_hann
+[100%] Built target windows_test_hann
+[ 42%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target windows_test_support
+Consolidate compiler generated dependencies of target windows_test_nuttall
+[ 92%] Linking CXX executable windows_test_nuttall
+[100%] Built target windows_test_nuttall
+[ 42%] Built target cusignal_cpu
+[ 85%] Built target cusignal_zx_gpu
+[ 92%] Built target windows_test_support
+Consolidate compiler generated dependencies of target windows_test_tukey
+[ 92%] Linking CXX executable windows_test_tukey
+[100%] Built target windows_test_tukey
+[all-ops-bench] selected operators: 28
+[all-ops-bench] operator set: extended28
+[all-ops-bench] build mode: build
+[all-ops-bench] platform: ZHONGKEXIN
+[all-ops-bench] scale profile: default
+[all-ops-bench] scale levels: 6
+[all-ops-bench] report mode: concise
+[all-ops-bench] timing: warmup=1 repeat=3
+[all-ops-bench] building selected targets once: 28 targets, platform=ZHONGKEXIN, build_type=Release, gpu_arch=dlgput64, jobs=255
+[all-ops-bench] backed up manifests
+[all-ops-bench] [1/28 L6] windows/get_window scale=1048576
+[all-ops-bench] running windows/get_window: /CETC/scripts/test/run_all_tests.sh --module windows --operator get_window --case-set perf --emit-report --warmup 1 --repeat 3 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+Activate Release Package @ /zq500/sdk
+[cusignal-test] timing       : warmup=1 repeat=3
+[cusignal-test] running windows/get_window
+[windows/get_window] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=1.788139e-07  max_rel=8.078851e-07  rmse=4.272173e-08
+cpu_perf_ms   : median=8.353  mean=8.353  p95=8.353
+gpu_perf_ms   : e2e_median=0.248  kernel_median=0.181  p95=0.248  e2e_speedup=33.739x  kernel_speedup=46.151x
+reports       : data/reports/unit/windows/get_window/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [2/28 L6] windows/barthann scale=1048576
+[all-ops-bench] running windows/barthann: /CETC/scripts/test/run_all_tests.sh --module windows --operator barthann --case-set perf --emit-report --warmup 1 --repeat 3 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+Activate Release Package @ /zq500/sdk
+[cusignal-test] timing       : warmup=1 repeat=3
+[cusignal-test] running windows/barthann
+[windows/barthann] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=1.192093e-07  max_rel=2.127660e-02  rmse=2.514733e-08
+cpu_perf_ms   : median=7.857  mean=7.857  p95=7.857
+gpu_perf_ms   : e2e_median=0.248  kernel_median=0.179  p95=0.248  e2e_speedup=31.731x  kernel_speedup=43.794x
+reports       : data/reports/unit/windows/barthann/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [3/28 L6] windows/bartlett scale=1048576
+[all-ops-bench] running windows/bartlett: /CETC/scripts/test/run_all_tests.sh --module windows --operator bartlett --case-set perf --emit-report --warmup 1 --repeat 3 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+Activate Release Package @ /zq500/sdk
+[cusignal-test] timing       : warmup=1 repeat=3
+[cusignal-test] running windows/bartlett
+[windows/bartlett] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+cpu_perf_ms   : median=1.343  mean=1.343  p95=1.343
+gpu_perf_ms   : e2e_median=0.149  kernel_median=0.096  p95=0.149  e2e_speedup=8.994x  kernel_speedup=14.002x
+reports       : data/reports/unit/windows/bartlett/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [4/28 L6] windows/blackman scale=1048576
+[all-ops-bench] running windows/blackman: /CETC/scripts/test/run_all_tests.sh --module windows --operator blackman --case-set perf --emit-report --warmup 1 --repeat 3 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+Activate Release Package @ /zq500/sdk
+[cusignal-test] timing       : warmup=1 repeat=3
+[cusignal-test] running windows/blackman
+[windows/blackman] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=2.384186e-07  max_rel=1.000000e+00  rmse=4.414277e-08
+cpu_perf_ms   : median=13.653  mean=13.653  p95=13.653
+gpu_perf_ms   : e2e_median=0.353  kernel_median=0.282  p95=0.353  e2e_speedup=38.690x  kernel_speedup=48.368x
+reports       : data/reports/unit/windows/blackman/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [5/28 L6] windows/blackmanharris scale=1048576
+[all-ops-bench] running windows/blackmanharris: /CETC/scripts/test/run_all_tests.sh --module windows --operator blackmanharris --case-set perf --emit-report --warmup 1 --repeat 3 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+Activate Release Package @ /zq500/sdk
+[cusignal-test] timing       : warmup=1 repeat=3
+[cusignal-test] running windows/blackmanharris
+[windows/blackmanharris] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=2.980232e-07  max_rel=8.216958e-04  rmse=4.764010e-08
+cpu_perf_ms   : median=18.996  mean=18.996  p95=18.996
+gpu_perf_ms   : e2e_median=0.453  kernel_median=0.389  p95=0.453  e2e_speedup=41.949x  kernel_speedup=48.775x
+reports       : data/reports/unit/windows/blackmanharris/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [6/28 L6] windows/bohman scale=1048576
+[all-ops-bench] running windows/bohman: /CETC/scripts/test/run_all_tests.sh --module windows --operator bohman --case-set perf --emit-report --warmup 1 --repeat 3 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+Activate Release Package @ /zq500/sdk
+[cusignal-test] timing       : warmup=1 repeat=3
+[cusignal-test] running windows/bohman
+[windows/bohman] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=1.192093e-07  max_rel=6.666667e-01  rmse=1.906169e-08
+cpu_perf_ms   : median=14.396  mean=14.396  p95=14.396
+gpu_perf_ms   : e2e_median=0.362  kernel_median=0.316  p95=0.362  e2e_speedup=39.732x  kernel_speedup=45.592x
+reports       : data/reports/unit/windows/bohman/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [7/28 L6] windows/boxcar scale=1048576
+[all-ops-bench] running windows/boxcar: /CETC/scripts/test/run_all_tests.sh --module windows --operator boxcar --case-set perf --emit-report --warmup 1 --repeat 3 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+Activate Release Package @ /zq500/sdk
+[cusignal-test] timing       : warmup=1 repeat=3
+[cusignal-test] running windows/boxcar
+[windows/boxcar] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+cpu_perf_ms   : median=0.088  mean=0.088  p95=0.088
+gpu_perf_ms   : e2e_median=0.146  kernel_median=0.073  p95=0.146  e2e_speedup=0.606x  kernel_speedup=1.212x
+reports       : data/reports/unit/windows/boxcar/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [8/28 L6] windows/cosine scale=1048576
+[all-ops-bench] running windows/cosine: /CETC/scripts/test/run_all_tests.sh --module windows --operator cosine --case-set perf --emit-report --warmup 1 --repeat 3 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+Activate Release Package @ /zq500/sdk
+[cusignal-test] timing       : warmup=1 repeat=3
+[cusignal-test] running windows/cosine
+[windows/cosine] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=2.384186e-07  max_rel=1.846479e-02  rmse=5.485542e-08
+cpu_perf_ms   : median=14.349  mean=14.349  p95=14.349
+gpu_perf_ms   : e2e_median=0.257  kernel_median=0.185  p95=0.257  e2e_speedup=55.929x  kernel_speedup=77.515x
+reports       : data/reports/unit/windows/cosine/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [9/28 L6] windows/exponential scale=1048576
+[all-ops-bench] running windows/exponential: /CETC/scripts/test/run_all_tests.sh --module windows --operator exponential --case-set perf --emit-report --warmup 1 --repeat 3 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+Activate Release Package @ /zq500/sdk
+[cusignal-test] timing       : warmup=1 repeat=3
+[cusignal-test] running windows/exponential
+[windows/exponential] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=5.960464e-08  max_rel=2.333296e-07  rmse=8.516923e-10
+cpu_perf_ms   : median=9.753  mean=9.753  p95=9.753
+gpu_perf_ms   : e2e_median=0.167  kernel_median=0.119  p95=0.167  e2e_speedup=58.490x  kernel_speedup=81.699x
+reports       : data/reports/unit/windows/exponential/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [10/28 L6] windows/flattop scale=1048576
+[all-ops-bench] running windows/flattop: /CETC/scripts/test/run_all_tests.sh --module windows --operator flattop --case-set perf --emit-report --warmup 1 --repeat 3 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+Activate Release Package @ /zq500/sdk
+[cusignal-test] timing       : warmup=1 repeat=3
+[cusignal-test] running windows/flattop
+[windows/flattop] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=2.980232e-07  max_rel=3.048714e-02  rmse=5.462268e-08
+cpu_perf_ms   : median=23.878  mean=23.878  p95=23.878
+gpu_perf_ms   : e2e_median=0.557  kernel_median=0.500  p95=0.557  e2e_speedup=42.863x  kernel_speedup=47.796x
+reports       : data/reports/unit/windows/flattop/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [11/28 L6] windows/gaussian scale=1048576
+[all-ops-bench] running windows/gaussian: /CETC/scripts/test/run_all_tests.sh --module windows --operator gaussian --case-set perf --emit-report --warmup 1 --repeat 3 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+Activate Release Package @ /zq500/sdk
+[cusignal-test] timing       : warmup=1 repeat=3
+[cusignal-test] running windows/gaussian
+[windows/gaussian] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=1.192093e-07  max_rel=2.105640e-07  rmse=1.047260e-09
+cpu_perf_ms   : median=13.573  mean=13.573  p95=13.573
+gpu_perf_ms   : e2e_median=0.172  kernel_median=0.121  p95=0.172  e2e_speedup=78.755x  kernel_speedup=111.950x
+reports       : data/reports/unit/windows/gaussian/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [12/28 L6] windows/general_hamming scale=1048576
+[all-ops-bench] running windows/general_hamming: /CETC/scripts/test/run_all_tests.sh --module windows --operator general_hamming --case-set perf --emit-report --warmup 1 --repeat 3 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+Activate Release Package @ /zq500/sdk
+[cusignal-test] timing       : warmup=1 repeat=3
+[cusignal-test] running windows/general_hamming
+[windows/general_hamming] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=1.788139e-07  max_rel=8.078851e-07  rmse=4.272173e-08
+cpu_perf_ms   : median=8.358  mean=8.358  p95=8.358
+gpu_perf_ms   : e2e_median=0.249  kernel_median=0.181  p95=0.249  e2e_speedup=33.529x  kernel_speedup=46.251x
+reports       : data/reports/unit/windows/general_hamming/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [13/28 L6] windows/hann scale=1048576
+[all-ops-bench] running windows/hann: /CETC/scripts/test/run_all_tests.sh --module windows --operator hann --case-set perf --emit-report --warmup 1 --repeat 3 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+Activate Release Package @ /zq500/sdk
+[cusignal-test] timing       : warmup=1 repeat=3
+[cusignal-test] running windows/hann
+[windows/hann] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=1.788139e-07  max_rel=1.298701e-02  rmse=4.310188e-08
+cpu_perf_ms   : median=8.355  mean=8.355  p95=8.355
+gpu_perf_ms   : e2e_median=0.248  kernel_median=0.181  p95=0.248  e2e_speedup=33.653x  kernel_speedup=46.218x
+reports       : data/reports/unit/windows/hann/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [14/28 L6] windows/nuttall scale=1048576
+[all-ops-bench] running windows/nuttall: /CETC/scripts/test/run_all_tests.sh --module windows --operator nuttall --case-set perf --emit-report --warmup 1 --repeat 3 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+Activate Release Package @ /zq500/sdk
+[cusignal-test] timing       : warmup=1 repeat=3
+[cusignal-test] running windows/nuttall
+[windows/nuttall] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=2.980232e-07  max_rel=1.412966e-04  rmse=4.760259e-08
+cpu_perf_ms   : median=18.986  mean=18.986  p95=18.986
+gpu_perf_ms   : e2e_median=0.453  kernel_median=0.389  p95=0.453  e2e_speedup=41.900x  kernel_speedup=48.763x
+reports       : data/reports/unit/windows/nuttall/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [15/28 L6] windows/tukey scale=1048576
+[all-ops-bench] running windows/tukey: /CETC/scripts/test/run_all_tests.sh --module windows --operator tukey --case-set perf --emit-report --warmup 1 --repeat 3 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+Activate Release Package @ /zq500/sdk
+[cusignal-test] timing       : warmup=1 repeat=3
+[cusignal-test] running windows/tukey
+[windows/tukey] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=5.960464e-08  max_rel=1.022913e-04  rmse=9.131278e-09
+cpu_perf_ms   : median=5.234  mean=5.234  p95=5.234
+gpu_perf_ms   : e2e_median=0.250  kernel_median=0.180  p95=0.250  e2e_speedup=20.973x  kernel_speedup=29.009x
+reports       : data/reports/unit/windows/tukey/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [16/28 L6] filter_design/kaiser_beta scale=4097
+[all-ops-bench] running filter_design/kaiser_beta: /CETC/scripts/test/run_all_tests.sh --module filter_design --operator kaiser_beta --case-set perf --emit-report --warmup 1 --repeat 3 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+Activate Release Package @ /zq500/sdk
+[cusignal-test] timing       : warmup=1 repeat=3
+[cusignal-test] running filter_design/kaiser_beta
+[filter_design/kaiser_beta] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.000  mean=0.000  p95=0.000
+gpu_perf_ms   : e2e_median=0.040  kernel_median=0.000  p95=0.040  e2e_speedup=0.003x  kernel_speedup=0.000x
+reports       : data/reports/unit/filter_design/kaiser_beta/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [17/28 L6] filter_design/kaiser_atten scale=4097
+[all-ops-bench] running filter_design/kaiser_atten: /CETC/scripts/test/run_all_tests.sh --module filter_design --operator kaiser_atten --case-set perf --emit-report --warmup 1 --repeat 3 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+Activate Release Package @ /zq500/sdk
+[cusignal-test] timing       : warmup=1 repeat=3
+[cusignal-test] running filter_design/kaiser_atten
+[filter_design/kaiser_atten] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.000  mean=0.000  p95=0.000
+gpu_perf_ms   : e2e_median=0.049  kernel_median=0.000  p95=0.049  e2e_speedup=0.002x  kernel_speedup=0.000x
+reports       : data/reports/unit/filter_design/kaiser_atten/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [18/28 L6] filter_design/cmplx_sort scale=4097
+[all-ops-bench] running filter_design/cmplx_sort: /CETC/scripts/test/run_all_tests.sh --module filter_design --operator cmplx_sort --case-set perf --emit-report --warmup 1 --repeat 3 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+Activate Release Package @ /zq500/sdk
+[cusignal-test] timing       : warmup=1 repeat=3
+[cusignal-test] running filter_design/cmplx_sort
+[filter_design/cmplx_sort] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.439  mean=0.439  p95=0.439
+gpu_perf_ms   : e2e_median=0.542  kernel_median=0.000  p95=0.542  e2e_speedup=0.809x  kernel_speedup=0.000x
+reports       : data/reports/unit/filter_design/cmplx_sort/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [19/28 L6] filtering/lfilter scale=32768
+[all-ops-bench] running filtering/lfilter: /CETC/scripts/test/run_all_tests.sh --module filtering --operator lfilter --case-set perf --emit-report --warmup 1 --repeat 3 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+Activate Release Package @ /zq500/sdk
+[cusignal-test] timing       : warmup=1 repeat=3
+[cusignal-test] running filtering/lfilter
+[filtering/lfilter] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=2.980232e-07  max_rel=8.013197e-05  rmse=5.072446e-08
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.205  mean=0.205  p95=0.205
+gpu_perf_ms   : e2e_median=0.366  kernel_median=0.121  p95=0.366  e2e_speedup=0.560x  kernel_speedup=1.697x
+reports       : data/reports/unit/filtering/lfilter/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [20/28 L6] filtering/firfilter_zi scale=32768
+[all-ops-bench] running filtering/firfilter_zi: /CETC/scripts/test/run_all_tests.sh --module filtering --operator firfilter_zi --case-set perf --emit-report --warmup 1 --repeat 3 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+Activate Release Package @ /zq500/sdk
+[cusignal-test] timing       : warmup=1 repeat=3
+[cusignal-test] running filtering/firfilter_zi
+[filtering/firfilter_zi] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.014  mean=0.014  p95=0.014
+gpu_perf_ms   : e2e_median=0.248  kernel_median=0.083  p95=0.248  e2e_speedup=0.056x  kernel_speedup=0.167x
+reports       : data/reports/unit/filtering/firfilter_zi/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [21/28 L6] filtering/filtfilt scale=32768
+[all-ops-bench] running filtering/filtfilt: /CETC/scripts/test/run_all_tests.sh --module filtering --operator filtfilt --case-set perf --emit-report --warmup 1 --repeat 3 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+Activate Release Package @ /zq500/sdk
+[cusignal-test] timing       : warmup=1 repeat=3
+[cusignal-test] running filtering/filtfilt
+[filtering/filtfilt] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=4.172325e-07  max_rel=4.854955e-05  rmse=6.523781e-08
+reference_error : max_abs=n/a  max_rel=n/a  rmse=n/a
+cpu_perf_ms   : median=0.579  mean=0.579  p95=0.579
+gpu_perf_ms   : e2e_median=0.657  kernel_median=0.403  p95=0.657  e2e_speedup=0.881x  kernel_speedup=1.437x
+reports       : data/reports/unit/filtering/filtfilt/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [22/28 L6] radartools/mvdr scale=1048576
+[all-ops-bench] running radartools/mvdr: /CETC/scripts/test/run_all_tests.sh --module radartools --operator mvdr --case-set perf --emit-report --warmup 1 --repeat 3 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+Activate Release Package @ /zq500/sdk
+[cusignal-test] timing       : warmup=1 repeat=3
+[cusignal-test] running radartools/mvdr
+[radartools/mvdr] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=7.963751e-05  max_rel=2.629748e-04  rmse=4.711343e-05
+cpu_perf_ms   : median=21.288  mean=21.288  p95=21.288
+gpu_perf_ms   : e2e_median=11.175  kernel_median=0.847  p95=11.175  e2e_speedup=1.905x  kernel_speedup=25.137x
+reports       : data/reports/unit/radartools/mvdr/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [23/28 L6] spectral/periodogram scale=32768
+[all-ops-bench] running spectral/periodogram: /CETC/scripts/test/run_all_tests.sh --module spectral --operator periodogram --case-set perf --emit-report --warmup 1 --repeat 3 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+Activate Release Package @ /zq500/sdk
+[cusignal-test] timing       : warmup=1 repeat=3
+[cusignal-test] running spectral/periodogram
+[spectral/periodogram] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=1.907349e-06  max_rel=3.675537e+03  rmse=1.491096e-08
+cpu_perf_ms   : median=1.457  mean=1.457  p95=1.457
+gpu_perf_ms   : e2e_median=0.662  kernel_median=0.193  p95=0.662  e2e_speedup=2.202x  kernel_speedup=7.549x
+reports       : data/reports/unit/spectral/periodogram/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [24/28 L6] spectral/welch scale=32768
+[all-ops-bench] running spectral/welch: /CETC/scripts/test/run_all_tests.sh --module spectral --operator welch --case-set perf --emit-report --warmup 1 --repeat 3 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+Activate Release Package @ /zq500/sdk
+[cusignal-test] timing       : warmup=1 repeat=3
+[cusignal-test] running spectral/welch
+[spectral/welch] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=2.793968e-09  max_rel=8.020970e-02  rmse=2.750506e-10
+cpu_perf_ms   : median=2.833  mean=2.833  p95=2.833
+gpu_perf_ms   : e2e_median=2.056  kernel_median=1.650  p95=2.056  e2e_speedup=1.378x  kernel_speedup=1.717x
+reports       : data/reports/unit/spectral/welch/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [25/28 L6] spectral/coherence scale=32768
+[all-ops-bench] running spectral/coherence: /CETC/scripts/test/run_all_tests.sh --module spectral --operator coherence --case-set perf --emit-report --warmup 1 --repeat 3 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+Activate Release Package @ /zq500/sdk
+[cusignal-test] timing       : warmup=1 repeat=3
+[cusignal-test] running spectral/coherence
+[spectral/coherence] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=1.253366e-02  max_rel=1.282458e-02  rmse=1.610321e-03
+cpu_perf_ms   : median=10.928  mean=10.928  p95=10.928
+gpu_perf_ms   : e2e_median=5.271  kernel_median=0.028  p95=5.271  e2e_speedup=2.073x  kernel_speedup=393.783x
+reports       : data/reports/unit/spectral/coherence/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [26/28 L6] correlate/correlation_lags scale=8192
+[all-ops-bench] running correlate/correlation_lags: /CETC/scripts/test/run_all_tests.sh --module correlate --operator correlation_lags --case-set perf --emit-report --warmup 1 --repeat 3 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+Activate Release Package @ /zq500/sdk
+[cusignal-test] timing       : warmup=1 repeat=3
+[cusignal-test] running correlate/correlation_lags
+[correlate/correlation_lags] PASS  accuracy_cases=3  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+cpu_perf_ms   : median=0.001  mean=0.001  p95=0.001
+gpu_perf_ms   : e2e_median=0.127  kernel_median=0.027  p95=0.130  e2e_speedup=0.006x  kernel_speedup=0.028x
+reports       : data/reports/unit/correlate/correlation_lags/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [27/28 L6] peak_finding/argrelmin scale=1048576
+[all-ops-bench] running peak_finding/argrelmin: /CETC/scripts/test/run_all_tests.sh --module peak_finding --operator argrelmin --case-set perf --emit-report --warmup 1 --repeat 3 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+Activate Release Package @ /zq500/sdk
+[cusignal-test] timing       : warmup=1 repeat=3
+[cusignal-test] running peak_finding/argrelmin
+[peak_finding/argrelmin] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+cpu_perf_ms   : median=1.004  mean=1.004  p95=1.004
+gpu_perf_ms   : e2e_median=0.263  kernel_median=0.215  p95=0.272  e2e_speedup=3.814x  kernel_speedup=4.664x
+reports       : data/reports/unit/peak_finding/argrelmin/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] [28/28 L6] peak_finding/argrelmax scale=1048576
+[all-ops-bench] running peak_finding/argrelmax: /CETC/scripts/test/run_all_tests.sh --module peak_finding --operator argrelmax --case-set perf --emit-report --warmup 1 --repeat 3 --build-dir /CETC/build-zx --platform ZHONGKEXIN --no-build
+Activate Release Package @ /zq500/sdk
+[cusignal-test] timing       : warmup=1 repeat=3
+[cusignal-test] running peak_finding/argrelmax
+[peak_finding/argrelmax] PASS  accuracy_cases=0  perf_cases=1
+cpu_gpu_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+reference_error : max_abs=0.000000e+00  max_rel=0.000000e+00  rmse=0.000000e+00
+cpu_perf_ms   : median=0.994  mean=0.997  p95=1.003
+gpu_perf_ms   : e2e_median=0.271  kernel_median=0.218  p95=0.276  e2e_speedup=3.673x  kernel_speedup=4.567x
+reports       : data/reports/unit/peak_finding/argrelmax/latest_summary.md
+[cusignal-test] summary: passed 1/1
+[all-ops-bench] restoring original manifests
+[all-ops-bench] updated /CETC/data/reports/unit/benchmarks/v5_5_mvdr_parallel_mean_probe/latest_all_ops_scale_benchmark.csv
+[all-ops-bench] updated /CETC/data/reports/unit/benchmarks/v5_5_mvdr_parallel_mean_probe/latest_report.md
+[all-ops-bench] rows=28

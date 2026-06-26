@@ -1,0 +1,204 @@
+{
+  "module": "radartools",
+  "operator": "ca_cfar",
+  "generated_at": "2026-06-26 10:04:07",
+  "git_commit": "",
+  "gpu_name": "ZQ500-Q QUAD-0",
+  "compile_config": {
+    "cxx_standard": 201703,
+    "runtime_version": 11070
+  },
+  "summary": {
+    "pass": true,
+    "accuracy_cases": 2,
+    "perf_cases": 1,
+    "max_abs_error": 0,
+    "max_rel_error": 0,
+    "mixed_error": 0,
+    "rmse": 0,
+    "gpu_e2e_speedup": 3.95096,
+    "gpu_kernel_speedup": 4.5842,
+    "cpu_perf": {
+      "warmup": 5,
+      "repeat": 30,
+      "mean_ms": 8.59448,
+      "median_ms": 8.59448,
+      "p95_ms": 8.59448,
+      "min_ms": 8.59448,
+      "max_ms": 8.59448,
+      "std_ms": 0
+    },
+    "gpu_e2e_perf": {
+      "warmup": 5,
+      "repeat": 30,
+      "mean_ms": 2.17529,
+      "median_ms": 2.17529,
+      "p95_ms": 2.17529,
+      "min_ms": 2.17529,
+      "max_ms": 2.17529,
+      "std_ms": 0
+    },
+    "gpu_kernel_perf": {
+      "warmup": 5,
+      "repeat": 30,
+      "mean_ms": 1.87481,
+      "median_ms": 1.87481,
+      "p95_ms": 1.87481,
+      "min_ms": 1.87481,
+      "max_ms": 1.87481,
+      "std_ms": 0
+    },
+    "device_storage_cache": {
+      "cache_enabled": true,
+      "allocation_calls": 9,
+      "allocation_bytes": 12592368,
+      "allocation_mib": 12.009,
+      "cache_hits": 140,
+      "cache_misses": 9,
+      "recycled_blocks": 148,
+      "recycled_bytes": 600073904,
+      "recycled_mib": 572.275,
+      "evicted_blocks": 0,
+      "evicted_bytes": 0,
+      "evicted_mib": 0,
+      "freed_blocks": 0,
+      "freed_bytes": 0,
+      "freed_mib": 0,
+      "cached_blocks": 8,
+      "cached_bytes": 12591344,
+      "cached_mib": 12.008,
+      "peak_cached_bytes": 12591344,
+      "peak_cached_mib": 12.008,
+      "max_cached_blocks": 8,
+      "max_cached_bytes": 536870912,
+      "max_cached_mib": 512,
+      "max_single_cached_bytes": 268435456,
+      "max_single_cached_mib": 256
+    }
+  },
+  "cases": [
+    {
+      "case_id": "ones_1d",
+      "category": "accuracy",
+      "samples": 32,
+      "pass": true,
+      "cpu_gpu_error": {
+        "max_abs_error": 0,
+        "max_rel_error": 0,
+        "mixed_error": 0,
+        "rmse": 0,
+        "l2_error": 0,
+        "exact_match": true,
+        "first_mismatch_index": -1
+      },
+      "cpu_reference_error": {
+        "max_abs_error": 0,
+        "max_rel_error": 0,
+        "mixed_error": 0,
+        "rmse": 0,
+        "l2_error": 0,
+        "exact_match": true,
+        "first_mismatch_index": -1
+      },
+      "gpu_reference_error": {
+        "max_abs_error": 0,
+        "max_rel_error": 0,
+        "mixed_error": 0,
+        "rmse": 0,
+        "l2_error": 0,
+        "exact_match": true,
+        "first_mismatch_index": -1
+      },
+      "artifacts": [
+      ]
+    },
+    {
+      "case_id": "spike_2d",
+      "category": "accuracy",
+      "samples": 256,
+      "pass": true,
+      "cpu_gpu_error": {
+        "max_abs_error": 0,
+        "max_rel_error": 0,
+        "mixed_error": 0,
+        "rmse": 0,
+        "l2_error": 0,
+        "exact_match": true,
+        "first_mismatch_index": -1
+      },
+      "cpu_reference_error": {
+        "max_abs_error": 3.05176e-05,
+        "max_rel_error": 1.61895e-07,
+        "mixed_error": 0,
+        "rmse": 1.20631e-05,
+        "l2_error": 0.00019301,
+        "exact_match": false,
+        "first_mismatch_index": 70
+      },
+      "gpu_reference_error": {
+        "max_abs_error": 3.05176e-05,
+        "max_rel_error": 1.61895e-07,
+        "mixed_error": 0,
+        "rmse": 1.20631e-05,
+        "l2_error": 0.00019301,
+        "exact_match": false,
+        "first_mismatch_index": 70
+      },
+      "artifacts": [
+      ]
+    },
+    {
+      "case_id": "perf_2d",
+      "category": "perf",
+      "samples": 1049076,
+      "pass": true,
+      "cpu_gpu_error": {
+        "max_abs_error": 0,
+        "max_rel_error": 0,
+        "mixed_error": 0,
+        "rmse": 0,
+        "l2_error": 0,
+        "exact_match": true,
+        "first_mismatch_index": -1
+      },
+      "cpu_perf": {
+        "warmup": 5,
+        "repeat": 30,
+        "mean_ms": 8.64307,
+        "median_ms": 8.59448,
+        "p95_ms": 8.81919,
+        "min_ms": 8.4639,
+        "max_ms": 8.85284,
+        "std_ms": 0.126387
+      },
+      "gpu_e2e_perf": {
+        "warmup": 5,
+        "repeat": 30,
+        "mean_ms": 2.13764,
+        "median_ms": 2.17529,
+        "p95_ms": 2.19398,
+        "min_ms": 1.87344,
+        "max_ms": 2.19473,
+        "std_ms": 0.0846926
+      },
+      "gpu_kernel_perf": {
+        "warmup": 5,
+        "repeat": 30,
+        "mean_ms": 1.82093,
+        "median_ms": 1.87481,
+        "p95_ms": 1.8818,
+        "min_ms": 1.63229,
+        "max_ms": 1.88269,
+        "std_ms": 0.097507
+      },
+      "artifacts": [
+        {"role": "case_spec", "path": "/CETC/data/generated/unit/radartools/ca_cfar/input/perf_2d__spec.json", "sha256": "4cdd17ee95602a7e8454fd35f638d95ea960a48437e8e5aecb9e103807eb4030"},
+        {"role": "x_input", "path": "/CETC/data/generated/unit/radartools/ca_cfar/input/perf_2d__x.csv", "sha256": "c2076caec9b1fcca35912bc023d502299de01a1a0c6146f31d79be353cf8c8ca"},
+        {"role": "cpu_threshold", "path": "/CETC/data/generated/unit/radartools/ca_cfar/output_samples/perf_2d__cpu__threshold.csv", "sha256": "8b096024e75cf4a3c7975ce62d016212b7e07d363bc8a28d092b38a312b7d9b0"},
+        {"role": "cpu_detections", "path": "/CETC/data/generated/unit/radartools/ca_cfar/output_samples/perf_2d__cpu__detections.csv", "sha256": "8b096024e75cf4a3c7975ce62d016212b7e07d363bc8a28d092b38a312b7d9b0"},
+        {"role": "gpu_threshold", "path": "/CETC/data/generated/unit/radartools/ca_cfar/output_samples/perf_2d__gpu__threshold.csv", "sha256": "8b096024e75cf4a3c7975ce62d016212b7e07d363bc8a28d092b38a312b7d9b0"},
+        {"role": "gpu_detections", "path": "/CETC/data/generated/unit/radartools/ca_cfar/output_samples/perf_2d__gpu__detections.csv", "sha256": "8b096024e75cf4a3c7975ce62d016212b7e07d363bc8a28d092b38a312b7d9b0"}
+      ]
+    }
+  ]
+}

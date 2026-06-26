@@ -1,0 +1,133 @@
+{
+  "module": "radartools",
+  "operator": "mvdr",
+  "generated_at": "2026-06-26 08:48:12",
+  "git_commit": "",
+  "gpu_name": "ZQ500-Q QUAD-0",
+  "compile_config": {
+    "cxx_standard": 201703,
+    "runtime_version": 11070
+  },
+  "summary": {
+    "pass": true,
+    "accuracy_cases": 0,
+    "perf_cases": 1,
+    "max_abs_error": 7.96375e-05,
+    "max_rel_error": 0.000262975,
+    "mixed_error": 0,
+    "rmse": 4.71134e-05,
+    "gpu_e2e_speedup": 1.91942,
+    "gpu_kernel_speedup": 25.1406,
+    "cpu_perf": {
+      "warmup": 1,
+      "repeat": 3,
+      "mean_ms": 21.2445,
+      "median_ms": 21.2445,
+      "p95_ms": 21.2445,
+      "min_ms": 21.2445,
+      "max_ms": 21.2445,
+      "std_ms": 0
+    },
+    "gpu_e2e_perf": {
+      "warmup": 1,
+      "repeat": 3,
+      "mean_ms": 11.0682,
+      "median_ms": 11.0682,
+      "p95_ms": 11.0682,
+      "min_ms": 11.0682,
+      "max_ms": 11.0682,
+      "std_ms": 0
+    },
+    "gpu_kernel_perf": {
+      "warmup": 1,
+      "repeat": 3,
+      "mean_ms": 0.845026,
+      "median_ms": 0.845026,
+      "p95_ms": 0.845026,
+      "min_ms": 0.845026,
+      "max_ms": 0.845026,
+      "std_ms": 0
+    },
+    "device_storage_cache": {
+      "cache_enabled": true,
+      "allocation_calls": 3,
+      "allocation_bytes": 8388736,
+      "allocation_mib": 8.00012,
+      "cache_hits": 8,
+      "cache_misses": 3,
+      "recycled_blocks": 9,
+      "recycled_bytes": 576,
+      "recycled_mib": 0.000549316,
+      "evicted_blocks": 0,
+      "evicted_bytes": 0,
+      "evicted_mib": 0,
+      "freed_blocks": 0,
+      "freed_bytes": 0,
+      "freed_mib": 0,
+      "cached_blocks": 1,
+      "cached_bytes": 64,
+      "cached_mib": 6.10352e-05,
+      "peak_cached_bytes": 64,
+      "peak_cached_mib": 6.10352e-05,
+      "max_cached_blocks": 8,
+      "max_cached_bytes": 536870912,
+      "max_cached_mib": 512,
+      "max_single_cached_bytes": 268435456,
+      "max_single_cached_mib": 256
+    }
+  },
+  "cases": [
+    {
+      "case_id": "perf_calc_cov",
+      "category": "perf",
+      "samples": 8,
+      "pass": true,
+      "cpu_gpu_error": {
+        "max_abs_error": 7.96375e-05,
+        "max_rel_error": 0.000262975,
+        "mixed_error": 0,
+        "rmse": 4.71134e-05,
+        "l2_error": 0.000133257,
+        "exact_match": false,
+        "first_mismatch_index": 0
+      },
+      "cpu_perf": {
+        "warmup": 1,
+        "repeat": 3,
+        "mean_ms": 21.2471,
+        "median_ms": 21.2445,
+        "p95_ms": 21.268,
+        "min_ms": 21.2288,
+        "max_ms": 21.268,
+        "std_ms": 0.0161008
+      },
+      "gpu_e2e_perf": {
+        "warmup": 1,
+        "repeat": 3,
+        "mean_ms": 11.0009,
+        "median_ms": 11.0682,
+        "p95_ms": 11.0802,
+        "min_ms": 10.8544,
+        "max_ms": 11.0802,
+        "std_ms": 0.103707
+      },
+      "gpu_kernel_perf": {
+        "warmup": 1,
+        "repeat": 3,
+        "mean_ms": 0.847362,
+        "median_ms": 0.845026,
+        "p95_ms": 0.855128,
+        "min_ms": 0.841932,
+        "max_ms": 0.855128,
+        "std_ms": 0.00563478
+      },
+      "artifacts": [
+        {"role": "case_spec", "path": "/CETC/data/generated/unit/radartools/mvdr/input/perf_calc_cov__spec.json", "sha256": "b054f680419ab12a63d56bbb4f59d91151600241e3dced627e6d51f5ac7e33ba"},
+        {"role": "x_input", "path": "/CETC/data/generated/unit/radartools/mvdr/input/perf_calc_cov__x.csv", "sha256": "14ed19d34b5eda3ee7e727c88821b36608104c2411544f46399cc12a6ad1c0d0"},
+        {"role": "sv_input", "path": "/CETC/data/generated/unit/radartools/mvdr/input/perf_calc_cov__sv.csv", "sha256": "98d5fc5a241f9368da22966bb64d32a2fb37f9b2d3cb79fd21ae4aa2b63a5bcc"},
+        {"role": "cpu_signal", "path": "/CETC/data/generated/unit/radartools/mvdr/output_samples/perf_calc_cov__cpu__signal.csv", "sha256": "69a4fb4d41db025830301ea775ab38f5b27256c4f3b6a93f1fa278a12f4a8bf5"},
+        {"role": "gpu_signal", "path": "/CETC/data/generated/unit/radartools/mvdr/output_samples/perf_calc_cov__gpu__signal.csv", "sha256": "af97a69b7dfceaa47b764487d3566a3125e62148dfeff4d79ad6ef5f5d5021d2"}
+      ]
+    }
+  ]
+}

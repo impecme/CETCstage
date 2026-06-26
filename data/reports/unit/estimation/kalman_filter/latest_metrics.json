@@ -1,0 +1,80 @@
+{
+  "module": "estimation",
+  "operator": "kalman_filter",
+  "generated_at": "2026-06-26 12:48:33",
+  "git_commit": "",
+  "gpu_name": "ZQ500-Q QUAD-0",
+  "compile_config": {
+    "cxx_standard": 201703,
+    "runtime_version": 11070
+  },
+  "summary": {
+    "pass": true,
+    "accuracy_cases": 7,
+    "perf_cases": 1,
+    "max_abs_error": 1.19209e-07,
+    "max_rel_error": 3.09944e-07,
+    "mixed_error": 0,
+    "rmse": 7.30005e-08,
+    "gpu_e2e_speedup": 0.168478,
+    "gpu_kernel_speedup": 0.364207,
+    "cpu_perf": {
+      "warmup": 5,
+      "repeat": 30,
+      "mean_ms": 0.0285602,
+      "median_ms": 0.02854,
+      "p95_ms": 0.02878,
+      "min_ms": 0.02842,
+      "max_ms": 0.0288,
+      "std_ms": 8.1376e-05
+    },
+    "gpu_e2e_perf": {
+      "warmup": 5,
+      "repeat": 30,
+      "mean_ms": 0.170344,
+      "median_ms": 0.169399,
+      "p95_ms": 0.175619,
+      "min_ms": 0.165229,
+      "max_ms": 0.179249,
+      "std_ms": 0.0034218
+    },
+    "gpu_kernel_perf": {
+      "warmup": 5,
+      "repeat": 30,
+      "mean_ms": 0.0781386,
+      "median_ms": 0.078362,
+      "p95_ms": 0.08604,
+      "min_ms": 0.062632,
+      "max_ms": 0.174396,
+      "std_ms": 0.0183988
+    },
+    "device_storage_cache": {
+      "cache_enabled": true,
+      "allocation_calls": 44,
+      "allocation_bytes": 47756,
+      "allocation_mib": 0.0455437,
+      "cache_hits": 40,
+      "cache_misses": 44,
+      "recycled_blocks": 82,
+      "recycled_bytes": 47148,
+      "recycled_mib": 0.0449638,
+      "evicted_blocks": 34,
+      "evicted_bytes": 30860,
+      "evicted_mib": 0.0294304,
+      "freed_blocks": 0,
+      "freed_bytes": 0,
+      "freed_mib": 0,
+      "cached_blocks": 8,
+      "cached_bytes": 15872,
+      "cached_mib": 0.0151367,
+      "peak_cached_bytes": 19968,
+      "peak_cached_mib": 0.019043,
+      "max_cached_blocks": 8,
+      "max_cached_bytes": 536870912,
+      "max_cached_mib": 512,
+      "max_single_cached_bytes": 268435456,
+      "max_single_cached_mib": 256
+    }
+  },
+  "cases": []
+}

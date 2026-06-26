@@ -1628,6 +1628,25 @@ namespace
         output[base + index * axis_stride] = value;
     }
 
+    __global__ void build_single_sos_from_ba_kernel(
+        const float *b,
+        std::size_t b_size,
+        const float *a,
+        std::size_t a_size,
+        float *sos)
+    {
+        if (blockIdx.x != 0 || threadIdx.x != 0)
+        {
+            return;
+        }
+        sos[0] = b_size > 0 ? b[0] : 0.0f;
+        sos[1] = b_size > 1 ? b[1] : 0.0f;
+        sos[2] = b_size > 2 ? b[2] : 0.0f;
+        sos[3] = a_size > 0 ? a[0] : 1.0f;
+        sos[4] = a_size > 1 ? a[1] : 0.0f;
+        sos[5] = a_size > 2 ? a[2] : 0.0f;
+    }
+
     __global__ void sosfilt_line_kernel(
         const float *sos,
         std::size_t n_sections,
@@ -1901,15 +1920,18 @@ namespace
     __global__ void sosfilt_scan_block_transforms_kernel(
         const float *block_transforms,
         int block_count,
-        float *block_initial_states)
+        float *block_initial_states,
+        const float *initial_state,
+        const float *scale_input)
     {
         if (blockIdx.x != 0 || threadIdx.x != 0)
         {
             return;
         }
 
-        float z0 = 0.0f;
-        float z1 = 0.0f;
+        const float scale = scale_input != nullptr ? scale_input[0] : 1.0f;
+        float z0 = initial_state != nullptr ? initial_state[0] * scale : 0.0f;
+        float z1 = initial_state != nullptr ? initial_state[1] * scale : 0.0f;
         for (int block = 0; block < block_count; ++block)
         {
             block_initial_states[static_cast<std::size_t>(block) * 2] = z0;
@@ -2479,6 +2501,13 @@ namespace
         return output;
     }
 
+    ZxGpuRealArray sosfilt_prefix_scan_impl(
+        const ZxGpuRealArray &sos,
+        const ZxGpuRealArray &x,
+        const detail::AxisPlan &plan,
+        const float *initial_state = nullptr,
+        const float *scale_input = nullptr);
+
     ZxGpuRealArray lfilter_impl(
         const ZxGpuRealSignal &b,
         const ZxGpuRealSignal &a,
@@ -2492,6 +2521,29 @@ namespace
         if (order > kMaxFilterOrder)
         {
             throw std::invalid_argument("filter order exceeds CUDA lfilter limit");
+        }
+
+        if (zi == nullptr &&
+            final_state == nullptr &&
+            order <= 2 &&
+            b.size() <= 3 &&
+            a.size() <= 3)
+        {
+            const detail::AxisPlan plan = detail::make_axis_plan(x.shape(), axis);
+            if (plan.line_count == 1 &&
+                plan.axis_stride == 1 &&
+                plan.axis_size >= 1024)
+            {
+                g_workspace.real_array_e.resize(Shape{1, 6}, false);
+                build_single_sos_from_ba_kernel<<<1, 1>>>(
+                    b.data(),
+                    b.size(),
+                    a.data(),
+                    a.size(),
+                    g_workspace.real_array_e.data());
+                check_kernel_launch("build_single_sos_from_ba_kernel");
+                return sosfilt_prefix_scan_impl(g_workspace.real_array_e, x, plan);
+            }
         }
 
         const std::size_t *line_bases = upload_line_bases_cached(
@@ -2583,7 +2635,9 @@ namespace
     ZxGpuRealArray sosfilt_prefix_scan_impl(
         const ZxGpuRealArray &sos,
         const ZxGpuRealArray &x,
-        const detail::AxisPlan &plan)
+        const detail::AxisPlan &plan,
+        const float *initial_state,
+        const float *scale_input)
     {
         const int tile_count = block_count(plan.axis_size);
         const int tile_scan_block_count = block_count(static_cast<std::size_t>(tile_count));
@@ -2619,7 +2673,9 @@ namespace
             sosfilt_scan_block_transforms_kernel<<<1, 1>>>(
                 g_workspace.real_signal_b.data(),
                 tile_scan_block_count,
-                g_workspace.real_signal_c.data());
+                g_workspace.real_signal_c.data(),
+                initial_state,
+                scale_input);
             check_kernel_launch("sosfilt_scan_block_transforms_kernel");
 
             sosfilt_apply_block_prefix_to_samples_kernel<<<tile_count, kThreadsPerBlock>>>(
@@ -2795,27 +2851,59 @@ namespace
         check_kernel_launch("pad_lines_kernel");
 
         const ZxGpuRealSignal zi_template = lfilter_zi_impl(b, a);
+        const std::size_t order = std::max(b.size(), a.size()) - 1;
+        const bool use_sos_prefix_scan =
+            order == 2 &&
+            b.size() <= 3 &&
+            a.size() <= 3 &&
+            padded_plan.line_count == 1 &&
+            padded_plan.axis_stride == 1 &&
+            padded_plan.axis_size >= 1024;
+        if (use_sos_prefix_scan)
+        {
+            g_workspace.real_array_e.resize(Shape{1, 6}, false);
+            build_single_sos_from_ba_kernel<<<1, 1>>>(
+                b.data(),
+                b.size(),
+                a.data(),
+                a.size(),
+                g_workspace.real_array_e.data());
+            check_kernel_launch("build_single_sos_from_ba_kernel(filtfilt)");
+        }
+
         ZxGpuRealArray forward(padded_shape, false);
-        lfilter_line_kernel<<<block_count(padded_plan.line_count), kThreadsPerBlock>>>(
-            b.data(),
-            b.size(),
-            a.data(),
-            a.size(),
-            padded.data(),
-            padded_bases,
-            padded_plan.line_count,
-            padded_plan.axis_size,
-            padded_plan.axis_stride,
-            forward.data(),
-            nullptr,
-            nullptr,
-            1,
-            zi_template.empty() ? nullptr : zi_template.data(),
-            true,
-            nullptr,
-            nullptr,
-            1);
-        check_kernel_launch("lfilter_line_kernel forward");
+        if (use_sos_prefix_scan)
+        {
+            forward = sosfilt_prefix_scan_impl(
+                g_workspace.real_array_e,
+                padded,
+                padded_plan,
+                zi_template.data(),
+                padded.data());
+        }
+        else
+        {
+            lfilter_line_kernel<<<block_count(padded_plan.line_count), kThreadsPerBlock>>>(
+                b.data(),
+                b.size(),
+                a.data(),
+                a.size(),
+                padded.data(),
+                padded_bases,
+                padded_plan.line_count,
+                padded_plan.axis_size,
+                padded_plan.axis_stride,
+                forward.data(),
+                nullptr,
+                nullptr,
+                1,
+                zi_template.empty() ? nullptr : zi_template.data(),
+                true,
+                nullptr,
+                nullptr,
+                1);
+            check_kernel_launch("lfilter_line_kernel forward");
+        }
 
         ZxGpuRealArray reversed(padded_shape, false);
         reverse_lines_kernel<<<block_count(padded_plan.line_count * padded_plan.axis_size), kThreadsPerBlock>>>(
@@ -2830,26 +2918,38 @@ namespace
         check_kernel_launch("reverse_lines_kernel forward");
 
         ZxGpuRealArray backward(padded_shape, false);
-        lfilter_line_kernel<<<block_count(padded_plan.line_count), kThreadsPerBlock>>>(
-            b.data(),
-            b.size(),
-            a.data(),
-            a.size(),
-            reversed.data(),
-            padded_bases,
-            padded_plan.line_count,
-            padded_plan.axis_size,
-            padded_plan.axis_stride,
-            backward.data(),
-            nullptr,
-            nullptr,
-            1,
-            zi_template.empty() ? nullptr : zi_template.data(),
-            true,
-            nullptr,
-            nullptr,
-            1);
-        check_kernel_launch("lfilter_line_kernel backward");
+        if (use_sos_prefix_scan)
+        {
+            backward = sosfilt_prefix_scan_impl(
+                g_workspace.real_array_e,
+                reversed,
+                padded_plan,
+                zi_template.data(),
+                reversed.data());
+        }
+        else
+        {
+            lfilter_line_kernel<<<block_count(padded_plan.line_count), kThreadsPerBlock>>>(
+                b.data(),
+                b.size(),
+                a.data(),
+                a.size(),
+                reversed.data(),
+                padded_bases,
+                padded_plan.line_count,
+                padded_plan.axis_size,
+                padded_plan.axis_stride,
+                backward.data(),
+                nullptr,
+                nullptr,
+                1,
+                zi_template.empty() ? nullptr : zi_template.data(),
+                true,
+                nullptr,
+                nullptr,
+                1);
+            check_kernel_launch("lfilter_line_kernel backward");
+        }
 
         reverse_lines_kernel<<<block_count(padded_plan.line_count * padded_plan.axis_size), kThreadsPerBlock>>>(
             backward.data(),
