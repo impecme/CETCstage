@@ -267,14 +267,23 @@ def write_markdown(path: Path, payload: dict[str, Any]) -> None:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo-root", default=".", help="Repository root.")
-    parser.add_argument("--output-dir", default="data/reports/zhongkexin/v5_5_gate_latest")
+    parser.add_argument("--output-dir", default="data/reports/zhongkexin/v5_5_final")
+    parser.add_argument(
+        "--benchmark-dir",
+        default="data/reports/unit/benchmarks/v5_5_final",
+    )
+    parser.add_argument("--unit-root", default="data/reports/unit")
+    parser.add_argument(
+        "--task-smoke",
+        default="data/reports/zhongkexin/v5_5_final/task_smoke.json",
+    )
     parser.add_argument(
         "--interface-audit",
-        default="data/reports/zhongkexin/v5_4_interface_audit/latest_interface_audit.json",
+        default="data/reports/zhongkexin/v5_5_final/interface_audit.json",
     )
     parser.add_argument(
         "--type-contracts",
-        default="data/reports/zhongkexin/v5_4_type_contracts/latest_type_contracts.json",
+        default="data/reports/zhongkexin/v5_5_final/type_contracts.json",
     )
     return parser.parse_args()
 
@@ -285,11 +294,11 @@ def main() -> int:
     output_dir = (repo_root / args.output_dir).resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    benchmark_dir = repo_root / "data/reports/unit/benchmarks/v5_5_all81_close_probe"
+    benchmark_dir = repo_root / args.benchmark_dir
     payload = {
         "all81": summarize_all81(benchmark_dir / "latest_all_ops_scale_benchmark.csv"),
-        "modules": summarize_modules(repo_root / "data/reports/unit"),
-        "task_smoke": summarize_task_smoke(repo_root / "data/reports/zhongkexin/v5_5_task_smoke_after_all81.json"),
+        "modules": summarize_modules(repo_root / args.unit_root),
+        "task_smoke": summarize_task_smoke(repo_root / args.task_smoke),
         "contracts": summarize_contracts(repo_root / args.interface_audit, repo_root / args.type_contracts),
         "plots": summarize_plots(
             benchmark_dir / "figures/operator_figures/latest_operator_curve_manifest.csv",

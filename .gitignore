@@ -4,6 +4,7 @@ __cmake_systeminformation/
 .zq500_sdk_full.delete_me/
 /*.log
 third_party/python/
+third_party/python_wheels/
 third_party/fftw/dist/
 third_party/fftw/src/
 third_party/fftw/build/

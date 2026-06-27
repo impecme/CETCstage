@@ -1,5 +1,0 @@
-case_id,backend,metric_kind,samples,warmup,repeat,mean_ms,median_ms,p95_ms,min_ms,max_ms,std_ms,max_abs_error,max_rel_error,rmse,l2_error,exact_match
-perf_ntaps_127_width_004,gpu_vs_cpu,error,1,,,,,,,,,0,0,0,0,true
-perf_ntaps_127_width_004,cpu,perf,1,1,3,0.00020666666387114674,0.00014000000373926014,0.00041999999666586518,5.999999848427251e-05,0.00041999999666586518,0.00015434449596796185,,,,,
-perf_ntaps_127_width_004,gpu_e2e,perf,1,1,3,0.043270334601402283,0.042890001088380814,0.044961001724004745,0.041960000991821289,0.044961001724004745,0.0012543236371129751,,,,,
-perf_ntaps_127_width_004,gpu_kernel,perf,1,1,3,0,0,0,0,0,0,,,,,

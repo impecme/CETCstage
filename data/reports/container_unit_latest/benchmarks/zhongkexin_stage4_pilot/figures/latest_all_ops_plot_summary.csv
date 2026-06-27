@@ -1,6 +1,0 @@
-module,operator,scale_family,largest_scale_level,largest_scale_value,status,failed_scales,max_mixed_error_all_scales,gpu_e2e_speedup_at_max_scale,gpu_kernel_speedup_at_max_scale,cpu_median_ms_at_max_scale,gpu_e2e_median_ms_at_max_scale,gpu_kernel_median_ms_at_max_scale,git_commit,gpu_name
-waveforms,chirp,linear_points,3,16384,passed,0,3.88575e-06,4.69666,9.65683,0.322712,0.068711,0.033418,,ZQ500-Q QUAD-0
-waveforms,gausspulse,linear_points,3,16384,passed,0,3.27468e-07,6.02353,11.2541,0.400083,0.06642,0.03555,,ZQ500-Q QUAD-0
-waveforms,sawtooth,linear_points,3,16384,passed,0,2.38419e-07,2.27019,4.66851,0.142931,0.06296,0.030616,,ZQ500-Q QUAD-0
-waveforms,square,linear_points,3,16384,passed,0,0.0,2.28202,4.65075,0.137811,0.06039,0.029632,,ZQ500-Q QUAD-0
-waveforms,unit_impulse,linear_points,3,16384,passed,0,0.0,0.0568156,0.233723,0.00616,0.108421,0.026356,,ZQ500-Q QUAD-0

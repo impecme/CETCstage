@@ -1,7 +1,0 @@
-case_id,backend,metric_kind,samples,warmup,repeat,mean_ms,median_ms,p95_ms,min_ms,max_ms,std_ms,max_abs_error,max_rel_error,rmse,l2_error,exact_match
-boundary_vector,gpu_vs_cpu,error,11,,,,,,,,,0,0,0,0,true
-boundary_vector,cpu_vs_ref,error,11,,,,,,,,,0,0,0,0,true
-boundary_vector,gpu_vs_ref,error,11,,,,,,,,,0,0,0,0,true
-matrix_dense,gpu_vs_cpu,error,15,,,,,,,,,0,0,0,0,true
-matrix_dense,cpu_vs_ref,error,15,,,,,,,,,2.9802322387695312e-08,9.1269612312316895e-07,1.3355092143285674e-08,5.1724050820212142e-08,false
-matrix_dense,gpu_vs_ref,error,15,,,,,,,,,2.9802322387695312e-08,9.1269612312316895e-07,1.3355092143285674e-08,5.1724050820212142e-08,false

@@ -1,5 +1,0 @@
-case_id,backend,metric_kind,samples,warmup,repeat,mean_ms,median_ms,p95_ms,min_ms,max_ms,std_ms,max_abs_error,max_rel_error,rmse,l2_error,exact_match
-perf_atten_80,gpu_vs_cpu,error,1,,,,,,,,,0,0,0,0,true
-perf_atten_80,cpu,perf,1,1,3,0.0001900000061141327,0.00014000000373926014,0.00039000000106170774,3.9999998989515007e-05,0.00039000000106170774,0.00014719601313117892,,,,,
-perf_atten_80,gpu_e2e,perf,1,1,3,0.04600033164024353,0.046330001205205917,0.047070000320672989,0.044601000845432281,0.047070000320672989,0.0010345691116526723,,,,,
-perf_atten_80,gpu_kernel,perf,1,1,3,0,0,0,0,0,0,,,,,

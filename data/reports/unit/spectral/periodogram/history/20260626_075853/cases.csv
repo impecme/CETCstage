@@ -1,4 +1,0 @@
-case_id,backend,metric_kind,samples,warmup,repeat,mean_ms,median_ms,p95_ms,min_ms,max_ms,std_ms,max_abs_error,max_rel_error,rmse,l2_error,exact_match
-hann_density,gpu_vs_cpu,error,129,,,,,,,,,1.1175870895385742e-08,1.3267385959625244,9.8760566391575821e-10,1.1217045070566201e-08,false
-hann_density,cpu_vs_ref,error,129,,,,,,,,,2.6077032089233398e-08,0.35483318567276001,3.1072966422129866e-09,3.5292107014583962e-08,false
-hann_density,gpu_vs_ref,error,129,,,,,,,,,3.7252902984619141e-08,3.7755510807037354,3.8865550777700264e-09,4.4142780097899958e-08,false
