@@ -2,6 +2,33 @@
 
 本文是给后续编码代理和协作者使用的项目交接说明。
 
+## Agent skills 自动路由
+
+本项目已经安装并接入 `code-review`、`tdd`、`diagnosing-bugs` 和
+`improve-codebase-architecture`。用户不需要记忆或显式输入 skill 名称；主智能体根据任务
+意图自动采用对应方法，并继续遵守本文件及当前阶段计划。
+
+| 任务信号 | 自动采用 | 执行要求 |
+| --- | --- | --- |
+| 审查改动、提交前检查、确认是否满足阶段计划 | `code-review` | 分开检查项目规范和阶段目标；默认以当前阶段计划为 spec |
+| 新功能、修复缺陷、优化单个算子 | `tdd` | 先确认公开测试 seam，按一个测试、一个最小实现的纵向切片推进 |
+| 报错、失败、性能回退、显存增长、数值异常 | `diagnosing-bugs` | 先建立快速、确定、可判红的复现命令；没有复现闭环时不猜根因 |
+| 大文件拆分、模块边界或长期架构治理 | `improve-codebase-architecture` | 先只生成候选和报告；V5.5 最终验收前不得实施大范围架构重构 |
+
+自动路由不表示每轮都运行全部 skill。一个任务只采用能解决当前问题的最小集合：
+
+```text
+正常算子优化：tdd -> code-review
+出现失败或回退：diagnosing-bugs -> tdd 回归测试 -> code-review
+阶段最终关闭：code-review
+最终验收后的架构治理：improve-codebase-architecture
+```
+
+多智能体仍沿用
+`docs/performance/v5_0/agent_collaboration.md` 中的 Agent A-H 分工。角色决定“谁分析”，
+skill 决定“用什么方法分析”；辅助智能体默认只读，主智能体统一修改、验证和记录。
+详细示例见 `docs/agent_skills_usage.md`。
+
 ## 项目定位
 
 本仓库是 `CETC`，面向第十届集创赛“中科芯”企业命题的中科芯 ZQ500 信号处理加速库。

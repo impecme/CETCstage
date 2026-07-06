@@ -28,24 +28,42 @@
 
 ```text
 CETC/
-├── include/cusignal/       公共算子声明、核心类型和中科芯兼容层
-├── src/common/             CPU/GPU 共用的参数校验、形状和算法辅助逻辑
-├── src/cpu/                按模块组织的 CPU reference 实现
-├── src/zhongkexin/         与 CPU 接口对应的 ZQ500 GPU 实现
-├── demo/task1_radar/       任务一雷达目标检测与多普勒分析流程
-├── demo/task2_features/    任务二多域特征提取定位流程
-├── tests/smoke/            最小编译、链接和基础调用验证
-├── tests/unit/             按模块和算子组织的正确性、性能与报告测试
-├── scripts/build/          依赖安装和构建辅助脚本
-├── scripts/platform/       中科芯环境检查、平台探针和阶段统一入口
-├── scripts/test/           单算子、全算子、任务及绘图测试入口
-├── scripts/data/           测试输入和参考数据生成脚本
-├── docs/migration/         V4 中科芯迁移依据、限制和历史台账
-├── docs/performance/v5_0/  V5 性能优化计划、契约矩阵和独立台账
-├── docs/submission/        各版本交付说明和最终技术文档
-├── data/reference/         单算子参考输入、输出和 manifest
-├── data/generated/         运行生成的任务及中间数据
-└── data/reports/           单元测试、benchmark、任务和阶段报告
+├── CMakeLists.txt              顶层构建入口，按 CUSIGNAL_PLATFORM 选择 CPU/ZQ500 目标
+├── include/
+│   └── cusignal/
+│       ├── core/               公共类型、device storage、误差和平台工具
+│       ├── <module>/           公开算子声明、参数语义和结果结构
+│       └── zhongkexin/         ZQ500 兼容层与平台封装
+├── src/
+│   ├── common/                 CPU/GPU 共用校验、形状推导和算法辅助逻辑
+│   ├── cpu/                    按模块组织的 CPU reference 实现
+│   └── zhongkexin/             与 CPU 接口对应的 ZQ500 GPU 实现
+├── demo/
+│   ├── common/                 任务报告、计时和数据生成公共工具
+│   ├── task1_radar/            任务一：雷达目标检测与多普勒分析流程
+│   └── task2_features/         任务二：多域特征提取定位流程
+├── tests/
+│   ├── smoke/                  最小编译、链接和基础调用验证
+│   ├── platform/               ZQ500 SDK、库和兼容 API 探针
+│   └── unit/<module>/          单算子正确性、性能和报告测试
+├── scripts/
+│   ├── build/                  依赖安装和构建辅助脚本
+│   ├── data/                   测试输入和参考数据生成脚本
+│   ├── figures/                技术图和报告图生成脚本
+│   ├── platform/               中科芯环境检查、阶段入口和 gate 汇总
+│   └── test/                   单算子、全算子、任务和绘图测试入口
+├── docs/
+│   ├── migration/              V4 中科芯迁移依据、限制和历史台账
+│   ├── performance/v5_0/       V5 性能优化计划、契约矩阵和独立台账
+│   └── submission/             各版本交付说明和最终技术文档
+├── data/
+│   ├── reference/              受版本管理的静态参考输入、输出和 manifest
+│   ├── generated/              运行生成的任务及中间数据
+│   └── reports/                终测报告、任务 smoke、模块回归和组合图件
+├── third_party/
+│   ├── fftw/                   FFTW 离线包与本地安装目录
+│   └── python_wheels/          容器 Python 依赖离线 wheel 缓存
+└── 复赛说明文件/                CUDA 11.7 与中科芯科学计算库差异源表
 ```
 
 算子模块遵循统一边界：声明位于 `include/cusignal/<module>/`，CPU 与 GPU 实现分别位于 `src/cpu/<module>.cpp` 和 `src/zhongkexin/<module>.cu`，对应测试位于 `tests/unit/<module>/`。任务 Demo 负责流程编排，不应维护与公共算子重复的算法实现。
@@ -738,8 +756,9 @@ python3 scripts/test/plot_all_ops_benchmark.py \
 | Task1 阶段耗时 | `data/reports/demo/task1_radar/latest_stage_timings.csv` | Task1 分阶段 CPU/GPU 耗时 |
 | Task2 metrics | `data/reports/demo/task2_features/latest_metrics.json` | Task2 轨迹、误差、资源与稳定性 |
 | Task2 阶段耗时 | `data/reports/demo/task2_features/latest_stage_timings.csv` | Task2 分阶段 CPU/GPU 耗时 |
-| 81 算子 benchmark | `data/reports/unit/benchmarks/zhongkexin_stage4_full/latest_all_ops_scale_benchmark.csv` | 81 个迁移算子 L1-L6 性能与精度 |
-| 全量算子图件 | `data/reports/unit/benchmarks/zhongkexin_stage4_full/figures/` | benchmark 总览图与算子图 |
+| 81 算子 benchmark | `data/reports/unit/benchmarks/v5_5_final/latest_all_ops_scale_benchmark.csv` | 81 个迁移算子 L1-L6 性能与精度 |
+| 全量组合图件 | `data/reports/unit/benchmarks/v5_5_final/figures/` | benchmark 总览图与 12 张模块组合图 |
+| V5.5 总汇总 | `data/reports/zhongkexin/v5_5_final/summary.md` | all81、任务 smoke、接口/类型契约和图件门禁 |
 | 单元测试入口 | `tests/unit/` | 81 个已迁移算子的测试覆盖 |
 | 公开接口 | `include/cusignal/` | 库函数头文件与公开 API |
 | ZQ500 GPU 实现 | `src/zhongkexin/` | GPU 加速实现源码 |
@@ -749,15 +768,15 @@ python3 scripts/test/plot_all_ops_benchmark.py \
 
 ```text
 CETC/
-├─ data/          生成数据、参考数据和报告输出
-├─ deliverables/  比赛交付物整理目录
-├─ demo/          任务级演示入口与可视化脚本
-├─ docs/          设计、验证、性能与提交文档
-├─ include/       公共头文件与模块接口
-├─ scripts/       构建、测试、数据和打包脚本
-├─ src/           CPU、ZQ500 GPU 与公共实现
-├─ tests/         smoke 验证与单算子测试
-└─ third_party/   FFTW 与辅助 Python 依赖
+├─ include/       公共头文件、模块接口和 ZQ500 兼容层
+├─ src/           CPU reference、ZQ500 GPU 和共用实现
+├─ demo/          Task1/Task2 任务级流程与可视化脚本
+├─ tests/         smoke、platform 和按模块组织的单算子测试
+├─ scripts/       构建、数据、测试、平台 gate 和图件脚本
+├─ docs/          迁移、性能优化、交付说明和最终技术文档
+├─ data/          参考数据、运行生成数据和终测报告
+├─ third_party/   FFTW 离线依赖和 Python wheel 缓存
+└─ 复赛说明文件/  CUDA 11.7 与中科芯科学计算库差异源表
 ```
 
 ## data 目录详细说明

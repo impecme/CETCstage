@@ -6,6 +6,38 @@
 
 本阶段采用“多智能体并行分析，主智能体统一落地”的模式。除主智能体外，其他智能体默认只负责阅读、定位、提出方案和风险说明，不直接提交大范围代码修改。
 
+## Skill 与智能体的组合方式
+
+Agent A-H 的职责和文件所有权保持不变。Skill 不新增常驻智能体，而是作为各角色执行任务时
+采用的标准方法，由主智能体根据任务信号自动路由。
+
+| 场景 | 负责角色 | 自动采用的 Skill | 产出 |
+| --- | --- | --- | --- |
+| 指标、显存或算子发生性能回退 | 对应 Agent A-D | `diagnosing-bugs` | 可判红复现命令、最小案例、可证伪假设和根因证据 |
+| 实施单算子优化或缺陷修复 | 对应 Agent B-D/F/H | `tdd` | 固定 seam 的失败测试、最小修复和逐级回归结果 |
+| 审核代码、精度、报告和阶段交付 | Agent E 配合领域 Owner | `code-review` | Standards 与 Spec 两轴结论 |
+| 最终验收后的模块治理 | 主智能体组织相关 Owner | `improve-codebase-architecture` | 只读架构候选报告，确认后另立工作包 |
+
+主智能体派发分析任务时，在原有格式中增加一行 `方法：`：
+
+```text
+模块：
+方法：diagnosing-bugs / tdd / code-review / architecture-review
+发现：
+建议：
+风险：
+需要验证：
+涉及文件：
+```
+
+默认路由规则：
+
+1. 新功能、修复或单算子优化直接进入 `tdd`，不要求用户额外点名。
+2. 已出现错误、异常、波动或回退时先进入 `diagnosing-bugs`，根因明确后才进入修复。
+3. 每个可交付 patch 在扩大验证范围前执行 `code-review`。
+4. `improve-codebase-architecture` 只用于架构分析；V5.5 关闭前不据此实施大范围拆分。
+5. 不因使用 Skill 改变文件 Owner、阶段门禁、容器验证要求或主智能体单一落地原则。
+
 ## 阶段计划门禁
 
 V5 性能优化的阶段索引为 `docs/performance/v5_0/README.md`，具体计划位于 `docs/performance/v5_0/plans/`。后续工作必须遵守以下规则：
@@ -66,6 +98,7 @@ V5 性能优化的阶段索引为 `docs/performance/v5_0/README.md`，具体计�
 
 ```text
 模块：
+方法：
 发现：
 建议：
 风险：

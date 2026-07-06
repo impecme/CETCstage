@@ -226,21 +226,29 @@ def summarize_plots(manifest_path: Path, repo_root: Path) -> dict[str, Any]:
 
 
 def write_markdown(path: Path, payload: dict[str, Any]) -> None:
+    def zh_status(value: Any) -> str:
+        text = str(value).strip().lower()
+        if text == "passed":
+            return "通过"
+        if text == "failed":
+            return "失败"
+        return str(value)
+
     lines = [
-        "# V5.5 Gate Summary",
+        "# V5.5 Gate 汇总",
         "",
-        f"- status: `{payload['status']}`",
-        f"- all81 rows: `{payload['all81']['row_count']}`",
-        f"- all81 operators: `{payload['all81']['operator_count']}`",
-        f"- all81 failed: `{payload['all81']['failed_count']}`",
-        f"- module regression: `{payload['modules']['status']}`",
-        f"- task smoke: `{payload['task_smoke']['status']}`",
-        f"- contracts: `{payload['contracts']['status']}`",
-        f"- compact plot figures: `{payload['plots']['module_figure_count']}` modules, `{payload['plots']['operator_total']}` operators",
+        f"- 总结论: `{zh_status(payload['status'])}`",
+        f"- all81 行数: `{payload['all81']['row_count']}`",
+        f"- all81 算子数: `{payload['all81']['operator_count']}`",
+        f"- all81 失败数: `{payload['all81']['failed_count']}`",
+        f"- 模块回归: `{zh_status(payload['modules']['status'])}`",
+        f"- 任务 smoke: `{zh_status(payload['task_smoke']['status'])}`",
+        f"- 契约审计: `{zh_status(payload['contracts']['status'])}`",
+        f"- 组合图件: `{payload['plots']['module_figure_count']}` 个模块，覆盖 `{payload['plots']['operator_total']}` 个算子",
         "",
-        "## Top GPU E2E",
+        "## GPU E2E 耗时最高的算子",
         "",
-        "| operator | gpu_e2e_ms | kernel_ms | speedup | mixed_error |",
+        "| 算子 | GPU E2E ms | Kernel ms | 加速比 | 混合误差 |",
         "| --- | ---: | ---: | ---: | ---: |",
     ]
     for item in payload["all81"]["top_gpu_e2e"]:
@@ -250,15 +258,15 @@ def write_markdown(path: Path, payload: dict[str, Any]) -> None:
         )
     lines.extend([
         "",
-        "## Module Regression",
+        "## 模块回归",
         "",
-        "| module | source | status | operators | failed |",
+        "| 模块 | 来源 | 结论 | 算子 | 失败 |",
         "| --- | --- | --- | ---: | --- |",
     ])
     for module, item in payload["modules"]["modules"].items():
         failed = ", ".join(item["failed"]) if item["failed"] else "-"
         lines.append(
-            f"| {module} | {item['source']} | {item['status']} | "
+            f"| {module} | {item['source']} | {zh_status(item['status'])} | "
             f"{item['operator_count']}/{item['expected_count']} | {failed} |"
         )
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
