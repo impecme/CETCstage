@@ -34,6 +34,7 @@ namespace
     using cusignal::core::ComplexSignal;
     using cusignal::core::ZxGpuComplexSignal;
     using cusignal::core::ZxGpuRealSignal;
+    using cusignal::core::Float16;
     using cusignal::core::RealSignal;
     using cusignal::core::Shape;
     using cusignal::waveforms_api::ChirpResult;
@@ -152,6 +153,7 @@ namespace
         std::string type = "real"; // 输出类型：real/complex
         float atol = 0.0; // 正确性校验的绝对误差容限
         float rtol = 0.0; // 正确性校验的相对误差容限
+        std::string dtype = "float32"; // 兼容路径 dtype；float16 用例按 FP16 量化后比较
         fs::path expected_signal_file;
     };
 
@@ -168,6 +170,7 @@ namespace
         bool retenv = false; // 是否额外返回包络
         float atol = 0.0; // 正确性校验的绝对误差容限
         float rtol = 0.0; // 正确性校验的相对误差容限
+        std::string dtype = "float32"; // 兼容路径 dtype；float16 用例按 FP16 量化后比较
         fs::path expected_signal_file;
         fs::path expected_quadrature_file;
         fs::path expected_envelope_file;
@@ -183,6 +186,7 @@ namespace
         RealSignal width_values;
         float atol = 0.0; // 正确性校验的绝对误差容限
         float rtol = 0.0; // 正确性校验的相对误差容限
+        std::string dtype = "float32"; // 兼容路径 dtype；float16 用例按 FP16 量化后比较
         fs::path expected_signal_file;
     };
 
@@ -196,6 +200,7 @@ namespace
         RealSignal duty_values;
         float atol = 0.0; // 正确性校验的绝对误差容限
         float rtol = 0.0; // 正确性校验的相对误差容限
+        std::string dtype = "float32"; // 兼容路径 dtype；float16 用例按 FP16 量化后比较
         fs::path expected_signal_file;
     };
 
@@ -1061,6 +1066,37 @@ namespace
         return result;
     }
 
+    float quantize_float16(float value)
+    {
+        return __half2float(Float16(value));
+    }
+
+    OutputBundle apply_dtype_quantization(const OutputBundle &bundle, const std::string &dtype)
+    {
+        if (dtype == "float32")
+        {
+            return bundle;
+        }
+        if (dtype != "float16")
+        {
+            throw std::runtime_error("unsupported waveforms dtype compatibility case: " + dtype);
+        }
+
+        OutputBundle quantized = bundle;
+        for (ChannelData &channel : quantized.channels)
+        {
+            if (channel.is_complex)
+            {
+                throw std::runtime_error("float16 compatibility case must use real waveforms output");
+            }
+            for (float &value : channel.values)
+            {
+                value = quantize_float16(value);
+            }
+        }
+        return quantized;
+    }
+
     OutputBundle load_expected_real_bundle(const fs::path &path, const std::string &kind)
     {
         return make_real_bundle(kind, read_real_csv(path));
@@ -1432,7 +1468,7 @@ namespace
         }
         else
         {
-            std::cout << "cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a\n";
+            std::cout << "cpu_perf_ms   : not_run (accuracy-only; use perf/full case set for timing)\n";
         }
         if (summary.gpu_e2e_perf.has_value())
         {
@@ -1455,7 +1491,7 @@ namespace
         }
         else
         {
-            std::cout << "gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a\n";
+            std::cout << "gpu_perf_ms   : not_run (accuracy-only; use perf/full case set for timing)\n";
         }
         std::cout << "reports       : data/reports/unit/waveforms/" << op << "/latest_summary.md\n";
     }
@@ -1484,6 +1520,7 @@ namespace
             test_case.type = get_string(object, "type"); // 输出类型
             test_case.atol = get_number(object, "atol"); // 绝对误差容限
             test_case.rtol = get_number(object, "rtol"); // 相对误差容限
+            test_case.dtype = get_optional_string(object, "dtype").value_or("float32"); // 兼容 dtype
 
             if (const auto input_file = get_optional_string(object, "t_file"))
             {
@@ -1535,6 +1572,7 @@ namespace
             test_case.retenv = get_bool(object, "retenv"); // 返回包络通道开关
             test_case.atol = get_number(object, "atol"); // 绝对误差容限
             test_case.rtol = get_number(object, "rtol"); // 相对误差容限
+            test_case.dtype = get_optional_string(object, "dtype").value_or("float32"); // 兼容 dtype
 
             if (const auto input_file = get_optional_string(object, "t_file"))
             {
@@ -1590,6 +1628,7 @@ namespace
             test_case.category = category;
             test_case.atol = get_number(object, "atol"); // 绝对误差容限
             test_case.rtol = get_number(object, "rtol"); // 相对误差容限
+            test_case.dtype = get_optional_string(object, "dtype").value_or("float32"); // 兼容 dtype
             if (const auto input_file = get_optional_string(object, "t_file"))
             {
                 test_case.t = read_real_csv(base / *input_file);
@@ -2350,14 +2389,17 @@ namespace
                 report.case_id = test_case.id;
                 report.category = "accuracy";
 
-                const auto cpu_output = to_output_bundle(cpu_runner(test_case));
-                const auto gpu_output = to_output_bundle(gpu_runner(test_case));
+                const auto cpu_output =
+                    apply_dtype_quantization(to_output_bundle(cpu_runner(test_case)), test_case.dtype);
+                const auto gpu_output =
+                    apply_dtype_quantization(to_output_bundle(gpu_runner(test_case)), test_case.dtype);
                 report.samples = cpu_output.channels.empty() ? 0 : cpu_output.channels.front().values.size();
                 report.cpu_gpu_error =
                     compare_output_bundles(gpu_output, cpu_output, test_case.atol, test_case.rtol);
                 report.pass = report.cpu_gpu_error.exact_match;
 
-                const OutputBundle expected = expected_loader(test_case);
+                const OutputBundle expected =
+                    apply_dtype_quantization(expected_loader(test_case), test_case.dtype);
                 if (!expected.channels.empty())
                 {
                     report.cpu_reference_error =

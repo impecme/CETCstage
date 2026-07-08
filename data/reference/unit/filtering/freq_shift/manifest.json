@@ -3,6 +3,8 @@
   "__comment_fields": {
     "accuracy_cases": "精度测试用例列表",
     "id": "测试用例 ID（建议唯一）",
+    "input_kind": "输入类型族：real / complex；complex 表示 complex64 输入路径",
+    "output_kind": "输出类型族：real / complex；complex 表示 complex64 输出路径",
     "x_file": "输入/输出数据文件路径",
     "x_shape": "张量/数组形状",
     "freq": "频率参数",
@@ -15,6 +17,8 @@
   "accuracy_cases": [
     {
       "id": "shift_complex_1d",
+      "input_kind": "complex",
+      "output_kind": "complex",
       "x_file": "input/x.csv",
       "x_shape": [
         16

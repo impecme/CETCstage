@@ -60,6 +60,37 @@ namespace cusignal_demo::report
         return output;
     }
 
+    inline std::string csv_escape(const std::string &value)
+    {
+        bool needs_quote = false;
+        for (const char character : value)
+        {
+            if (character == ',' || character == '"' || character == '\n' || character == '\r')
+            {
+                needs_quote = true;
+                break;
+            }
+        }
+        if (!needs_quote)
+        {
+            return value;
+        }
+
+        std::string output;
+        output.reserve(value.size() + 2);
+        output.push_back('"');
+        for (const char character : value)
+        {
+            if (character == '"')
+            {
+                output.push_back('"');
+            }
+            output.push_back(character);
+        }
+        output.push_back('"');
+        return output;
+    }
+
     inline void write_optional(std::ostream &output, float value)
     {
         if (std::isfinite(value))
@@ -90,9 +121,10 @@ namespace cusignal_demo::report
         csv << std::fixed << std::setprecision(9);
         for (const auto &step : steps)
         {
-            csv << task << ',' << step.step << ',' << step.operator_name << ','
-                << step.input_shape << ',' << step.output_shape << ','
-                << step.input_dtype << ',' << step.output_dtype << ','
+            csv << csv_escape(task) << ',' << csv_escape(step.step) << ','
+                << csv_escape(step.operator_name) << ','
+                << csv_escape(step.input_shape) << ',' << csv_escape(step.output_shape) << ','
+                << csv_escape(step.input_dtype) << ',' << csv_escape(step.output_dtype) << ','
                 << step.cpu_ms << ',' << step.gpu_e2e_ms << ',';
             if (std::isfinite(step.gpu_kernel_ms))
                 csv << step.gpu_kernel_ms;
@@ -114,14 +146,14 @@ namespace cusignal_demo::report
                 csv << ",,,,,";
             }
             csv << ',' << (step.error_available ? "true" : "false") << ','
-                << (step.pass ? "true" : "false") << ',' << step.note << '\n';
+                << (step.pass ? "true" : "false") << ',' << csv_escape(step.note) << '\n';
         }
 
         std::ofstream json(report_root / "latest_step_metrics.json");
         if (!json)
             throw std::runtime_error("failed to write task step JSON");
         json << std::setprecision(9) << "{\n  \"task\": \"" << json_escape(task)
-             << "\",\n  \"schema_version\": 1,\n  \"steps\": [\n";
+             << "\",\n  \"schema_version\": 2,\n  \"steps\": [\n";
         for (std::size_t index = 0; index < steps.size(); ++index)
         {
             const auto &step = steps[index];

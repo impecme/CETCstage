@@ -34,6 +34,17 @@
       "expected_P_file": "expected/predict_control__P.csv"
     },
     {
+      "id": "predict_control_float16_compat",
+      "scenario": "predict_control",
+      "dim_x": 2,
+      "dim_z": 1,
+      "dim_u": 1,
+      "points": 1,
+      "dtype": "float16",
+      "expected_x_file": "expected/predict_control__x.csv",
+      "expected_P_file": "expected/predict_control__P.csv"
+    },
+    {
       "id": "update",
       "scenario": "update",
       "dim_x": 2,
@@ -51,7 +62,7 @@
       "dim_z": 1,
       "dim_u": 0,
       "points": 1,
-      "dtype": "float32",
+      "dtype": "float64",
       "expect_invalid_argument": true
     },
     {

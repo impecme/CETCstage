@@ -137,6 +137,7 @@ namespace cusignal_demo::task2_features
         float gpu_total_multiplier = 1.25f;
         float gpu_total_hard_limit_ms = 75.0f;
         float filtered_mixed = 1.0e-4f;
+        float demod_score_mixed = 5.0e-4f;
         float correlate_mixed = 1.0e-4f;
         float spectrogram_mixed = 1.0e-4f;
         float cwt_mixed = 1.0e-4f;
@@ -275,6 +276,7 @@ namespace cusignal_demo::task2_features
         ComplexArray rx_frames;
         RealSignal truth_track;
         ComplexArray filtered;
+        RealArray demod_scores;
         RealArray correlate_scores;
         RealArray spectrogram_values;
         RealSignal spectrogram_freqs;
@@ -282,12 +284,14 @@ namespace cusignal_demo::task2_features
         ComplexArray cwt_values;
         RealArray feature_scores;
         RealSignal peak_track;
+        RealSignal measurement_values;
         RealSignal kalman_track;
     };
 
     struct GpuArtifacts
     {
         ZxGpuComplexArray filtered;
+        ZxGpuRealArray demod_scores;
         ZxGpuRealArray correlate_scores;
         ZxGpuRealArray spectrogram_values;
         ZxGpuRealSignal spectrogram_freqs;
@@ -295,12 +299,14 @@ namespace cusignal_demo::task2_features
         ZxGpuComplexArray cwt_values;
         ZxGpuRealArray feature_scores;
         ZxGpuRealSignal peak_track;
+        ZxGpuRealSignal measurement_values;
         ZxGpuRealSignal kalman_track;
     };
 
     struct HostGpuArtifacts
     {
         ComplexArray filtered;
+        RealArray demod_scores;
         RealArray correlate_scores;
         RealArray spectrogram_values;
         RealSignal spectrogram_freqs;
@@ -308,6 +314,7 @@ namespace cusignal_demo::task2_features
         ComplexArray cwt_values;
         RealArray feature_scores;
         RealSignal peak_track;
+        RealSignal measurement_values;
         RealSignal kalman_track;
     };
 
@@ -317,11 +324,14 @@ namespace cusignal_demo::task2_features
         HostGpuArtifacts gpu;
         std::vector<StageTiming> stage_timings;
         ErrorMetrics filtered_error;
+        ErrorMetrics demod_error;
         ErrorMetrics correlate_error;
         ErrorMetrics spectrogram_error;
         ErrorMetrics cwt_error;
         ErrorMetrics feature_score_error;
+        ErrorMetrics measurement_error;
         ErrorMetrics kalman_error;
+        ErrorMetrics kalman_cpu_gpu_error;
         float cpu_total_ms = 0.0f;
         float gpu_total_ms = 0.0f;
         bool cpu_gpu_track_match = false;
@@ -956,6 +966,13 @@ namespace cusignal_demo::task2_features
             "filtered CPU/GPU mixed error");
         add_check(
             validation,
+            "demod_mixed_error",
+            run.demod_error.mixed_error <= thresholds.demod_score_mixed,
+            run.demod_error.mixed_error,
+            thresholds.demod_score_mixed,
+            "demod score CPU/GPU mixed error");
+        add_check(
+            validation,
             "correlate_mixed_error",
             run.correlate_error.mixed_error <= thresholds.correlate_mixed,
             run.correlate_error.mixed_error,
@@ -982,6 +999,20 @@ namespace cusignal_demo::task2_features
             run.feature_score_error.mixed_error,
             thresholds.feature_score_mixed,
             "feature score CPU/GPU mixed error");
+        add_check(
+            validation,
+            "measurement_mixed_error",
+            run.measurement_error.mixed_error <= thresholds.feature_score_mixed,
+            run.measurement_error.mixed_error,
+            thresholds.feature_score_mixed,
+            "measurement conversion CPU/GPU mixed error");
+        add_check(
+            validation,
+            "kalman_cpu_gpu_rmse",
+            run.kalman_cpu_gpu_error.rmse <= kalman_rmse_tolerance,
+            run.kalman_cpu_gpu_error.rmse,
+            kalman_rmse_tolerance,
+            "Kalman CPU/GPU track RMSE");
         add_check(
             validation,
             "invalid_input_checks",
@@ -1521,29 +1552,12 @@ namespace cusignal_demo::task2_features
         const RealSignal &taps,
         const ComplexArray &input)
     {
-        if (input.shape.size() != 2)
-        {
-            throw std::invalid_argument("filter_complex_frames_cpu expects rank-2 input");
-        }
-        RealArray real_part = cusignal::core::make_real_array(input.shape, 0.0f);
-        RealArray imag_part = cusignal::core::make_real_array(input.shape, 0.0f);
-        for (std::size_t index = 0; index < input.values.size(); ++index)
-        {
-            real_part.values[index] = input.values[index].real();
-            imag_part.values[index] = input.values[index].imag();
-        }
-        const RealArray filtered_real = cusignal::cpu::filtering::firfilter(taps, real_part, -1);
-        const RealArray filtered_imag = cusignal::cpu::filtering::firfilter(taps, imag_part, -1);
-        ComplexArray output = cusignal::core::make_complex_array(input.shape, Complex(0.0f, 0.0f));
-        for (std::size_t index = 0; index < input.values.size(); ++index)
-        {
-            output.values[index] = Complex(filtered_real.values[index], filtered_imag.values[index]);
-        }
-        return output;
+        return cusignal::cpu::filtering::firfilter(taps, input, -1);
     }
 
     struct FrameCpuResult
     {
+        RealSignal demod_score;
         RealSignal correlate_score;
         RealSignal feature_score;
         SpectrogramResult spectrogram;
@@ -1570,7 +1584,7 @@ namespace cusignal_demo::task2_features
             return cusignal::cpu::demod::fm_demod(as_complex_array(frame), -1);
         });
         demod_ms += demod_elapsed;
-        const RealSignal demod_score = normalize_nonnegative_cpu(
+        result.demod_score = normalize_nonnegative_cpu(
             pad_last_value_cpu(demod_array.values, frame.size()));
 
         auto [corr_array, corr_elapsed] = measure_cpu_ms([&]() {
@@ -1626,7 +1640,7 @@ namespace cusignal_demo::task2_features
             {
                 fused[index] =
                     0.45f * result.correlate_score[index] +
-                    0.20f * demod_score[index] +
+                    0.20f * result.demod_score[index] +
                     0.20f * wavelet_score[index] +
                     0.15f * spectrogram_score[index];
             }
@@ -1663,6 +1677,9 @@ namespace cusignal_demo::task2_features
         artifacts.correlate_scores = cusignal::core::make_real_array(
             Shape{static_cast<std::size_t>(config.num_frames), static_cast<std::size_t>(config.samples_per_frame)},
             0.0f);
+        artifacts.demod_scores = cusignal::core::make_real_array(
+            Shape{static_cast<std::size_t>(config.num_frames), static_cast<std::size_t>(config.samples_per_frame)},
+            0.0f);
         artifacts.feature_scores = cusignal::core::make_real_array(
             Shape{static_cast<std::size_t>(config.num_frames), static_cast<std::size_t>(config.samples_per_frame)},
             0.0f);
@@ -1689,6 +1706,7 @@ namespace cusignal_demo::task2_features
                 cwt_ms,
                 fusion_ms);
 
+            store_row_real(artifacts.demod_scores, frame_result.demod_score, frame);
             store_row_real(artifacts.correlate_scores, frame_result.correlate_score, frame);
             store_row_real(artifacts.feature_scores, frame_result.feature_score, frame);
             artifacts.peak_track[static_cast<std::size_t>(frame)] = static_cast<float>(frame_result.peak_index);
@@ -1707,6 +1725,18 @@ namespace cusignal_demo::task2_features
         timings.push_back({"cwt", cwt_ms, 0.0});
         timings.push_back({"feature_fusion", fusion_ms, 0.0});
 
+        auto [measurement_values, measurement_ms] = measure_cpu_ms([&]() {
+            RealSignal measurements(static_cast<std::size_t>(config.num_frames), 0.0f);
+            for (int frame = 0; frame < config.num_frames; ++frame)
+            {
+                measurements[static_cast<std::size_t>(frame)] =
+                    artifacts.peak_track[static_cast<std::size_t>(frame)];
+            }
+            return measurements;
+        });
+        artifacts.measurement_values = std::move(measurement_values);
+        timings.push_back({"measurement_conversion", measurement_ms, 0.0});
+
         auto [kalman_track, kalman_ms] = measure_cpu_ms([&]() {
             cusignal::cpu::estimation::KalmanFilter filter(2, 1, 0, 1, "float32");
             filter.F = cusignal::core::make_real_array(Shape{1, 2, 2}, 0.0f);
@@ -1720,15 +1750,15 @@ namespace cusignal_demo::task2_features
             filter.P = cusignal::core::make_real_array(Shape{1, 2, 2}, 0.0f);
             filter.P.values = {25.0f, 0.0f, 0.0f, 4.0f};
             filter.x = cusignal::core::make_real_array(Shape{1, 2, 1}, 0.0f);
-            filter.x.values = {artifacts.peak_track[0], 0.0f};
+            filter.x.values = {artifacts.measurement_values[0], 0.0f};
 
             RealSignal kalman(static_cast<std::size_t>(config.num_frames), 0.0f);
-            kalman[0] = artifacts.peak_track[0];
+            kalman[0] = artifacts.measurement_values[0];
             for (int frame = 1; frame < config.num_frames; ++frame)
             {
                 filter.predict();
                 RealArray measurement = cusignal::core::make_real_array(Shape{1, 1, 1}, 0.0f);
-                measurement.values[0] = artifacts.peak_track[static_cast<std::size_t>(frame)];
+                measurement.values[0] = artifacts.measurement_values[static_cast<std::size_t>(frame)];
                 filter.update(measurement);
                 kalman[static_cast<std::size_t>(frame)] = filter.x.values[0];
             }
@@ -1757,7 +1787,10 @@ namespace cusignal_demo::task2_features
 
         auto [filtered_complex, filter_ms] = measure_gpu_ms([&]() {
             rx_device = ZxGpuComplexArray::from_host(rx_frames);
-            return complex_firfilter_zx_gpu(rx_device, taps, filtered_real);
+            const ZxGpuComplexArray filtered =
+                cusignal::zx_gpu_backend::filtering::firfilter(taps, rx_device, -1);
+            filtered_real = extract_real_part_zx_gpu(filtered);
+            return filtered;
         });
         artifacts.filtered = std::move(filtered_complex);
         timings.push_back({"filter", 0.0, filter_ms});
@@ -1787,7 +1820,7 @@ namespace cusignal_demo::task2_features
         auto demod_scores_measured = measure_gpu_ms([&]() {
             return batched_demod_score_zx_gpu(artifacts.filtered);
         });
-        auto demod_scores = std::move(demod_scores_measured.first);
+        artifacts.demod_scores = std::move(demod_scores_measured.first);
         const float demod_ms = demod_scores_measured.second;
         float correlate_ms = 0.0;
         float spectrogram_ms = 0.0;
@@ -1896,7 +1929,7 @@ namespace cusignal_demo::task2_features
         auto [fusion_done, fusion_elapsed] = measure_gpu_ms([&]() {
             fuse_feature_scores_zx_gpu(
                 artifacts.correlate_scores,
-                demod_scores,
+                artifacts.demod_scores,
                 wavelet_scores,
                 spectrogram_scores,
                 bspline_weights,
@@ -1915,8 +1948,14 @@ namespace cusignal_demo::task2_features
         timings.push_back({"cwt", 0.0, cwt_ms});
         timings.push_back({"feature_fusion", 0.0, fusion_ms});
 
+        auto [measurement_values, measurement_ms] = measure_gpu_ms([&]() {
+            return copy_measurement_track_zx_gpu(artifacts.peak_track);
+        });
+        artifacts.measurement_values = std::move(measurement_values);
+        timings.push_back({"measurement_conversion", 0.0, measurement_ms});
+
         auto [kalman_track, kalman_ms] = measure_gpu_ms([&]() {
-            return kalman_track_from_peaks_zx_gpu(artifacts.peak_track);
+            return kalman_track_from_peaks_zx_gpu(artifacts.measurement_values);
         });
         artifacts.kalman_track = std::move(kalman_track);
         timings.push_back({"kalman", 0.0, kalman_ms});
@@ -1928,6 +1967,7 @@ namespace cusignal_demo::task2_features
     {
         HostGpuArtifacts host;
         host.filtered = gpu.filtered.get();
+        host.demod_scores = gpu.demod_scores.get();
         host.correlate_scores = gpu.correlate_scores.get();
         host.spectrogram_values = gpu.spectrogram_values.get();
         host.spectrogram_freqs = gpu.spectrogram_freqs.get();
@@ -1935,6 +1975,7 @@ namespace cusignal_demo::task2_features
         host.cwt_values = gpu.cwt_values.get();
         host.feature_scores = gpu.feature_scores.get();
         host.peak_track = gpu.peak_track.get();
+        host.measurement_values = gpu.measurement_values.get();
         host.kalman_track = gpu.kalman_track.get();
         return host;
     }
@@ -2038,6 +2079,8 @@ namespace cusignal_demo::task2_features
 
         write_complex_csv(output_dir / "filtered__cpu__values.csv", cpu.filtered.values);
         write_complex_csv(output_dir / "filtered__gpu__values.csv", gpu.filtered.values);
+        write_real_csv(output_dir / "demod__cpu__values.csv", cpu.demod_scores.values);
+        write_real_csv(output_dir / "demod__gpu__values.csv", gpu.demod_scores.values);
         write_real_csv(output_dir / "correlate__cpu__values.csv", cpu.correlate_scores.values);
         write_real_csv(output_dir / "correlate__gpu__values.csv", gpu.correlate_scores.values);
         write_real_csv(output_dir / "spectrogram__cpu__values.csv", cpu.spectrogram_values.values);
@@ -2052,6 +2095,8 @@ namespace cusignal_demo::task2_features
         write_real_csv(output_dir / "feature_score__gpu__values.csv", gpu.feature_scores.values);
         write_real_csv(output_dir / "peak_track__cpu__values.csv", cpu.peak_track);
         write_real_csv(output_dir / "peak_track__gpu__values.csv", gpu.peak_track);
+        write_real_csv(output_dir / "measurement__cpu__values.csv", cpu.measurement_values);
+        write_real_csv(output_dir / "measurement__gpu__values.csv", gpu.measurement_values);
         write_real_csv(output_dir / "kalman_track__cpu__values.csv", cpu.kalman_track);
         write_real_csv(output_dir / "kalman_track__gpu__values.csv", gpu.kalman_track);
     }
@@ -2152,12 +2197,13 @@ namespace cusignal_demo::task2_features
         const std::string frame_shape = std::to_string(config.num_frames) + "x" +
             std::to_string(config.samples_per_frame);
         std::vector<StepMetric> steps;
-        steps.push_back(make("filter", "filter_design/firwin + filtering/firfilter + private complex adapter",
+        steps.push_back(make("filter", "filter_design/firwin + filtering/firfilter public complex64 path",
             frame_shape, shape_text(run.cpu.filtered.shape), "complex64", "complex64",
-            &run.filtered_error, true, thresholds.filtered_mixed, "mixed public/private step"));
+            &run.filtered_error, true, thresholds.filtered_mixed, "public complex64 filtering step"));
         steps.push_back(make("demod", "demod/fm_demod + private batched score",
             shape_text(run.cpu.filtered.shape), frame_shape, "complex64", "float32",
-            nullptr, false, 0.0f, "step output is not retained for CPU/GPU error"));
+            &run.demod_error, false, thresholds.demod_score_mixed,
+            "CPU/GPU demod score error"));
         steps.push_back(make("correlate", "correlate/correlate + private normalization",
             shape_text(run.cpu.filtered.shape), shape_text(run.cpu.correlate_scores.shape),
             "complex64", "float32", &run.correlate_error, false,
@@ -2175,21 +2221,16 @@ namespace cusignal_demo::task2_features
             &run.feature_score_error, false, thresholds.feature_score_mixed,
             "private step"));
 
-        StepMetric measurement;
-        measurement.step = "measurement_conversion";
-        measurement.operator_name = "private index_to_measurement";
-        measurement.input_shape = std::to_string(config.num_frames);
-        measurement.output_shape = std::to_string(config.num_frames);
-        measurement.input_dtype = "int32";
-        measurement.output_dtype = "float32";
-        measurement.note = "timing and error bundled into Kalman step";
-        steps.push_back(std::move(measurement));
+        steps.push_back(make("measurement_conversion", "estimation measurement helper",
+            std::to_string(config.num_frames), std::to_string(config.num_frames),
+            "float32", "float32", &run.measurement_error, false,
+            thresholds.feature_score_mixed, "CPU/GPU measurement track conversion error"));
 
         auto kalman_metric = make("kalman", "estimation/kalman_filter + private GPU pipeline",
             std::to_string(config.num_frames), std::to_string(config.num_frames),
-            "float32", "float32", &run.kalman_error, false, config.kalman_rmse_tolerance,
-            "error compares GPU track to truth, not CPU to GPU");
-        kalman_metric.pass = run.kalman_error.rmse <= config.kalman_rmse_tolerance;
+            "float32", "float32", &run.kalman_cpu_gpu_error, false, config.kalman_rmse_tolerance,
+            "CPU/GPU Kalman track error; task validation also checks GPU track to truth");
+        kalman_metric.pass = run.kalman_cpu_gpu_error.rmse <= config.kalman_rmse_tolerance;
         steps.push_back(std::move(kalman_metric));
         cusignal_demo::report::write_step_metrics(report_root(), "task2_features", steps);
     }
@@ -2433,12 +2474,15 @@ namespace cusignal_demo::task2_features
         }
 
         const ErrorMetrics filtered_error = compute_real_array_error(cpu.filtered, gpu.filtered);
+        const ErrorMetrics demod_error = compute_real_array_error(cpu.demod_scores, gpu.demod_scores);
         const ErrorMetrics correlate_error = compute_real_array_error(cpu.correlate_scores, gpu.correlate_scores);
         const ErrorMetrics spectrogram_error =
             compute_real_array_error(cpu.spectrogram_values, gpu.spectrogram_values, kSpectralMixedScale);
         const ErrorMetrics cwt_error = compute_real_array_error(cpu.cwt_values, gpu.cwt_values, kSpectralMixedScale);
         const ErrorMetrics feature_score_error = compute_real_array_error(cpu.feature_scores, gpu.feature_scores);
+        const ErrorMetrics measurement_error = compute_real_error(cpu.measurement_values, gpu.measurement_values);
         const ErrorMetrics kalman_error = compute_real_error(cpu.truth_track, gpu.kalman_track);
+        const ErrorMetrics kalman_cpu_gpu_error = compute_real_error(cpu.kalman_track, gpu.kalman_track);
 
         const bool cpu_gpu_track_match = tracks_match(cpu.peak_track, gpu.peak_track);
         const bool gpu_matches_truth = kalman_error.rmse <= config.kalman_rmse_tolerance;
@@ -2448,11 +2492,14 @@ namespace cusignal_demo::task2_features
         result.gpu = std::move(gpu);
         result.stage_timings = std::move(stage_timings);
         result.filtered_error = filtered_error;
+        result.demod_error = demod_error;
         result.correlate_error = correlate_error;
         result.spectrogram_error = spectrogram_error;
         result.cwt_error = cwt_error;
         result.feature_score_error = feature_score_error;
+        result.measurement_error = measurement_error;
         result.kalman_error = kalman_error;
+        result.kalman_cpu_gpu_error = kalman_cpu_gpu_error;
         result.cpu_total_ms = cpu_total_ms;
         result.gpu_total_ms = gpu_total_ms;
         result.cpu_gpu_track_match = cpu_gpu_track_match;

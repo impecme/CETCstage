@@ -37,8 +37,20 @@ namespace
     using cusignal::core::Complex;
     using cusignal::core::ComplexArray;
     using cusignal::core::ComplexSignal;
+    using cusignal::core::Float16;
+    using cusignal::core::Float16Array;
+    using cusignal::core::Int16;
+    using cusignal::core::Int16Array;
+    using cusignal::core::Int32;
+    using cusignal::core::Int32Array;
+    using cusignal::core::Int8;
+    using cusignal::core::Int8Array;
     using cusignal::core::ZxGpuComplexArray;
+    using cusignal::core::ZxGpuFloat16Array;
     using cusignal::core::ZxGpuIndexSignal;
+    using cusignal::core::ZxGpuInt16Array;
+    using cusignal::core::ZxGpuInt32Array;
+    using cusignal::core::ZxGpuInt8Array;
     using cusignal::core::ZxGpuRealArray;
     using cusignal::core::IndexVector;
     using cusignal::core::RealArray;
@@ -93,6 +105,7 @@ namespace
         std::string mode; // correlate 输出模式：full / same / valid
         std::string method; // correlate 算法提示：auto / direct / fft
         bool is_complex = false; // 选择实数或复数相关计算路径
+        std::string dtype = "float32"; // 实数兼容路径的目标 dtype
         Shape shape1;
         Shape shape2;
         RealArray in1_real;
@@ -136,12 +149,217 @@ namespace
         return array;
     }
 
+    template <typename T>
+    cusignal::core::Array<T> make_typed_array(const Shape &shape, const std::vector<T> &values)
+    {
+        cusignal::core::Array<T> array;
+        array.shape = shape;
+        array.values = values;
+        return array;
+    }
+
     ComplexArray make_complex_array(const Shape &shape, const std::vector<Complex> &values)
     {
         ComplexArray array;
         array.shape = shape;
         array.values = values;
         return array;
+    }
+
+    ErrorMetrics compare_real(const std::vector<float> &lhs, const std::vector<float> &rhs);
+
+    template <typename T>
+    float scalar_to_float(const T &value)
+    {
+        return static_cast<float>(value);
+    }
+
+    template <>
+    float scalar_to_float<Float16>(const Float16 &value)
+    {
+        return static_cast<float>(value);
+    }
+
+    template <typename T>
+    T scalar_from_float(float value)
+    {
+        return static_cast<T>(std::llround(value));
+    }
+
+    template <>
+    Float16 scalar_from_float<Float16>(float value)
+    {
+        return Float16(value);
+    }
+
+    template <>
+    float scalar_from_float<float>(float value)
+    {
+        return value;
+    }
+
+    template <typename T>
+    RealArray to_real_array(const cusignal::core::Array<T> &array)
+    {
+        RealArray output;
+        output.shape = array.shape;
+        output.values.reserve(array.values.size());
+        for (const T &value : array.values)
+        {
+            output.values.push_back(scalar_to_float(value));
+        }
+        return output;
+    }
+
+    template <typename T>
+    cusignal::core::Array<T> from_real_array(const RealArray &array)
+    {
+        cusignal::core::Array<T> output;
+        output.shape = array.shape;
+        output.values.reserve(array.values.size());
+        for (float value : array.values)
+        {
+            output.values.push_back(scalar_from_float<T>(value));
+        }
+        return output;
+    }
+
+    template <typename T>
+    ErrorMetrics compare_typed_as_float(
+        const cusignal::core::Array<T> &lhs,
+        const cusignal::core::Array<T> &rhs)
+    {
+        std::vector<float> lhs_values;
+        std::vector<float> rhs_values;
+        lhs_values.reserve(lhs.values.size());
+        rhs_values.reserve(rhs.values.size());
+        for (const T &value : lhs.values)
+        {
+            lhs_values.push_back(scalar_to_float(value));
+        }
+        for (const T &value : rhs.values)
+        {
+            rhs_values.push_back(scalar_to_float(value));
+        }
+        return compare_real(lhs_values, rhs_values);
+    }
+
+    template <typename T, typename DeviceArrayType>
+    void evaluate_typed_compat_case(
+        const CorrCase &test_case,
+        Summary &summary,
+        const std::vector<T> &left_values,
+        const std::vector<T> &right_values,
+        const std::vector<T> &expected_values,
+        bool is_2d)
+    {
+        const auto left = make_typed_array<T>(test_case.shape1, left_values);
+        const auto right = make_typed_array<T>(test_case.shape2, right_values);
+        const auto expected = make_typed_array<T>(
+            is_2d ? Shape{3, 3} : Shape{5},
+            expected_values);
+
+        const DeviceArrayType left_device = DeviceArrayType::from_host(left);
+        const DeviceArrayType right_device = DeviceArrayType::from_host(right);
+        const auto left_roundtrip = left_device.get();
+        const auto right_roundtrip = right_device.get();
+
+        const RealArray left_real = to_real_array(left_roundtrip);
+        const RealArray right_real = to_real_array(right_roundtrip);
+        const RealArray cpu_real = is_2d
+            ? cusignal::cpu::correlate::correlate2d(left_real, right_real, test_case.mode, "wrap", 0.0f)
+            : cusignal::cpu::correlate::correlate(left_real, right_real, test_case.mode, test_case.method);
+        const RealArray gpu_real = is_2d
+            ? cusignal::zx_gpu_backend::correlate::correlate2d(left_real, right_real, test_case.mode, "wrap", 0.0f).get()
+            : cusignal::zx_gpu_backend::correlate::correlate(left_real, right_real, test_case.mode, test_case.method).get();
+
+        const auto cpu = from_real_array<T>(cpu_real);
+        const auto gpu = from_real_array<T>(gpu_real);
+        const ErrorMetrics cpu_gpu = compare_typed_as_float(cpu, gpu);
+        const ErrorMetrics cpu_ref = compare_typed_as_float(cpu, expected);
+        const ErrorMetrics gpu_ref = compare_typed_as_float(gpu, expected);
+        summary.cpu_gpu_error.max_abs_error =
+            std::max(summary.cpu_gpu_error.max_abs_error, cpu_gpu.max_abs_error);
+        summary.cpu_gpu_error.max_rel_error =
+            std::max(summary.cpu_gpu_error.max_rel_error, cpu_gpu.max_rel_error);
+        summary.cpu_gpu_error.rmse =
+            std::max(summary.cpu_gpu_error.rmse, cpu_gpu.rmse);
+        summary.reference_error.max_abs_error =
+            std::max({summary.reference_error.max_abs_error, cpu_ref.max_abs_error, gpu_ref.max_abs_error});
+        summary.reference_error.max_rel_error =
+            std::max({summary.reference_error.max_rel_error, cpu_ref.max_rel_error, gpu_ref.max_rel_error});
+        summary.reference_error.rmse =
+            std::max({summary.reference_error.rmse, cpu_ref.rmse, gpu_ref.rmse});
+        summary.pass = summary.pass &&
+                       cpu_ref.max_abs_error < 1e-4f &&
+                       gpu_ref.max_abs_error < 1e-4f;
+    }
+
+    void evaluate_numeric_compat_case(const CorrCase &test_case, Summary &summary, bool is_2d)
+    {
+        if (is_2d)
+        {
+            if (test_case.dtype == "float16")
+            {
+                evaluate_typed_compat_case<Float16, ZxGpuFloat16Array>(
+                    test_case,
+                    summary,
+                    {Float16(1.0f), Float16(2.0f), Float16(3.0f), Float16(4.0f)},
+                    {Float16(0.0f), Float16(1.0f), Float16(2.0f), Float16(1.0f)},
+                    {Float16(8.0f), Float16(8.0f), Float16(8.0f), Float16(12.0f), Float16(12.0f), Float16(12.0f), Float16(8.0f), Float16(8.0f), Float16(8.0f)},
+                    true);
+            }
+            else if (test_case.dtype == "int8")
+            {
+                evaluate_typed_compat_case<Int8, ZxGpuInt8Array>(
+                    test_case, summary, {1, 2, 3, 4}, {0, 1, 2, 1}, {8, 8, 8, 12, 12, 12, 8, 8, 8}, true);
+            }
+            else if (test_case.dtype == "int16")
+            {
+                evaluate_typed_compat_case<Int16, ZxGpuInt16Array>(
+                    test_case, summary, {1, 2, 3, 4}, {0, 1, 2, 1}, {8, 8, 8, 12, 12, 12, 8, 8, 8}, true);
+            }
+            else if (test_case.dtype == "int32")
+            {
+                evaluate_typed_compat_case<Int32, ZxGpuInt32Array>(
+                    test_case, summary, {1, 2, 3, 4}, {0, 1, 2, 1}, {8, 8, 8, 12, 12, 12, 8, 8, 8}, true);
+            }
+            else
+            {
+                throw std::runtime_error("unsupported correlate2d dtype compatibility case: " + test_case.dtype);
+            }
+            return;
+        }
+
+        if (test_case.dtype == "float16")
+        {
+            evaluate_typed_compat_case<Float16, ZxGpuFloat16Array>(
+                test_case,
+                summary,
+                {Float16(1.0f), Float16(2.0f), Float16(3.0f)},
+                {Float16(1.0f), Float16(0.0f), Float16(1.0f)},
+                {Float16(1.0f), Float16(2.0f), Float16(4.0f), Float16(2.0f), Float16(3.0f)},
+                false);
+        }
+        else if (test_case.dtype == "int8")
+        {
+            evaluate_typed_compat_case<Int8, ZxGpuInt8Array>(
+                test_case, summary, {1, 2, 3}, {1, 0, 1}, {1, 2, 4, 2, 3}, false);
+        }
+        else if (test_case.dtype == "int16")
+        {
+            evaluate_typed_compat_case<Int16, ZxGpuInt16Array>(
+                test_case, summary, {1, 2, 3}, {1, 0, 1}, {1, 2, 4, 2, 3}, false);
+        }
+        else if (test_case.dtype == "int32")
+        {
+            evaluate_typed_compat_case<Int32, ZxGpuInt32Array>(
+                test_case, summary, {1, 2, 3}, {1, 0, 1}, {1, 2, 4, 2, 3}, false);
+        }
+        else
+        {
+            throw std::runtime_error("unsupported correlate dtype compatibility case: " + test_case.dtype);
+        }
     }
 
     CliOptions parse_args(int argc, char **argv)
@@ -445,6 +663,7 @@ namespace
                 "full",
                 "direct",
                 false,
+                "float32",
                 Shape{3},
                 Shape{3},
                 make_real_array(Shape{3}, {1.0f, 2.0f, 3.0f}),
@@ -459,6 +678,7 @@ namespace
                 "full",
                 "fft",
                 true,
+                "complex64",
                 Shape{2},
                 Shape{2},
                 {},
@@ -469,6 +689,66 @@ namespace
                 make_complex_array(
                     Shape{3},
                     {Complex(-0.5f, -1.5f), Complex(-3.5f, 3.0f), Complex(4.0f, 3.0f)})},
+            CorrCase{
+                "float16_full_direct_compat",
+                "accuracy",
+                "full",
+                "direct",
+                false,
+                "float16",
+                Shape{3},
+                Shape{3},
+                {},
+                {},
+                {},
+                {},
+                {},
+                {}},
+            CorrCase{
+                "int8_full_direct_compat",
+                "accuracy",
+                "full",
+                "direct",
+                false,
+                "int8",
+                Shape{3},
+                Shape{3},
+                {},
+                {},
+                {},
+                {},
+                {},
+                {}},
+            CorrCase{
+                "int16_full_direct_compat",
+                "accuracy",
+                "full",
+                "direct",
+                false,
+                "int16",
+                Shape{3},
+                Shape{3},
+                {},
+                {},
+                {},
+                {},
+                {},
+                {}},
+            CorrCase{
+                "int32_full_direct_compat",
+                "accuracy",
+                "full",
+                "direct",
+                false,
+                "int32",
+                Shape{3},
+                Shape{3},
+                {},
+                {},
+                {},
+                {},
+                {},
+                {}},
         };
     }
 
@@ -481,6 +761,7 @@ namespace
                 "full",
                 "direct",
                 false,
+                "float32",
                 Shape{2, 2},
                 Shape{2, 2},
                 make_real_array(Shape{2, 2}, {1.0f, 2.0f, 3.0f, 4.0f}),
@@ -495,6 +776,7 @@ namespace
                 "same",
                 "direct",
                 true,
+                "complex64",
                 Shape{2, 2},
                 Shape{2, 2},
                 {},
@@ -509,6 +791,66 @@ namespace
                 make_complex_array(
                     Shape{2, 2},
                     {Complex(1.75f, 2.25f), Complex(4.75f, -3.0f), Complex(1.9375f, 0.625f), Complex(-2.0f, 3.625f)})},
+            CorrCase{
+                "float16_full_wrap_compat",
+                "accuracy",
+                "full",
+                "direct",
+                false,
+                "float16",
+                Shape{2, 2},
+                Shape{2, 2},
+                {},
+                {},
+                {},
+                {},
+                {},
+                {}},
+            CorrCase{
+                "int8_full_wrap_compat",
+                "accuracy",
+                "full",
+                "direct",
+                false,
+                "int8",
+                Shape{2, 2},
+                Shape{2, 2},
+                {},
+                {},
+                {},
+                {},
+                {},
+                {}},
+            CorrCase{
+                "int16_full_wrap_compat",
+                "accuracy",
+                "full",
+                "direct",
+                false,
+                "int16",
+                Shape{2, 2},
+                Shape{2, 2},
+                {},
+                {},
+                {},
+                {},
+                {},
+                {}},
+            CorrCase{
+                "int32_full_wrap_compat",
+                "accuracy",
+                "full",
+                "direct",
+                false,
+                "int32",
+                Shape{2, 2},
+                Shape{2, 2},
+                {},
+                {},
+                {},
+                {},
+                {},
+                {}},
         };
     }
 
@@ -541,6 +883,7 @@ namespace
                 "same",
                 "auto",
                 false,
+                "float32",
                 Shape{a.size()},
                 Shape{b.size()},
                 make_real_array(Shape{a.size()}, a),
@@ -564,11 +907,12 @@ namespace
         return CorrCase{
             "perf_real2d_same",
             "perf",
-            "same",
-            "direct",
-            false,
-            Shape{64, 64},
-            Shape{7, 7},
+                "same",
+                "direct",
+                false,
+                "float32",
+                Shape{64, 64},
+                Shape{7, 7},
             make_real_array(Shape{64, 64}, a),
             make_real_array(Shape{7, 7}, b),
             {},
@@ -590,6 +934,11 @@ namespace
             summary.accuracy_cases += 1;
             if (!test_case.is_complex)
             {
+                if (test_case.dtype != "float32")
+                {
+                    evaluate_numeric_compat_case(test_case, summary, false);
+                    continue;
+                }
                 const RealArray cpu =
                     cusignal::cpu::correlate::correlate(
                         test_case.in1_real, test_case.in2_real, test_case.mode, test_case.method);
@@ -692,6 +1041,11 @@ namespace
             summary.accuracy_cases += 1;
             if (!test_case.is_complex)
             {
+                if (test_case.dtype != "float32")
+                {
+                    evaluate_numeric_compat_case(test_case, summary, true);
+                    continue;
+                }
                 const RealArray cpu =
                     cusignal::cpu::correlate::correlate2d(
                         test_case.in1_real, test_case.in2_real, test_case.mode, "wrap", 0.0f);

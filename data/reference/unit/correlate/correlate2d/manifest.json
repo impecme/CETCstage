@@ -21,6 +21,7 @@
     },
     {
       "id": "complex_same_fill",
+      "dtype": "complex64",
       "mode": "same",
       "boundary": "fill",
       "is_complex": true,
@@ -35,6 +36,74 @@
       "in1_file": "input/complex_same_fill__in1.csv",
       "in2_file": "input/complex_same_fill__in2.csv",
       "expected_values_file": "expected/complex_same_fill__values.csv",
+      "atol": 1e-06,
+      "rtol": 1e-06
+    },
+    {
+      "id": "float16_full_wrap_compat",
+      "dtype": "float16",
+      "mode": "full",
+      "boundary": "wrap",
+      "is_complex": false,
+      "shape1": [
+        2,
+        2
+      ],
+      "shape2": [
+        2,
+        2
+      ],
+      "atol": 1e-06,
+      "rtol": 1e-06
+    },
+    {
+      "id": "int8_full_wrap_compat",
+      "dtype": "int8",
+      "mode": "full",
+      "boundary": "wrap",
+      "is_complex": false,
+      "shape1": [
+        2,
+        2
+      ],
+      "shape2": [
+        2,
+        2
+      ],
+      "atol": 1e-06,
+      "rtol": 1e-06
+    },
+    {
+      "id": "int16_full_wrap_compat",
+      "dtype": "int16",
+      "mode": "full",
+      "boundary": "wrap",
+      "is_complex": false,
+      "shape1": [
+        2,
+        2
+      ],
+      "shape2": [
+        2,
+        2
+      ],
+      "atol": 1e-06,
+      "rtol": 1e-06
+    },
+    {
+      "id": "int32_full_wrap_compat",
+      "dtype": "int32",
+      "mode": "full",
+      "boundary": "wrap",
+      "is_complex": false,
+      "shape1": [
+        2,
+        2
+      ],
+      "shape2": [
+        2,
+        2
+      ],
       "atol": 1e-06,
       "rtol": 1e-06
     }

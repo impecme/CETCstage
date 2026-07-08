@@ -37,6 +37,27 @@
       "expected_signal_shape": [
         32
       ]
+    },
+    {
+      "id": "iir_gust_float16_compat",
+      "dtype": "float16",
+      "b_file": "input/b.csv",
+      "x_file": "input/x.csv",
+      "x_shape": [
+        32
+      ],
+      "axis": -1,
+      "padtype": "even",
+      "padlen": -1,
+      "method": "gust",
+      "irlen": -1,
+      "atol": 5e-2,
+      "rtol": 5e-2,
+      "a_file": "input/a.csv",
+      "expected_signal_file": "expected/iir_gust.csv",
+      "expected_signal_shape": [
+        32
+      ]
     }
   ]
 }

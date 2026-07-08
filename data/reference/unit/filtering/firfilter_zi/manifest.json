@@ -19,6 +19,17 @@
       "expected_signal_shape": [
         2
       ]
+    },
+    {
+      "id": "fir_steady_state_float16_compat",
+      "dtype": "float16",
+      "b_file": "input/b.csv",
+      "atol": 5e-2,
+      "rtol": 5e-2,
+      "expected_signal_file": "expected/fir_steady_state.csv",
+      "expected_signal_shape": [
+        2
+      ]
     }
   ]
 }

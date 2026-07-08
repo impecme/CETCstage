@@ -17,7 +17,8 @@
     "nbar": "Taylor 窗 nbar 参数",
     "sll": "旁瓣电平（dB）",
     "norm": "是否归一化",
-    "values": "参数数组"
+    "values": "参数数组",
+    "dtype": "兼容路径数据类型；float16 用例按 FP16 量化后比较"
   },
   "accuracy_cases": [
     {
@@ -90,6 +91,19 @@
         ]
       },
       "expected_signal_file": "expected/array_passthrough.csv"
+    },
+    {
+      "id": "string_hann_float16_compat",
+      "size": 9,
+      "sym": true,
+      "atol": 0.001,
+      "rtol": 0.001,
+      "spec": {
+        "kind": "string",
+        "value": "hann"
+      },
+      "expected_signal_file": "expected/string_hann.csv",
+      "dtype": "float16"
     }
   ]
 }

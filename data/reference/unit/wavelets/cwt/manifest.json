@@ -2,6 +2,7 @@
   "accuracy_cases": [
     {
       "id": "ricker_case",
+      "output_kind": "complex",
       "wavelet": "ricker",
       "atol": 1e-11,
       "rtol": 1e-11,
@@ -10,7 +11,19 @@
       "expected_values_file": "expected/ricker_case__values.csv"
     },
     {
+      "id": "ricker_case_float16_compat",
+      "dtype": "float16",
+      "output_kind": "complex",
+      "wavelet": "ricker",
+      "atol": 5e-3,
+      "rtol": 5e-3,
+      "data_file": "input/ricker_case__data.csv",
+      "widths_file": "input/ricker_case__widths.csv",
+      "expected_values_file": "expected/ricker_case__values.csv"
+    },
+    {
       "id": "morlet2_case",
+      "output_kind": "complex",
       "wavelet": "morlet2",
       "atol": 1e-11,
       "rtol": 1e-11,

@@ -2,6 +2,7 @@
   "accuracy_cases": [
     {
       "id": "calc_cov_true",
+      "input_kind": "complex",
       "x_shape": [
         4,
         16
@@ -19,6 +20,7 @@
     },
     {
       "id": "covariance_input",
+      "input_kind": "complex",
       "x_shape": [
         4,
         4

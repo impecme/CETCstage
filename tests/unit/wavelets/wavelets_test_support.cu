@@ -38,6 +38,7 @@ namespace
     using cusignal::core::Complex;
     using cusignal::core::ComplexArray;
     using cusignal::core::ComplexSignal;
+    using cusignal::core::Float16;
     using cusignal::core::ZxGpuComplexArray;
     using cusignal::core::ZxGpuComplexSignal;
     using cusignal::core::ZxGpuRealSignal;
@@ -178,6 +179,7 @@ namespace
 
         float atol = 0.0; // 正确性校验的绝对误差容限
         float rtol = 0.0; // 正确性校验的相对误差容限
+        std::string dtype = "float32"; // 兼容路径 dtype；float16 用例按 FP16 量化后比较
 
         fs::path hk_file;
         fs::path data_file;
@@ -361,6 +363,29 @@ namespace
         return values;
     }
 
+    float quantize_float16(float value)
+    {
+        return __half2float(Float16(value));
+    }
+
+    RealSignal apply_dtype_quantization(const RealSignal &signal, const std::string &dtype)
+    {
+        if (dtype == "float32")
+        {
+            return signal;
+        }
+        if (dtype != "float16")
+        {
+            throw std::runtime_error("unsupported wavelets dtype compatibility case: " + dtype);
+        }
+        RealSignal quantized = signal;
+        for (float &value : quantized)
+        {
+            value = quantize_float16(value);
+        }
+        return quantized;
+    }
+
     ComplexSignal read_complex_csv(const fs::path &path)
     {
         std::ifstream input(path);
@@ -524,6 +549,27 @@ namespace
             host_bundle.fields.push_back(std::move(host_field));
         }
         return host_bundle;
+    }
+
+    OutputBundle apply_dtype_quantization(const OutputBundle &bundle, const std::string &dtype)
+    {
+        if (dtype == "float32")
+        {
+            return bundle;
+        }
+        if (dtype != "float16")
+        {
+            throw std::runtime_error("unsupported wavelets dtype compatibility case: " + dtype);
+        }
+        OutputBundle quantized = bundle;
+        for (OutputField &field : quantized.fields)
+        {
+            if (field.kind == FieldKind::Real)
+            {
+                field.real_values = apply_dtype_quantization(field.real_values, dtype);
+            }
+        }
+        return quantized;
     }
 
     ErrorMetrics combine_metrics(const std::vector<ErrorMetrics> &metrics_list)
@@ -873,29 +919,44 @@ namespace
 
     RealSignal load_hk_signal(const WaveletsCase &test_case)
     {
+        RealSignal signal;
         if (test_case.generated_hk.has_value())
         {
-            return *test_case.generated_hk;
+            signal = *test_case.generated_hk;
         }
-        return read_real_csv(test_case.hk_file);
+        else
+        {
+            signal = read_real_csv(test_case.hk_file);
+        }
+        return apply_dtype_quantization(signal, test_case.dtype);
     }
 
     RealSignal load_data_signal(const WaveletsCase &test_case)
     {
+        RealSignal signal;
         if (test_case.generated_data.has_value())
         {
-            return *test_case.generated_data;
+            signal = *test_case.generated_data;
         }
-        return read_real_csv(test_case.data_file);
+        else
+        {
+            signal = read_real_csv(test_case.data_file);
+        }
+        return apply_dtype_quantization(signal, test_case.dtype);
     }
 
     RealSignal load_widths_signal(const WaveletsCase &test_case)
     {
+        RealSignal signal;
         if (test_case.generated_widths.has_value())
         {
-            return *test_case.generated_widths;
+            signal = *test_case.generated_widths;
         }
-        return read_real_csv(test_case.widths_file);
+        else
+        {
+            signal = read_real_csv(test_case.widths_file);
+        }
+        return apply_dtype_quantization(signal, test_case.dtype);
     }
 
     std::string build_case_spec_json(const std::string &op, const WaveletsCase &test_case)
@@ -909,7 +970,8 @@ namespace
         stream << "  \"s\": " << test_case.s << ",\n";
         stream << "  \"a\": " << test_case.a << ",\n";
         stream << "  \"complete\": " << (test_case.complete ? "true" : "false") << ",\n";
-        stream << "  \"wavelet\": \"" << cusignal_test::report::json_escape(test_case.wavelet) << "\"\n";
+        stream << "  \"wavelet\": \"" << cusignal_test::report::json_escape(test_case.wavelet) << "\",\n";
+        stream << "  \"dtype\": \"" << cusignal_test::report::json_escape(test_case.dtype) << "\"\n";
         stream << "}\n";
         return stream.str();
     }
@@ -1010,6 +1072,7 @@ namespace
                 get_optional_bool(object, "expect_invalid_argument", false); // 该用例是否应抛出异常
             test_case.atol = get_optional_number(object, "atol", 0.0); // 绝对误差容限
             test_case.rtol = get_optional_number(object, "rtol", 0.0); // 相对误差容限
+            test_case.dtype = get_optional_string(object, "dtype").value_or("float32"); // 兼容 dtype
 
             if (auto v = get_optional_string(object, "hk_file")) test_case.hk_file = base / *v;
             if (auto v = get_optional_string(object, "data_file")) test_case.data_file = base / *v;
@@ -1139,7 +1202,9 @@ namespace
     {
         if (op == "qmf" || op == "ricker")
         {
-            return make_bundle(read_real_csv(test_case.expected_signal_file));
+            return apply_dtype_quantization(
+                make_bundle(read_real_csv(test_case.expected_signal_file)),
+                test_case.dtype);
         }
         if (op == "morlet" || op == "morlet2")
         {
@@ -1262,7 +1327,7 @@ namespace
         }
         else
         {
-            std::cout << "cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a\n";
+            std::cout << "cpu_perf_ms   : not_run (accuracy-only; use perf/full case set for timing)\n";
         }
         if (summary.gpu_e2e_perf.has_value())
         {
@@ -1279,7 +1344,7 @@ namespace
         }
         else
         {
-            std::cout << "gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a\n";
+            std::cout << "gpu_perf_ms   : not_run (accuracy-only; use perf/full case set for timing)\n";
         }
         std::cout << "reports       : data/reports/unit/wavelets/" << op << "/latest_summary.md\n";
     }
@@ -1318,8 +1383,10 @@ namespace
             return report;
         }
 
-        const OutputBundle cpu_output = runner.cpu(test_case);
-        const OutputBundle gpu_output = materialize(runner.gpu(test_case));
+        const OutputBundle cpu_output =
+            apply_dtype_quantization(runner.cpu(test_case), test_case.dtype);
+        const OutputBundle gpu_output =
+            apply_dtype_quantization(materialize(runner.gpu(test_case)), test_case.dtype);
         const OutputBundle expected = load_expected_bundle(op, test_case);
         report.samples = output_shape_size(cpu_output);
         report.cpu_gpu_error = compute_bundle_error(cpu_output, gpu_output);

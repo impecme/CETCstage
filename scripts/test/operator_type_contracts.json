@@ -3,19 +3,56 @@
   "real_types": ["float32", "float16", "int32", "int16", "int8"],
   "complex_types": ["complex64"],
   "forbidden_types": ["float64", "complex128", "complex32", "complex_int32", "complex_int16", "complex_int8"],
+  "upstream_complex64_alignment": {
+    "supported": {
+      "complex_generators": ["waveforms/chirp", "wavelets/morlet", "wavelets/morlet2"],
+      "real_to_complex_outputs": ["filtering/hilbert", "filtering/hilbert2", "spectral/stft", "wavelets/cwt"],
+      "mode_selectable_complex_outputs": ["spectral/spectrogram", "spectral/csd"],
+      "complex_input_to_real_outputs": ["spectral/istft", "demod/fm_demod"],
+      "complex_pipeline_or_dtype_preserving": [
+        "filtering/freq_shift", "filtering/channelize_poly",
+        "filtering/firfilter",
+        "radartools/pulse_compression", "radartools/pulse_doppler",
+        "radartools/ambgfun", "radartools/mvdr",
+        "correlate/correlate", "correlate/correlate2d",
+        "filter_design/cmplx_sort"
+      ]
+    },
+    "planned_public_gaps": {
+      "complex64_dtype_preserving_filtering": [
+        "filtering/lfilter", "filtering/firfilter2",
+        "filtering/filtfilt", "filtering/sosfilt", "filtering/decimate",
+        "filtering/resample", "filtering/resample_poly", "filtering/upfirdn"
+      ]
+    }
+  },
   "policies": {
     "floating_real": {
       "input_types": ["float32", "float16"],
       "output_types": ["float32", "float16"],
       "current_types": ["float32"],
+      "compatibility_types": ["float32", "float16"],
+      "compatibility_mode": "accept compatible FP16 inputs/outputs with FP32 intermediate accumulation",
       "accumulator": "float32",
       "integer_policy": "not_applicable",
       "output_rule": "preserve floating input type"
+    },
+    "floating_real_or_complex64": {
+      "input_types": ["float32", "float16", "complex64"],
+      "output_types": ["float32", "float16", "complex64"],
+      "current_types": ["float32", "complex64"],
+      "compatibility_types": ["float32", "float16", "complex64"],
+      "compatibility_mode": "real input preserves floating dtype through FP32-compatible accumulation; complex64 input remains complex64",
+      "accumulator": "float32",
+      "integer_policy": "not_applicable",
+      "output_rule": "preserve real or complex64 domain"
     },
     "floating_generator_real": {
       "input_types": [],
       "output_types": ["float32", "float16"],
       "current_types": ["float32"],
+      "compatibility_types": ["float32", "float16"],
+      "compatibility_mode": "dtype selects FP32 output or FP16-compatible output generated through FP32 math",
       "accumulator": "float32",
       "integer_policy": "not_applicable",
       "output_rule": "dtype selects floating output type"
@@ -24,6 +61,8 @@
       "input_types": [],
       "output_types": ["complex64"],
       "current_types": ["complex64"],
+      "compatibility_types": ["complex64"],
+      "compatibility_mode": "native complex64 only",
       "accumulator": "float32",
       "integer_policy": "not_applicable",
       "output_rule": "complex output is always complex64"
@@ -32,6 +71,8 @@
       "input_types": [],
       "output_types": ["float32", "float16", "complex64"],
       "current_types": ["float32", "complex64"],
+      "compatibility_types": ["float32", "float16", "complex64"],
+      "compatibility_mode": "real mode supports FP32/FP16-compatible output; complex mode remains complex64",
       "accumulator": "float32",
       "integer_policy": "not_applicable",
       "output_rule": "real mode follows floating dtype; complex mode is complex64"
@@ -40,6 +81,8 @@
       "input_types": ["float32", "float16"],
       "output_types": ["complex64"],
       "current_types": ["float32", "complex64"],
+      "compatibility_types": ["float32", "float16", "complex64"],
+      "compatibility_mode": "FP16-compatible real input is widened to FP32 before complex64 output",
       "accumulator": "float32",
       "integer_policy": "not_applicable",
       "output_rule": "all complex outputs use complex64"
@@ -48,6 +91,8 @@
       "input_types": ["float32", "float16"],
       "output_types": ["float32", "float16", "complex64"],
       "current_types": ["float32", "complex64"],
+      "compatibility_types": ["float32", "float16", "complex64"],
+      "compatibility_mode": "real output preserves FP32/FP16-compatible dtype; complex output remains complex64",
       "accumulator": "float32",
       "integer_policy": "not_applicable",
       "output_rule": "mode selects real output or complex64"
@@ -56,6 +101,8 @@
       "input_types": ["complex64"],
       "output_types": ["complex64", "float32"],
       "current_types": ["complex64", "float32"],
+      "compatibility_types": ["complex64", "float32"],
+      "compatibility_mode": "native complex64 pipeline with FP32 real diagnostics",
       "accumulator": "float32",
       "integer_policy": "not_applicable",
       "output_rule": "complex values remain complex64; real diagnostics use float32"
@@ -64,22 +111,28 @@
       "input_types": ["complex64"],
       "output_types": ["float32"],
       "current_types": ["complex64", "float32"],
+      "compatibility_types": ["complex64", "float32"],
+      "compatibility_mode": "native complex64 input to FP32 real output",
       "accumulator": "float32",
       "integer_policy": "not_applicable",
       "output_rule": "complex64 input produces float32 output"
     },
-    "numeric_identity": {
+    "float32_generator_real": {
       "input_types": [],
-      "output_types": ["float32", "float16", "int32", "int16", "int8"],
+      "output_types": ["float32"],
       "current_types": ["float32"],
+      "compatibility_types": ["float32"],
+      "compatibility_mode": "current public API returns RealSignal/ZxGpuRealSignal and only accepts dtype=float32",
       "accumulator": "none",
-      "integer_policy": "exact representable constants",
-      "output_rule": "dtype selects output type"
+      "integer_policy": "not_applicable",
+      "output_rule": "output is float32"
     },
     "numeric_correlate": {
       "input_types": ["float32", "float16", "int32", "int16", "int8", "complex64"],
       "output_types": ["float32", "float16", "int32", "int16", "int8", "complex64"],
       "current_types": ["float32", "complex64"],
+      "compatibility_types": ["float32", "float16", "int32", "int16", "int8", "complex64"],
+      "compatibility_mode": "numeric inputs preserve dtype; FP16 widens for accumulation and integers use widened accumulation before output conversion",
       "accumulator": "float32 for FP16; int64 for INT32; int32 for INT16/INT8",
       "integer_policy": "widened accumulation then saturating cast to input type",
       "output_rule": "preserve input type and domain"
@@ -88,6 +141,8 @@
       "input_types": ["float32", "float16", "int32", "int16", "int8"],
       "output_types": ["int32"],
       "current_types": ["float32", "int32"],
+      "compatibility_types": ["float32", "float16", "int32", "int16", "int8"],
+      "compatibility_mode": "all supported real/integer inputs compare in their value domain and return int32 indices",
       "accumulator": "none",
       "integer_policy": "exact comparisons without conversion",
       "output_rule": "indices are int32"
@@ -96,6 +151,8 @@
       "input_types": ["int32"],
       "output_types": ["int32"],
       "current_types": ["int32"],
+      "compatibility_types": ["int32"],
+      "compatibility_mode": "native int32 metadata path",
       "accumulator": "int64 for length arithmetic",
       "integer_policy": "range-check before int32 output",
       "output_rule": "indices are int32"
@@ -104,6 +161,8 @@
       "input_types": ["float32", "float16", "complex64"],
       "output_types": ["float32", "float16", "complex64", "int32"],
       "current_types": ["float32", "complex64", "int32"],
+      "compatibility_types": ["float32", "float16", "complex64", "int32"],
+      "compatibility_mode": "FP16-compatible values sort through FP32 magnitude; complex values remain complex64 and indices are int32",
       "accumulator": "float32 magnitude",
       "integer_policy": "not_applicable",
       "output_rule": "values preserve domain; indices are int32"
@@ -126,7 +185,7 @@
     "floating_real": [
       "waveforms/sawtooth", "waveforms/square",
       "bsplines/cubic", "bsplines/quadratic", "bsplines/gauss_spline",
-      "filtering/wiener", "filtering/firfilter", "filtering/lfilter",
+      "filtering/wiener", "filtering/lfilter",
       "filtering/firfilter_zi", "filtering/lfilter_zi", "filtering/firfilter2",
       "filtering/filtfilt", "filtering/sosfilt", "filtering/detrend",
       "filtering/decimate", "filtering/resample", "filtering/resample_poly",
@@ -138,6 +197,7 @@
     "floating_real_to_complex64": [
       "filtering/hilbert", "filtering/hilbert2", "spectral/stft", "wavelets/cwt"
     ],
+    "floating_real_or_complex64": ["filtering/firfilter"],
     "floating_real_to_real_or_complex64": ["spectral/spectrogram", "spectral/csd"],
     "floating_generator_complex64": ["wavelets/morlet", "wavelets/morlet2"],
     "complex64_pipeline": [
@@ -146,7 +206,7 @@
       "radartools/ambgfun", "radartools/mvdr"
     ],
     "complex64_to_real": ["spectral/istft", "demod/fm_demod"],
-    "numeric_identity": ["waveforms/unit_impulse"],
+    "float32_generator_real": ["waveforms/unit_impulse"],
     "numeric_correlate": ["correlate/correlate", "correlate/correlate2d"],
     "numeric_to_indices": [
       "peak_finding/argrelextrema", "peak_finding/argrelmin", "peak_finding/argrelmax"

@@ -880,6 +880,17 @@ namespace cusignal_demo::task1_radar
         return lhs.found == rhs.found && lhs.range_bin == rhs.range_bin && lhs.doppler_bin == rhs.doppler_bin;
     }
 
+    RealSignal detection_as_signal(const DetectionSummary &detection)
+    {
+        return RealSignal{
+            detection.found ? 1.0f : 0.0f,
+            static_cast<float>(detection.range_bin),
+            static_cast<float>(detection.doppler_bin),
+            detection.doppler_hz,
+            detection.power,
+        };
+    }
+
     ValidationResult validate_single_run(
         const DemoRunResult &run,
         const ValidationThresholds &thresholds,
@@ -1394,8 +1405,13 @@ namespace cusignal_demo::task1_radar
         detection.output_dtype = "int32+float32";
         detection.cpu_ms = detection_timing.cpu_ms;
         detection.gpu_e2e_ms = detection_timing.gpu_ms;
+        const ErrorMetrics detection_error = compute_real_error(
+            detection_as_signal(run.cpu_detection),
+            detection_as_signal(run.gpu_detection));
+        detection.error_available = true;
+        detection.error = detection_error;
         detection.pass = detection_matches(run.cpu_detection, run.gpu_detection);
-        detection.note = "public operator; exact business-bin comparison, numeric error not applicable";
+        detection.note = "public operator; exact business-bin comparison plus CPU/GPU detection vector error";
         steps.push_back(std::move(detection));
         cusignal_demo::report::write_step_metrics(report_root(), "task1_radar", steps);
     }

@@ -351,6 +351,11 @@ namespace cusignal_test::report
                    << format_float(summary.reference_error->max_rel_error) << "\n";
         }
         stream << "\n## Performance\n\n";
+        if (!summary.cpu_perf.has_value() && !summary.gpu_e2e_perf.has_value() &&
+            !summary.gpu_kernel_perf.has_value())
+        {
+            stream << "- timing: not_run (accuracy-only case set; use perf/full case set for timing)\n";
+        }
         if (summary.cpu_perf.has_value())
         {
             stream << "- cpu median_ms: " << format_fixed(summary.cpu_perf->median_ms) << "\n";

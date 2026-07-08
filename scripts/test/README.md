@@ -229,7 +229,38 @@ python3 scripts/test/validate_operator_type_contracts.py \
   --contracts scripts/test/operator_type_contracts.json
 ```
 
-输出中的 `current_types` 表示当前代码能力，不能用目标输入/输出类型替代实现状态。
+输出中的 `current_types` 表示当前原生直达类型，`compatibility_types` 表示允许通过
+FP32/complex64 中间计算、整数扩展累加或受控转换覆盖的兼容类型；目标输入/输出
+类型必须全部落入 `compatibility_types`，但不能把兼容路径误读为每个 dtype 都有
+独立原生 kernel。
+
+类型契约还维护原 cuSignal complex64 对齐清单。`upstream_complex64_supported_count`
+统计已进入公共算子契约的复数语义项，`upstream_complex64_planned_gap_count`
+统计仍待公共化的 dtype-preserving filtering/resampling 复数路径；Task2 filter
+主路径已迁移到公共 `filtering::firfilter` complex64 接口，demo 内部 helper 仅用于
+实部投影、切片等辅助处理。
+
+### `audit_dtype_test_coverage.py`
+
+该脚本按 `compatibility_types` 展开逐算子 dtype 测试覆盖。`cusignal_type_contract_tests`
+只能证明公共容器和 H2D/D2H roundtrip 覆盖了 FP32、FP16、INT32、INT16、INT8 和
+complex64；本审计额外检查各算子的 accuracy/perf manifest 是否存在可识别的 dtype
+用例。若输出 `status=action_required`，表示仍需为对应算子补逐 dtype 用例，不能把
+类型契约通过解释成逐 dtype 测试已完成。
+
+accuracy-only 运行只采集正确性指标，不采集 CPU/GPU timing；终端摘要里的
+`cpu_perf_ms: not_run` 和 `gpu_perf_ms: not_run` 表示性能项未运行，不表示失败。
+`max_abs=0`、`max_rel=0`、`rmse=0` 表示 CPU/GPU/reference 在当前比较口径下完全一致；
+FP16 兼容用例通常会先按 FP16 可表示值量化后再比较，因此小规模用例出现 0 误差是正常结果。
+
+```bash
+scripts/test/run_all_tests.sh --list > /tmp/v5_5_all81.tsv
+python3 scripts/test/audit_dtype_test_coverage.py \
+  --registry /tmp/v5_5_all81.tsv \
+  --contracts scripts/test/operator_type_contracts.json \
+  --output-dir data/reports/zhongkexin/v5_2_dtype_test_coverage \
+  --summary-markdown docs/performance/v5_0/dtype_test_coverage.md
+```
 
 ## `benchmark_all_ops_scales.py`（全量多规模采集）
 该脚本用于当前已启用的 81 个算子多规模 `perf` 自动化测试。每个算子执行 6 个规模点，脚本会按算子输入语义临时改写 `data/generated/unit/<module>/<operator>/manifest.json`，运行结束后自动恢复 manifest。
@@ -657,7 +688,7 @@ wavelets,cwt,summary.pass=false due to ...,precompute kernel + fmaf accumulation
 
 ## `audit_task_steps.py`（V5.3 任务步骤审计）
 
-该脚本读取 `task_step_contracts.json`，检查 Task1/Task2 每个步骤登记的 CPU/GPU 符号确实存在，并输出公共算子、任务私有实现、计时和精度缺口。`status=passed` 只表示审计清单完整，不表示 mixed/private 步骤已完成迁移。
+该脚本读取 `task_step_contracts.json`，检查 Task1/Task2 每个步骤登记的 CPU/GPU 符号确实存在，并输出公共算子链路、任务 helper、计时和精度缺口。`mixed` 表示公共算子加任务辅助函数，按当前验收口径属于公共算子实现链路。
 
 ```bash
 python3 scripts/test/audit_task_steps.py \
@@ -670,7 +701,10 @@ python3 scripts/test/audit_task_steps.py \
 
 ## `validate_task_step_reports.py`（V5.3 步骤报告门禁）
 
-运行两个任务后，校验 `latest_step_metrics.json` 的固定字段、步骤集合、数值有限性和 complex64 实虚分量误差。当前允许 `gpu_kernel_ms=null`，但禁止伪造数值。
+运行两个任务后，校验 `latest_step_metrics.json` 的 schema v2、固定字段、步骤集合、
+14 个计算步骤的误差覆盖、数值有限性和 complex64 实虚分量误差，同时校验
+`latest_step_metrics.csv` 没有被逗号打散。
+当前允许 `gpu_kernel_ms=null`，但禁止伪造数值。
 
 ```bash
 scripts/test/run_task_demos.sh --build-dir build-zx --build --repeat 1 --skip-timing-validation

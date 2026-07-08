@@ -2,6 +2,7 @@
   "accuracy_cases": [
     {
       "id": "surface_auto",
+      "input_kind": "complex",
       "x_shape": [
         16
       ],
@@ -17,6 +18,7 @@
     },
     {
       "id": "delay_cross",
+      "input_kind": "complex",
       "x_shape": [
         16
       ],
@@ -36,6 +38,7 @@
     },
     {
       "id": "doppler_auto",
+      "input_kind": "complex",
       "x_shape": [
         16
       ],

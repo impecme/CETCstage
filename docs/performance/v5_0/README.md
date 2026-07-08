@@ -14,15 +14,16 @@ V5 在 CPU reference 与中科芯 ZQ500 GPU 正确性不退化的前提下，完
 | V5.2 | `plans/V5_2_plan.md` | `docs/submission/READMEV5_2.md` | 已完成 | 目录、81 算子契约、类型矩阵和完整平台兼容审计完成 |
 | V5.3 | `plans/V5_3_plan.md` | `docs/submission/READMEV5_3.md` | 已完成 | 两任务每步调用算子库，27 个依赖算子和逐步计时/精度闭环 |
 | V5.4 | `plans/V5_4_plan.md` | `docs/submission/READMEV5_4.md` | 已完成 | 核心 53/53 完成规范化、独立测试和性能结论 |
-| V5.5 | `plans/V5_5_plan.md` | `docs/submission/READMEV5_5.md` | 进行中 | 全库 81/81、486 行 benchmark、任务和平台最终验收完成 |
+| V5.5 | `plans/V5_5_plan.md` | `docs/submission/READMEV5_5.md` | 已完成 | 全库 81/81、任务步骤 schema v2、类型覆盖和平台最终验收完成 |
+| V6.0 | `plans/V6_0_plan.md` | 待生成 | 规划中 | 深度优化 Task1/Task2 与任务相关算子，轻度优化赛题算子库 |
 
 ## 当前执行点
 
-- 当前阶段：V5.5 扩展 28 和全库 81 算子最终验收。
+- 当前阶段：V6.0 规划，进入任务优先的深度性能优化。
 - 已完成基线：V5.1 可观测性、cache 统计和整卡显存采样。
 - 已提前完成：`filtering/wiener` 二维 shared-memory tiled 快路径，归入 V5.4 核心 53。
 - V5.4 收口：`v5_4_gate_latest` 已通过，核心 53/53、模块回归、任务 smoke、接口/类型契约和组合图件均通过。
-- 下一门禁：V5.5 扩展 28 算子 probe、全库 81 benchmark 和最终验收。
+- 下一门禁：建立 Task1/Task2 L1-L6 repeat=3 基线和 all81 当前基线。
 
 ## 当前执行队列
 
@@ -42,9 +43,10 @@ V5 在 CPU reference 与中科芯 ZQ500 GPU 正确性不退化的前提下，完
 14. `V5.4-04`：已关闭；任务 smoke、接口审计和类型契约复核通过。
 15. `V5.4-05`：已关闭；受影响模块 full 回归通过。
 16. `V5.4-06`：已关闭；阶段关闭验证与交付文档收口通过。
-17. `V5.5-01`：当前工作包；扩展 28 算子 L1-L6 probe 与热点排序。
+17. `V5.5-01`：已关闭；扩展 28、all81、任务、类型和平台最终验收完成。
+18. `V6.0-01`：当前工作包；建立 Task1/Task2 L1-L6 repeat=3 基线和 all81 当前基线。
 
-V5.4 已关闭。当前进入 `V5.5-01`，先执行扩展 28 算子 L1-L6 probe，再按全库 81 进行最终收口。
+V5.5 已关闭。当前进入 `V6.0-01`，第六版只把 Task1/Task2 和赛题直接相关算子作为性能主线；原 cuSignal 中赛题未提到的算子暂不做进一步性能优化。
 
 ### V5.2-01 已关闭命令
 
@@ -135,9 +137,13 @@ print(json.dumps(payload["summary"], indent=2))
 PY
 ```
 
-预期为 81 个算子、13 个类型策略、五种实数且复数仅 complex64。
+预期为 81 个算子、14 个类型策略、五种实数、复数仅 complex64，且
+`compatibility_gap_count=0`。`current_types` 记录原生直达类型，
+`compatibility_types` 记录 FP32/complex64 中间计算、整数扩展累加或受控转换
+覆盖的兼容路径。原 cuSignal complex64 对齐清单应显示 21 个公共契约已支持项；
+另有 8 个 filtering/resampling dtype-preserving 复数扩展路径不属于当前赛题强制项。
 
-2026-06-21 容器实测 `status=passed`、81 个算子、13 个策略、8 个整数相关算子和 20 个 complex64 相关算子，本工作包已关闭。
+当前类型契约应为 `status=passed`、81 个算子、14 个策略、8 个整数相关算子和 21 个 complex64 相关算子。
 
 ### V5.2-05 容器命令
 
@@ -181,7 +187,7 @@ PY
 - 纯浮点算子不强制实现整数版本，但必须记录不适用理由并验证拒绝行为。
 - FP16 只表示实数半精度路径；默认复数输出算子只实现 `complex64`，不实现半精度复数。
 - 适用 FP16 的实数算子允许内部使用 FP32 中间累加；整数兼容只针对原始语义允许的算子，不能用简单 cast 代替整数语义。
-- 当前实现能力与目标适用类型分开记录；V5.4/V5.5 逐项把 `current_types` 推进到目标适用范围。
+- 当前原生直达类型与兼容路径分开记录；V5.5 当前门禁要求目标适用类型全部落入 `compatibility_types`，但不要求每个目标 dtype 都有独立原生 kernel。
 
 ## 执行规则
 
@@ -201,5 +207,5 @@ PY
 | `operator_contract_inventory.md` | 由测试注册表生成的 81 条声明、CPU/GPU、测试和审计状态 |
 | `operator_type_contracts.md` | 81 算子的五种实数适用性、complex64、累加和整数转换契约 |
 | `platform_compatibility_matrix.md` | 三个复赛表的覆盖统计、分类口径和 V5.2-06 探针边界 |
-| `task_step_audit.md` | Task1/Task2 步骤、公共算子映射、私有实现和报告缺口 |
-| `plans/V5_0_plan.md` 至 `plans/V5_5_plan.md` | 总计划与各阶段门禁 |
+| `task_step_audit.md` | Task1/Task2 步骤、公共算子链路、计时和精度覆盖 |
+| `plans/V5_0_plan.md` 至 `plans/V6_0_plan.md` | 总计划与各阶段门禁 |

@@ -17,6 +17,16 @@
       "period_file": "input/vector_periods__periods.csv",
       "expected_strength_file": "expected/vector_periods__strength.csv",
       "expected_phase_file": "expected/vector_periods__phase.csv"
+    },
+    {
+      "id": "scalar_period_float16_compat",
+      "dtype": "float16",
+      "atol": 2e-2,
+      "rtol": 2e-2,
+      "period_scalar": 1.25,
+      "events_file": "input/scalar_period__events.csv",
+      "expected_strength_file": "expected/scalar_period__strength.csv",
+      "expected_phase_file": "expected/scalar_period__phase.csv"
     }
   ]
 }

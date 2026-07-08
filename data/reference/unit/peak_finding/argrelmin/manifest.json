@@ -2,6 +2,7 @@
   "accuracy_cases": [
     {
       "id": "min_1d",
+      "dtype": "float32",
       "comparator": "less",
       "axis": 0,
       "order": 1,
@@ -14,6 +15,7 @@
     },
     {
       "id": "min_wrap",
+      "dtype": "float32",
       "comparator": "less",
       "axis": 0,
       "order": 1,
@@ -23,6 +25,50 @@
       ],
       "data_file": "input/min_wrap__data.csv",
       "expected_axis0_file": "expected/min_wrap__axis0.csv"
+    },
+    {
+      "id": "min_float16_compat",
+      "dtype": "float16",
+      "comparator": "less",
+      "axis": 0,
+      "order": 1,
+      "mode": "clip",
+      "shape": [
+        5
+      ]
+    },
+    {
+      "id": "min_int8_compat",
+      "dtype": "int8",
+      "comparator": "less",
+      "axis": 0,
+      "order": 1,
+      "mode": "clip",
+      "shape": [
+        5
+      ]
+    },
+    {
+      "id": "min_int16_compat",
+      "dtype": "int16",
+      "comparator": "less",
+      "axis": 0,
+      "order": 1,
+      "mode": "clip",
+      "shape": [
+        5
+      ]
+    },
+    {
+      "id": "min_int32_compat",
+      "dtype": "int32",
+      "comparator": "less",
+      "axis": 0,
+      "order": 1,
+      "mode": "clip",
+      "shape": [
+        5
+      ]
     }
   ]
 }

@@ -8,7 +8,8 @@
     "rtol": "相对误差容限",
     "x_file": "输入/输出数据文件路径",
     "expected_signal_file": "输入/输出数据文件路径",
-    "expected_signal_shape": "张量/数组形状"
+    "expected_signal_shape": "张量/数组形状",
+    "dtype": "兼容路径数据类型；float16 用例按 FP16 量化后比较"
   },
   "accuracy_cases": [
     {
@@ -38,6 +39,20 @@
         3,
         4
       ]
+    },
+    {
+      "id": "boundary_vector_float16_compat",
+      "x_shape": [
+        11
+      ],
+      "atol": 0.001,
+      "rtol": 0.001,
+      "x_file": "input/boundary_vector.csv",
+      "expected_signal_file": "expected/boundary_vector.csv",
+      "expected_signal_shape": [
+        11
+      ],
+      "dtype": "float16"
     }
   ]
 }

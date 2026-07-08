@@ -14,7 +14,8 @@
     "rtol": "相对误差容限",
     "expected_signal_file": "输入/输出数据文件路径",
     "expected_quadrature_file": "输入/输出数据文件路径",
-    "expected_envelope_file": "输入/输出数据文件路径"
+    "expected_envelope_file": "输入/输出数据文件路径",
+    "dtype": "兼容路径数据类型；float16 用例按 FP16 量化后比较"
   },
   "accuracy_cases": [
     {
@@ -72,6 +73,20 @@
       "expected_signal_file": "expected/signal.csv",
       "expected_quadrature_file": "expected/quadrature.csv",
       "expected_envelope_file": "expected/envelope.csv"
+    },
+    {
+      "id": "real_float16_compat",
+      "t_file": "input/small_time.csv",
+      "fc": 5.0,
+      "bw": 0.5,
+      "bwr": -6.0,
+      "tpr": -60.0,
+      "retquad": false,
+      "retenv": false,
+      "atol": 0.001,
+      "rtol": 0.001,
+      "expected_signal_file": "expected/signal.csv",
+      "dtype": "float16"
     }
   ]
 }

@@ -21,6 +21,18 @@
       "expected_signal_shape": [
         2
       ]
+    },
+    {
+      "id": "stable_iir_float16_compat",
+      "dtype": "float16",
+      "b_file": "input/b.csv",
+      "a_file": "input/a.csv",
+      "atol": 5e-2,
+      "rtol": 5e-2,
+      "expected_signal_file": "expected/stable_iir.csv",
+      "expected_signal_shape": [
+        2
+      ]
     }
   ]
 }

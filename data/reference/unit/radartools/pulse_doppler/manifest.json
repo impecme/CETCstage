@@ -2,6 +2,7 @@
   "accuracy_cases": [
     {
       "id": "basic",
+      "input_kind": "complex",
       "x_shape": [
         4,
         6
@@ -14,6 +15,7 @@
     },
     {
       "id": "boxcar_nfft8",
+      "input_kind": "complex",
       "x_shape": [
         4,
         6

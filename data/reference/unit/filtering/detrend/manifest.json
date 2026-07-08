@@ -34,6 +34,27 @@
       "expected_signal_shape": [
         12
       ]
+    },
+    {
+      "id": "linear_bp_float16_compat",
+      "dtype": "float16",
+      "data_file": "input/data.csv",
+      "data_shape": [
+        12
+      ],
+      "axis": -1,
+      "type": "linear",
+      "bp": [
+        4,
+        8
+      ],
+      "overwrite_data": false,
+      "atol": 5e-2,
+      "rtol": 5e-2,
+      "expected_signal_file": "expected/linear_bp.csv",
+      "expected_signal_shape": [
+        12
+      ]
     }
   ]
 }

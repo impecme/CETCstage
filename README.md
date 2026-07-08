@@ -176,7 +176,7 @@ cd /home/usr_04/CETC
 /CETC.incoming.20260615124530/replace_container_project.sh /CETC
 ```
 
-同步脚本只更新代码、脚本和文档；`data/reports/` 与 `data/generated/` 属于容器运行产物，不随宿主机同步覆盖。容器替换项目时也会保留已有 `build-zx`、`data/reports` 和 `data/generated`，避免覆盖刚跑出的 benchmark/report。
+同步脚本只更新代码、脚本和文档；`data/reports/` 与 `data/generated/` 属于容器运行产物，不随宿主机同步覆盖。容器替换项目时也会保留已有 `build-zx`、`data/reports` 和 `data/generated`，避免覆盖刚跑出的 benchmark/report。脚本会刷新临时副本中的源码时间戳，防止保留的 `build-zx` 复用旧对象；若仍怀疑旧二进制参与运行，使用 `cmake --build build-zx --clean-first --target ...` 强制重编译目标。
 
 然后在容器内执行当前阶段统一入口：
 
@@ -292,9 +292,9 @@ print(json.dumps(payload["summary"], indent=2))
 PY
 ```
 
-预期：`status=passed`、`operator_count=81`、`policy_count=13`，实数类型恰好为五种，复数类型只有 complex64。该契约区分目标类型和 `current_types`，不会把待实现类型写成已支持。
+预期：`status=passed`、`operator_count=81`、`policy_count=14`，实数类型恰好为五种，复数类型只有 complex64，且 `compatibility_gap_count=0`。该契约区分 `current_types` 原生直达类型和 `compatibility_types` 兼容路径；兼容路径允许 FP16 经 FP32 中间计算、整数经扩展累加/受控转换覆盖，但不会把兼容路径误写成每个 dtype 都有独立原生 kernel。原 cuSignal complex64 对齐清单当前应显示 21 个公共契约已支持项；另有 8 个 filtering/resampling dtype-preserving 复数扩展路径不属于当前赛题强制项。
 
-2026-06-21 容器实测通过：81 个算子唯一归入 13 个策略，整数相关算子 8 个，complex64 相关算子 20 个。V5.2-04 已关闭。
+当前类型契约通过：81 个算子唯一归入 14 个策略，整数相关算子 8 个，complex64 相关算子 21 个。
 
 ### V5.2-05 当前阶段验证
 
@@ -479,9 +479,9 @@ cat data/reports/zhongkexin/v5_4_gate_latest/summary.md
 
 实测结果为 `status=passed`、core53 `53/53`、模块回归 `passed`、任务 smoke `passed`、contracts `passed`、组合图件 `12` 个模块图覆盖 `53` 个算子。
 
-### V5.5 当前阶段验证
+### V5.5 已关闭验证
 
-当前性能优化阶段进入 V5.5，先执行扩展 28 算子 probe，再合并全库 81 进行最终验收。同步后在容器运行：
+V5.5 已完成扩展 28、全库 81、任务步骤、类型覆盖和平台项目使用范围验收。若需要复跑全库性能终测，同步后在容器运行：
 
 ```bash
 cd /CETC
@@ -498,7 +498,11 @@ STAGE4_REPORT_ROOT=data/reports/zhongkexin/v5_5_extended28_probe_latest \
 scripts/platform/run_zhongkexin_stage4.sh 2>&1 | tee stage5_5_extended28_probe.log
 ```
 
-回传 `latest_all_ops_scale_benchmark.csv` 行数、失败行、top GPU E2E、low speedup 和 `latest_stage4_summary.json` 显存字段后，按扩展 28 的热点继续优化。
+V5.5 最终交付结论见 `docs/submission/READMEV5_5.md`。中间 probe、完整日志和大体积图件不进入仓库，只保留 `data/reports/` 下的精简交付证据。
+
+### V6.0 当前阶段验证
+
+第六版进入任务优先的深度性能优化：深度优化 Task1/Task2 和任务相关算子，轻度优化赛题提到的算子库；原 cuSignal 中赛题未提到的算子暂不做进一步性能优化。计划见 `docs/performance/v5_0/plans/V6_0_plan.md`。
 
 `run_zhongkexin_stage4.sh` 会自动检查依赖、配置中科芯 `build-zx`、运行 Task1/Task2 L1-L6 scale sweep、执行全量算子多规模 benchmark，并生成报告和图件。当前交付验收只面向 CPU reference + 容器内 ZQ500 GPU。
 
@@ -749,16 +753,14 @@ python3 scripts/test/plot_all_ops_benchmark.py \
 
 | 证据类型 | 工程路径 | 用途 |
 |---|---|---|
-| 任务级汇总报告 | `data/reports/demo/latest_task_demo_report.md` | Task1/Task2 默认任务验证汇总 |
-| 任务级规模报告 | `data/reports/demo/latest_task_demo_scale_report.md` | Task1/Task2 L1-L6 六档规模性能 |
-| 任务级规模 CSV | `data/reports/demo/latest_task_demo_scale_benchmark.csv` | 六档 CPU/GPU 耗时、加速比与误差 |
-| Task1 metrics | `data/reports/demo/task1_radar/latest_metrics.json` | Task1 检测结果、误差、资源与稳定性 |
-| Task1 阶段耗时 | `data/reports/demo/task1_radar/latest_stage_timings.csv` | Task1 分阶段 CPU/GPU 耗时 |
-| Task2 metrics | `data/reports/demo/task2_features/latest_metrics.json` | Task2 轨迹、误差、资源与稳定性 |
-| Task2 阶段耗时 | `data/reports/demo/task2_features/latest_stage_timings.csv` | Task2 分阶段 CPU/GPU 耗时 |
-| 81 算子 benchmark | `data/reports/unit/benchmarks/v5_5_final/latest_all_ops_scale_benchmark.csv` | 81 个迁移算子 L1-L6 性能与精度 |
-| 全量组合图件 | `data/reports/unit/benchmarks/v5_5_final/figures/` | benchmark 总览图与 12 张模块组合图 |
-| V5.5 总汇总 | `data/reports/zhongkexin/v5_5_final/summary.md` | all81、任务 smoke、接口/类型契约和图件门禁 |
+| 报告目录说明 | `data/reports/README.md` | 当前保留报告、仓库外垃圾目录和不保留项 |
+| V5.5 交付文档 | `docs/submission/READMEV5_5.md` | 全库 81、任务步骤、类型兼容、平台适配和关键优化汇总 |
+| dtype 兼容最终摘要 | `data/reports/zhongkexin/v5_5_dtype_compat_final/README.md` | dtype 覆盖与精简证据索引 |
+| dtype 覆盖审计 | `data/reports/zhongkexin/v5_5_dtype_compat_final/dtype_test_coverage.json` | 五种实数和 complex64 的逐算子覆盖结论 |
+| 类型契约 | `data/reports/zhongkexin/v5_5_type_contracts/latest_type_contracts.json` | 81 算子的类型策略、兼容路径和禁止类型 |
+| 任务步骤审计 | `data/reports/zhongkexin/v5_3_task_step_audit/latest_task_step_audit.json` | Task1/Task2 14 个计算步骤公共算子链路、计时和精度覆盖 |
+| filtering dtype 复跑 | `data/reports/unit/filtering/latest_metrics.json` | filtering 模块 dtype 兼容最终复跑 |
+| coherence FP16 复跑 | `data/reports/unit/spectral/coherence/latest_metrics.json` | `spectral/coherence` FP16 兼容修正用例 |
 | 单元测试入口 | `tests/unit/` | 81 个已迁移算子的测试覆盖 |
 | 公开接口 | `include/cusignal/` | 库函数头文件与公开 API |
 | ZQ500 GPU 实现 | `src/zhongkexin/` | GPU 加速实现源码 |

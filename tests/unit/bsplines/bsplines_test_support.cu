@@ -35,6 +35,7 @@ namespace cusignal
 
 namespace
 {
+    using cusignal::core::Float16;
     using cusignal::core::ZxGpuRealArray;
     using cusignal::core::RealArray;
     using cusignal::core::RealArrayLike;
@@ -128,6 +129,7 @@ namespace
         std::size_t x_count = 0; // 性能用例输入采样点数
         float atol = 0.0; // 正确性校验的绝对误差容限
         float rtol = 0.0; // 正确性校验的相对误差容限
+        std::string dtype = "float32"; // 兼容路径 dtype；float16 用例按 FP16 量化后比较
         std::optional<RealArray> generated_x;
     };
 
@@ -460,6 +462,30 @@ namespace
         return true;
     }
 
+    float quantize_float16(float value)
+    {
+        return __half2float(Float16(value));
+    }
+
+    RealArray apply_dtype_quantization(const RealArray &array, const std::string &dtype)
+    {
+        if (dtype == "float32")
+        {
+            return array;
+        }
+        if (dtype != "float16")
+        {
+            throw std::runtime_error("unsupported bsplines dtype compatibility case: " + dtype);
+        }
+
+        RealArray quantized = array;
+        for (float &value : quantized.values)
+        {
+            value = quantize_float16(value);
+        }
+        return quantized;
+    }
+
     TimingStats compute_timing_stats(const std::vector<float> &samples)
     {
         TimingStats stats;
@@ -625,6 +651,7 @@ namespace
                 get_optional_bool(object, "expect_invalid_argument", false); // 该用例是否应抛出异常
             test_case.atol = get_optional_number(object, "atol", 0.0); // 绝对误差容限
             test_case.rtol = get_optional_number(object, "rtol", 0.0); // 相对误差容限
+            test_case.dtype = get_optional_string(object, "dtype").value_or("float32"); // 兼容 dtype
             if (const auto iter = object.find("x_shape"); iter != object.end())
             {
                 test_case.x_shape = json_array_to_shape(iter->second);
@@ -848,7 +875,7 @@ namespace
         }
         else
         {
-            std::cout << "cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a\n";
+            std::cout << "cpu_perf_ms   : not_run (accuracy-only; use perf/full case set for timing)\n";
         }
         if (summary.gpu_e2e_perf.has_value())
         {
@@ -869,7 +896,7 @@ namespace
         }
         else
         {
-            std::cout << "gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a\n";
+            std::cout << "gpu_perf_ms   : not_run (accuracy-only; use perf/full case set for timing)\n";
         }
         std::cout << "reports       : data/reports/unit/bsplines/" << op << "/latest_summary.md\n";
     }
@@ -909,14 +936,18 @@ namespace
             return report;
         }
 
-        const RealArray cpu_output = runner.cpu(test_case);
-        const RealArray gpu_output = runner.gpu(test_case).get();
+        const RealArray cpu_output =
+            apply_dtype_quantization(runner.cpu(test_case), test_case.dtype);
+        const RealArray gpu_output =
+            apply_dtype_quantization(runner.gpu(test_case).get(), test_case.dtype);
         report.samples = cpu_output.values.size();
         report.cpu_gpu_error = compute_error_metrics(cpu_output, gpu_output);
 
         if (!test_case.expected_signal_file.empty())
         {
-            const RealArray expected = load_real_array(test_case.expected_signal_file, test_case.x_shape);
+            const RealArray expected = apply_dtype_quantization(
+                load_real_array(test_case.expected_signal_file, test_case.x_shape),
+                test_case.dtype);
             report.cpu_reference_error = compute_error_metrics(cpu_output, expected);
             report.gpu_reference_error = compute_error_metrics(gpu_output, expected);
             report.pass = within_tolerance(cpu_output, expected, test_case.atol, test_case.rtol) &&

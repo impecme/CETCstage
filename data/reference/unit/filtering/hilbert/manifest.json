@@ -3,6 +3,7 @@
   "__comment_fields": {
     "accuracy_cases": "精度测试用例列表",
     "id": "测试用例 ID（建议唯一）",
+    "output_kind": "输出类型族：real / complex；complex 表示 complex64 输出路径",
     "x_file": "输入/输出数据文件路径",
     "x_shape": "张量/数组形状",
     "n": "阶数或长度参数（按算子语义）",
@@ -15,6 +16,7 @@
   "accuracy_cases": [
     {
       "id": "analytic_1d",
+      "output_kind": "complex",
       "x_file": "input/x.csv",
       "x_shape": [
         16
@@ -23,6 +25,23 @@
       "axis": -1,
       "atol": 1e-10,
       "rtol": 1e-10,
+      "expected_signal_file": "expected/analytic_1d.csv",
+      "expected_signal_shape": [
+        16
+      ]
+    },
+    {
+      "id": "analytic_1d_float16_compat",
+      "dtype": "float16",
+      "output_kind": "complex",
+      "x_file": "input/x.csv",
+      "x_shape": [
+        16
+      ],
+      "n": 0,
+      "axis": -1,
+      "atol": 5e-2,
+      "rtol": 5e-2,
       "expected_signal_file": "expected/analytic_1d.csv",
       "expected_signal_shape": [
         16

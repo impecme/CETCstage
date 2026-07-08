@@ -60,6 +60,27 @@
         18
       ],
       "expected_time_file": "expected/time_domain_with_t__time.csv"
+    },
+    {
+      "id": "time_domain_no_t_float16_compat",
+      "dtype": "float16",
+      "x_file": "input/x.csv",
+      "x_shape": [
+        12
+      ],
+      "num": 20,
+      "axis": 0,
+      "window": {
+        "kind": "string",
+        "value": "hann"
+      },
+      "domain": "time",
+      "atol": 5e-2,
+      "rtol": 5e-2,
+      "expected_signal_file": "expected/time_domain_no_t.csv",
+      "expected_signal_shape": [
+        20
+      ]
     }
   ]
 }

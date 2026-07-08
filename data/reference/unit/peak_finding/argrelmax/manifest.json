@@ -2,6 +2,7 @@
   "accuracy_cases": [
     {
       "id": "max_1d",
+      "dtype": "float32",
       "comparator": "greater",
       "axis": 0,
       "order": 1,
@@ -14,6 +15,7 @@
     },
     {
       "id": "max_2d_axis1",
+      "dtype": "float32",
       "comparator": "greater",
       "axis": 1,
       "order": 1,
@@ -28,6 +30,7 @@
     },
     {
       "id": "plateau_none",
+      "dtype": "float32",
       "comparator": "greater",
       "axis": 0,
       "order": 1,
@@ -37,6 +40,50 @@
       ],
       "data_file": "input/plateau_none__data.csv",
       "expected_axis0_file": "expected/plateau_none__axis0.csv"
+    },
+    {
+      "id": "max_float16_compat",
+      "dtype": "float16",
+      "comparator": "greater",
+      "axis": 0,
+      "order": 1,
+      "mode": "clip",
+      "shape": [
+        5
+      ]
+    },
+    {
+      "id": "max_int8_compat",
+      "dtype": "int8",
+      "comparator": "greater",
+      "axis": 0,
+      "order": 1,
+      "mode": "clip",
+      "shape": [
+        5
+      ]
+    },
+    {
+      "id": "max_int16_compat",
+      "dtype": "int16",
+      "comparator": "greater",
+      "axis": 0,
+      "order": 1,
+      "mode": "clip",
+      "shape": [
+        5
+      ]
+    },
+    {
+      "id": "max_int32_compat",
+      "dtype": "int32",
+      "comparator": "greater",
+      "axis": 0,
+      "order": 1,
+      "mode": "clip",
+      "shape": [
+        5
+      ]
     }
   ]
 }

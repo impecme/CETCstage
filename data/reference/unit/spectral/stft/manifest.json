@@ -2,8 +2,34 @@
   "accuracy_cases": [
     {
       "id": "zeros_padded",
+      "output_kind": "complex",
       "atol": 1e-09,
       "rtol": 1e-09,
+      "fs": 400.0,
+      "window": {
+        "kind": "string",
+        "value": "hann"
+      },
+      "nperseg": 64,
+      "noverlap": 48,
+      "nfft": 128,
+      "detrend": false,
+      "boundary": "zeros",
+      "padded": true,
+      "x_shape": [
+        384
+      ],
+      "x_file": "input/zeros_padded__x.csv",
+      "expected_frequencies_file": "expected/zeros_padded__frequencies.csv",
+      "expected_times_file": "expected/zeros_padded__times.csv",
+      "expected_values_file": "expected/zeros_padded__values.csv"
+    },
+    {
+      "id": "zeros_padded_float16_compat",
+      "dtype": "float16",
+      "output_kind": "complex",
+      "atol": 2e-2,
+      "rtol": 2e-2,
       "fs": 400.0,
       "window": {
         "kind": "string",

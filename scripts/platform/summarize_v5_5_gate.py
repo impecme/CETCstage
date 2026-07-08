@@ -43,6 +43,13 @@ def read_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def first_existing_path(*paths: Path) -> Path:
+    for path in paths:
+        if path.exists():
+            return path
+    return paths[0]
+
+
 def read_csv_rows(path: Path) -> list[dict[str, str]]:
     if not path.exists():
         raise FileNotFoundError(f"missing CSV: {path}")
@@ -174,14 +181,38 @@ def summarize_modules(unit_root: Path) -> dict[str, Any]:
 
 def summarize_task_smoke(path: Path) -> dict[str, Any]:
     payload = read_json(path)
-    passed = payload.get("status") == "passed" and payload.get("failure_count") == 0
+    passed = (
+        payload.get("status") == "passed"
+        and payload.get("task_count") == 2
+        and payload.get("step_count") == 14
+        and payload.get("error_available_count") == 14
+        and payload.get("failure_count") == 0
+    )
     return {
         "path": str(path),
         "status": payload.get("status", "unknown"),
         "task_count": payload.get("task_count"),
         "step_count": payload.get("step_count"),
+        "error_available_count": payload.get("error_available_count"),
         "failure_count": payload.get("failure_count"),
         "passed": passed,
+    }
+
+
+def summarize_task_steps(path: Path) -> dict[str, Any]:
+    summary = read_json(path).get("summary", {})
+    passed = (
+        summary.get("status") == "passed"
+        and summary.get("calculation_step_count") == 14
+        and summary.get("public_operator_link_count") == 14
+        and summary.get("timing_gap_count") == 0
+        and summary.get("accuracy_gap_count") == 0
+        and summary.get("failure_count") == 0
+    )
+    return {
+        "path": str(path),
+        "summary": summary,
+        "status": "passed" if passed else "failed",
     }
 
 
@@ -195,6 +226,19 @@ def summarize_contracts(interface_path: Path, type_path: Path) -> dict[str, Any]
         and types.get("status") == "passed"
         and types.get("operator_count") == 81
         and types.get("complex_types") == ["complex64"]
+        and types.get("compatibility_gap_count", 0) == 0
+        and types.get("native_direct_operator_count") is not None
+        and types.get("converted_compatibility_operator_count") is not None
+        and types.get("upstream_complex64_supported_count") == 21
+        and types.get("upstream_complex64_planned_gap_count") == 8
+        and set(types.get("converted_type_counts", {})) == {
+            "complex64",
+            "float16",
+            "float32",
+            "int16",
+            "int32",
+            "int8",
+        }
     )
     return {
         "interface_path": str(interface_path),
@@ -243,6 +287,8 @@ def write_markdown(path: Path, payload: dict[str, Any]) -> None:
         f"- all81 失败数: `{payload['all81']['failed_count']}`",
         f"- 模块回归: `{zh_status(payload['modules']['status'])}`",
         f"- 任务 smoke: `{zh_status(payload['task_smoke']['status'])}`",
+        f"- 任务步骤误差覆盖: `{payload['task_smoke'].get('error_available_count')}/14`",
+        f"- 任务步骤审计: `{zh_status(payload['task_steps']['status'])}`",
         f"- 契约审计: `{zh_status(payload['contracts']['status'])}`",
         f"- 组合图件: `{payload['plots']['module_figure_count']}` 个模块，覆盖 `{payload['plots']['operator_total']}` 个算子",
         "",
@@ -286,6 +332,10 @@ def parse_args() -> argparse.Namespace:
         default="data/reports/zhongkexin/v5_5_final/task_smoke.json",
     )
     parser.add_argument(
+        "--task-step-audit",
+        default="data/reports/zhongkexin/v5_5_final/task_step_audit.json",
+    )
+    parser.add_argument(
         "--interface-audit",
         default="data/reports/zhongkexin/v5_5_final/interface_audit.json",
     )
@@ -307,6 +357,11 @@ def main() -> int:
         "all81": summarize_all81(benchmark_dir / "latest_all_ops_scale_benchmark.csv"),
         "modules": summarize_modules(repo_root / args.unit_root),
         "task_smoke": summarize_task_smoke(repo_root / args.task_smoke),
+        "task_steps": summarize_task_steps(first_existing_path(
+            repo_root / args.task_step_audit,
+            repo_root / "data/reports/zhongkexin/v5_5_final/latest_task_step_audit.json",
+            repo_root / "data/reports/zhongkexin/v5_5_task_step_audit/latest_task_step_audit.json",
+        )),
         "contracts": summarize_contracts(repo_root / args.interface_audit, repo_root / args.type_contracts),
         "plots": summarize_plots(
             benchmark_dir / "figures/operator_figures/latest_operator_curve_manifest.csv",
@@ -317,6 +372,7 @@ def main() -> int:
         payload["all81"]["status"] == "passed"
         and payload["modules"]["status"] == "passed"
         and payload["task_smoke"]["passed"]
+        and payload["task_steps"]["status"] == "passed"
         and payload["contracts"]["status"] == "passed"
         and payload["plots"]["status"] == "passed"
     ) else "failed"

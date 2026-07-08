@@ -8,7 +8,8 @@
     "coefficients": "系数数组",
     "atol": "绝对误差容限",
     "rtol": "相对误差容限",
-    "expected_signal_file": "输入/输出数据文件路径"
+    "expected_signal_file": "输入/输出数据文件路径",
+    "dtype": "兼容路径数据类型；float16 用例按 FP16 量化后比较"
   },
   "accuracy_cases": [
     {
@@ -24,6 +25,21 @@
       "atol": 1e-12,
       "rtol": 1e-12,
       "expected_signal_file": "expected/custom_coeff.csv"
+    },
+    {
+      "id": "custom_coeff_float16_compat",
+      "size": 12,
+      "sym": true,
+      "coefficients": [
+        0.2,
+        0.5,
+        0.2,
+        0.1
+      ],
+      "atol": 0.001,
+      "rtol": 0.001,
+      "expected_signal_file": "expected/custom_coeff.csv",
+      "dtype": "float16"
     }
   ]
 }

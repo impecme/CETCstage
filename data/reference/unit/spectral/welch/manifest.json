@@ -19,6 +19,27 @@
       "x_file": "input/mean_hann__x.csv",
       "expected_frequencies_file": "expected/mean_hann__frequencies.csv",
       "expected_values_file": "expected/mean_hann__values.csv"
+    },
+    {
+      "id": "mean_hann_float16_compat",
+      "dtype": "float16",
+      "atol": 2e-2,
+      "rtol": 2e-2,
+      "fs": 800.0,
+      "window": {
+        "kind": "string",
+        "value": "hann"
+      },
+      "nperseg": 128,
+      "noverlap": 64,
+      "nfft": 128,
+      "average": "mean",
+      "x_shape": [
+        512
+      ],
+      "x_file": "input/mean_hann__x.csv",
+      "expected_frequencies_file": "expected/mean_hann__frequencies.csv",
+      "expected_values_file": "expected/mean_hann__values.csv"
     }
   ]
 }

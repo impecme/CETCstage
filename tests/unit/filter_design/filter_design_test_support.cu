@@ -46,6 +46,7 @@ namespace
     using cusignal::core::ZxGpuIndexSignal;
     using cusignal::core::ZxGpuRealSignal;
     using cusignal::core::ZxGpuWindowSpec;
+    using cusignal::core::Float16;
     using cusignal::core::IndexVector;
     using cusignal::core::NamedFloatPairParameter;
     using cusignal::core::NamedFloatParameter;
@@ -150,6 +151,7 @@ namespace
         fs::path expected_indices_file;
         float atol = 0.0; // 正确性校验的绝对误差容限
         float rtol = 0.0; // 正确性校验的相对误差容限
+        std::string dtype = "float32"; // 兼容路径 dtype；float16 用例按 FP16 量化后比较
     };
 
     struct OutputBundle
@@ -1162,6 +1164,7 @@ namespace
             test_case.scale = get_optional_bool(object, "scale", true); // 设计后增益归一化开关
             test_case.atol = get_optional_number(object, "atol", 0.0); // 绝对误差容限
             test_case.rtol = get_optional_number(object, "rtol", 0.0); // 相对误差容限
+            test_case.dtype = get_optional_string(object, "dtype").value_or("float32"); // 兼容 dtype
             if (const auto cutoff_iter = object.find("cutoff"); cutoff_iter != object.end())
             {
                 if (cutoff_iter->second.is_number())
@@ -1246,6 +1249,34 @@ namespace
             host.indices = device.indices.get();
         }
         return host;
+    }
+
+    float quantize_float16(float value)
+    {
+        return __half2float(Float16(value));
+    }
+
+    OutputBundle apply_dtype_quantization(const OutputBundle &bundle, const std::string &dtype)
+    {
+        if (dtype == "float32")
+        {
+            return bundle;
+        }
+        if (dtype != "float16")
+        {
+            throw std::runtime_error("unsupported filter_design dtype compatibility case: " + dtype);
+        }
+        if (bundle.is_complex)
+        {
+            throw std::runtime_error("float16 compatibility case must use real filter_design output");
+        }
+
+        OutputBundle quantized = bundle;
+        for (float &value : quantized.real_values)
+        {
+            value = quantize_float16(value);
+        }
+        return quantized;
     }
 
     std::size_t value_size(const OutputBundle &bundle)
@@ -1674,7 +1705,7 @@ namespace
         }
         else
         {
-            std::cout << "cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a\n";
+            std::cout << "cpu_perf_ms   : not_run (accuracy-only; use perf/full case set for timing)\n";
         }
         if (summary.gpu_e2e_perf.has_value())
         {
@@ -1695,7 +1726,7 @@ namespace
         }
         else
         {
-            std::cout << "gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a\n";
+            std::cout << "gpu_perf_ms   : not_run (accuracy-only; use perf/full case set for timing)\n";
         }
         std::cout << "reports       : data/reports/unit/filter_design/" << op << "/latest_summary.md\n";
     }
@@ -1708,9 +1739,12 @@ namespace
         CaseReport report;
         report.case_id = test_case.id;
         report.category = test_case.category;
-        const OutputBundle cpu_output = runner.cpu(test_case);
-        const OutputBundle gpu_output = materialize(runner.gpu(test_case));
-        const OutputBundle expected = load_expected_bundle(op, test_case);
+        const OutputBundle cpu_output =
+            apply_dtype_quantization(runner.cpu(test_case), test_case.dtype);
+        const OutputBundle gpu_output =
+            apply_dtype_quantization(materialize(runner.gpu(test_case)), test_case.dtype);
+        const OutputBundle expected =
+            apply_dtype_quantization(load_expected_bundle(op, test_case), test_case.dtype);
         report.samples = value_size(cpu_output);
         report.cpu_gpu_error = output_error(cpu_output, gpu_output, test_case.atol);
         report.cpu_reference_error = output_error(cpu_output, expected, test_case.atol);

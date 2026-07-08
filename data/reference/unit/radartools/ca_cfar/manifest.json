@@ -15,6 +15,21 @@
       "expected_detections_file": "expected/ones_1d_detections.csv"
     },
     {
+      "id": "ones_1d_float16_compat",
+      "dtype": "float16",
+      "x_shape": [
+        32
+      ],
+      "x_file": "input/ones_1d_x.csv",
+      "guard_cells": 2,
+      "reference_cells": 4,
+      "pfa": 0.001,
+      "atol": 0.0,
+      "rtol": 0.0,
+      "expected_threshold_file": "expected/ones_1d_threshold.csv",
+      "expected_detections_file": "expected/ones_1d_detections.csv"
+    },
+    {
       "id": "spike_2d",
       "x_shape": [
         16,

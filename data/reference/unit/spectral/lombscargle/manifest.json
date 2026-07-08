@@ -10,6 +10,18 @@
       "y_file": "input/normalized_precentered__y.csv",
       "freqs_file": "input/normalized_precentered__freqs.csv",
       "expected_signal_file": "expected/normalized_precentered__signal.csv"
+    },
+    {
+      "id": "normalized_precentered_float16_compat",
+      "dtype": "float16",
+      "atol": 2e-2,
+      "rtol": 2e-2,
+      "precenter": true,
+      "normalize": true,
+      "x_file": "input/normalized_precentered__x.csv",
+      "y_file": "input/normalized_precentered__y.csv",
+      "freqs_file": "input/normalized_precentered__freqs.csv",
+      "expected_signal_file": "expected/normalized_precentered__signal.csv"
     }
   ]
 }

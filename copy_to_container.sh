@@ -24,6 +24,12 @@ rsync -a \
   --exclude '/*.log' \
   "${root}/" "${tmp}/project/"
 
+# The container keeps build-zx across syncs. Refresh the staged source mtimes so
+# CMake/Ninja rebuilds objects even when the host checkout restored older mtimes.
+find "${tmp}/project" \
+  \( -name '*.cpp' -o -name '*.cu' -o -name '*.hpp' -o -name '*.h' -o -name '*.py' -o -name 'CMakeLists.txt' \) \
+  -exec touch {} +
+
 wheel_count="$(find "${root}/third_party/python_wheels" -maxdepth 1 -type f -name '*.whl' 2>/dev/null | wc -l || true)"
 echo "Python wheel cache count: ${wheel_count}"
 if [[ "${wheel_count}" -eq 0 ]]; then

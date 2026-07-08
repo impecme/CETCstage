@@ -7,6 +7,15 @@
       "atol": 1e-14,
       "rtol": 1e-14,
       "expected_value_file": "expected/basic_value.csv"
+    },
+    {
+      "id": "basic_float16_compat",
+      "dtype": "float16",
+      "cells": 20,
+      "pfa": 0.001,
+      "atol": 0.0,
+      "rtol": 0.0,
+      "expected_value_file": "expected/basic_value.csv"
     }
   ]
 }

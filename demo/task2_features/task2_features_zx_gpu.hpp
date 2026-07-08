@@ -93,6 +93,8 @@ namespace cusignal_demo::task2_features
         cusignal::core::ZxGpuRealSignal &peak_track);
     cusignal::core::ZxGpuRealSignal kalman_track_from_peaks_zx_gpu(
         const cusignal::core::ZxGpuRealSignal &peak_track);
+    cusignal::core::ZxGpuRealSignal copy_measurement_track_zx_gpu(
+        const cusignal::core::ZxGpuRealSignal &peak_track);
 
     cusignal::core::ZxGpuIndexSignal argmax_all_zx_gpu(const cusignal::core::ZxGpuRealArray &score);
     cusignal::core::ZxGpuIndexSignal argmax_from_candidates_zx_gpu(

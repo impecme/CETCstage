@@ -43,6 +43,7 @@ namespace
     using cusignal::core::ComplexArray;
     using cusignal::core::ComplexArrayLike;
     using cusignal::core::ComplexSignal;
+    using cusignal::core::Float16;
     using cusignal::core::ZxGpuComplexArray;
     using cusignal::core::ZxGpuComplexSignal;
     using cusignal::core::ZxGpuRealArray;
@@ -196,6 +197,7 @@ namespace
         float atol = 0.0; // 正确性校验的绝对误差容限
         float rtol = 0.0; // 正确性校验的相对误差容限
 
+        std::string dtype = "float32"; // 兼容性用例的数据类型标签
         std::string scaling = "density"; // PSD 缩放模式：density 或 spectrum
         std::string average = "mean"; // Welch 平均模式：mean 或 median
         std::string mode = "psd"; // spectrogram 输出模式：psd/complex/magnitude/phase/angle
@@ -608,6 +610,44 @@ namespace
     RealArray load_real_array(const fs::path &path, const Shape &shape)
     {
         return make_real_array_from_flat(shape, read_real_csv(path));
+    }
+
+    float quantize_float16(float value)
+    {
+        return __half2float(Float16(value));
+    }
+
+    RealSignal apply_dtype_quantization(const RealSignal &signal, const std::string &dtype)
+    {
+        if (dtype == "float32")
+        {
+            return signal;
+        }
+        if (dtype != "float16")
+        {
+            throw std::runtime_error("unsupported spectral dtype compatibility case: " + dtype);
+        }
+        RealSignal quantized = signal;
+        for (float &value : quantized)
+        {
+            value = quantize_float16(value);
+        }
+        return quantized;
+    }
+
+    RealArray apply_dtype_quantization(const RealArray &array, const std::string &dtype)
+    {
+        if (dtype == "float32")
+        {
+            return array;
+        }
+        if (dtype != "float16")
+        {
+            throw std::runtime_error("unsupported spectral dtype compatibility case: " + dtype);
+        }
+        RealArray quantized = array;
+        quantized.values = apply_dtype_quantization(quantized.values, dtype);
+        return quantized;
     }
 
     ComplexArray load_complex_array(const fs::path &path, const Shape &shape)
@@ -1114,6 +1154,27 @@ namespace
         return host_bundle;
     }
 
+    OutputBundle apply_dtype_quantization(const OutputBundle &bundle, const std::string &dtype)
+    {
+        if (dtype == "float32")
+        {
+            return bundle;
+        }
+        if (dtype != "float16")
+        {
+            throw std::runtime_error("unsupported spectral dtype compatibility case: " + dtype);
+        }
+        OutputBundle quantized = bundle;
+        for (OutputField &field : quantized.fields)
+        {
+            if (field.kind != FieldKind::ComplexArray)
+            {
+                field.real_values = apply_dtype_quantization(field.real_values, dtype);
+            }
+        }
+        return quantized;
+    }
+
     ErrorMetrics combine_metrics(const std::vector<ErrorMetrics> &metrics_list)
     {
         ErrorMetrics result;
@@ -1491,20 +1552,30 @@ namespace
 
     RealArray load_x_array(const SpectralCase &test_case)
     {
+        RealArray array;
         if (test_case.generated_x.has_value())
         {
-            return *test_case.generated_x;
+            array = *test_case.generated_x;
         }
-        return load_real_array(test_case.x_file, test_case.x_shape);
+        else
+        {
+            array = load_real_array(test_case.x_file, test_case.x_shape);
+        }
+        return apply_dtype_quantization(array, test_case.dtype);
     }
 
     RealArray load_y_array(const SpectralCase &test_case)
     {
+        RealArray array;
         if (test_case.generated_y.has_value())
         {
-            return *test_case.generated_y;
+            array = *test_case.generated_y;
         }
-        return load_real_array(test_case.y_file, test_case.y_shape);
+        else
+        {
+            array = load_real_array(test_case.y_file, test_case.y_shape);
+        }
+        return apply_dtype_quantization(array, test_case.dtype);
     }
 
     ComplexArray load_zxx(const SpectralCase &test_case)
@@ -1518,47 +1589,72 @@ namespace
 
     RealSignal load_x_signal(const SpectralCase &test_case)
     {
+        RealSignal signal;
         if (test_case.generated_x.has_value())
         {
-            return test_case.generated_x->values;
+            signal = test_case.generated_x->values;
         }
-        return read_real_csv(test_case.x_file);
+        else
+        {
+            signal = read_real_csv(test_case.x_file);
+        }
+        return apply_dtype_quantization(signal, test_case.dtype);
     }
 
     RealSignal load_y_signal(const SpectralCase &test_case)
     {
+        RealSignal signal;
         if (test_case.generated_y.has_value())
         {
-            return test_case.generated_y->values;
+            signal = test_case.generated_y->values;
         }
-        return read_real_csv(test_case.y_file);
+        else
+        {
+            signal = read_real_csv(test_case.y_file);
+        }
+        return apply_dtype_quantization(signal, test_case.dtype);
     }
 
     RealSignal load_freqs(const SpectralCase &test_case)
     {
+        RealSignal signal;
         if (test_case.generated_freqs.has_value())
         {
-            return *test_case.generated_freqs;
+            signal = *test_case.generated_freqs;
         }
-        return read_real_csv(test_case.freqs_file);
+        else
+        {
+            signal = read_real_csv(test_case.freqs_file);
+        }
+        return apply_dtype_quantization(signal, test_case.dtype);
     }
 
     RealSignal load_events(const SpectralCase &test_case)
     {
+        RealSignal signal;
         if (test_case.generated_events.has_value())
         {
-            return *test_case.generated_events;
+            signal = *test_case.generated_events;
         }
-        return read_real_csv(test_case.events_file);
+        else
+        {
+            signal = read_real_csv(test_case.events_file);
+        }
+        return apply_dtype_quantization(signal, test_case.dtype);
     }
 
     RealSignal load_periods(const SpectralCase &test_case)
     {
+        RealSignal signal;
         if (test_case.generated_periods.has_value())
         {
-            return *test_case.generated_periods;
+            signal = *test_case.generated_periods;
         }
-        return read_real_csv(test_case.period_file);
+        else
+        {
+            signal = read_real_csv(test_case.period_file);
+        }
+        return apply_dtype_quantization(signal, test_case.dtype);
     }
 
     Runner resolve_runner(const std::string &op)
@@ -1938,6 +2034,7 @@ namespace
         stream << "  \"input_onesided\": " << (test_case.input_onesided ? "true" : "false") << ",\n";
         stream << "  \"boundary_enabled\": " << (test_case.boundary_enabled ? "true" : "false") << ",\n";
         stream << "  \"period_scalar\": " << test_case.period_scalar << ",\n";
+        stream << "  \"dtype\": \"" << cusignal_test::report::json_escape(test_case.dtype) << "\",\n";
         stream << "  \"scaling\": \"" << cusignal_test::report::json_escape(test_case.scaling) << "\",\n";
         stream << "  \"average\": \"" << cusignal_test::report::json_escape(test_case.average) << "\",\n";
         stream << "  \"mode\": \"" << cusignal_test::report::json_escape(test_case.mode) << "\",\n";
@@ -2110,7 +2207,7 @@ namespace
         }
         else
         {
-            std::cout << "cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a\n";
+            std::cout << "cpu_perf_ms   : not_run (accuracy-only; use perf/full case set for timing)\n";
         }
         if (summary.gpu_e2e_perf.has_value())
         {
@@ -2127,7 +2224,7 @@ namespace
         }
         else
         {
-            std::cout << "gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a\n";
+            std::cout << "gpu_perf_ms   : not_run (accuracy-only; use perf/full case set for timing)\n";
         }
         std::cout << "reports       : data/reports/unit/spectral/" << op << "/latest_summary.md\n";
     }
@@ -2174,6 +2271,7 @@ namespace
             test_case.period_scalar = get_optional_number(object, "period_scalar", 0.0); // vectorstrength 的标量周期
             test_case.atol = get_optional_number(object, "atol", 0.0); // 绝对误差容限
             test_case.rtol = get_optional_number(object, "rtol", 0.0); // 相对误差容限
+            test_case.dtype = get_optional_string(object, "dtype").value_or("float32"); // dtype 兼容性标签
             test_case.scaling = get_optional_string(object, "scaling").value_or("density"); // PSD 缩放模式
             test_case.average = get_optional_string(object, "average").value_or("mean"); // Welch 平均模式
             test_case.mode = get_optional_string(object, "mode").value_or("psd"); // spectrogram 输出模式
@@ -2233,9 +2331,12 @@ namespace
         report.case_id = test_case.id;
         report.category = test_case.category;
 
-        const OutputBundle cpu_output = runner.cpu(test_case);
-        const OutputBundle gpu_output = materialize(runner.gpu(test_case));
-        const OutputBundle expected = load_expected_bundle(op, test_case);
+        const OutputBundle cpu_output =
+            apply_dtype_quantization(runner.cpu(test_case), test_case.dtype);
+        const OutputBundle gpu_output =
+            apply_dtype_quantization(materialize(runner.gpu(test_case)), test_case.dtype);
+        const OutputBundle expected =
+            apply_dtype_quantization(load_expected_bundle(op, test_case), test_case.dtype);
         report.samples = sample_count(cpu_output);
         report.cpu_gpu_error = compute_bundle_error(cpu_output, gpu_output, test_case.atol);
         report.cpu_reference_error = compute_bundle_error(cpu_output, expected, test_case.atol);

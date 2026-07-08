@@ -22,6 +22,30 @@
       "y_file": "input/hann_mean__y.csv",
       "expected_frequencies_file": "expected/hann_mean__frequencies.csv",
       "expected_values_file": "expected/hann_mean__values.csv"
+    },
+    {
+      "id": "hann_mean_float16_compat",
+      "dtype": "float16",
+      "atol": 6e-2,
+      "rtol": 6e-2,
+      "fs": 800.0,
+      "window": {
+        "kind": "string",
+        "value": "hann"
+      },
+      "nperseg": 128,
+      "noverlap": 64,
+      "nfft": 128,
+      "x_shape": [
+        512
+      ],
+      "y_shape": [
+        512
+      ],
+      "x_file": "input/hann_mean__x.csv",
+      "y_file": "input/hann_mean__x.csv",
+      "expected_frequencies_file": "expected/hann_mean__frequencies.csv",
+      "expected_values_file": "expected/self_coherence__values.csv"
     }
   ]
 }

@@ -46,6 +46,36 @@
         1,
         2
       ]
+    },
+    {
+      "id": "with_state_1d_float16_compat",
+      "dtype": "float16",
+      "sos_file": "input/sos.csv",
+      "sos_shape": [
+        1,
+        6
+      ],
+      "x_file": "input/x.csv",
+      "x_shape": [
+        6
+      ],
+      "axis": -1,
+      "zi_file": "input/zi.csv",
+      "zi_shape": [
+        1,
+        2
+      ],
+      "atol": 5e-2,
+      "rtol": 5e-2,
+      "expected_signal_file": "expected/with_state_1d.csv",
+      "expected_signal_shape": [
+        6
+      ],
+      "expected_state_file": "expected/with_state_1d__state.csv",
+      "expected_state_shape": [
+        1,
+        2
+      ]
     }
   ]
 }

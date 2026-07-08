@@ -8,7 +8,8 @@
     "atol": "绝对误差容限",
     "rtol": "相对误差容限",
     "expected_signal_file": "输入/输出数据文件路径",
-    "duty_file": "占空比输入文件路径"
+    "duty_file": "占空比输入文件路径",
+    "dtype": "兼容路径数据类型；float16 用例按 FP16 量化后比较"
   },
   "accuracy_cases": [
     {
@@ -26,6 +27,15 @@
       "atol": 0.0,
       "rtol": 0.0,
       "expected_signal_file": "expected/vector_duty.csv"
+    },
+    {
+      "id": "scalar_duty_float16_compat",
+      "t_file": "input/scalar_t.csv",
+      "duty": 0.25,
+      "atol": 0.001,
+      "rtol": 0.001,
+      "expected_signal_file": "expected/scalar_duty.csv",
+      "dtype": "float16"
     }
   ]
 }

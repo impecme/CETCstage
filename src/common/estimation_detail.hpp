@@ -25,9 +25,9 @@ namespace cusignal::estimation_detail
 
     inline void ensure_dtype(const std::string &dtype)
     {
-        if (dtype != "float32")
+        if (dtype != "float32" && dtype != "float16")
         {
-            throw std::invalid_argument("dtype must be float32");
+            throw std::invalid_argument("dtype must be float32 or float16");
         }
     }
 

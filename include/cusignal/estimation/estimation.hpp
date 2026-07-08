@@ -77,7 +77,7 @@ namespace cusignal
                  * @param dim_z 观测维度。
                  * @param dim_u 控制维度。
                  * @param points 并行跟踪点数。
-                 * @param dtype 计算 dtype 名称，当前仅接受 `"float32"`。
+                 * @param dtype 计算 dtype 名称；`"float16"` 通过 FP32 中间计算提供兼容路径。
                  * @throws std::invalid_argument 当维度非法或 dtype 不受支持时抛出异常。
                  */
                 KalmanFilter(
@@ -227,7 +227,7 @@ namespace cusignal
                  * @param dim_z 观测维度。
                  * @param dim_u 控制维度。
                  * @param points 并行跟踪点数。
-                 * @param dtype 计算 dtype 名称，当前仅接受 `"float32"`。
+                 * @param dtype 计算 dtype 名称；`"float16"` 通过 FP32 中间计算提供兼容路径。
                  * @throws std::invalid_argument 当维度非法或 dtype 不受支持时抛出异常。
                  */
                 KalmanFilter(

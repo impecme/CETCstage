@@ -10,7 +10,8 @@
     "x_file": "输入/输出数据文件路径",
     "expected_signal_file": "输入/输出数据文件路径",
     "expected_signal_shape": "张量/数组形状",
-    "expect_invalid_argument": "布尔开关参数"
+    "expect_invalid_argument": "布尔开关参数",
+    "dtype": "兼容路径数据类型；float16 用例按 FP16 量化后比较"
   },
   "accuracy_cases": [
     {
@@ -53,6 +54,21 @@
       "n": -1,
       "x_file": "input/invalid_order.csv",
       "expect_invalid_argument": true
+    },
+    {
+      "id": "order3_vector_float16_compat",
+      "x_shape": [
+        17
+      ],
+      "atol": 0.001,
+      "rtol": 0.001,
+      "n": 3,
+      "x_file": "input/order3_vector.csv",
+      "expected_signal_file": "expected/order3_vector.csv",
+      "expected_signal_shape": [
+        17
+      ],
+      "dtype": "float16"
     }
   ]
 }

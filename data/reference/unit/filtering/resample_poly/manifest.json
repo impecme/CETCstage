@@ -38,6 +38,28 @@
       "expected_signal_shape": [
         45
       ]
+    },
+    {
+      "id": "up3_down2_float16_compat",
+      "dtype": "float16",
+      "x_file": "input/x.csv",
+      "x_shape": [
+        30
+      ],
+      "up": 3,
+      "down": 2,
+      "axis": 0,
+      "window": {
+        "kind": "named_float",
+        "name": "kaiser",
+        "value": 5.0
+      },
+      "atol": 5e-2,
+      "rtol": 5e-2,
+      "expected_signal_file": "expected/up3_down2.csv",
+      "expected_signal_shape": [
+        45
+      ]
     }
   ]
 }

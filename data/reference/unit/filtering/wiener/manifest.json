@@ -27,6 +27,23 @@
       "atol": 1e-08,
       "rtol": 1e-08,
       "expected_signal_file": "expected/image_2d_default_noise.csv"
+    },
+    {
+      "id": "image_2d_default_noise_float16_compat",
+      "dtype": "float16",
+      "x_file": "input/image_small.csv",
+      "x_shape": [
+        3,
+        4
+      ],
+      "mysize": [
+        3,
+        3
+      ],
+      "noise": -1.0,
+      "atol": 5e-2,
+      "rtol": 5e-2,
+      "expected_signal_file": "expected/image_2d_default_noise.csv"
     }
   ]
 }

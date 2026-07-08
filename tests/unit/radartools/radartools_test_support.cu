@@ -43,6 +43,7 @@ namespace
     using cusignal::core::Complex;
     using cusignal::core::ComplexArray;
     using cusignal::core::ComplexSignal;
+    using cusignal::core::Float16;
     using cusignal::core::ZxGpuComplexArray;
     using cusignal::core::ZxGpuComplexSignal;
     using cusignal::core::ZxGpuRealArray;
@@ -190,6 +191,7 @@ namespace
         WindowSpec window = std::string();
         float atol = 0.0; // 正确性校验的绝对误差容限
         float rtol = 0.0; // 正确性校验的相对误差容限
+        std::string dtype = "float32"; // 兼容路径 dtype；float16 用例按 FP16 量化后比较
 
         fs::path x_file;
         fs::path templ_file;
@@ -555,6 +557,53 @@ namespace
     RealArray load_real_array(const fs::path &path, const Shape &shape)
     {
         return make_real_array_from_flat(shape, read_real_csv(path));
+    }
+
+    float quantize_float16(float value)
+    {
+        return __half2float(Float16(value));
+    }
+
+    RealArray apply_dtype_quantization(const RealArray &array, const std::string &dtype)
+    {
+        if (dtype == "float32")
+        {
+            return array;
+        }
+        if (dtype != "float16")
+        {
+            throw std::runtime_error("unsupported radartools dtype compatibility case: " + dtype);
+        }
+        RealArray quantized = array;
+        for (float &value : quantized.values)
+        {
+            value = quantize_float16(value);
+        }
+        return quantized;
+    }
+
+    OutputBundle apply_dtype_quantization(const OutputBundle &bundle, const std::string &dtype)
+    {
+        if (dtype == "float32")
+        {
+            return bundle;
+        }
+        if (dtype != "float16")
+        {
+            throw std::runtime_error("unsupported radartools dtype compatibility case: " + dtype);
+        }
+        OutputBundle quantized = bundle;
+        for (OutputField &field : quantized.fields)
+        {
+            if (field.kind != FieldKind::ComplexArray)
+            {
+                for (float &value : field.real_values)
+                {
+                    value = quantize_float16(value);
+                }
+            }
+        }
+        return quantized;
     }
 
     ComplexArray load_complex_array(const fs::path &path, const Shape &shape)
@@ -1379,6 +1428,7 @@ namespace
             test_case.reference_cells = get_optional_int(object, "reference_cells", 0); // CFAR 参考单元数
             test_case.atol = get_optional_number(object, "atol", 0.0); // 绝对误差容限
             test_case.rtol = get_optional_number(object, "rtol", 0.0); // 相对误差容限
+            test_case.dtype = get_optional_string(object, "dtype").value_or("float32"); // 兼容 dtype
             if (const auto iter = object.find("x_shape"); iter != object.end()) test_case.x_shape = json_array_to_shape(iter->second);
             if (const auto iter = object.find("templ_shape"); iter != object.end()) test_case.templ_shape = json_array_to_shape(iter->second);
             if (const auto iter = object.find("y_shape"); iter != object.end()) test_case.y_shape = json_array_to_shape(iter->second);
@@ -1470,11 +1520,16 @@ namespace
 
     RealArray load_real_array_x(const RadarCase &test_case)
     {
+        RealArray array;
         if (test_case.generated_real_x.has_value())
         {
-            return *test_case.generated_real_x;
+            array = *test_case.generated_real_x;
         }
-        return load_real_array(test_case.x_file, test_case.x_shape);
+        else
+        {
+            array = load_real_array(test_case.x_file, test_case.x_shape);
+        }
+        return apply_dtype_quantization(array, test_case.dtype);
     }
 
     ComplexArray load_sv(const RadarCase &test_case)
@@ -1721,7 +1776,8 @@ namespace
         stream << "  \"pfa\": " << test_case.pfa << ",\n";
         stream << "  \"cells\": " << test_case.cells << ",\n";
         stream << "  \"guard_cells\": " << test_case.guard_cells << ",\n";
-        stream << "  \"reference_cells\": " << test_case.reference_cells;
+        stream << "  \"reference_cells\": " << test_case.reference_cells << ",\n";
+        stream << "  \"dtype\": \"" << cusignal_test::report::json_escape(test_case.dtype) << "\"";
         if (!detail::window_disabled(test_case.window))
         {
             stream << ",\n  \"window\": " << build_window_spec_json(test_case.window) << '\n';
@@ -1942,7 +1998,7 @@ namespace
         }
         else
         {
-            std::cout << "cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a\n";
+            std::cout << "cpu_perf_ms   : not_run (accuracy-only; use perf/full case set for timing)\n";
         }
         if (summary.gpu_e2e_perf.has_value())
         {
@@ -1959,7 +2015,7 @@ namespace
         }
         else
         {
-            std::cout << "gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a\n";
+            std::cout << "gpu_perf_ms   : not_run (accuracy-only; use perf/full case set for timing)\n";
         }
         std::cout << "reports       : data/reports/unit/radartools/" << op << "/latest_summary.md\n";
     }
@@ -1983,9 +2039,12 @@ namespace
         report.case_id = test_case.id;
         report.category = test_case.category;
 
-        const OutputBundle cpu_output = runner.cpu(test_case);
-        const OutputBundle gpu_output = materialize(runner.gpu(test_case));
-        const OutputBundle expected = load_expected_bundle(op, test_case);
+        const OutputBundle cpu_output =
+            apply_dtype_quantization(runner.cpu(test_case), test_case.dtype);
+        const OutputBundle gpu_output =
+            apply_dtype_quantization(materialize(runner.gpu(test_case)), test_case.dtype);
+        const OutputBundle expected =
+            apply_dtype_quantization(load_expected_bundle(op, test_case), test_case.dtype);
         report.samples = sample_count(cpu_output);
         report.cpu_gpu_error = compute_bundle_error(cpu_output, gpu_output);
         report.cpu_reference_error = compute_bundle_error(cpu_output, expected);

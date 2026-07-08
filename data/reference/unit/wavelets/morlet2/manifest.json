@@ -2,6 +2,7 @@
   "accuracy_cases": [
     {
       "id": "default_w",
+      "output_kind": "complex",
       "points": 16,
       "s": 4.0,
       "w": 5.0,
@@ -11,6 +12,7 @@
     },
     {
       "id": "custom_w",
+      "output_kind": "complex",
       "points": 17,
       "s": 7.5,
       "w": 2.5,

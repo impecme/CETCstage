@@ -1335,6 +1335,19 @@ namespace cusignal_demo::task2_features
             }
         }
 
+        __global__ void copy_measurement_track_kernel(
+            const float *peak_track,
+            std::size_t frame_count,
+            float *measurement_track)
+        {
+            const std::size_t index = static_cast<std::size_t>(blockIdx.x) * static_cast<std::size_t>(blockDim.x) +
+                static_cast<std::size_t>(threadIdx.x);
+            if (index < frame_count)
+            {
+                measurement_track[index] = peak_track[index];
+            }
+        }
+
         __global__ void argmax_all_kernel(
             const float *score,
             std::size_t size,
@@ -2131,6 +2144,20 @@ namespace cusignal_demo::task2_features
                 peak_track.size(),
                 output.data());
             check_kernel_launch("kalman_track_from_peaks_kernel");
+        }
+        return output;
+    }
+
+    ZxGpuRealSignal copy_measurement_track_zx_gpu(const ZxGpuRealSignal &peak_track)
+    {
+        ZxGpuRealSignal output = cusignal::core::make_zx_gpu_real_signal(peak_track.size(), 0.0f);
+        if (!peak_track.empty())
+        {
+            copy_measurement_track_kernel<<<block_count(peak_track.size()), kThreadsPerBlock>>>(
+                peak_track.data(),
+                peak_track.size(),
+                output.data());
+            check_kernel_launch("copy_measurement_track_kernel");
         }
         return output;
     }

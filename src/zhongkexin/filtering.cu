@@ -1628,6 +1628,45 @@ namespace
         output[base + index * axis_stride] = value;
     }
 
+    __global__ void complex_fir_filter_zero_lines_kernel(
+        const float *b,
+        std::size_t b_size,
+        const float2 *input,
+        const std::size_t *line_bases,
+        std::size_t line_count,
+        std::size_t axis_size,
+        std::size_t axis_stride,
+        float2 *output)
+    {
+        __shared__ float taps[kMaxFilterOrder + 1];
+        for (std::size_t tap = threadIdx.x; tap < b_size; tap += blockDim.x)
+        {
+            taps[tap] = b[tap];
+        }
+        __syncthreads();
+
+        const std::size_t flat =
+            static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+        const std::size_t total = line_count * axis_size;
+        if (flat >= total)
+        {
+            return;
+        }
+
+        const std::size_t line = flat / axis_size;
+        const std::size_t index = flat % axis_size;
+        const std::size_t base = line_bases[line];
+        float2 value = make_float2(0.0f, 0.0f);
+        const std::size_t tap_limit = min(b_size, index + 1);
+        for (std::size_t tap = 0; tap < tap_limit; ++tap)
+        {
+            const float2 sample = input[base + (index - tap) * axis_stride];
+            value.x += taps[tap] * sample.x;
+            value.y += taps[tap] * sample.y;
+        }
+        output[base + index * axis_stride] = value;
+    }
+
     __global__ void build_single_sos_from_ba_kernel(
         const float *b,
         std::size_t b_size,
@@ -3850,6 +3889,50 @@ namespace cusignal
                 ZxGpuRealArray output;
                 g_last_kernel_ms = static_cast<float>(events.measure([&]() {
                     output = lfilter_impl(b_device, one, x_device, axis, nullptr, nullptr);
+                }));
+                return output;
+            }
+
+            core::ZxGpuComplexArray firfilter(
+                const core::RealSignalLike &b,
+                const core::ComplexArrayLike &x,
+                int axis)
+            {
+                const ZxGpuRealSignal &b_device = core::as_device_signal(b, g_workspace.real_signal_a);
+                const ZxGpuComplexArray &x_device = core::as_device_array(x, g_workspace.complex_array_a);
+                ZxGpuComplexArray output = core::make_zx_gpu_complex_array(x_device.shape());
+                if (x_device.empty())
+                {
+                    g_last_kernel_ms = 0.0f;
+                    return output;
+                }
+                if (b_device.size() > static_cast<std::size_t>(kMaxFilterOrder + 1))
+                {
+                    throw std::invalid_argument("filter order exceeds CUDA complex firfilter limit");
+                }
+
+                const detail::AxisPlan plan = detail::make_axis_plan(x_device.shape(), axis);
+                const std::size_t *line_bases = upload_line_bases_cached(
+                    x_device.shape(),
+                    axis,
+                    g_workspace.size_buffer_a,
+                    g_workspace.line_bases_cache_a,
+                    "cudaMemcpy H2D(complex_fir_line_bases)");
+
+                ScopedZxGpuEvents events;
+                g_last_kernel_ms = static_cast<float>(events.measure([&]() {
+                    complex_fir_filter_zero_lines_kernel<<<
+                        block_count(plan.line_count * plan.axis_size),
+                        kThreadsPerBlock>>>(
+                        b_device.data(),
+                        b_device.size(),
+                        reinterpret_cast<const float2 *>(x_device.data()),
+                        line_bases,
+                        plan.line_count,
+                        plan.axis_size,
+                        plan.axis_stride,
+                        reinterpret_cast<float2 *>(output.data()));
+                    check_kernel_launch("complex_fir_filter_zero_lines_kernel");
                 }));
                 return output;
             }

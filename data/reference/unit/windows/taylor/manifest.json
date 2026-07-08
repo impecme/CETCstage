@@ -10,7 +10,8 @@
     "bool_param0": "布尔参数",
     "atol": "绝对误差容限",
     "rtol": "相对误差容限",
-    "expected_signal_file": "输入/输出数据文件路径"
+    "expected_signal_file": "输入/输出数据文件路径",
+    "dtype": "兼容路径数据类型；float16 用例按 FP16 量化后比较"
   },
   "accuracy_cases": [
     {
@@ -23,6 +24,18 @@
       "atol": 1e-11,
       "rtol": 1e-11,
       "expected_signal_file": "expected/nbar5_sll35.csv"
+    },
+    {
+      "id": "nbar5_sll35_float16_compat",
+      "size": 12,
+      "sym": true,
+      "int_param0": 5,
+      "param0": 35.0,
+      "bool_param0": true,
+      "atol": 0.001,
+      "rtol": 0.001,
+      "expected_signal_file": "expected/nbar5_sll35.csv",
+      "dtype": "float16"
     }
   ]
 }

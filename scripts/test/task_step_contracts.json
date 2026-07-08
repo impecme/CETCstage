@@ -76,7 +76,7 @@
         "public_operators": ["radartools/detect_peak"],
         "implementation": "public",
         "timing": "present",
-        "accuracy": "business_only",
+        "accuracy": "present",
         "migration_target": "none"
       }
     ],
@@ -96,12 +96,12 @@
         "step": "filter",
         "category": "calculation",
         "cpu_symbols": ["filter_complex_frames_cpu", "cusignal::cpu::filtering::firfilter"],
-        "gpu_symbols": ["extract_real_part_zx_gpu", "cusignal::zx_gpu_backend::filtering::firfilter", "combine_complex_zx_gpu"],
+        "gpu_symbols": ["cusignal::zx_gpu_backend::filtering::firfilter", "extract_real_part_zx_gpu"],
         "public_operators": ["filter_design/firwin", "filtering/firfilter"],
         "implementation": "mixed",
         "timing": "present",
         "accuracy": "present",
-        "migration_target": "add a public complex64 filtering path and remove task-local split/combine"
+        "migration_target": "helper is acceptable because public firfilter performs the core filtering; only revisit if Task2 filter timing requires a fused public API"
       },
       {
         "step": "demod",
@@ -111,8 +111,8 @@
         "public_operators": ["demod/fm_demod"],
         "implementation": "mixed",
         "timing": "present",
-        "accuracy": "missing",
-        "migration_target": "use the public GPU fm_demod operator and public score post-processing"
+        "accuracy": "present",
+        "migration_target": "helper is acceptable because public fm_demod defines the core demodulation semantics; batched score keeps Task2 timing compact"
       },
       {
         "step": "correlate",
@@ -161,13 +161,13 @@
       {
         "step": "measurement_conversion",
         "category": "calculation",
-        "cpu_symbols": ["measurement.values[0]"],
-        "gpu_symbols": ["index_to_measurement_zx_gpu"],
-        "public_operators": [],
-        "implementation": "private",
-        "timing": "bundled",
-        "accuracy": "bundled",
-        "migration_target": "move index-to-measurement conversion to a public estimation helper"
+        "cpu_symbols": ["artifacts.measurement_values"],
+        "gpu_symbols": ["copy_measurement_track_zx_gpu"],
+        "public_operators": ["estimation/kalman_filter"],
+        "implementation": "mixed",
+        "timing": "present",
+        "accuracy": "present",
+        "migration_target": "helper is acceptable because it prepares the public Kalman measurement vector and is now timed/validated independently"
       },
       {
         "step": "kalman",
@@ -177,8 +177,8 @@
         "public_operators": ["estimation/kalman_filter"],
         "implementation": "mixed",
         "timing": "present",
-        "accuracy": "business_only",
-        "migration_target": "use the public GPU KalmanFilter interface and add CPU/GPU step error"
+        "accuracy": "present",
+        "migration_target": "helper is acceptable because it implements the same Kalman state equations as the public CPU operator and reports CPU/GPU track error"
       }
     ]
   }

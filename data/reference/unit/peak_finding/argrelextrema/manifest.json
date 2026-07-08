@@ -2,6 +2,7 @@
   "accuracy_cases": [
     {
       "id": "extrema_greater_order2",
+      "dtype": "float32",
       "comparator": "greater",
       "axis": 0,
       "order": 2,
@@ -14,6 +15,7 @@
     },
     {
       "id": "extrema_less_2d",
+      "dtype": "float32",
       "comparator": "less",
       "axis": 1,
       "order": 1,
@@ -28,6 +30,7 @@
     },
     {
       "id": "invalid_order",
+      "dtype": "float32",
       "comparator": "greater",
       "axis": 0,
       "order": 0,
@@ -37,6 +40,50 @@
       ],
       "data_file": "input/invalid_order__data.csv",
       "expect_invalid_argument": true
+    },
+    {
+      "id": "extrema_float16_compat",
+      "dtype": "float16",
+      "comparator": "greater",
+      "axis": 0,
+      "order": 1,
+      "mode": "clip",
+      "shape": [
+        5
+      ]
+    },
+    {
+      "id": "extrema_int8_compat",
+      "dtype": "int8",
+      "comparator": "greater",
+      "axis": 0,
+      "order": 1,
+      "mode": "clip",
+      "shape": [
+        5
+      ]
+    },
+    {
+      "id": "extrema_int16_compat",
+      "dtype": "int16",
+      "comparator": "greater",
+      "axis": 0,
+      "order": 1,
+      "mode": "clip",
+      "shape": [
+        5
+      ]
+    },
+    {
+      "id": "extrema_int32_compat",
+      "dtype": "int32",
+      "comparator": "greater",
+      "axis": 0,
+      "order": 1,
+      "mode": "clip",
+      "shape": [
+        5
+      ]
     }
   ]
 }

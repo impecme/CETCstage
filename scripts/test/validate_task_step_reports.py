@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import math
 from pathlib import Path
@@ -19,6 +20,7 @@ EXPECTED_STEPS = {
         "measurement_conversion", "kalman",
     },
 }
+EXPECTED_SCHEMA_VERSION = 2
 REQUIRED_FIELDS = {
     "step", "operator", "input_shape", "output_shape", "input_dtype", "output_dtype",
     "cpu_ms", "gpu_e2e_ms", "gpu_kernel_ms", "gpu_e2e_speedup", "gpu_kernel_speedup",
@@ -43,11 +45,15 @@ def main() -> int:
         if not path.is_file():
             failures.append(f"missing report: {path}")
             continue
+        csv_path = Path(args.report_root) / task / "latest_step_metrics.csv"
         payload = json.loads(path.read_text(encoding="utf-8"))
         steps = payload.get("steps", [])
         actual_steps = {step.get("step") for step in steps}
-        if payload.get("task") != task or payload.get("schema_version") != 1:
-            failures.append(f"invalid task/schema: {task}")
+        if payload.get("task") != task or payload.get("schema_version") != EXPECTED_SCHEMA_VERSION:
+            failures.append(
+                f"invalid task/schema: {task}: "
+                f"task={payload.get('task')!r} schema={payload.get('schema_version')!r}"
+            )
         if actual_steps != expected_steps:
             failures.append(f"step mismatch: {task}: {sorted(actual_steps)}")
         kernel_available = 0
@@ -62,15 +68,30 @@ def main() -> int:
                 kernel_available += 1
                 if not math.isfinite(step["gpu_kernel_ms"]):
                     failures.append(f"invalid kernel timing: {task}/{name}")
-            if step["error_available"]:
-                error_available += 1
-                error = step.get("error") or {}
-                for field in ("max_abs", "max_rel", "rmse", "mixed_error"):
-                    if not isinstance(error.get(field), (int, float)) or not math.isfinite(error[field]):
-                        failures.append(f"invalid error {field}: {task}/{name}")
-                if f"{task}/{name}" in COMPLEX_ERROR_STEPS:
-                    if error.get("real_max_abs") is None or error.get("imag_max_abs") is None:
-                        failures.append(f"missing complex components: {task}/{name}")
+            if not step["error_available"]:
+                failures.append(f"missing step error: {task}/{name}")
+                continue
+            if step.get("pass") is not True:
+                failures.append(f"step did not pass: {task}/{name}")
+            error_available += 1
+            error = step.get("error") or {}
+            for field in ("max_abs", "max_rel", "rmse", "mixed_error"):
+                if not isinstance(error.get(field), (int, float)) or not math.isfinite(error[field]):
+                    failures.append(f"invalid error {field}: {task}/{name}")
+            if f"{task}/{name}" in COMPLEX_ERROR_STEPS:
+                if error.get("real_max_abs") is None or error.get("imag_max_abs") is None:
+                    failures.append(f"missing complex components: {task}/{name}")
+        if not csv_path.is_file():
+            failures.append(f"missing CSV report: {csv_path}")
+        else:
+            with csv_path.open("r", encoding="utf-8", newline="") as handle:
+                rows = list(csv.DictReader(handle))
+            csv_steps = {row.get("step") for row in rows}
+            if csv_steps != expected_steps:
+                failures.append(f"CSV step mismatch: {task}: {sorted(csv_steps)}")
+            for row in rows:
+                if None in row:
+                    failures.append(f"malformed CSV row: {task}/{row.get('step', '')}")
         task_summaries[task] = {
             "step_count": len(steps),
             "error_available_count": error_available,

@@ -82,12 +82,16 @@ def main() -> int:
     public_calculation_count = sum(
         row["category"] == "calculation" and row["implementation"] == "public" for row in rows
     )
+    public_operator_link_count = sum(
+        row["category"] == "calculation" and bool(row.get("public_operators")) for row in rows
+    )
     summary = {
         "status": "failed" if failures else "passed",
         "task_count": len(tasks),
         "step_count": len(rows),
         "calculation_step_count": calculation_count,
         "public_calculation_step_count": public_calculation_count,
+        "public_operator_link_count": public_operator_link_count,
         "migration_step_count": sum(row["implementation"] in {"mixed", "private"} for row in rows),
         "timing_gap_count": timing_gap_count,
         "accuracy_gap_count": accuracy_gap_count,
@@ -105,12 +109,13 @@ def main() -> int:
         "# V5.3 Task1/Task2 步骤审计",
         "",
         "本文件由 `scripts/test/audit_task_steps.py` 根据机器可读步骤契约生成。",
-        "`public` 表示已完全调用公共算子；`mixed/private` 是 V5.3-03/04 的迁移清单。",
+        "`public` 表示完全调用公共算子；`mixed` 表示公共算子加任务辅助函数，按当前验收口径也属于公共算子实现链路。",
         "",
         f"- status: `{summary['status']}`",
         f"- steps/calculation: `{summary['step_count']}` / `{calculation_count}`",
         f"- public calculation: `{public_calculation_count}`",
-        f"- migration steps: `{summary['migration_step_count']}`",
+        f"- calculation steps with public-operator link: `{public_operator_link_count}`",
+        f"- mixed/private helper steps: `{summary['migration_step_count']}`",
         f"- timing/accuracy gaps: `{timing_gap_count}` / `{accuracy_gap_count}`",
         "",
         "| 任务 | 步骤 | 公共算子 | 实现 | 计时 | 精度 | 迁移目标 |",

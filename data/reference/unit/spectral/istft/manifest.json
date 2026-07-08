@@ -2,6 +2,7 @@
   "accuracy_cases": [
     {
       "id": "onesided_boundary",
+      "input_kind": "complex",
       "atol": 1e-08,
       "rtol": 1e-08,
       "fs": 400.0,

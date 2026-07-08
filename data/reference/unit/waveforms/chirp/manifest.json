@@ -13,7 +13,8 @@
     "type": "类型参数（如 detrend/chirp 输出类型）",
     "atol": "绝对误差容限",
     "rtol": "相对误差容限",
-    "expected_signal_file": "输入/输出数据文件路径"
+    "expected_signal_file": "输入/输出数据文件路径",
+    "dtype": "兼容路径数据类型；float16 用例按 FP16 量化后比较"
   },
   "accuracy_cases": [
     {
@@ -99,6 +100,21 @@
       "atol": 1e-12,
       "rtol": 1e-12,
       "expected_signal_file": "expected/hyperbolic.csv"
+    },
+    {
+      "id": "linear_real_float16_compat",
+      "t_file": "input/small_time.csv",
+      "f0": 6.0,
+      "t1": 1.0,
+      "f1": 10.0,
+      "method": "linear",
+      "phi": 0.0,
+      "vertex_zero": true,
+      "type": "real",
+      "atol": 0.001,
+      "rtol": 0.001,
+      "expected_signal_file": "expected/linear_real.csv",
+      "dtype": "float16"
     }
   ]
 }

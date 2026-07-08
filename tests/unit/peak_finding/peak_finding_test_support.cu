@@ -36,7 +36,15 @@ namespace
 {
     namespace peak_api = cusignal::peak_finding_api;
     using cusignal::core::AxisIndices;
+    using cusignal::core::Float16;
+    using cusignal::core::Int16;
+    using cusignal::core::Int32;
+    using cusignal::core::Int8;
     using cusignal::core::ZxGpuRealArray;
+    using cusignal::core::ZxGpuFloat16Array;
+    using cusignal::core::ZxGpuInt16Array;
+    using cusignal::core::ZxGpuInt32Array;
+    using cusignal::core::ZxGpuInt8Array;
     using cusignal::core::DeviceAxisIndices;
     using cusignal::core::IndexVector;
     using cusignal::core::RealArray;
@@ -85,6 +93,7 @@ namespace
     {
         std::string id;
         RealArray data;
+        std::string dtype = "float32"; // 输入兼容路径 dtype
         std::string comparator; // argrelextrema 比较器：greater / less
         int axis = 0; // 极值搜索所沿用的轴
         int order = 1; // 局部比较邻域半宽
@@ -156,6 +165,114 @@ namespace
         array.shape = shape;
         array.values = values;
         return array;
+    }
+
+    template <typename T>
+    cusignal::core::Array<T> make_typed_array(const Shape &shape, const std::vector<T> &values)
+    {
+        cusignal::core::Array<T> array;
+        array.shape = shape;
+        array.values = values;
+        return array;
+    }
+
+    template <typename T>
+    float scalar_to_float(const T &value)
+    {
+        return static_cast<float>(value);
+    }
+
+    template <>
+    float scalar_to_float<Float16>(const Float16 &value)
+    {
+        return static_cast<float>(value);
+    }
+
+    template <typename T>
+    RealArray to_real_array(const cusignal::core::Array<T> &array)
+    {
+        RealArray output;
+        output.shape = array.shape;
+        output.values.reserve(array.values.size());
+        for (const T &value : array.values)
+        {
+            output.values.push_back(scalar_to_float(value));
+        }
+        return output;
+    }
+
+    template <typename T, typename DeviceArrayType>
+    Case make_typed_compat_case(
+        const std::string &id,
+        const Shape &shape,
+        const std::vector<T> &values,
+        const std::string &dtype,
+        const std::string &comparator,
+        int axis,
+        int order,
+        const std::string &mode,
+        const AxisIndices &expected)
+    {
+        const DeviceArrayType device = DeviceArrayType::from_host(make_typed_array<T>(shape, values));
+        Case test_case;
+        test_case.id = id;
+        test_case.data = to_real_array(device.get());
+        test_case.dtype = dtype;
+        test_case.comparator = comparator;
+        test_case.axis = axis;
+        test_case.order = order;
+        test_case.mode = mode;
+        test_case.expected = expected;
+        return test_case;
+    }
+
+    std::vector<Case> numeric_compat_cases(
+        const std::string &prefix,
+        const std::string &comparator,
+        const AxisIndices &expected)
+    {
+        return {
+            make_typed_compat_case<Float16, ZxGpuFloat16Array>(
+                prefix + "_float16_compat",
+                Shape{5},
+                {Float16(1.0f), Float16(3.0f), Float16(2.0f), Float16(4.0f), Float16(1.0f)},
+                "float16",
+                comparator,
+                0,
+                1,
+                "clip",
+                expected),
+            make_typed_compat_case<Int8, ZxGpuInt8Array>(
+                prefix + "_int8_compat",
+                Shape{5},
+                {1, 3, 2, 4, 1},
+                "int8",
+                comparator,
+                0,
+                1,
+                "clip",
+                expected),
+            make_typed_compat_case<Int16, ZxGpuInt16Array>(
+                prefix + "_int16_compat",
+                Shape{5},
+                {1, 3, 2, 4, 1},
+                "int16",
+                comparator,
+                0,
+                1,
+                "clip",
+                expected),
+            make_typed_compat_case<Int32, ZxGpuInt32Array>(
+                prefix + "_int32_compat",
+                Shape{5},
+                {1, 3, 2, 4, 1},
+                "int32",
+                comparator,
+                0,
+                1,
+                "clip",
+                expected),
+        };
     }
 
     std::string format_float(float value)
@@ -316,9 +433,10 @@ namespace
 
     std::vector<Case> argrelmax_cases()
     {
-        return {
+        std::vector<Case> cases = {
             {"max_1d",
              make_real_array(Shape{7}, {1, 3, 2, 4, 3, 5, 1}),
+             "float32",
              "greater",
              0,
              1,
@@ -327,6 +445,7 @@ namespace
              false},
             {"max_2d_axis1",
              make_real_array(Shape{2, 5}, {1, 3, 2, 4, 3, 0, 1, 0, 2, 1}),
+             "float32",
              "greater",
              1,
              1,
@@ -335,6 +454,7 @@ namespace
              false},
             {"plateau_none",
              make_real_array(Shape{4}, {1, 2, 2, 1}),
+             "float32",
              "greater",
              0,
              1,
@@ -342,13 +462,17 @@ namespace
              AxisIndices{{}},
              false},
         };
+        std::vector<Case> compat = numeric_compat_cases("max", "greater", AxisIndices{{1, 3}});
+        cases.insert(cases.end(), compat.begin(), compat.end());
+        return cases;
     }
 
     std::vector<Case> argrelmin_cases()
     {
-        return {
+        std::vector<Case> cases = {
             {"min_1d",
              make_real_array(Shape{5}, {3, 1, 2, 0, 1}),
+             "float32",
              "less",
              0,
              1,
@@ -357,6 +481,7 @@ namespace
              false},
             {"min_wrap",
              make_real_array(Shape{3}, {2, 1, 2}),
+             "float32",
              "less",
              0,
              1,
@@ -364,13 +489,17 @@ namespace
              AxisIndices{{1}},
              false},
         };
+        std::vector<Case> compat = numeric_compat_cases("min", "less", AxisIndices{{2}});
+        cases.insert(cases.end(), compat.begin(), compat.end());
+        return cases;
     }
 
     std::vector<Case> argrelextrema_cases()
     {
-        return {
+        std::vector<Case> cases = {
             {"extrema_greater_order2",
              make_real_array(Shape{9}, {0, 1, 3, 1, 0, 2, 5, 1, 0}),
+             "float32",
              "greater",
              0,
              2,
@@ -379,6 +508,7 @@ namespace
              false},
             {"extrema_less_2d",
              make_real_array(Shape{2, 5}, {2, 1, 2, 0, 2, 5, 4, 5, 3, 5}),
+             "float32",
              "less",
              1,
              1,
@@ -387,6 +517,7 @@ namespace
              false},
             {"invalid_order",
              make_real_array(Shape{3}, {1, 0, 1}),
+             "float32",
              "greater",
              0,
              0,
@@ -394,6 +525,9 @@ namespace
              {},
              true},
         };
+        std::vector<Case> compat = numeric_compat_cases("extrema", "greater", AxisIndices{{1, 3}});
+        cases.insert(cases.end(), compat.begin(), compat.end());
+        return cases;
     }
 
     Case perf_case(const std::string &comparator)
@@ -443,7 +577,7 @@ namespace
             const float coord = static_cast<float>(axis_len == 0 ? 0 : index % axis_len);
             values[index] = std::sin(0.05f * coord) + 0.0001f * static_cast<float>(index / std::max<std::size_t>(axis_len, 1));
         }
-        return {"perf_case", make_real_array(shape, values), comparator, axis, order, mode, {}, false};
+        return {"perf_case", make_real_array(shape, values), "float32", comparator, axis, order, mode, {}, false};
     }
 
     float speedup(const std::optional<TimingStats> &cpu, const std::optional<TimingStats> &gpu)

@@ -193,6 +193,30 @@ namespace
         return result;
     }
 
+    RealArray complex_part_as_real_array(const ComplexArray &x, bool imaginary)
+    {
+        RealArray result = cusignal::core::make_real_array(x.shape);
+        for (std::size_t index = 0; index < x.values.size(); ++index)
+        {
+            result.values[index] = imaginary ? x.values[index].imag() : x.values[index].real();
+        }
+        return result;
+    }
+
+    ComplexArray combine_real_arrays_as_complex(const RealArray &real_part, const RealArray &imag_part)
+    {
+        if (real_part.shape != imag_part.shape)
+        {
+            throw std::invalid_argument("real/imag shape mismatch");
+        }
+        ComplexArray result = cusignal::core::make_complex_array(real_part.shape);
+        for (std::size_t index = 0; index < real_part.values.size(); ++index)
+        {
+            result.values[index] = Complex(real_part.values[index], imag_part.values[index]);
+        }
+        return result;
+    }
+
     std::size_t flat_index(const Shape &shape, const std::vector<std::size_t> &coords)
     {
         const std::vector<std::size_t> strides = detail::compute_strides(shape);
@@ -596,6 +620,18 @@ namespace cusignal
                 int axis)
             {
                 return apply_lfilter_nd(b, core::RealSignal{1.0}, x, axis, nullptr).output;
+            }
+
+            core::ComplexArray firfilter(
+                const core::RealSignal &b,
+                const core::ComplexArray &x,
+                int axis)
+            {
+                const RealArray real_part = complex_part_as_real_array(x, false);
+                const RealArray imag_part = complex_part_as_real_array(x, true);
+                return combine_real_arrays_as_complex(
+                    firfilter(b, real_part, axis),
+                    firfilter(b, imag_part, axis));
             }
 
             filtering_api::FilterStateResult firfilter(

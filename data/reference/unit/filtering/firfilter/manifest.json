@@ -3,6 +3,8 @@
   "__comment_fields": {
     "accuracy_cases": "精度测试用例列表",
     "id": "测试用例 ID（建议唯一）",
+    "input_kind": "输入类型族：real / complex；complex 表示 complex64 路径",
+    "output_kind": "输出类型族：real / complex；complex 表示 complex64 输出路径",
     "b_file": "输入/输出数据文件路径",
     "x_file": "输入/输出数据文件路径",
     "x_shape": "张量/数组形状",
@@ -33,6 +35,53 @@
       ],
       "atol": 1e-12,
       "rtol": 1e-12,
+      "expected_signal_file": "expected/with_state_axis_last.csv",
+      "expected_signal_shape": [
+        2,
+        5
+      ],
+      "expected_state_file": "expected/with_state_axis_last__state.csv",
+      "expected_state_shape": [
+        2,
+        2
+      ]
+    },
+    {
+      "id": "complex64_axis_last",
+      "input_kind": "complex",
+      "output_kind": "complex",
+      "b_file": "input/b.csv",
+      "x_file": "input/x_complex.csv",
+      "x_shape": [
+        2,
+        4
+      ],
+      "axis": -1,
+      "atol": 1e-6,
+      "rtol": 1e-6,
+      "expected_signal_file": "expected/complex64_axis_last.csv",
+      "expected_signal_shape": [
+        2,
+        4
+      ]
+    },
+    {
+      "id": "with_state_axis_last_float16_compat",
+      "dtype": "float16",
+      "b_file": "input/b.csv",
+      "x_file": "input/x.csv",
+      "x_shape": [
+        2,
+        5
+      ],
+      "axis": -1,
+      "zi_file": "input/zi.csv",
+      "zi_shape": [
+        2,
+        2
+      ],
+      "atol": 5e-2,
+      "rtol": 5e-2,
       "expected_signal_file": "expected/with_state_axis_last.csv",
       "expected_signal_shape": [
         2,

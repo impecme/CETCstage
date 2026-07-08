@@ -375,8 +375,9 @@ namespace
             {"defaults", Scenario::Defaults, 2, 1, 0, 1, "float32", false},
             {"predict", Scenario::Predict, 2, 1, 0, 1, "float32", false},
             {"predict_control", Scenario::PredictControl, 2, 1, 1, 1, "float32", false},
+            {"predict_control_float16_compat", Scenario::PredictControl, 2, 1, 1, 1, "float16", false},
             {"update", Scenario::Update, 2, 1, 0, 1, "float32", false},
-            {"invalid_dtype", Scenario::InvalidDtype, 2, 1, 0, 1, "float16", true},
+            {"invalid_dtype", Scenario::InvalidDtype, 2, 1, 0, 1, "float64", true},
             {"invalid_control_shape", Scenario::InvalidControlShape, 2, 1, 1, 1, "float32", true},
             {"invalid_measurement_shape", Scenario::InvalidMeasurementShape, 2, 1, 0, 1, "float32", true},
         };
@@ -889,6 +890,10 @@ namespace
                       << "  mean=" << format_fixed(summary.cpu_perf->mean_ms)
                       << "  p95=" << format_fixed(summary.cpu_perf->p95_ms) << "\n";
         }
+        else
+        {
+            std::cout << "cpu_perf_ms   : not_run (accuracy-only; use perf/full case set for timing)\n";
+        }
         if (summary.gpu_e2e_perf.has_value())
         {
             std::cout << "gpu_perf_ms   : e2e_median=" << format_fixed(summary.gpu_e2e_perf->median_ms)
@@ -897,6 +902,10 @@ namespace
                       << "  p95=" << format_fixed(summary.gpu_e2e_perf->p95_ms)
                       << "  e2e_speedup=" << format_fixed(speedup(summary.cpu_perf, summary.gpu_e2e_perf)) << "x"
                       << "  kernel_speedup=" << format_fixed(speedup(summary.cpu_perf, summary.gpu_kernel_perf)) << "x\n";
+        }
+        else
+        {
+            std::cout << "gpu_perf_ms   : not_run (accuracy-only; use perf/full case set for timing)\n";
         }
         if (options.emit_report)
         {

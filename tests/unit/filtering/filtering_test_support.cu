@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "../../../include/cusignal/filtering/filtering.hpp"
+#include "../../../include/cusignal/core/helpers.hpp"
 #include "../common/json.hpp"
 #include "../common/report.hpp"
 
@@ -45,6 +46,7 @@ namespace
     using cusignal::core::Complex;
     using cusignal::core::ComplexArray;
     using cusignal::core::ComplexSignal;
+    using cusignal::core::Float16;
     using cusignal::core::ZxGpuComplexArray;
     using cusignal::core::ZxGpuComplexSignal;
     using cusignal::core::ZxGpuRealArray;
@@ -169,6 +171,8 @@ namespace
         std::string method = "pad"; // filtfilt 方法：pad 或 gust
         std::string domain = "time"; // resample 域：time 或 freq
         std::string type = "linear"; // detrend 模式（linear / constant）
+        std::string input_kind = "real"; // 输入数据类型族：real / complex
+        std::string dtype = "float32"; // 兼容性用例的数据类型标签
         WindowSpec window = std::string();
         Shape mysize;
         IndexVector bp;
@@ -825,6 +829,70 @@ namespace
         return array.values;
     }
 
+    float quantize_float16(float value)
+    {
+        return __half2float(Float16(value));
+    }
+
+    RealSignal apply_dtype_quantization(const RealSignal &signal, const std::string &dtype)
+    {
+        if (dtype == "float32")
+        {
+            return signal;
+        }
+        if (dtype != "float16")
+        {
+            throw std::runtime_error("unsupported filtering dtype compatibility case: " + dtype);
+        }
+        RealSignal quantized = signal;
+        for (float &value : quantized)
+        {
+            value = quantize_float16(value);
+        }
+        return quantized;
+    }
+
+    RealArray apply_dtype_quantization(const RealArray &array, const std::string &dtype)
+    {
+        if (dtype == "float32")
+        {
+            return array;
+        }
+        if (dtype != "float16")
+        {
+            throw std::runtime_error("unsupported filtering dtype compatibility case: " + dtype);
+        }
+        RealArray quantized = array;
+        quantized.values = apply_dtype_quantization(quantized.values, dtype);
+        return quantized;
+    }
+
+    OutputBundle apply_dtype_quantization(const OutputBundle &bundle, const std::string &dtype)
+    {
+        if (dtype == "float32")
+        {
+            return bundle;
+        }
+        if (dtype != "float16")
+        {
+            throw std::runtime_error("unsupported filtering dtype compatibility case: " + dtype);
+        }
+        OutputBundle quantized = bundle;
+        if (!quantized.main_complex)
+        {
+            quantized.real_output = apply_dtype_quantization(quantized.real_output, dtype);
+        }
+        if (quantized.has_state)
+        {
+            quantized.state = apply_dtype_quantization(quantized.state, dtype);
+        }
+        if (quantized.has_time)
+        {
+            quantized.time = apply_dtype_quantization(quantized.time, dtype);
+        }
+        return quantized;
+    }
+
     RealSignal sample_values(const RealSignal &values, std::size_t limit = 32)
     {
         if (values.size() <= limit)
@@ -995,6 +1063,7 @@ namespace
                << ",\n  \"method\": \"" << json_escape(test_case.method) << "\""
                << ",\n  \"domain\": \"" << json_escape(test_case.domain) << "\""
                << ",\n  \"type\": \"" << json_escape(test_case.type) << "\""
+               << ",\n  \"dtype\": \"" << json_escape(test_case.dtype) << "\""
                << ",\n  \"window\": " << window_spec_to_json(test_case.window)
                << "\n}\n";
         return stream.str();
@@ -1386,6 +1455,8 @@ namespace
             test_case.method = get_optional_string(object, "method").value_or("pad"); // filtfilt 方法
             test_case.domain = get_optional_string(object, "domain").value_or("time"); // resample 域
             test_case.type = get_optional_string(object, "type").value_or("linear"); // detrend 模式
+            test_case.input_kind = get_optional_string(object, "input_kind").value_or("real"); // 输入数据类型族
+            test_case.dtype = get_optional_string(object, "dtype").value_or("float32"); // dtype 兼容性标签
             test_case.atol = get_optional_number(object, "atol", 0.0); // 绝对误差容限
             test_case.rtol = get_optional_number(object, "rtol", 0.0); // 相对误差容限
             if (const auto iter = object.find("x_shape"); iter != object.end()) test_case.x_shape = json_array_to_shape(iter->second);
@@ -1496,12 +1567,16 @@ namespace
 
     const RealArray &get_x_real(const FilteringCase &test_case)
     {
+        thread_local RealArray buffer;
         if (test_case.generated_real_x.has_value())
         {
-            return *test_case.generated_real_x;
+            buffer = *test_case.generated_real_x;
         }
-        thread_local RealArray buffer;
-        buffer = load_real_array(test_case.x_file, test_case.x_shape);
+        else
+        {
+            buffer = load_real_array(test_case.x_file, test_case.x_shape);
+        }
+        buffer = apply_dtype_quantization(buffer, test_case.dtype);
         return buffer;
     }
 
@@ -1518,78 +1593,106 @@ namespace
 
     const RealSignal &get_b_signal(const FilteringCase &test_case)
     {
+        thread_local RealSignal buffer;
         if (test_case.generated_b.has_value())
         {
-            return *test_case.generated_b;
+            buffer = *test_case.generated_b;
         }
-        thread_local RealSignal buffer;
-        buffer = read_real_csv(test_case.b_file);
+        else
+        {
+            buffer = read_real_csv(test_case.b_file);
+        }
+        buffer = apply_dtype_quantization(buffer, test_case.dtype);
         return buffer;
     }
 
     const RealSignal &get_a_signal(const FilteringCase &test_case)
     {
+        thread_local RealSignal buffer;
         if (test_case.generated_a.has_value())
         {
-            return *test_case.generated_a;
+            buffer = *test_case.generated_a;
         }
-        thread_local RealSignal buffer;
-        buffer = read_real_csv(test_case.a_file);
+        else
+        {
+            buffer = read_real_csv(test_case.a_file);
+        }
+        buffer = apply_dtype_quantization(buffer, test_case.dtype);
         return buffer;
     }
 
     const RealSignal &get_h_signal(const FilteringCase &test_case)
     {
+        thread_local RealSignal buffer;
         if (test_case.generated_h.has_value())
         {
-            return *test_case.generated_h;
+            buffer = *test_case.generated_h;
         }
-        thread_local RealSignal buffer;
-        buffer = read_real_csv(test_case.h_file);
+        else
+        {
+            buffer = read_real_csv(test_case.h_file);
+        }
+        buffer = apply_dtype_quantization(buffer, test_case.dtype);
         return buffer;
     }
 
     const RealArray &get_sos_array(const FilteringCase &test_case)
     {
+        thread_local RealArray buffer;
         if (test_case.generated_sos.has_value())
         {
-            return *test_case.generated_sos;
+            buffer = *test_case.generated_sos;
         }
-        thread_local RealArray buffer;
-        buffer = load_real_array(test_case.sos_file, test_case.sos_shape);
+        else
+        {
+            buffer = load_real_array(test_case.sos_file, test_case.sos_shape);
+        }
+        buffer = apply_dtype_quantization(buffer, test_case.dtype);
         return buffer;
     }
 
     const RealArray &get_zi_array(const FilteringCase &test_case)
     {
+        thread_local RealArray buffer;
         if (test_case.generated_zi.has_value())
         {
-            return *test_case.generated_zi;
+            buffer = *test_case.generated_zi;
         }
-        thread_local RealArray buffer;
-        buffer = load_real_array(test_case.zi_file, test_case.zi_shape);
+        else
+        {
+            buffer = load_real_array(test_case.zi_file, test_case.zi_shape);
+        }
+        buffer = apply_dtype_quantization(buffer, test_case.dtype);
         return buffer;
     }
 
     const RealSignal &get_t_signal(const FilteringCase &test_case)
     {
+        thread_local RealSignal buffer;
         if (test_case.generated_t.has_value())
         {
-            return *test_case.generated_t;
+            buffer = *test_case.generated_t;
         }
-        thread_local RealSignal buffer;
-        buffer = read_real_csv(test_case.t_file);
+        else
+        {
+            buffer = read_real_csv(test_case.t_file);
+        }
+        buffer = apply_dtype_quantization(buffer, test_case.dtype);
         return buffer;
     }
 
     const RealArray &get_data_array(const FilteringCase &test_case)
     {
+        thread_local RealArray buffer;
         if (test_case.generated_data.has_value())
         {
-            return *test_case.generated_data;
+            buffer = *test_case.generated_data;
         }
-        thread_local RealArray buffer;
-        buffer = load_real_array(test_case.data_file, test_case.data_shape);
+        else
+        {
+            buffer = load_real_array(test_case.data_file, test_case.data_shape);
+        }
+        buffer = apply_dtype_quantization(buffer, test_case.dtype);
         return buffer;
     }
 
@@ -1659,6 +1762,10 @@ namespace
 
     OutputBundle expected_bundle_for(const std::string &op, const FilteringCase &test_case)
     {
+        if (op == "firfilter" && test_case.input_kind == "complex")
+        {
+            return make_complex_output(load_complex_array(test_case.expected_output_file, test_case.expected_output_shape));
+        }
         if (op == "hilbert" || op == "hilbert2" || op == "freq_shift" || op == "channelize_poly")
         {
             return make_complex_output(load_complex_array(test_case.expected_output_file, test_case.expected_output_shape));
@@ -1686,6 +1793,14 @@ namespace
             return Runner{
                 [](const FilteringCase &c)
                 {
+                    if (c.input_kind == "complex")
+                    {
+                        if (!c.zi_file.empty())
+                        {
+                            throw std::runtime_error("firfilter complex input does not support zi accuracy cases");
+                        }
+                        return make_complex_output(cpu::filtering::firfilter(get_b_signal(c), get_x_complex(c), c.axis));
+                    }
                     if (!c.zi_file.empty())
                     {
                         const auto result = cpu::filtering::firfilter(
@@ -1699,6 +1814,14 @@ namespace
                 },
                 [](const FilteringCase &c)
                 {
+                    if (c.input_kind == "complex")
+                    {
+                        if (!c.zi_file.empty())
+                        {
+                            throw std::runtime_error("firfilter complex input does not support zi accuracy cases");
+                        }
+                        return make_complex_output(zx_gpu_backend::filtering::firfilter(get_b_signal(c), get_x_complex(c), c.axis));
+                    }
                     if (!c.zi_file.empty())
                     {
                         const auto result = zx_gpu_backend::filtering::firfilter(
@@ -2142,7 +2265,7 @@ namespace
         }
         else
         {
-            std::cout << "cpu_perf_ms   : median=n/a  mean=n/a  p95=n/a\n";
+            std::cout << "cpu_perf_ms   : not_run (accuracy-only; use perf/full case set for timing)\n";
         }
         if (summary.gpu_e2e_perf.has_value())
         {
@@ -2155,7 +2278,7 @@ namespace
         }
         else
         {
-            std::cout << "gpu_perf_ms   : e2e_median=n/a  kernel_median=n/a  p95=n/a  e2e_speedup=n/a  kernel_speedup=n/a\n";
+            std::cout << "gpu_perf_ms   : not_run (accuracy-only; use perf/full case set for timing)\n";
         }
         std::cout << "reports       : data/reports/unit/filtering/" << op << "/latest_summary.md\n";
     }
@@ -2165,9 +2288,12 @@ namespace
         CaseReport report;
         report.case_id = test_case.id;
         report.category = test_case.category;
-        const OutputBundle cpu_output = runner.cpu(test_case);
-        const OutputBundle gpu_output = materialize(runner.gpu(test_case));
-        const OutputBundle expected = expected_bundle_for(op, test_case);
+        const OutputBundle cpu_output =
+            apply_dtype_quantization(runner.cpu(test_case), test_case.dtype);
+        const OutputBundle gpu_output =
+            apply_dtype_quantization(materialize(runner.gpu(test_case)), test_case.dtype);
+        const OutputBundle expected =
+            apply_dtype_quantization(expected_bundle_for(op, test_case), test_case.dtype);
         report.samples = main_size(cpu_output);
         report.cpu_gpu_error = output_error(cpu_output, gpu_output, test_case.atol);
         report.cpu_reference_error = output_error(cpu_output, expected, test_case.atol);
@@ -2176,7 +2302,9 @@ namespace
                       output_within_tolerance(gpu_output, expected, test_case.atol, test_case.rtol);
         if (test_case.expected_state_file != fs::path())
         {
-            const RealArray expected_state = load_real_array(test_case.expected_state_file, test_case.expected_state_shape);
+            const RealArray expected_state = apply_dtype_quantization(
+                load_real_array(test_case.expected_state_file, test_case.expected_state_shape),
+                test_case.dtype);
             if (!cpu_output.has_state || !gpu_output.has_state ||
                 !within_tolerance(flatten(cpu_output.state), flatten(expected_state), test_case.atol, test_case.rtol) ||
                 !within_tolerance(flatten(gpu_output.state), flatten(expected_state), test_case.atol, test_case.rtol))
@@ -2187,7 +2315,9 @@ namespace
         }
         if (test_case.expected_time_file != fs::path())
         {
-            const RealSignal expected_time = read_real_csv(test_case.expected_time_file);
+            const RealSignal expected_time = apply_dtype_quantization(
+                read_real_csv(test_case.expected_time_file),
+                test_case.dtype);
             if (!cpu_output.has_time || !gpu_output.has_time ||
                 !within_tolerance(cpu_output.time, expected_time, test_case.atol, test_case.rtol) ||
                 !within_tolerance(gpu_output.time, expected_time, test_case.atol, test_case.rtol))

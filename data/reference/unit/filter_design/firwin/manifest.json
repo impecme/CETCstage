@@ -15,7 +15,8 @@
     "fs": "采样频率",
     "atol": "绝对误差容限",
     "rtol": "相对误差容限",
-    "expected_signal_file": "输入/输出数据文件路径"
+    "expected_signal_file": "输入/输出数据文件路径",
+    "dtype": "兼容路径数据类型；float16 用例按 FP16 量化后比较"
   },
   "accuracy_cases": [
     {
@@ -80,6 +81,27 @@
       "atol": 1e-10,
       "rtol": 1e-10,
       "expected_signal_file": "expected/width_override.csv"
+    },
+    {
+      "id": "lowpass_scalar_float16_compat",
+      "numtaps": 11,
+      "cutoff": 0.3,
+      "width": -1.0,
+      "window": {
+        "kind": "string",
+        "value": "hamming"
+      },
+      "pass_zero": {
+        "kind": "bool",
+        "value": true
+      },
+      "scale": true,
+      "nyq": -1.0,
+      "fs": 2.0,
+      "atol": 0.001,
+      "rtol": 0.001,
+      "expected_signal_file": "expected/lowpass_scalar.csv",
+      "dtype": "float16"
     }
   ]
 }

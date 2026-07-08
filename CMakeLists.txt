@@ -244,6 +244,7 @@ function(cusignal_configure_zx_gpu_source_target target_name)
         endif()
     endforeach()
     target_compile_options(${target_name} PRIVATE ${CUSIGNAL_ZHONGKEXIN_CXX_GPU_FLAGS})
+    target_compile_definitions(${target_name} PRIVATE __CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING)
 endfunction()
 
 add_library(cusignal_cpu STATIC ${CUSIGNAL_CPU_SOURCES})
@@ -261,6 +262,7 @@ add_library(cusignal_zx_gpu STATIC ${CUSIGNAL_ZHONGKEXIN_GPU_SOURCES})
 target_include_directories(cusignal_zx_gpu PUBLIC ${CUSIGNAL_INCLUDE_DIR} ${CUSIGNAL_ZHONGKEXIN_COMPAT_INCLUDE_DIRS})
 target_compile_features(cusignal_zx_gpu PUBLIC cxx_std_17)
 target_compile_definitions(cusignal_zx_gpu PUBLIC CUSIGNAL_PLATFORM_${CUSIGNAL_PLATFORM})
+target_compile_definitions(cusignal_zx_gpu PRIVATE __CDPRT_SUPPRESS_SYNC_DEPRECATION_WARNING)
 target_include_directories(cusignal_zx_gpu PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/demo/task1_radar
     ${CMAKE_CURRENT_SOURCE_DIR}/demo/task2_features

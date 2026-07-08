@@ -118,6 +118,19 @@ namespace cusignal
                 int axis = -1);
 
             /**
+             * @brief 使用 FIR 系数对 complex64 输入执行一维线性滤波。
+             *
+             * @param b FIR 分子系数。
+             * @param x 输入复数张量。
+             * @param axis 滤波轴。
+             * @return 与输入同形状的 complex64 滤波结果。
+             */
+            core::ComplexArray firfilter(
+                const core::RealSignal &b,
+                const core::ComplexArray &x,
+                int axis = -1);
+
+            /**
              * @brief 使用 FIR 系数对输入执行一维线性滤波，并返回最终延迟状态。
              *
              * @param b FIR 分子系数。
@@ -466,6 +479,19 @@ namespace cusignal
             core::ZxGpuRealArray firfilter(
                 const core::RealSignalLike &b,
                 const core::RealArrayLike &x,
+                int axis = -1);
+
+            /**
+             * @brief 在 ZQ500 GPU 后端使用 FIR 系数对 complex64 输入执行一维线性滤波。
+             *
+             * @param b FIR 分子系数。
+             * @param x 输入复数张量。
+             * @param axis 滤波轴。
+             * @return 与输入同形状的设备端 complex64 滤波结果。
+             */
+            core::ZxGpuComplexArray firfilter(
+                const core::RealSignalLike &b,
+                const core::ComplexArrayLike &x,
                 int axis = -1);
 
             /**

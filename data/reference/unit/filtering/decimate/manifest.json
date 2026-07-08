@@ -31,6 +31,24 @@
       "expected_signal_shape": [
         16
       ]
+    },
+    {
+      "id": "q3_zero_phase_float16_compat",
+      "dtype": "float16",
+      "x_file": "input/x.csv",
+      "x_shape": [
+        48
+      ],
+      "q": 3,
+      "n": -1,
+      "axis": -1,
+      "zero_phase": true,
+      "atol": 5e-2,
+      "rtol": 5e-2,
+      "expected_signal_file": "expected/q3_zero_phase.csv",
+      "expected_signal_shape": [
+        16
+      ]
     }
   ]
 }

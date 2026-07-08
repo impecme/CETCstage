@@ -16,6 +16,24 @@
       "x_file": "input/hann_density__x.csv",
       "expected_frequencies_file": "expected/hann_density__frequencies.csv",
       "expected_values_file": "expected/hann_density__values.csv"
+    },
+    {
+      "id": "hann_density_float16_compat",
+      "dtype": "float16",
+      "atol": 2e-2,
+      "rtol": 2e-2,
+      "fs": 1024.0,
+      "window": {
+        "kind": "string",
+        "value": "hann"
+      },
+      "scaling": "density",
+      "x_shape": [
+        256
+      ],
+      "x_file": "input/hann_density__x.csv",
+      "expected_frequencies_file": "expected/hann_density__frequencies.csv",
+      "expected_values_file": "expected/hann_density__values.csv"
     }
   ]
 }

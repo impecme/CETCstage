@@ -23,6 +23,7 @@
     },
     {
       "id": "complex_case",
+      "output_kind": "complex",
       "atol": 1e-09,
       "rtol": 1e-09,
       "fs": 400.0,
@@ -41,6 +42,28 @@
       "expected_frequencies_file": "expected/complex_case__frequencies.csv",
       "expected_times_file": "expected/complex_case__times.csv",
       "expected_values_file": "expected/complex_case__values.csv"
+    },
+    {
+      "id": "psd_case_float16_compat",
+      "dtype": "float16",
+      "atol": 2e-2,
+      "rtol": 2e-2,
+      "fs": 400.0,
+      "window": {
+        "kind": "string",
+        "value": "hann"
+      },
+      "nperseg": 64,
+      "noverlap": 48,
+      "nfft": 128,
+      "mode": "psd",
+      "x_shape": [
+        384
+      ],
+      "x_file": "input/psd_case__x.csv",
+      "expected_frequencies_file": "expected/psd_case__frequencies.csv",
+      "expected_times_file": "expected/psd_case__times.csv",
+      "expected_values_file": "expected/psd_case__values.csv"
     }
   ]
 }
