@@ -4,7 +4,7 @@
 
 V5 在 CPU reference 与中科芯 ZQ500 GPU 正确性不退化的前提下，完成工程规范、平台兼容、任务性能和全库 81 算子优化。性能结论必须同时具备耗时、误差、显存/cache 和复现证据。
 
-总计划见 `plans/V5_0_plan.md`，算子范围和契约状态见 `operator_optimization_matrix.md`。
+总计划见 `plans/V5_0_plan.md`，最终结论见 `final_summary.md`。
 
 ## 阶段划分
 
@@ -15,15 +15,14 @@ V5 在 CPU reference 与中科芯 ZQ500 GPU 正确性不退化的前提下，完
 | V5.3 | `plans/V5_3_plan.md` | `docs/submission/READMEV5_3.md` | 已完成 | 两任务每步调用算子库，27 个依赖算子和逐步计时/精度闭环 |
 | V5.4 | `plans/V5_4_plan.md` | `docs/submission/READMEV5_4.md` | 已完成 | 核心 53/53 完成规范化、独立测试和性能结论 |
 | V5.5 | `plans/V5_5_plan.md` | `docs/submission/READMEV5_5.md` | 已完成 | 全库 81/81、任务步骤 schema v2、类型覆盖和平台最终验收完成 |
-| V6.0 | `plans/V6_0_plan.md` | 待生成 | 规划中 | 深度优化 Task1/Task2 与任务相关算子，轻度优化赛题算子库 |
 
 ## 当前执行点
 
-- 当前阶段：V6.0 规划，进入任务优先的深度性能优化。
+- 当前阶段：V5 已关闭；第六版规划独立放在 `docs/performance/v6_0/`。
 - 已完成基线：V5.1 可观测性、cache 统计和整卡显存采样。
 - 已提前完成：`filtering/wiener` 二维 shared-memory tiled 快路径，归入 V5.4 核心 53。
 - V5.4 收口：`v5_4_gate_latest` 已通过，核心 53/53、模块回归、任务 smoke、接口/类型契约和组合图件均通过。
-- 下一门禁：建立 Task1/Task2 L1-L6 repeat=3 基线和 all81 当前基线。
+- 下一门禁：无。V5 目录不再记录第六版执行过程。
 
 ## 当前执行队列
 
@@ -44,9 +43,8 @@ V5 在 CPU reference 与中科芯 ZQ500 GPU 正确性不退化的前提下，完
 15. `V5.4-05`：已关闭；受影响模块 full 回归通过。
 16. `V5.4-06`：已关闭；阶段关闭验证与交付文档收口通过。
 17. `V5.5-01`：已关闭；扩展 28、all81、任务、类型和平台最终验收完成。
-18. `V6.0-01`：当前工作包；建立 Task1/Task2 L1-L6 repeat=3 基线和 all81 当前基线。
 
-V5.5 已关闭。当前进入 `V6.0-01`，第六版只把 Task1/Task2 和赛题直接相关算子作为性能主线；原 cuSignal 中赛题未提到的算子暂不做进一步性能优化。
+V5.5 已关闭。第六版规划和后续执行记录独立维护在 `docs/performance/v6_0/`。
 
 ### V5.2-01 已关闭命令
 
@@ -202,10 +200,9 @@ PY
 | 文档 | 用途 |
 | --- | --- |
 | `agent_collaboration.md` | 智能体职责、文件所有权和阶段协作流程 |
+| `final_summary.md` | V5 最终验收、类型兼容、任务步骤和报告收束结论 |
 | `optimization_change_log.md` | 优化措施、工程变更、验证证据和状态台账 |
 | `operator_optimization_matrix.md` | 81 算子范围、类型/接口/测试契约和性能状态 |
-| `operator_contract_inventory.md` | 由测试注册表生成的 81 条声明、CPU/GPU、测试和审计状态 |
-| `operator_type_contracts.md` | 81 算子的五种实数适用性、complex64、累加和整数转换契约 |
-| `platform_compatibility_matrix.md` | 三个复赛表的覆盖统计、分类口径和 V5.2-06 探针边界 |
-| `task_step_audit.md` | Task1/Task2 步骤、公共算子链路、计时和精度覆盖 |
-| `plans/V5_0_plan.md` 至 `plans/V6_0_plan.md` | 总计划与各阶段门禁 |
+| `plans/V5_0_plan.md` 至 `plans/V5_5_plan.md` | V5 总计划与各阶段门禁 |
+
+生成型审计长表不再放在 V5 目录中，正式结论统一汇总到 `final_summary.md` 和 `data/reports/zhongkexin/v5_5_final/summary.*`。

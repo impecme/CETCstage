@@ -502,7 +502,7 @@ V5.5 最终交付结论见 `docs/submission/READMEV5_5.md`。中间 probe、完�
 
 ### V6.0 当前阶段验证
 
-第六版进入任务优先的深度性能优化：深度优化 Task1/Task2 和任务相关算子，轻度优化赛题提到的算子库；原 cuSignal 中赛题未提到的算子暂不做进一步性能优化。计划见 `docs/performance/v5_0/plans/V6_0_plan.md`。
+第六版进入任务优先的强性能优化：Task1/Task2 端到端是 P0，任务相关算子是 P1，赛题提到但不在任务热路径的算子是 P2；原 cuSignal 中赛题未提到且不影响任务链路的算子暂不继续优化。V6 会对照 CUDA/CuPy/SciPy 等开源实现的 memory pool、kernel fusion、FFT/overlap-save、STFT/CWT 和 CUDA Graph 思路，先做 ZQ500 平台探针，再合入满足赛题精度、类型和报告要求的优化。计划见 `docs/performance/v6_0/plans/V6_0_plan.md`，台账见 `docs/performance/v6_0/optimization_change_log.md`。
 
 `run_zhongkexin_stage4.sh` 会自动检查依赖、配置中科芯 `build-zx`、运行 Task1/Task2 L1-L6 scale sweep、执行全量算子多规模 benchmark，并生成报告和图件。当前交付验收只面向 CPU reference + 容器内 ZQ500 GPU。
 
@@ -755,12 +755,8 @@ python3 scripts/test/plot_all_ops_benchmark.py \
 |---|---|---|
 | 报告目录说明 | `data/reports/README.md` | 当前保留报告、仓库外垃圾目录和不保留项 |
 | V5.5 交付文档 | `docs/submission/READMEV5_5.md` | 全库 81、任务步骤、类型兼容、平台适配和关键优化汇总 |
-| dtype 兼容最终摘要 | `data/reports/zhongkexin/v5_5_dtype_compat_final/README.md` | dtype 覆盖与精简证据索引 |
-| dtype 覆盖审计 | `data/reports/zhongkexin/v5_5_dtype_compat_final/dtype_test_coverage.json` | 五种实数和 complex64 的逐算子覆盖结论 |
-| 类型契约 | `data/reports/zhongkexin/v5_5_type_contracts/latest_type_contracts.json` | 81 算子的类型策略、兼容路径和禁止类型 |
-| 任务步骤审计 | `data/reports/zhongkexin/v5_3_task_step_audit/latest_task_step_audit.json` | Task1/Task2 14 个计算步骤公共算子链路、计时和精度覆盖 |
-| filtering dtype 复跑 | `data/reports/unit/filtering/latest_metrics.json` | filtering 模块 dtype 兼容最终复跑 |
-| coherence FP16 复跑 | `data/reports/unit/spectral/coherence/latest_metrics.json` | `spectral/coherence` FP16 兼容修正用例 |
+| V5.5 最终报告汇总 | `data/reports/zhongkexin/v5_5_final/summary.md` | 全库接口、类型兼容、dtype 覆盖和任务步骤审计结论 |
+| V5.5 机器可读摘要 | `data/reports/zhongkexin/v5_5_final/summary.json` | 同一结论的 JSON 摘要 |
 | 单元测试入口 | `tests/unit/` | 81 个已迁移算子的测试覆盖 |
 | 公开接口 | `include/cusignal/` | 库函数头文件与公开 API |
 | ZQ500 GPU 实现 | `src/zhongkexin/` | GPU 加速实现源码 |

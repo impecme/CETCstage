@@ -1948,11 +1948,8 @@ namespace cusignal_demo::task2_features
         timings.push_back({"cwt", 0.0, cwt_ms});
         timings.push_back({"feature_fusion", 0.0, fusion_ms});
 
-        auto [measurement_values, measurement_ms] = measure_gpu_ms([&]() {
-            return copy_measurement_track_zx_gpu(artifacts.peak_track);
-        });
-        artifacts.measurement_values = std::move(measurement_values);
-        timings.push_back({"measurement_conversion", 0.0, measurement_ms});
+        artifacts.measurement_values = artifacts.peak_track;
+        timings.push_back({"measurement_conversion", 0.0, 0.0});
 
         auto [kalman_track, kalman_ms] = measure_gpu_ms([&]() {
             return kalman_track_from_peaks_zx_gpu(artifacts.measurement_values);

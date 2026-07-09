@@ -1,14 +1,14 @@
-# CETC CUDA 信号处理加速库统一技术文档
+# CETC 中科芯 ZQ500 信号处理加速库统一技术文档
 
-更新时间：2026-06-01
+更新时间：2026-07-09
 
 > 本文件是项目当前唯一主技术文档。文件名保留 `technical_document_framework_final.md` 以兼容已有引用，但内容已从“框架”合并为“统一版完整技术文档”。文档入口见 `docs/README.md`；`docs/archive/version_plans/`、`docs/migration/zhongkexin/`、`docs/performance/v5_0/`、`docs/submission/READMEV*`、`scripts/test/READMEV*` 保留为阶段记录；提交、答辩和复盘时优先引用本文。
 
 ## 摘要
 
-本项目面向第十届集创赛“中科芯”企业命题，围绕 GPU 芯片上的信号处理加速库与算法任务验证展开。当前阶段以 NVIDIA GPU / CUDA 为工程基线，完成 cuSignal 风格信号处理库的 CPU/CUDA 双后端迁移、赛题核心算子性能与精度验证、Task1/Task2 端到端任务 demo、自验收脚本、六档规模 benchmark 和报告图件链路。
+本项目面向第十届集创赛“中科芯”企业命题，围绕 GPU 芯片上的信号处理加速库与算法任务验证展开。当前交付以 CPU reference + 中科芯 ZQ500 GPU 双链路为工程基线，完成 cuSignal 风格信号处理库的 CPU/ZQ500 GPU 双后端迁移、赛题核心算子性能与精度验证、Task1/Task2 端到端任务 demo、自验收脚本、六档规模 benchmark 和报告图件链路。
 
-本文不声称已经完成中科芯国产 GPU 实测。国产 GPU 相关内容仅作为第二阶段后端迁移策略：保持公开 API、测试数据、误差口径和报告脚本不变，替换底层 GPU 后端并重新验证。
+本文当前结论以本队容器内中科芯 ZQ500 实测为准；宿主机只用于文件同步、静态检查和报告整理。
 
 | 项目成果 | 当前状态 | 主要证据 |
 |---|---|---|
@@ -17,7 +17,7 @@
 | 任务 1 | 雷达目标检测与多普勒分析端到端 demo | `demo/task1_radar/` |
 | 任务 2 | 多域特征提取定位端到端 demo | `demo/task2_features/` |
 | 任务级验收 | repeat、异常输入、资源漂移、可选 compute-sanitizer | `scripts/test/run_task_demos.sh`、`scripts/test/READMEV3_9.md` |
-| 性能报告 | 53 算子六档 benchmark、全局图件、任务级规模扫测 | 运行后 `data/reports/unit/benchmarks/*`、`data/reports/demo/*` |
+| 性能报告 | 81 算子六档 benchmark、全局图件、任务级规模扫测 | 运行后 `data/reports/unit/benchmarks/*`、`data/reports/demo/*` |
 
 ## 0. 阅读导引与主结论
 
@@ -25,12 +25,12 @@
 
 | 评委关注点 | 主结论 | 文档位置 | 证据入口 |
 |---|---|---|---|
-| 是否只是两个 demo | 不是。项目先建立 12 模块、81 测试入口的 CPU/CUDA 双后端库，再组合 Task1/Task2 | 第 2、3、5、6 章 | `include/cusignal/`、`src/cpu/`、`src/zhongkexin/`、`tests/unit/`、`demo/` |
-| CUDA 加速是否可解释 | 可解释。每个亮点均落到具体 kernel、workspace、库原语或脚本口径 | 第 4、7、10 章 | `src/zhongkexin/`、`include/cusignal/core/types.hpp`、`scripts/test/READMEV3_8_*.md` |
+| 是否只是两个 demo | 不是。项目先建立 12 模块、81 测试入口的 CPU/ZQ500 GPU 双后端库，再组合 Task1/Task2 | 第 2、3、5、6 章 | `include/cusignal/`、`src/cpu/`、`src/zhongkexin/`、`tests/unit/`、`demo/` |
+| ZQ500 GPU 加速是否可解释 | 可解释。每个亮点均落到具体 kernel、workspace、库原语或脚本口径 | 第 4、7、10 章 | `src/zhongkexin/`、`include/cusignal/core/types.hpp`、`scripts/test/READMEV3_8_*.md` |
 | 精度是否可靠 | CPU 后端、公共 detail 层、单精度口径、`mixed_error` 和精度审计共同约束 | 第 4、8、9 章 | `tests/unit/common/`、`scripts/test/audit_all_ops_precision.py`、运行后 `data/reports/unit/audit/` |
-| 性能是否有规模规律 | 53 算子按六档规模复测，区分 e2e speedup 与 kernel speedup | 第 3、8、10 章 | `scripts/test/benchmark_all_ops_scales.py`、运行后 `data/reports/unit/benchmarks/` |
+| 性能是否有规模规律 | 81 算子按六档规模复测，区分 e2e speedup 与 kernel speedup | 第 3、8、10 章 | `scripts/test/benchmark_all_ops_scales.py`、运行后 `data/reports/unit/benchmarks/` |
 | 任务链路是否自动验收 | Task1/Task2 写出 validation、repeat、资源漂移、异常输入和可选 sanitizer 结果 | 第 5、6、8 章 | `demo/task1_radar/`、`demo/task2_features/`、`scripts/test/run_task_demos.sh` |
-| 国产 GPU 实测边界 | 当前是 CUDA 阶段基线，不声称已完成国产 GPU 实测；后续按同一 API 和测试闭环迁移 | 第 1、11 章 | `include/cusignal/`、`scripts/test/` |
+| 中科芯实测边界 | 当前交付验收只面向 CPU reference + 容器内 ZQ500 GPU；完整容器日志和大体积图件放在仓库外 | 第 1、11 章 | `README.md`、`docs/submission/READMEV5_5.md` |
 
 ## 1. 项目背景与技术路线
 
@@ -38,21 +38,21 @@
 
 赛题关注雷达、通信、时频分析、滤波、检测和状态估计等典型信号处理算法在 GPU 平台上的工程化实现。这类算法通常具有数据量大、链路长、实时性要求高、频域变换密集等特点，适合通过 GPU 并行计算、批量 FFT、设备侧缓存、任务级流水和自动化验证提升吞吐能力。
 
-### 1.2 两阶段边界
+### 1.2 当前交付边界
 
-当前阶段是 CUDA 基线开发阶段：
+当前交付阶段是中科芯 ZQ500 实测阶段：
 
-- 使用 NVIDIA GPU / CUDA 建立可运行、可测试、可分析的加速库。
+- 使用中科芯 ZQ500 GPU 建立可运行、可测试、可分析的加速库。
 - 以 CPU 后端作为参考实现和误差基线。
 - 以 ZQ500 GPU 后端验证 GPU 并行化、内存模型、任务链路和性能瓶颈。
-- 输出可迁移的软件边界和验证口径。
+- 输出可复现的软件边界、验证口径和阶段报告。
 
-第二阶段才面向中科芯国产 GPU 平台：
+当前 ZQ500 平台适配已经完成，维护边界如下：
 
 - 保持 `include/cusignal/` 中公开接口不变。
 - 保持 `data/reference`、`data/generated`、`tests/unit` 和 `scripts/test` 的验证口径不变。
-- 替换 ZQ500 GPU 后端中 cuFFT、cuBLAS、cuSOLVER、CUB、自定义 kernel 和运行时 API 的实现。
-- 按“单算子正确性 -> 53 算子性能 -> Task1/Task2 端到端任务”的顺序重新验收。
+- ZQ500 GPU 后端使用中科芯兼容 Runtime、FFT、BLAS、SOLVER、SPARSE、RAND 等库和自定义 kernel。
+- 后续修改仍按“单算子正确性 -> all81 benchmark -> Task1/Task2 端到端任务”的顺序回归。
 
 ### 1.3 三层技术路线
 
@@ -60,13 +60,13 @@
 
 | 层次 | 目标 | 技术意义 | 证据 |
 |---|---|---|---|
-| 完整 cuSignal 库迁移 | 建立 81 个算子的模块化 CPU/CUDA 双路径 | 证明项目不是一次性 demo，而是可复用库 | 12 个模块头文件、CPU/CUDA 源码和 81 个单测入口 |
+| 完整 cuSignal 库迁移 | 建立 81 个算子的模块化 CPU/ZQ500 GPU 双路径 | 证明项目不是一次性 demo，而是可复用库 | 12 个模块头文件、CPU/ZQ500 GPU 源码和 81 个单测入口 |
 | 53 个赛题核心算子优化 | 对评分相关算子建立统一精度、耗时、加速比评价 | 支撑性能分析和优化闭环 | `benchmark_all_ops_scales.py`、`plot_all_ops_benchmark.py` |
 | Task1/Task2 任务验证 | 将算子组合成赛题任务链路并自动验收 | 检查算子组合后的业务正确性和 e2e 性能 | `run_task_demos.sh`、任务 metrics、summary、可视化 |
 
 一句话答辩口径：
 
-> 我们先把信号处理能力沉淀为 CPU/CUDA 双后端库，再对赛题核心算子做六档规模验证，最后把库函数组合成两个任务级 demo，形成从单算子到端到端任务的完整验证闭环。
+> 我们先把信号处理能力沉淀为 CPU/ZQ500 GPU 双后端库，再对赛题核心算子做六档规模验证，最后把库函数组合成两个任务级 demo，形成从单算子到端到端任务的完整验证闭环。
 
 ## 2. 工程架构
 
@@ -75,9 +75,9 @@
 | 目录 | 职责 | 技术价值 |
 |---|---|---|
 | `include/cusignal/` | 公开 API、类型定义、模块接口 | 为后端迁移提供稳定边界 |
-| `src/common/` | shape、stride、参数校验、通用算法细节 | 减少 CPU/CUDA 语义分叉 |
+| `src/common/` | shape、stride、参数校验、通用算法细节 | 减少 CPU/ZQ500 GPU 语义分叉 |
 | `src/cpu/` | CPU 参考实现 | 提供精度基线和业务对照 |
-| `src/zhongkexin/` | CUDA 加速实现 | 项目核心 GPU 后端 |
+| `src/zhongkexin/` | ZQ500 GPU 加速实现 | 项目核心 GPU 后端 |
 | `tests/unit/` | 81 个单算子测试入口与 support | 保证模块级正确性、性能和报告输出 |
 | `demo/task1_radar/` | 雷达目标检测与多普勒分析 demo | 验证 Task1 端到端任务 |
 | `demo/task2_features/` | 多域特征提取定位 demo | 验证 Task2 端到端任务 |
@@ -91,18 +91,18 @@
 
 | 类型 | 组件 | 用途 |
 |---|---|---|
-| 语言 | C++17 / CUDA17 | CPU/ZQ500 GPU 后端实现 |
+| 语言 | C++17 / ZQ500 dlcc CUDA 兼容编译模型 | CPU/ZQ500 GPU 后端实现 |
 | 构建 | CMake | 构建核心库、单测和任务 demo |
-| GPU Runtime | CUDA Runtime | 内存、事件、kernel launch、设备信息 |
-| FFT | cuFFT | 频域滤波、谱分析、雷达处理、CWT/重计算路径 |
-| 线性代数 | cuBLAS / cuSOLVER | MVDR 协方差和线性方程求解 |
-| 并行原语 | CUB | 选择、归约、窗口归一化等高性能基础操作 |
+| GPU Runtime | 中科芯 Runtime 兼容层 | 内存、事件、kernel launch、设备信息 |
+| FFT | 中科芯 FFT 兼容库 | 频域滤波、谱分析、雷达处理、CWT/重计算路径 |
+| 线性代数 | 中科芯 BLAS / SOLVER 兼容库 | MVDR 协方差和线性方程求解 |
+| 并行原语 | 项目自有 GPU kernel 和兼容 helper | 选择、归约、窗口归一化等高性能基础操作 |
 | CPU 对照 | FFTW / 标准 C++ | CPU 参考和验证链路 |
 | 可视化 | Python、numpy、matplotlib | 任务图件和 benchmark 图件生成 |
 
-当前 README 记录的验证环境为 `2 x NVIDIA A100-SXM4-40GB`、CUDA 11.7、CMake 3.22.1，默认 CUDA 架构为 `sm80`。跨机器复测时应重新观察任务阈值和资源漂移。
+当前验证环境为本队容器内中科芯 ZQ500，构建入口使用 `/zq500/sdk/bin/dlcc` 和 `--cuda-gpu-arch=dlgput64`。跨机器复测时应重新执行 ZQ500 平台探针、任务 smoke 和 all81 benchmark。
 
-### 2.3 CPU/CUDA 双后端模型
+### 2.3 CPU/ZQ500 GPU 双后端模型
 
 项目的核心工程原则是 CPU 与 ZQ500 GPU 后端同名接口、同语义输入、同误差口径：
 
@@ -111,15 +111,15 @@
 - `tests/unit` 同时调用 CPU/ZQ500 GPU 路径，输出 `latest_metrics.json`。
 - Task1/Task2 demo 同时记录 CPU/GPU 阶段耗时、业务结果、误差和资源状态。
 
-这样做的价值是：CUDA 输出不是孤立结果，而是始终能回到 CPU 基线、单算子测试和任务业务 gate 中验证。
+这样做的价值是：ZQ500 GPU 输出不是孤立结果，而是始终能回到 CPU 基线、单算子测试和任务业务 gate 中验证。
 
 ### 2.4 公共语义层、数据生成与报告支撑
 
-项目不是把 CPU 和 CUDA 各写一套互不相关的逻辑，而是在公共层沉淀 shape、axis、窗口、频率轴、参数校验和报告 schema：
+项目不是把 CPU 和 ZQ500 GPU 各写一套互不相关的逻辑，而是在公共层沉淀 shape、axis、窗口、频率轴、参数校验和报告 schema：
 
 | 支撑层 | 关键文件 | 作用 | 答辩价值 |
 |---|---|---|---|
-| 公共 detail | `src/common/*_detail.hpp` | 统一 shape/stride/axis、窗口规范、滤波器设计约束、谱分析分段配置、雷达坐标轴等语义 | 降低 CPU/CUDA 结果分叉风险 |
+| 公共 detail | `src/common/*_detail.hpp` | 统一 shape/stride/axis、窗口规范、滤波器设计约束、谱分析分段配置、雷达坐标轴等语义 | 降低 CPU/ZQ500 GPU 结果分叉风险 |
 | 核心类型与 helper | `include/cusignal/core/types.hpp`、`include/cusignal/core/helpers.hpp` | 定义 Host/Device 容器、复数映射、shape 工具、axis 规范化 | 形成后端迁移的稳定边界 |
 | 单测报告层 | `tests/unit/common/report.hpp`、`tests/unit/common/json.hpp` | 写出 `latest_metrics.json`、`latest_summary.md`、`latest_cases.csv`，并解析 CPU baseline cache | 保证所有模块的证据格式一致 |
 | 数据生成脚本 | `scripts/data/generate_*.py` | 生成 `data/reference/` 和 `data/generated/` 下的 accuracy/perf 输入与 manifest | 保证测试数据可复现、可扩展 |
@@ -178,9 +178,9 @@
 
 - 实数：`float32`，项目默认类型为 `cusignal::core::Scalar = float`。
 - 复数：`complex64` 语义，Host 使用 `std::complex<float>`。
-- Device 侧复数通过 `DeviceValueTraits<Complex>` 映射到 CUDA 友好的 `float2` 存储。
+- Device 侧复数通过 `DeviceValueTraits<Complex>` 映射到 GPU 友好的 `float2` 存储。
 
-公开接口保留部分 `dtype` 参数以降低接口破坏面，但 CPU/CUDA 验证和 benchmark 口径已收敛到单精度。这样可以避免 double CPU 对 float GPU 的不公平比较，也更符合当前 A100 验证环境的吞吐特点。
+公开接口保留部分 `dtype` 参数以降低接口破坏面，但 CPU/ZQ500 GPU 验证和 benchmark 口径已收敛到单精度。这样可以避免 double CPU 对 float GPU 的不公平比较，也更符合当前 ZQ500 验证环境的吞吐特点。
 
 ### 4.2 Host/Device 容器
 
@@ -244,10 +244,10 @@ ZQ500 GPU 后端大量使用 thread-local workspace，而不是在每次调用�
 | 层级 | 代表实现 | 缓存对象 | 解决的问题 |
 |---|---|---|---|
 | 底层分配缓存 | `DeviceStorageCache<T>` | device allocation block | 减少 `cudaMalloc/cudaFree` 固定开销 |
-| 模块 workspace | `FilteringWorkspace`、`SpectralWorkspace`、`WindowWorkspace`、`AmbgfunWorkspace` | cuFFT plan、line bases、window/template、metadata、临时 buffer | 降低 repeat 与多规模 benchmark 中的重复准备成本 |
+| 模块 workspace | `FilteringWorkspace`、`SpectralWorkspace`、`WindowWorkspace`、`AmbgfunWorkspace` | FFT plan、line bases、window/template、metadata、临时 buffer | 降低 repeat 与多规模 benchmark 中的重复准备成本 |
 | 算子级 prepared cache | `firwin2_cache`、`resample_window_key`、`resample_poly_filter_key`、`segment_window_key`、`cwt_cache_*` | 频谱模板、窗口、polyphase filter、分段窗、小波核表 | 让计时路径更接近真实 device 计算，而不是反复构造固定数据 |
 
-这种缓存设计的边界也很明确：公开 API 不依赖缓存命中，缓存只影响性能；精度和业务检查仍由 CPU/CUDA 对照、单元测试和任务 validation 决定。
+这种缓存设计的边界也很明确：公开 API 不依赖缓存命中，缓存只影响性能；精度和业务检查仍由 CPU/ZQ500 GPU 对照、单元测试和任务 validation 决定。
 
 ## 5. 任务 1：雷达目标检测与多普勒分析
 
@@ -266,7 +266,7 @@ Task1 位于 `demo/task1_radar/`，核心流程如下：
 
 | 阶段 | 实现要点 | 证据 |
 |---|---|---|
-| `pulse_compression` | 频域模板共轭、批量 cuFFT、频域乘法、IFFT | `src/zhongkexin/radartools.cu`、`tests/unit/radartools/test_pulse_compression.cpp` |
+| `pulse_compression` | 频域模板共轭、批量 FFT、频域乘法、IFFT | `src/zhongkexin/radartools.cu`、`tests/unit/radartools/test_pulse_compression.cpp` |
 | `pulse_doppler` | 脉冲维 FFT、矩阵 packing、padding/truncation 安全处理 | `src/zhongkexin/radartools.cu`、`tests/unit/radartools/test_pulse_doppler.cpp` |
 | `ca_cfar` | 1D 短窗 direct kernel、长窗 FFT 卷积、2D row-prefix + integral-image | `src/zhongkexin/radartools.cu`、`tests/unit/radartools/test_ca_cfar.cpp` |
 | `ambgfun` | 时延-多普勒二维搜索、归一化缓存、tile FFT workspace | `src/zhongkexin/radartools.cu`、`tests/unit/radartools/test_ambgfun.cpp` |
@@ -288,7 +288,7 @@ Task1 demo 内部写出：
 - GPU 检测命中注入目标。
 - 关键阶段 `mixed_error` 达到阈值。
 - repeat 运行中业务和数值检查均通过。
-- GPU timing jitter、CUDA free memory drift 和 RSS drift 在阈值内。
+- GPU timing jitter、GPU free memory drift 和 RSS drift 在阈值内。
 
 ## 6. 任务 2：多域特征提取定位
 
@@ -335,12 +335,12 @@ Task2 位于 `demo/task2_features/`，核心流程如下：
 | 亮点 | 难点 | 方案 | 价值 | 证据 |
 |---|---|---|---|---|
 | `sosfilt` 递推算子 prefix-scan | IIR / SOS 有前后样本依赖，不能简单逐点并行 | 将状态转移改写为 affine transform，使用 `sosfilt_prefix_tiles_kernel`、`sosfilt_scan_tile_transform_blocks_kernel`、`sosfilt_apply_tile_initials_kernel` 做分层 scan | 把长序列递推转化为可并行组合的 tile 状态传播 | `src/zhongkexin/filtering.cu`、`tests/unit/filtering/test_sosfilt.cpp`、`scripts/test/READMEV3_5_0.md` |
-| `detrend` 两级 reduction 与 Kahan 补偿 | 常量/线性去趋势要按 axis 归约，单精度下累积顺序影响 CPU/CUDA 一致性 | 使用 `detrend_constant_partials_kernel`、`detrend_linear_partials_kernel`、`detrend_linear_coefficients_kernel`、`detrend_*_apply_kernel`，局部循环采用 float Kahan 补偿 | 在保持单精度口径的同时降低真实误差，并支持多行批量处理 | `src/zhongkexin/filtering.cu`、`tests/unit/filtering/test_detrend.cpp`、`scripts/test/READMEV3_7_0.md` |
-| 批量 FFT 频域加速 | 雷达、重采样和谱分析需要长序列 FFT、分段 FFT、复实路径和 PSD 后处理 | 使用 cuFFT batch plan、`cufftExecC2C`、`cufftExecR2C`、`prepare_segments_*_kernel`、`spectrogram_psd_r2c_kernel` 等设备侧准备和后处理 | 在大规模输入下释放 FFT 吞吐，减少 Host 侧循环 | `src/zhongkexin/radartools.cu`、`src/zhongkexin/filtering.cu`、`src/zhongkexin/spectral.cu` |
+| `detrend` 两级 reduction 与 Kahan 补偿 | 常量/线性去趋势要按 axis 归约，单精度下累积顺序影响 CPU/ZQ500 GPU 一致性 | 使用 `detrend_constant_partials_kernel`、`detrend_linear_partials_kernel`、`detrend_linear_coefficients_kernel`、`detrend_*_apply_kernel`，局部循环采用 float Kahan 补偿 | 在保持单精度口径的同时降低真实误差，并支持多行批量处理 | `src/zhongkexin/filtering.cu`、`tests/unit/filtering/test_detrend.cpp`、`scripts/test/READMEV3_7_0.md` |
+| 批量 FFT 频域加速 | 雷达、重采样和谱分析需要长序列 FFT、分段 FFT、复实路径和 PSD 后处理 | 使用 FFT batch plan、C2C/R2C 执行接口、`prepare_segments_*_kernel`、`spectrogram_psd_r2c_kernel` 等设备侧准备和后处理 | 在大规模输入下释放 FFT 吞吐，减少 Host 侧循环 | `src/zhongkexin/radartools.cu`、`src/zhongkexin/filtering.cu`、`src/zhongkexin/spectral.cu` |
 | CA-CFAR 多策略实现 | 训练窗/保护窗边界复杂，1D/2D、短窗/长窗适合的算法不同 | 1D 短窗走 direct kernel，长窗走 FFT 卷积；2D 大窗口走 row-prefix + integral-image，用外窗减内窗计算 training cells | 兼顾小窗口低开销与大窗口吞吐，且保持 CPU 语义一致 | `src/zhongkexin/radartools.cu`、`tests/unit/radartools/test_ca_cfar.cpp`、`scripts/test/READMEV3_7_0.md` |
 | `vectorstrength` / `lombscargle` 并行归约 | 每个 period/frequency 上存在 sample 维串行循环，且 near-zero relative error 容易放大 | `vectorstrength_partial_kernel` + `vectorstrength_finalize_kernel` 做 two-stage reduction；`lombscargle_parallel_kernel` 改为 one-block-per-frequency shared reduction，mean/dot 保留在 device 上 | 提升重计算类算子的 GPU 并行度，并减少 repeat 内 D2H 同步 | `src/zhongkexin/spectral.cu`、`tests/unit/spectral/test_vectorstrength.cpp`、`tests/unit/spectral/test_lombscargle.cpp`、`scripts/test/READMEV3_8_4.md` |
 | `fm_demod` 相位差融合 | 传统 phase -> unwrap -> diff 多阶段会产生中间数组和同步开销 | `fm_demod_phase_difference_kernel` 直接计算相邻复样本相位差，保留 fallback phase/unwrap/diff 路径 | 降低 Task2 解调阶段中间数据量和 e2e 开销 | `src/zhongkexin/demod.cu`、`tests/unit/demod/test_fm_demod.cpp` |
-| `pulse_doppler` 安全 packing | 多脉冲矩阵需要处理 padding、truncation 和 FFT 维度对齐，越界风险高 | 在 CUDA packing kernel 中显式处理脉冲/采样维边界，并用 cuFFT 批量处理脉冲维 | 支撑 Task1 距离-多普勒响应的稳定生成 | `src/zhongkexin/radartools.cu`、`tests/unit/radartools/test_pulse_doppler.cpp`、`scripts/test/README.md` |
+| `pulse_doppler` 安全 packing | 多脉冲矩阵需要处理 padding、truncation 和 FFT 维度对齐，越界风险高 | 在 GPU packing kernel 中显式处理脉冲/采样维边界，并用 FFT 批量处理脉冲维 | 支撑 Task1 距离-多普勒响应的稳定生成 | `src/zhongkexin/radartools.cu`、`tests/unit/radartools/test_pulse_doppler.cpp`、`scripts/test/README.md` |
 | MVDR 线性代数路径 | 波束形成涉及复数协方差、矩阵分解和线性方程求解，手写 kernel 风险高 | 用 `cublasCgemm` 构造协方差，用 `cusolverDnCgetrf/getrs` 求解，用 `cublasCdotc` 计算响应 | 用成熟库原语处理高风险线性代数，降低数值和实现复杂度 | `src/zhongkexin/radartools.cu`、`tests/unit/radartools/test_mvdr.cpp` |
 
 ### 7.2 内存、缓存与数据驻留亮点
@@ -363,7 +363,7 @@ Task2 位于 `demo/task2_features/`，核心流程如下：
 |---|---|---|---|---|
 | Task2 fused 后处理 | 多域特征如果逐阶段回传 Host，会削弱 e2e 加速 | `fused_feature_smooth_kernel`、`row_peak_track_kernel`、`kalman_track_from_peaks_kernel` 在 device 侧完成融合、峰值跟踪和轨迹平滑 | 证明项目不只做单算子，也能做任务级 device pipeline | `demo/task2_features/task2_features_zx_gpu.cu`、`demo/task2_features/task2_features_demo.cpp` |
 | Kalman points-batched fast path | 单条 Kalman 轨迹状态小、递推强，单实例并行度有限 | 对 `kalman_points` 扩展批量点数，固定小维度使用 `predict_fixed_kernel<4, 2>`、`update_fixed_kernel<4, 2>` 等寄存器 fast path | 让状态估计在任务和 benchmark 中具备足够 GPU 并行度 | `src/zhongkexin/estimation.cu`、`tests/unit/estimation/test_kalman_filter.cpp`、`scripts/test/benchmark_all_ops_scales.py` |
-| 峰值筛选 CUB 路径 | 极值检测需要按比较结果收集索引，手写 compact 易低效 | 使用 `cub::DeviceSelect::Flagged` 进行 device 侧筛选 | 为 Task2 峰值定位和独立 peak finding 算子提供高效基础 | `src/zhongkexin/peak_finding.cu`、`tests/unit/peak_finding/` |
+| 峰值筛选设备侧 compact 路径 | 极值检测需要按比较结果收集索引，手写 compact 易低效 | 使用设备侧筛选 helper 进行 compact | 为 Task2 峰值定位和独立 peak finding 算子提供高效基础 | `src/zhongkexin/peak_finding.cu`、`tests/unit/peak_finding/` |
 | Task1 雷达链路组合 | 单个雷达算子通过不等于链路业务正确 | 将 `pulse_compression`、`pulse_doppler`、`ca_cfar`、`ambgfun` 串成端到端 demo，并检查检测命中、误差、阶段耗时和图件 | 把算子能力转化为赛题可展示任务 | `demo/task1_radar/`、运行后 `data/reports/demo/task1_radar/` |
 | Task2 多域链路组合 | 滤波、解调、相关、谱分析、CWT、Kalman 的误差口径不同 | 任务级 gate 区分 `mixed_error`、track match 和 RMSE，不把所有输出简单套同一阈值 | 更符合真实业务指标，也避免误把 Kalman 轨迹评估当逐点数组误差 | `demo/task2_features/`、运行后 `data/reports/demo/task2_features/` |
 
@@ -372,11 +372,11 @@ Task2 位于 `demo/task2_features/`，核心流程如下：
 | 亮点 | 难点 | 方案 | 价值 | 证据 |
 |---|---|---|---|---|
 | 81 个单测入口统一报告 | 模块多、输出类型多，如果报告 schema 不一致就难以汇总 | `tests/unit/common/report.hpp` 统一写出 `latest_metrics.json`、`latest_summary.md`、`latest_cases.csv` | 让每个算子的误差、耗时和 case 细节都可追溯 | `tests/unit/**/test_*.cpp`、`tests/unit/common/report.hpp` |
-| 53 算子六档 benchmark | 单一规模无法解释小规模 copy-bound 与大规模吞吐差异 | `DEFAULT_SCALE_FAMILIES`、`LARGE_GPU_SCALE_FAMILIES`、`scale_level=1..6` 统一采集 e2e/kernel timing 和误差 | 可以讲清楚规模效应，而不是只展示一个最好数字 | `scripts/test/benchmark_all_ops_scales.py`、运行后 `data/reports/unit/benchmarks/` |
+| 81 算子六档 benchmark | 单一规模无法解释小规模 copy-bound 与大规模吞吐差异 | `DEFAULT_SCALE_FAMILIES`、`LARGE_GPU_SCALE_FAMILIES`、`scale_level=1..6` 统一采集 e2e/kernel timing 和误差 | 可以讲清楚规模效应，而不是只展示一个最好数字 | `scripts/test/benchmark_all_ops_scales.py`、运行后 `data/reports/unit/benchmarks/` |
 | GPU-only 复测与 CPU baseline cache | 全量 `53 x 6 x repeat30` CPU 计时成本高，现场复测不现实 | `--gpu-only` 复用 `latest_cpu_baseline.json`，`--cpu-baseline-mode auto/refresh/reuse` 控制补齐、重建或严格复用 | 支持现场快速复测 GPU timing，同时保持 CPU baseline 口径可追踪 | `scripts/test/README.md`、`scripts/test/benchmark_all_ops_scales.py` |
 | 全量精度审计 | 单个 benchmark 通过后仍需要发现高误差队列和修复状态 | `audit_all_ops_precision.py` 生成 `latest_precision_baseline.csv`、`latest_precision_fix_queue.csv`、`latest_precision_perf_snapshot.csv`、`latest_precision_fix_report.md` | 把误差风险从人工抽查变成可复跑清单 | `scripts/test/audit_all_ops_precision.py`、运行后 `data/reports/unit/audit/` |
 | Task demo 自验收 | demo 不能只生成图，必须自动判断是否通过 | C++ demo 写 `ValidationResult`、`ValidationThresholds`、`resource_usage`、`repeat_runs`；失败时可执行程序返回非零 | 让 Task1/Task2 具备 CI/验收属性 | `demo/task1_radar/task1_radar_demo.cpp`、`demo/task2_features/task2_features_demo.cpp`、`scripts/test/run_task_demos.sh` |
-| 异常输入与资源漂移 gate | 正常路径通过不足以证明工程稳健性 | `--invalid-input-checks` 要求非法配置抛出明确字段名；repeat 检查 GPU timing jitter、CUDA free memory drop 和 RSS growth | 覆盖鲁棒性、稳定性和资源泄露早期信号 | `scripts/test/READMEV3_9.md`、`demo/task1_radar/`、`demo/task2_features/` |
+| 异常输入与资源漂移 gate | 正常路径通过不足以证明工程稳健性 | `--invalid-input-checks` 要求非法配置抛出明确字段名；repeat 检查 GPU timing jitter、GPU free memory drop 和 RSS growth | 覆盖鲁棒性、稳定性和资源泄露早期信号 | `scripts/test/READMEV3_9.md`、`demo/task1_radar/`、`demo/task2_features/` |
 | compute-sanitizer 深检 | sanitizer 会放大 GPU timing，直接进入性能 gate 会误判 | `run_task_demos.sh --leak-check` 调用 `compute-sanitizer --tool memcheck`，子进程使用 `--skip-timing-validation` | 深检内存/显存错误，同时不污染正常 latest metrics | `scripts/test/run_task_demos.sh`、运行后 `data/reports/demo/leak_check/` |
 | 图件与 Word 友好报告链路 | CSV 难以直接用于答辩和文档 | `plot_all_ops_benchmark.py` 输出全局图和单算子图；`run_task_demos.sh --scale-sweep` 自动调用 `plot_task_demo_scale_benchmark.py` | 从 benchmark 数据直接生成可展示图件，减少手工制图误差 | `scripts/test/plot_all_ops_benchmark.py`、`scripts/test/plot_task_demo_scale_benchmark.py` |
 
@@ -401,7 +401,7 @@ Task2 位于 `demo/task2_features/`，核心流程如下：
 - 运行后 `data/reports/unit/<module>/<operator>/latest_metrics.json`
 - 运行后 `data/reports/unit/<module>/<operator>/latest_summary.md`
 
-### 8.2 全量 53 算子六档 benchmark
+### 8.2 全量 81 算子六档 benchmark
 
 ```bash
 scripts/test/benchmark_all_ops_scales.py \
@@ -536,7 +536,7 @@ scripts/test/run_task_demos.sh --no-build --repeat 2 --leak-check
 | 任务级验收说明 | `scripts/test/READMEV3_9.md` | repeat、scale sweep、compute-sanitizer 等最新验收口径 |
 | 公开 API | `include/cusignal/` | 后端迁移边界 |
 | CPU 参考 | `src/cpu/` | 精度和业务基线 |
-| 公共 detail 层 | `src/common/` | CPU/CUDA 共用 shape、axis、窗口、频率轴和参数校验语义 |
+| 公共 detail 层 | `src/common/` | CPU/ZQ500 GPU 共用 shape、axis、窗口、频率轴和参数校验语义 |
 | ZQ500 GPU 实现 | `src/zhongkexin/` | GPU 技术亮点落点 |
 | 单元测试 | `tests/unit/` | 81 个测试入口 |
 | 单测公共报告层 | `tests/unit/common/` | 统一 metrics、summary、cases CSV 和 CPU baseline JSON 读写 |
@@ -573,7 +573,7 @@ scripts/test/run_task_demos.sh --no-build --repeat 2 --leak-check
 大规模场景中 GPU 优势更明显，原因是：
 
 - 批量 FFT 释放更高并行度。
-- prefix-scan、归约、积分图、CUB 原语等减少串行瓶颈。
+- prefix-scan、归约、积分图和设备侧并行原语等减少串行瓶颈。
 - DeviceStorage 和 thread-local workspace 降低重复分配成本。
 - Task1/Task2 的多阶段链路更适合 device 侧缓存和流水。
 
@@ -595,22 +595,22 @@ scripts/test/run_task_demos.sh --no-build --repeat 2 --leak-check
 | 部分任务仍按阶段回传 | 为了可视化、调试和 CPU/GPU 对照 | 增加纯设备侧 fast path，同时保留 debug 模式 |
 | 部分 copy-bound 算子 kernel 很快但 e2e 一般 | 数据搬运和 API 包装主导 | 减少 H2D/D2H，合并相邻算子 |
 | `ambgfun` 等重输出算子仍有布局瓶颈 | L6 surface 输出和 tile FFT workspace 压力大 | 研究输出裁剪、分块布局和任务需求驱动的计算范围 |
-| 国产 GPU 尚未实测 | 当前阶段是 CUDA 基线 | 按统一 API 和测试闭环替换后端并复测 |
+| 任务链路仍有阶段式回传 | 当前保留可视化、调试和 CPU/GPU 对照证据 | V6 优先增加 device-resident fast path，同时保留 debug 模式 |
 
-## 11. 国产 GPU 迁移策略
+## 11. 中科芯平台适配与维护策略
 
-迁移目标不是重写上层算法，而是替换底层后端。
+当前中科芯平台适配已经完成。后续维护目标不是重写上层算法，而是在保持公开 API、测试数据和误差口径不变的前提下持续优化 ZQ500 后端。
 
-| 迁移对象 | CUDA 当前依赖 | 迁移风险 | 应对策略 |
+| 平台组件 | 当前 ZQ500 依赖 | 维护风险 | 应对策略 |
 |---|---|---|---|
-| FFT | cuFFT | plan、batch、R2C/C2C 行为和数值误差差异 | 建立 FFT wrapper，先验证 spectral/radartools/wavelets |
-| BLAS | cuBLAS | 复数 GEMM、dot、norm 差异 | 用小矩阵和 MVDR 单测建立基线 |
-| SOLVER | cuSOLVER | LU 分解、info 返回、workspace 差异 | 先验证 `mvdr`，再扩展线性代数路径 |
-| 并行原语 | CUB | select/reduce/scan 替代能力 | 抽象选择和归约 helper，逐个替换 |
-| 自定义 kernel | ZQ500 GPU kernel | 线程模型、shared memory、同步语义差异 | 逐模块移植，保持测试和报告不变 |
-| Runtime | CUDA Runtime | 内存、事件、设备信息 API 差异 | 封装内存与 timing 层，保持 metrics schema |
+| FFT | 中科芯 FFT 兼容库 | plan、batch、R2C/C2C 行为和数值误差差异 | 通过 spectral/radartools/wavelets 回归保护 |
+| BLAS | 中科芯 BLAS 兼容库 | 复数 GEMM、dot、norm 差异 | 用小矩阵和 MVDR 单测保护 |
+| SOLVER | 中科芯 SOLVER 兼容库 | LU 分解、info 返回、workspace 差异 | 以 `mvdr` 和线性代数路径回归保护 |
+| 并行原语 | 项目自有 kernel/helper | select/reduce/scan 的边界行为 | 抽象选择和归约 helper，逐模块回归 |
+| 自定义 kernel | ZQ500 GPU kernel | 线程模型、shared memory、同步语义差异 | 保持测试和报告不变，按模块回归 |
+| Runtime | 中科芯 Runtime 兼容层 | 内存、事件、设备信息 API 差异 | 封装内存与 timing 层，保持 metrics schema |
 
-迁移验证顺序：
+平台回归顺序：
 
 1. 编译公开 API 和核心类型。
 2. 跑 smoke demo。
@@ -624,15 +624,15 @@ scripts/test/run_task_demos.sh --no-build --repeat 2 --leak-check
 
 | 问题 | 回答要点 |
 |---|---|
-| 为什么不是只做两个 demo？ | 赛题需要可复用信号处理库。项目先完成 81 个测试入口和 CPU/CUDA 双后端，再用 Task1/Task2 证明库函数可组合成业务链路。 |
-| 为什么保留 CPU 后端？ | CPU 是参考实现、误差基线和迁移安全网。没有 CPU 后端就很难证明 CUDA 输出正确。 |
-| 如何保证 CPU/CUDA 一致？ | 同名接口、公共参数语义、单精度口径、`mixed_error`、单算子测试和任务级 validation 共同约束。 |
+| 为什么不是只做两个 demo？ | 赛题需要可复用信号处理库。项目先完成 81 个测试入口和 CPU/ZQ500 GPU 双后端，再用 Task1/Task2 证明库函数可组合成业务链路。 |
+| 为什么保留 CPU 后端？ | CPU 是参考实现、误差基线和迁移安全网。没有 CPU 后端就很难证明 ZQ500 GPU 输出正确。 |
+| 如何保证 CPU/ZQ500 GPU 一致？ | 同名接口、公共参数语义、单精度口径、`mixed_error`、单算子测试和任务级 validation 共同约束。 |
 | 为什么有些算子 e2e 加速不高？ | e2e 包含搬运、同步和 API 包装，小规模算子容易 copy-bound；kernel speedup 和 e2e speedup 必须分开解释。 |
 | `mixed_error` 是不是降低精度要求？ | 不是。原始 `max_abs_error`、`max_rel_error`、`rmse` 仍保留并参与追溯；`mixed_error` 只是避免参考值接近零时相对误差被放大成误导性主指标。 |
 | 为什么需要 GPU-only benchmark？ | 全量 CPU 基线很耗时，现场复测适合复用固定 CPU baseline cache，只重新采 GPU e2e/kernel timing；最终报告要说明 baseline 来源和 warmup/repeat。 |
 | 为什么强调 task validation 而不是只看图？ | 图件用于展示，但验收必须由 `validation.pass`、业务 gate、误差 gate、repeat、资源漂移和异常输入检查自动判断。 |
-| 最大技术亮点是什么？ | 不是单个 kernel，而是 CPU/CUDA 双后端、81 算子覆盖、53 算子六档 benchmark、Task1/Task2 自验收和报告可追溯形成的完整工程闭环。 |
-| 如何迁移到中科芯 GPU？ | 保持 API、测试数据和报告口径，替换 FFT/BLAS/SOLVER/CUB/runtime/custom kernel 后端，再按单算子到任务级顺序复测。 |
+| 最大技术亮点是什么？ | 不是单个 kernel，而是 CPU/ZQ500 GPU 双后端、81 算子覆盖、81 算子六档 benchmark、Task1/Task2 自验收和报告可追溯形成的完整工程闭环。 |
+| 如何维护中科芯 GPU 后端？ | 保持 API、测试数据和报告口径，修改 FFT/BLAS/SOLVER/runtime/custom kernel 路径后，按单算子到任务级顺序复测。 |
 
 ## 13. 文档合并说明
 

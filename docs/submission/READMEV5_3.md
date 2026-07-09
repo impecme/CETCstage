@@ -24,7 +24,7 @@
 - 宿主机审计覆盖 2 个任务、16 个总步骤和 14 个计算步骤，源码符号检查通过。
 - 当前仅 3 个计算步骤完全公共化；8 个 mixed、3 个 private，共 11 个步骤进入迁移队列。
 - V5.3-01 基线缺 2 个独立计时项和 5 个逐步精度项；V5.3-02 已补 Task1 power-map 误差，其余缺口显式标记。
-- 审计交付：`docs/performance/v5_0/task_step_audit.md` 和 `scripts/test/task_step_contracts.json`。
+- 审计结论已收束到 `docs/performance/v5_0/final_summary.md`，机器可读契约保留在 `scripts/test/task_step_contracts.json`。
 
 ## 收口结论
 

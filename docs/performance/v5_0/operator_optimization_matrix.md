@@ -62,5 +62,5 @@
 - 阶段交付文件汇总本阶段算子的最终状态和前后性能。
 - 阶段关闭时必须重新核对集合数量，不允许通过删除注册项满足通过率。
 - V5.2 必须把模块级范围展开为 81 条逐算子契约记录；本表的模块清单是数量源，不替代逐项审计结果。
-- 81 条逐项路径和状态见 `operator_contract_inventory.md`，该文件由注册表和 `scripts/test/operator_sets.json` 生成。
-- 81 条逐算子输入、输出、累加和整数规则见 `operator_type_contracts.md`，由 `operator_type_contracts.json` 校验生成。
+- 81 条逐项路径、接口状态和类型规则已在 V5 终测中通过，最终结论见 `final_summary.md`。
+- 机器可读规则保留在 `scripts/test/operator_sets.json` 和 `scripts/test/operator_type_contracts.json`。

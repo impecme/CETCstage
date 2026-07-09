@@ -64,18 +64,14 @@ dtype-preserving 复数扩展语义不属于本阶段赛题强制项；Task2 fil
 
 ## 交付报告
 
-`data/reports/` 只保留精简交付证据和机器可读摘要，完整容器取回缓存和调优日志统一放在
+`data/reports/` 只保留最终汇总和机器可读摘要，完整容器取回缓存、分项长表和调优日志统一放在
 仓库外 `/home/usr_04/CETC_garbage/`，不纳入代码库。报告目录结构说明见
 `data/reports/README.md`。
 
 | 内容 | 路径 |
 | --- | --- |
-| dtype 兼容最终摘要 | `data/reports/zhongkexin/v5_5_dtype_compat_final/README.md` |
-| dtype 覆盖审计 | `data/reports/zhongkexin/v5_5_dtype_compat_final/dtype_test_coverage.json`、`dtype_test_coverage.md` |
-| 类型契约 | `data/reports/zhongkexin/v5_5_type_contracts/latest_type_contracts.json`、`latest_type_contracts.md` |
-| 任务步骤审计 | `data/reports/zhongkexin/v5_3_task_step_audit/latest_task_step_audit.json` |
-| filtering dtype 复跑 | `data/reports/unit/filtering/latest_metrics.json`、`latest_cases.csv`、`latest_summary.md` |
-| coherence FP16 复跑 | `data/reports/unit/spectral/coherence/latest_metrics.json`、`latest_cases.csv`、`latest_summary.md` |
+| V5.5 最终报告汇总 | `data/reports/zhongkexin/v5_5_final/summary.md` |
+| V5.5 机器可读摘要 | `data/reports/zhongkexin/v5_5_final/summary.json` |
 
 ## 终测结果
 
@@ -95,15 +91,15 @@ scripts/test/run_all_tests.sh --list > /tmp/v5_5_all81.tsv
 
 python3 scripts/test/audit_task_steps.py \
   --contracts scripts/test/task_step_contracts.json \
-  --output-dir data/reports/zhongkexin/v5_3_task_step_audit \
-  --summary-markdown docs/performance/v5_0/task_step_audit.md
+  --output-dir /tmp/v5_5_task_step_audit \
+  --summary-markdown /tmp/v5_5_task_step_audit.md
 
 python3 scripts/test/audit_dtype_test_coverage.py \
   --registry /tmp/v5_5_all81.tsv \
   --contracts scripts/test/operator_type_contracts.json \
-  --output-dir data/reports/zhongkexin/v5_5_dtype_compat_final \
-  --summary-markdown data/reports/zhongkexin/v5_5_dtype_compat_final/dtype_test_coverage.md
+  --output-dir /tmp/v5_5_dtype_compat_final \
+  --summary-markdown /tmp/v5_5_dtype_test_coverage.md
 ```
 
 完整性能终测在容器中使用 `OPERATOR_SET=all81` 的 Stage4 命令运行；中间 probe、
-完整日志和大体积图件不进入仓库，只保留上述精简报告。
+分项长表、完整日志和大体积图件不进入仓库，只保留上述最终汇总。

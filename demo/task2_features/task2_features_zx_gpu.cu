@@ -38,11 +38,22 @@ namespace cusignal_demo::task2_features
             ZxGpuIndexSignal temp_index;
             ZxGpuRealArray direct_cos_table;
             ZxGpuRealArray direct_sin_table;
+            std::vector<float> cached_direct_window;
+            int cached_direct_nperseg = 0;
+            int cached_direct_nfft = 0;
+            int cached_direct_low_bin = -1;
+            int cached_direct_high_bin = -1;
+            float cached_direct_fs = 0.0f;
+            float cached_direct_scale = 0.0f;
+            bool direct_spectrogram_table_valid = false;
             ZxGpuIndexSignal cwt_kernel_sizes;
             ZxGpuIndexSignal cwt_kernel_starts;
             ZxGpuIndexSignal cwt_kernel_offsets;
             ZxGpuRealSignal cwt_kernel_real;
             ZxGpuRealSignal cwt_kernel_imag;
+            std::vector<float> cached_cwt_widths;
+            std::size_t cached_cwt_sample_count = 0;
+            bool cwt_kernel_table_valid = false;
         };
 
         thread_local Task2Workspace g_workspace;
@@ -1470,6 +1481,98 @@ namespace cusignal_demo::task2_features
         {
             track[static_cast<std::size_t>(frame_index)] = state[0];
         }
+
+        bool same_values(const std::vector<float> &lhs, const std::vector<float> &rhs)
+        {
+            return lhs.size() == rhs.size() &&
+                std::equal(lhs.begin(), lhs.end(), rhs.begin());
+        }
+
+        float prepare_direct_spectrogram_tables(
+            const ZxGpuRealSignal &window,
+            int nperseg,
+            int nfft,
+            int low_bin,
+            int high_bin,
+            float fs)
+        {
+            const std::vector<float> host_window = window.get();
+            const bool cache_hit =
+                g_workspace.direct_spectrogram_table_valid &&
+                g_workspace.cached_direct_nperseg == nperseg &&
+                g_workspace.cached_direct_nfft == nfft &&
+                g_workspace.cached_direct_low_bin == low_bin &&
+                g_workspace.cached_direct_high_bin == high_bin &&
+                g_workspace.cached_direct_fs == fs &&
+                same_values(g_workspace.cached_direct_window, host_window);
+            if (cache_hit)
+            {
+                return g_workspace.cached_direct_scale;
+            }
+
+            const float window_sum = host_window.empty()
+                ? 0.0f
+                : std::accumulate(host_window.begin(), host_window.end(), 0.0f);
+            const float scale = std::fabs(window_sum) > 1.0e-12f ? (1.0f / std::fabs(window_sum)) : 0.0f;
+            const int band_bin_count = high_bin - low_bin + 1;
+            std::vector<float> cos_table(static_cast<std::size_t>(band_bin_count) * static_cast<std::size_t>(nperseg));
+            std::vector<float> sin_table(cos_table.size());
+            for (int bin_index = 0; bin_index < band_bin_count; ++bin_index)
+            {
+                const int bin = low_bin + bin_index;
+                const std::size_t table_offset = static_cast<std::size_t>(bin_index) * static_cast<std::size_t>(nperseg);
+                for (int sample = 0; sample < nperseg; ++sample)
+                {
+                    const float angle =
+                        -2.0f * 3.14159265358979323846f *
+                        static_cast<float>(bin * sample) / static_cast<float>(nfft);
+                    const float win = host_window[static_cast<std::size_t>(sample)];
+                    cos_table[table_offset + static_cast<std::size_t>(sample)] = win * std::cos(angle);
+                    sin_table[table_offset + static_cast<std::size_t>(sample)] = win * std::sin(angle);
+                }
+            }
+
+            g_workspace.direct_cos_table = ZxGpuRealArray::from_host(
+                {Shape{static_cast<std::size_t>(band_bin_count), static_cast<std::size_t>(nperseg)},
+                 std::move(cos_table)});
+            g_workspace.direct_sin_table = ZxGpuRealArray::from_host(
+                {Shape{static_cast<std::size_t>(band_bin_count), static_cast<std::size_t>(nperseg)},
+                 std::move(sin_table)});
+            g_workspace.cached_direct_window = std::move(host_window);
+            g_workspace.cached_direct_nperseg = nperseg;
+            g_workspace.cached_direct_nfft = nfft;
+            g_workspace.cached_direct_low_bin = low_bin;
+            g_workspace.cached_direct_high_bin = high_bin;
+            g_workspace.cached_direct_fs = fs;
+            g_workspace.cached_direct_scale = scale;
+            g_workspace.direct_spectrogram_table_valid = true;
+            return scale;
+        }
+
+        void prepare_cwt_kernel_table(
+            const RealSignal &widths,
+            std::size_t sample_count)
+        {
+            const bool cache_hit =
+                g_workspace.cwt_kernel_table_valid &&
+                g_workspace.cached_cwt_sample_count == sample_count &&
+                same_values(g_workspace.cached_cwt_widths, widths);
+            if (cache_hit)
+            {
+                return;
+            }
+
+            const wavelets_detail::CwtKernelTable kernel_table =
+                wavelets_detail::build_cwt_kernel_table(widths, sample_count, "morlet2");
+            g_workspace.cwt_kernel_sizes = ZxGpuIndexSignal::from_host(kernel_table.kernel_sizes);
+            g_workspace.cwt_kernel_starts = ZxGpuIndexSignal::from_host(kernel_table.kernel_starts);
+            g_workspace.cwt_kernel_offsets = ZxGpuIndexSignal::from_host(kernel_table.kernel_offsets);
+            g_workspace.cwt_kernel_real = ZxGpuRealSignal::from_host(kernel_table.kernel_real);
+            g_workspace.cwt_kernel_imag = ZxGpuRealSignal::from_host(kernel_table.kernel_imag);
+            g_workspace.cached_cwt_widths = widths;
+            g_workspace.cached_cwt_sample_count = sample_count;
+            g_workspace.cwt_kernel_table_valid = true;
+        }
     } // namespace
 
     ZxGpuRealArray extract_real_part_zx_gpu(const ZxGpuComplexArray &input)
@@ -1899,34 +2002,8 @@ namespace cusignal_demo::task2_features
             return output;
         }
 
-        const auto host_window = window.get();
-        const float window_sum = host_window.empty()
-            ? 0.0f
-            : std::accumulate(host_window.begin(), host_window.end(), 0.0f);
-        const float scale = std::fabs(window_sum) > 1.0e-12f ? (1.0f / std::fabs(window_sum)) : 0.0f;
         const int band_bin_count = high_bin - low_bin + 1;
-        std::vector<float> cos_table(static_cast<std::size_t>(band_bin_count) * static_cast<std::size_t>(nperseg));
-        std::vector<float> sin_table(cos_table.size());
-        for (int bin_index = 0; bin_index < band_bin_count; ++bin_index)
-        {
-            const int bin = low_bin + bin_index;
-            const std::size_t table_offset = static_cast<std::size_t>(bin_index) * static_cast<std::size_t>(nperseg);
-            for (int sample = 0; sample < nperseg; ++sample)
-            {
-                const float angle =
-                    -2.0f * 3.14159265358979323846f *
-                    static_cast<float>(bin * sample) / static_cast<float>(nfft);
-                const float win = host_window[static_cast<std::size_t>(sample)];
-                cos_table[table_offset + static_cast<std::size_t>(sample)] = win * std::cos(angle);
-                sin_table[table_offset + static_cast<std::size_t>(sample)] = win * std::sin(angle);
-            }
-        }
-        g_workspace.direct_cos_table = ZxGpuRealArray::from_host({Shape{static_cast<std::size_t>(band_bin_count),
-                                                                        static_cast<std::size_t>(nperseg)},
-                                                                  std::move(cos_table)});
-        g_workspace.direct_sin_table = ZxGpuRealArray::from_host({Shape{static_cast<std::size_t>(band_bin_count),
-                                                                        static_cast<std::size_t>(nperseg)},
-                                                                  std::move(sin_table)});
+        const float scale = prepare_direct_spectrogram_tables(window, nperseg, nfft, low_bin, high_bin, fs);
         g_workspace.temp_storage_a.resize(Shape{frame_count, static_cast<std::size_t>(nseg)}, false);
         if (nperseg >= 256)
         {
@@ -1991,13 +2068,7 @@ namespace cusignal_demo::task2_features
         const std::size_t frame_count = frames.shape()[0];
         const std::size_t sample_count = frames.shape()[1];
         const std::size_t width_count = widths.size();
-        const wavelets_detail::CwtKernelTable kernel_table =
-            wavelets_detail::build_cwt_kernel_table(widths, sample_count, "morlet2");
-        g_workspace.cwt_kernel_sizes = ZxGpuIndexSignal::from_host(kernel_table.kernel_sizes);
-        g_workspace.cwt_kernel_starts = ZxGpuIndexSignal::from_host(kernel_table.kernel_starts);
-        g_workspace.cwt_kernel_offsets = ZxGpuIndexSignal::from_host(kernel_table.kernel_offsets);
-        g_workspace.cwt_kernel_real = ZxGpuRealSignal::from_host(kernel_table.kernel_real);
-        g_workspace.cwt_kernel_imag = ZxGpuRealSignal::from_host(kernel_table.kernel_imag);
+        prepare_cwt_kernel_table(widths, sample_count);
 
         batched_cwt_max_score_fused_kernel<<<block_count(output.size()), kThreadsPerBlock>>>(
             frames.data(),
@@ -2136,7 +2207,7 @@ namespace cusignal_demo::task2_features
 
     ZxGpuRealSignal kalman_track_from_peaks_zx_gpu(const ZxGpuRealSignal &peak_track)
     {
-        ZxGpuRealSignal output = cusignal::core::make_zx_gpu_real_signal(peak_track.size(), 0.0f);
+        ZxGpuRealSignal output(peak_track.size(), false);
         if (!peak_track.empty())
         {
             kalman_track_from_peaks_kernel<<<1, 1>>>(
