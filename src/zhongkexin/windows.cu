@@ -432,6 +432,20 @@ namespace
         output[index] = source[index];
     }
 
+    __device__ inline float triang_fast_value(int index, int effective_size)
+    {
+        const int midpoint = effective_size / 2;
+        const bool odd = (effective_size & 1) != 0;
+        const int n = index < midpoint ? index + 1 : effective_size - index;
+        if (odd)
+        {
+            return 2.0f * static_cast<float>(n) /
+                   (static_cast<float>(effective_size) + 1.0f);
+        }
+        return (2.0f * static_cast<float>(n) - 1.0f) /
+               static_cast<float>(effective_size);
+    }
+
     __global__ void fill_triang_fast_kernel(
         int output_size,
         int effective_size,
@@ -443,19 +457,52 @@ namespace
             return;
         }
 
-        const int midpoint = effective_size / 2;
-        const bool odd = (effective_size & 1) != 0;
-        const int n = index < midpoint ? index + 1 : effective_size - index;
-        if (odd)
+        output[static_cast<std::size_t>(index)] =
+            triang_fast_value(index, effective_size);
+    }
+
+    __global__ void fill_triang_symmetric_fast_kernel(
+        int output_size,
+        int effective_size,
+        float *output)
+    {
+        const int index = static_cast<int>(blockIdx.x) * blockDim.x + threadIdx.x;
+        const int half_count = (effective_size + 1) / 2;
+        if (index >= half_count)
         {
-            output[static_cast<std::size_t>(index)] =
-                2.0f * static_cast<float>(n) / (static_cast<float>(effective_size) + 1.0f);
+            return;
         }
-        else
+
+        const float value = triang_fast_value(index, effective_size);
+        if (index < output_size)
         {
-            output[static_cast<std::size_t>(index)] =
-                (2.0f * static_cast<float>(n) - 1.0f) / static_cast<float>(effective_size);
+            output[static_cast<std::size_t>(index)] = value;
         }
+        const int mirror_index = effective_size - 1 - index;
+        if (mirror_index != index && mirror_index < output_size)
+        {
+            output[static_cast<std::size_t>(mirror_index)] = value;
+        }
+    }
+
+    __device__ inline float parzen_fast_value(
+        int index,
+        int effective_size)
+    {
+        const float half = 0.5f * static_cast<float>(effective_size);
+        const float n = fabsf(
+            static_cast<float>(index) - 0.5f * static_cast<float>(effective_size - 1));
+        const float ratio = n / half;
+        if (ratio <= 0.5f)
+        {
+            return 1.0f - 6.0f * ratio * ratio + 6.0f * ratio * ratio * ratio;
+        }
+        if (ratio <= 1.0f)
+        {
+            const float inner = 1.0f - ratio;
+            return 2.0f * inner * inner * inner;
+        }
+        return 0.0f;
     }
 
     __global__ void fill_parzen_fast_kernel(
@@ -474,21 +521,32 @@ namespace
             return;
         }
 
-        const float half = 0.5f * static_cast<float>(effective_size);
-        const float n = fabsf(
-            static_cast<float>(index) - 0.5f * static_cast<float>(effective_size - 1));
-        const float ratio = n / half;
-        float value = 0.0f;
-        if (ratio <= 0.5f)
+        output[static_cast<std::size_t>(index)] =
+            parzen_fast_value(index, effective_size);
+    }
+
+    __global__ void fill_parzen_symmetric_fast_kernel(
+        int output_size,
+        int effective_size,
+        float *output)
+    {
+        const int index = static_cast<int>(blockIdx.x) * blockDim.x + threadIdx.x;
+        const int half_count = (effective_size + 1) / 2;
+        if (index >= half_count)
         {
-            value = 1.0f - 6.0f * ratio * ratio + 6.0f * ratio * ratio * ratio;
+            return;
         }
-        else if (ratio <= 1.0f)
+
+        const float value = parzen_fast_value(index, effective_size);
+        if (index < output_size)
         {
-            const float inner = 1.0f - ratio;
-            value = 2.0f * inner * inner * inner;
+            output[static_cast<std::size_t>(index)] = value;
         }
-        output[static_cast<std::size_t>(index)] = value;
+        const int mirror_index = effective_size - 1 - index;
+        if (mirror_index != index && mirror_index < output_size)
+        {
+            output[static_cast<std::size_t>(mirror_index)] = value;
+        }
     }
 
     __global__ void fill_boxcar_fast_kernel(int output_size, float *output)
@@ -693,6 +751,41 @@ namespace
         output[static_cast<std::size_t>(index)] = coefficient0 + coefficient1 * cosf(angle);
     }
 
+    __global__ void fill_hamming_exact_pair_kernel(
+        int output_size,
+        int effective_size,
+        float coefficient0,
+        float coefficient1,
+        float *output)
+    {
+        const int index = static_cast<int>(blockIdx.x) * blockDim.x + threadIdx.x;
+        const int half_count = (effective_size + 1) / 2;
+        if (index >= half_count)
+        {
+            return;
+        }
+
+        constexpr float kPiF = 3.14159265358979323846f;
+        const float delta = (2.0f * kPiF) / static_cast<float>(effective_size - 1);
+        const float left_angle = -kPiF + delta * static_cast<float>(index);
+        const float left_value = coefficient0 + coefficient1 * cosf(left_angle);
+        if (index < output_size)
+        {
+            output[static_cast<std::size_t>(index)] = left_value;
+        }
+
+        const int mirror_index = effective_size - 1 - index;
+        if (mirror_index != index && mirror_index < output_size)
+        {
+            const float right_angle =
+                -kPiF + delta * static_cast<float>(mirror_index);
+            output[static_cast<std::size_t>(mirror_index)] =
+                right_angle == -left_angle
+                    ? left_value
+                    : coefficient0 + coefficient1 * cosf(right_angle);
+        }
+    }
+
     __global__ void fill_general_cosine_fixed_coeff_fast_kernel(
         int output_size,
         int effective_size,
@@ -721,36 +814,42 @@ namespace
         float value = coefficient0;
         if (coefficient_count > 1)
         {
-            value += coefficient1 * cosf(angle);
-        }
-        if (coefficient_count > 2)
-        {
-            value += coefficient2 * cosf(2.0f * angle);
-        }
-        if (coefficient_count > 3)
-        {
-            value += coefficient3 * cosf(3.0f * angle);
-        }
-        if (coefficient_count > 4)
-        {
-            value += coefficient4 * cosf(4.0f * angle);
+            const float cosine = cosf(angle);
+            float previous_harmonic = 1.0f;
+            float harmonic = cosine;
+            value += coefficient1 * harmonic;
+            if (coefficient_count > 2)
+            {
+                const float next_harmonic =
+                    2.0f * cosine * harmonic - previous_harmonic;
+                previous_harmonic = harmonic;
+                harmonic = next_harmonic;
+                value += coefficient2 * harmonic;
+            }
+            if (coefficient_count > 3)
+            {
+                const float next_harmonic =
+                    2.0f * cosine * harmonic - previous_harmonic;
+                previous_harmonic = harmonic;
+                harmonic = next_harmonic;
+                value += coefficient3 * harmonic;
+            }
+            if (coefficient_count > 4)
+            {
+                const float next_harmonic =
+                    2.0f * cosine * harmonic - previous_harmonic;
+                value += coefficient4 * next_harmonic;
+            }
         }
         output[static_cast<std::size_t>(index)] = value;
     }
 
-    __global__ void fill_general_gaussian_fast_kernel(
-        int output_size,
+    __device__ inline float general_gaussian_value(
+        int index,
         int effective_size,
         float sig,
-        int power_mode,
-        float *output)
+        int power_mode)
     {
-        const int index = static_cast<int>(blockIdx.x) * blockDim.x + threadIdx.x;
-        if (index >= output_size)
-        {
-            return;
-        }
-
         const float center = 0.5f * static_cast<float>(effective_size - 1);
         const float x = fabsf((static_cast<float>(index) - center) / sig);
         const float x2 = x * x;
@@ -775,7 +874,51 @@ namespace
         default:
             break;
         }
-        output[static_cast<std::size_t>(index)] = expf(-0.5f * powered);
+        return expf(-0.5f * powered);
+    }
+
+    __global__ void fill_general_gaussian_fast_kernel(
+        int output_size,
+        int effective_size,
+        float sig,
+        int power_mode,
+        float *output)
+    {
+        const int index = static_cast<int>(blockIdx.x) * blockDim.x + threadIdx.x;
+        if (index >= output_size)
+        {
+            return;
+        }
+
+        output[static_cast<std::size_t>(index)] =
+            general_gaussian_value(index, effective_size, sig, power_mode);
+    }
+
+    __global__ void fill_general_gaussian_symmetric_fast_kernel(
+        int output_size,
+        int effective_size,
+        float sig,
+        int power_mode,
+        float *output)
+    {
+        const int index = static_cast<int>(blockIdx.x) * blockDim.x + threadIdx.x;
+        const int half_count = (effective_size + 1) / 2;
+        if (index >= half_count)
+        {
+            return;
+        }
+
+        const float value =
+            general_gaussian_value(index, effective_size, sig, power_mode);
+        if (index < output_size)
+        {
+            output[static_cast<std::size_t>(index)] = value;
+        }
+        const int mirror_index = effective_size - 1 - index;
+        if (mirror_index != index && mirror_index < output_size)
+        {
+            output[static_cast<std::size_t>(mirror_index)] = value;
+        }
     }
 
     __global__ void fill_taylor_fixed_coeff_fast_kernel(
@@ -804,37 +947,60 @@ namespace
             (2.0f * kPiF / static_cast<float>(effective_size)) *
             (static_cast<float>(index) - static_cast<float>(effective_size) * 0.5f + 0.5f);
         float value = 1.0f;
+        const float cosine = cosf(angle);
+        float previous_harmonic = 1.0f;
+        float harmonic = cosine;
         if (coefficient_count > 0)
         {
-            value += 2.0f * coefficient0 * cosf(angle);
+            value += 2.0f * coefficient0 * harmonic;
         }
         if (coefficient_count > 1)
         {
-            value += 2.0f * coefficient1 * cosf(2.0f * angle);
+            const float next_harmonic = 2.0f * cosine * harmonic - previous_harmonic;
+            previous_harmonic = harmonic;
+            harmonic = next_harmonic;
+            value += 2.0f * coefficient1 * harmonic;
         }
         if (coefficient_count > 2)
         {
-            value += 2.0f * coefficient2 * cosf(3.0f * angle);
+            const float next_harmonic = 2.0f * cosine * harmonic - previous_harmonic;
+            previous_harmonic = harmonic;
+            harmonic = next_harmonic;
+            value += 2.0f * coefficient2 * harmonic;
         }
         if (coefficient_count > 3)
         {
-            value += 2.0f * coefficient3 * cosf(4.0f * angle);
+            const float next_harmonic = 2.0f * cosine * harmonic - previous_harmonic;
+            previous_harmonic = harmonic;
+            harmonic = next_harmonic;
+            value += 2.0f * coefficient3 * harmonic;
         }
         if (coefficient_count > 4)
         {
-            value += 2.0f * coefficient4 * cosf(5.0f * angle);
+            const float next_harmonic = 2.0f * cosine * harmonic - previous_harmonic;
+            previous_harmonic = harmonic;
+            harmonic = next_harmonic;
+            value += 2.0f * coefficient4 * harmonic;
         }
         if (coefficient_count > 5)
         {
-            value += 2.0f * coefficient5 * cosf(6.0f * angle);
+            const float next_harmonic = 2.0f * cosine * harmonic - previous_harmonic;
+            previous_harmonic = harmonic;
+            harmonic = next_harmonic;
+            value += 2.0f * coefficient5 * harmonic;
         }
         if (coefficient_count > 6)
         {
-            value += 2.0f * coefficient6 * cosf(7.0f * angle);
+            const float next_harmonic = 2.0f * cosine * harmonic - previous_harmonic;
+            previous_harmonic = harmonic;
+            harmonic = next_harmonic;
+            value += 2.0f * coefficient6 * harmonic;
         }
         if (coefficient_count > 7)
         {
-            value += 2.0f * coefficient7 * cosf(8.0f * angle);
+            const float next_harmonic = 2.0f * cosine * harmonic - previous_harmonic;
+            harmonic = next_harmonic;
+            value += 2.0f * coefficient7 * harmonic;
         }
         output[static_cast<std::size_t>(index)] = value * scale;
     }
@@ -1103,11 +1269,29 @@ namespace
 
         ScopedZxGpuEvents events;
         g_last_kernel_ms = static_cast<float>(events.measure([&]() {
-            fill_triang_fast_kernel<<<block_count(static_cast<std::size_t>(size)), kThreadsPerBlock>>>(
-                size,
-                extended.size,
-                result.data());
-            check_kernel_launch("fill_triang_fast_kernel");
+            constexpr int kSymmetricKernelThreshold = 2 * kThreadsPerBlock;
+            if (extended.size >= kSymmetricKernelThreshold)
+            {
+                const std::size_t half_count =
+                    static_cast<std::size_t>((extended.size + 1) / 2);
+                fill_triang_symmetric_fast_kernel<<<
+                    block_count(half_count),
+                    kThreadsPerBlock>>>(
+                    size,
+                    extended.size,
+                    result.data());
+                check_kernel_launch("fill_triang_symmetric_fast_kernel");
+            }
+            else
+            {
+                fill_triang_fast_kernel<<<
+                    block_count(static_cast<std::size_t>(size)),
+                    kThreadsPerBlock>>>(
+                    size,
+                    extended.size,
+                    result.data());
+                check_kernel_launch("fill_triang_fast_kernel");
+            }
         }));
         return result;
     }
@@ -1124,11 +1308,29 @@ namespace
 
         ScopedZxGpuEvents events;
         g_last_kernel_ms = static_cast<float>(events.measure([&]() {
-            fill_parzen_fast_kernel<<<block_count(static_cast<std::size_t>(size)), kThreadsPerBlock>>>(
-                size,
-                extended.size,
-                result.data());
-            check_kernel_launch("fill_parzen_fast_kernel");
+            constexpr int kMaxExactFloatInteger = 1 << 24;
+            if (extended.size - 1 <= kMaxExactFloatInteger)
+            {
+                const std::size_t half_count =
+                    static_cast<std::size_t>((extended.size + 1) / 2);
+                fill_parzen_symmetric_fast_kernel<<<
+                    block_count(half_count),
+                    kThreadsPerBlock>>>(
+                    size,
+                    extended.size,
+                    result.data());
+                check_kernel_launch("fill_parzen_symmetric_fast_kernel");
+            }
+            else
+            {
+                fill_parzen_fast_kernel<<<
+                    block_count(static_cast<std::size_t>(size)),
+                    kThreadsPerBlock>>>(
+                    size,
+                    extended.size,
+                    result.data());
+                check_kernel_launch("fill_parzen_fast_kernel");
+            }
         }));
         return result;
     }
@@ -1322,6 +1524,43 @@ namespace
         return result;
     }
 
+    ZxGpuRealSignal hamming_exact_pair_fast(int size, bool sym)
+    {
+        if (detail::len_guard(size))
+        {
+            return make_trivial_window_signal(size);
+        }
+
+        const detail::ExtendedLength extended = detail::extend(size, sym);
+        constexpr float kAlpha = 0.54f;
+        const float coefficient1 = 1.0f - kAlpha;
+        if (extended.size - 1 > (1 << 24))
+        {
+            return general_cosine_two_coeff_fast(
+                size,
+                sym,
+                kAlpha,
+                coefficient1);
+        }
+
+        ZxGpuRealSignal result(static_cast<std::size_t>(size), false);
+        ScopedZxGpuEvents events;
+        g_last_kernel_ms = static_cast<float>(events.measure([&]() {
+            const std::size_t half_count =
+                static_cast<std::size_t>((extended.size + 1) / 2);
+            fill_hamming_exact_pair_kernel<<<
+                block_count(half_count),
+                kThreadsPerBlock>>>(
+                size,
+                extended.size,
+                kAlpha,
+                coefficient1,
+                result.data());
+            check_kernel_launch("fill_hamming_exact_pair_kernel");
+        }));
+        return result;
+    }
+
     ZxGpuRealSignal general_cosine_fixed_coeff_fast(
         int size,
         bool sym,
@@ -1492,15 +1731,33 @@ namespace
 
         ScopedZxGpuEvents events;
         g_last_kernel_ms = static_cast<float>(events.measure([&]() {
-            fill_general_gaussian_fast_kernel<<<
-                block_count(static_cast<std::size_t>(size)),
-                kThreadsPerBlock>>>(
-                size,
-                extended.size,
-                sig,
-                power_mode,
-                result.data());
-            check_kernel_launch("fill_general_gaussian_fast_kernel");
+            constexpr int kMaxExactFloatInteger = 1 << 24;
+            if (extended.size - 1 <= kMaxExactFloatInteger)
+            {
+                const std::size_t half_count =
+                    static_cast<std::size_t>((extended.size + 1) / 2);
+                fill_general_gaussian_symmetric_fast_kernel<<<
+                    block_count(half_count),
+                    kThreadsPerBlock>>>(
+                    size,
+                    extended.size,
+                    sig,
+                    power_mode,
+                    result.data());
+                check_kernel_launch("fill_general_gaussian_symmetric_fast_kernel");
+            }
+            else
+            {
+                fill_general_gaussian_fast_kernel<<<
+                    block_count(static_cast<std::size_t>(size)),
+                    kThreadsPerBlock>>>(
+                    size,
+                    extended.size,
+                    sig,
+                    power_mode,
+                    result.data());
+                check_kernel_launch("fill_general_gaussian_fast_kernel");
+            }
         }));
         return result;
     }
@@ -1975,7 +2232,7 @@ namespace cusignal
 
             core::ZxGpuRealSignal hamming(int size, bool sym)
             {
-                return general_hamming(size, 0.54f, sym);
+                return hamming_exact_pair_fast(size, sym);
             }
 
             core::ZxGpuRealSignal hann(int size, bool sym)

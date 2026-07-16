@@ -495,7 +495,7 @@ namespace
 
     RealSignal make_cmplx_sort_real_input(const FilterDesignCase &test_case)
     {
-        if (test_case.id == "real_case")
+        if (test_case.id == "real_case" || test_case.id == "real_case_float16_compat")
         {
             return RealSignal{-3.0, 1.0, -2.0, 2.0, 0.5};
         }

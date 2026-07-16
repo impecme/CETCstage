@@ -5,6 +5,9 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstdint>
+#include <cstdlib>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <functional>
@@ -15,6 +18,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -32,6 +36,15 @@ namespace cusignal
         namespace spectral_test_hooks
         {
             float consume_last_kernel_ms();
+            int consume_last_periodogram_cache_state();
+            void set_periodogram_cache_override(int mode);
+            void reset_periodogram_cache();
+            int consume_last_welch_cache_state();
+            void set_welch_cache_override(int mode);
+            void reset_welch_cache();
+            int consume_last_istft_cache_state();
+            void set_istft_cache_override(int mode);
+            void reset_istft_cache();
         }
     } // namespace zx_gpu_backend
 } // namespace cusignal
@@ -62,6 +75,25 @@ namespace
     using JsonArray = cusignal_test::json::Array;
     using JsonObject = cusignal_test::json::Object;
     using JsonValue = cusignal_test::json::Value;
+
+    constexpr int kPeriodogramCacheAuto = -1;
+    constexpr int kPeriodogramCacheBypass = 0;
+    constexpr int kPeriodogramCacheEnabled = 1;
+    constexpr int kPeriodogramCacheStateBypass = 0;
+    constexpr int kPeriodogramCacheStateMiss = 1;
+    constexpr int kPeriodogramCacheStateHit = 2;
+    constexpr int kWelchCacheAuto = -1;
+    constexpr int kWelchCacheBypass = 0;
+    constexpr int kWelchCacheEnabled = 1;
+    constexpr int kWelchCacheStateBypass = 0;
+    constexpr int kWelchCacheStateMiss = 1;
+    constexpr int kWelchCacheStateHit = 2;
+    constexpr int kIstftCacheAuto = -1;
+    constexpr int kIstftCacheBypass = 0;
+    constexpr int kIstftCacheEnabled = 1;
+    constexpr int kIstftCacheStateBypass = 0;
+    constexpr int kIstftCacheStateMiss = 1;
+    constexpr int kIstftCacheStateHit = 2;
 
     struct CliOptions
     {
@@ -1467,6 +1499,1108 @@ namespace
         return compute_timing_stats(durations);
     }
 
+    enum class PeriodogramProbeWindowKind
+    {
+        Hann,
+        Boxcar,
+        Kaiser,
+        HostExplicit,
+        DeviceExplicit,
+    };
+
+    struct PeriodogramCacheProbeCase
+    {
+        std::string id;
+        Shape shape;
+        float fs = 1024.0f;
+        int nfft = 0;
+        bool return_onesided = true;
+        std::string scaling = "density";
+        int axis = -1;
+        PeriodogramProbeWindowKind window_kind =
+            PeriodogramProbeWindowKind::Hann;
+        bool cacheable = true;
+    };
+
+    class PeriodogramCacheOverrideReset
+    {
+    public:
+        ~PeriodogramCacheOverrideReset()
+        {
+            cusignal::zx_gpu_backend::spectral_test_hooks::
+                set_periodogram_cache_override(kPeriodogramCacheAuto);
+            cusignal::zx_gpu_backend::spectral_test_hooks::
+                reset_periodogram_cache();
+            (void)cusignal::zx_gpu_backend::spectral_test_hooks::
+                consume_last_periodogram_cache_state();
+        }
+    };
+
+    RealArray make_periodogram_cache_probe_input(const Shape &shape)
+    {
+        RealArray input;
+        input.shape = shape;
+        input.values.resize(cusignal::core::shape_product(shape));
+        for (std::size_t index = 0; index < input.values.size(); ++index)
+        {
+            if (index % 127 == 0)
+            {
+                input.values[index] = -0.0f;
+                continue;
+            }
+            const float x = static_cast<float>(index);
+            input.values[index] =
+                0.75f * std::sin(0.013f * x + 0.05f) +
+                0.25f * std::cos(0.031f * x - 0.15f) +
+                static_cast<float>(static_cast<int>(index % 19) - 9) * 0.0078125f;
+        }
+        return input;
+    }
+
+    RealSignal make_periodogram_cache_explicit_window(int size)
+    {
+        RealSignal window(static_cast<std::size_t>(size));
+        for (int index = 0; index < size; ++index)
+        {
+            window[static_cast<std::size_t>(index)] =
+                0.25f + 0.75f * static_cast<float>((index % 19) + 1) / 20.0f;
+        }
+        return window;
+    }
+
+    ZxGpuWindowSpec make_periodogram_cache_probe_window(
+        PeriodogramProbeWindowKind kind,
+        int size)
+    {
+        if (kind == PeriodogramProbeWindowKind::Hann)
+        {
+            return ZxGpuWindowSpec{std::string("hann")};
+        }
+        if (kind == PeriodogramProbeWindowKind::Boxcar)
+        {
+            return ZxGpuWindowSpec{std::string("boxcar")};
+        }
+        if (kind == PeriodogramProbeWindowKind::Kaiser)
+        {
+            return ZxGpuWindowSpec{NamedFloatParameter{"kaiser", 5.0f}};
+        }
+        RealSignal window = make_periodogram_cache_explicit_window(size);
+        if (kind == PeriodogramProbeWindowKind::DeviceExplicit)
+        {
+            return ZxGpuWindowSpec{ZxGpuRealSignal::from_host(window)};
+        }
+        return ZxGpuWindowSpec{std::move(window)};
+    }
+
+    std::uint32_t float_bits(float value)
+    {
+        std::uint32_t bits = 0;
+        static_assert(sizeof(bits) == sizeof(value), "float32 bit width");
+        std::memcpy(&bits, &value, sizeof(bits));
+        return bits;
+    }
+
+    bool bitwise_equal_output_bundles(
+        const OutputBundle &lhs,
+        const OutputBundle &rhs,
+        std::string *mismatch)
+    {
+        if (lhs.fields.size() != rhs.fields.size())
+        {
+            *mismatch = "field_count";
+            return false;
+        }
+        for (std::size_t field_index = 0; field_index < lhs.fields.size(); ++field_index)
+        {
+            const OutputField &lhs_field = lhs.fields[field_index];
+            const OutputField &rhs_field = rhs.fields[field_index];
+            if (lhs_field.name != rhs_field.name ||
+                lhs_field.kind != rhs_field.kind ||
+                lhs_field.shape != rhs_field.shape)
+            {
+                *mismatch = "field_metadata:" + std::to_string(field_index);
+                return false;
+            }
+            if (lhs_field.kind == FieldKind::ComplexArray)
+            {
+                if (lhs_field.complex_values.size() != rhs_field.complex_values.size())
+                {
+                    *mismatch = lhs_field.name + ":size";
+                    return false;
+                }
+                for (std::size_t index = 0; index < lhs_field.complex_values.size(); ++index)
+                {
+                    const Complex lhs_value = lhs_field.complex_values[index];
+                    const Complex rhs_value = rhs_field.complex_values[index];
+                    if (float_bits(lhs_value.real()) != float_bits(rhs_value.real()) ||
+                        float_bits(lhs_value.imag()) != float_bits(rhs_value.imag()))
+                    {
+                        *mismatch = lhs_field.name + ":" + std::to_string(index);
+                        return false;
+                    }
+                }
+                continue;
+            }
+            if (lhs_field.real_values.size() != rhs_field.real_values.size())
+            {
+                *mismatch = lhs_field.name + ":size";
+                return false;
+            }
+            for (std::size_t index = 0; index < lhs_field.real_values.size(); ++index)
+            {
+                if (float_bits(lhs_field.real_values[index]) !=
+                    float_bits(rhs_field.real_values[index]))
+                {
+                    *mismatch = lhs_field.name + ":" + std::to_string(index);
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    std::size_t output_float_count(const OutputBundle &bundle)
+    {
+        std::size_t count = 0;
+        for (const OutputField &field : bundle.fields)
+        {
+            count += field.kind == FieldKind::ComplexArray
+                         ? field.complex_values.size() * 2
+                         : field.real_values.size();
+        }
+        return count;
+    }
+
+    OutputBundle run_periodogram_cache_probe_path(
+        const ZxGpuRealArray &x,
+        const PeriodogramCacheProbeCase &test_case,
+        int cache_mode,
+        int *observed_state)
+    {
+        cusignal::zx_gpu_backend::spectral_test_hooks::
+            set_periodogram_cache_override(cache_mode);
+        const std::size_t line_len = test_case.shape.back();
+        const int effective_len =
+            test_case.nfft > 0 &&
+                    static_cast<std::size_t>(test_case.nfft) < line_len
+                ? test_case.nfft
+                : static_cast<int>(line_len);
+        ZxGpuWindowSpec window = make_periodogram_cache_probe_window(
+            test_case.window_kind,
+            effective_len);
+        OutputBundle output = materialize(make_device_bundle(
+            cusignal::zx_gpu_backend::spectral::periodogram(
+                x,
+                test_case.fs,
+                std::move(window),
+                test_case.nfft,
+                DetrendSpec{std::string("constant")},
+                test_case.return_onesided,
+                test_case.scaling,
+                test_case.axis)));
+        *observed_state =
+            cusignal::zx_gpu_backend::spectral_test_hooks::
+                consume_last_periodogram_cache_state();
+        return output;
+    }
+
+    int run_periodogram_cache_device_ab_probe()
+    {
+        PeriodogramCacheOverrideReset reset;
+        std::ofstream report;
+        const char *report_path =
+            std::getenv("CUSIGNAL_PERIODOGRAM_CACHE_DEVICE_AB_REPORT");
+        if (report_path != nullptr && report_path[0] != '\0')
+        {
+            report.open(report_path);
+            if (!report)
+            {
+                throw std::runtime_error(
+                    "failed to open periodogram cache device A/B report");
+            }
+        }
+
+        bool invalid_override_rejected = false;
+        try
+        {
+            cusignal::zx_gpu_backend::spectral_test_hooks::
+                set_periodogram_cache_override(7);
+        }
+        catch (const std::invalid_argument &)
+        {
+            invalid_override_rejected = true;
+        }
+        if (!invalid_override_rejected)
+        {
+            throw std::runtime_error(
+                "invalid periodogram cache override was accepted");
+        }
+
+        const std::vector<PeriodogramCacheProbeCase> cases = {
+            {"official_accuracy", {256}, 1024.0f, 0, true, "density", -1,
+             PeriodogramProbeWindowKind::Hann, true},
+            {"official_perf", {32768}, 1024.0f, 0, true, "density", -1,
+             PeriodogramProbeWindowKind::Hann, true},
+            {"truncated_spectrum", {1024}, 800.0f, 512, true, "spectrum", -1,
+             PeriodogramProbeWindowKind::Hann, true},
+            {"padded_boxcar", {1024}, 1200.0f, 2048, true, "density", -1,
+             PeriodogramProbeWindowKind::Boxcar, true},
+            {"kaiser", {2048}, 1600.0f, 0, true, "density", -1,
+             PeriodogramProbeWindowKind::Kaiser, true},
+            {"two_sided", {1024}, 900.0f, 1024, false, "density", -1,
+             PeriodogramProbeWindowKind::Hann, true},
+            {"multiline", {2, 512}, 700.0f, 0, true, "density", 1,
+             PeriodogramProbeWindowKind::Hann, true},
+            {"host_explicit", {512}, 600.0f, 0, true, "density", -1,
+             PeriodogramProbeWindowKind::HostExplicit, false},
+            {"device_explicit", {512}, 500.0f, 0, true, "density", -1,
+             PeriodogramProbeWindowKind::DeviceExplicit, false},
+        };
+
+        std::size_t checked_cases = 0;
+        std::size_t checked_float_outputs = 0;
+        std::size_t cache_misses = 0;
+        std::size_t cache_hits = 0;
+        std::size_t bypasses = 0;
+        for (const PeriodogramCacheProbeCase &test_case : cases)
+        {
+            cusignal::zx_gpu_backend::spectral_test_hooks::
+                reset_periodogram_cache();
+            const ZxGpuRealArray x = ZxGpuRealArray::from_host(
+                make_periodogram_cache_probe_input(test_case.shape));
+            int bypass_state = -1;
+            int miss_state = -1;
+            int hit_state = -1;
+            int automatic_state = -1;
+            const OutputBundle bypass = run_periodogram_cache_probe_path(
+                x,
+                test_case,
+                kPeriodogramCacheBypass,
+                &bypass_state);
+            const OutputBundle first_cached = run_periodogram_cache_probe_path(
+                x,
+                test_case,
+                kPeriodogramCacheEnabled,
+                &miss_state);
+            const OutputBundle second_cached = run_periodogram_cache_probe_path(
+                x,
+                test_case,
+                kPeriodogramCacheEnabled,
+                &hit_state);
+            const OutputBundle automatic = run_periodogram_cache_probe_path(
+                x,
+                test_case,
+                kPeriodogramCacheAuto,
+                &automatic_state);
+
+            const int expected_first =
+                test_case.cacheable
+                    ? kPeriodogramCacheStateMiss
+                    : kPeriodogramCacheStateBypass;
+            const int expected_reuse =
+                test_case.cacheable
+                    ? kPeriodogramCacheStateHit
+                    : kPeriodogramCacheStateBypass;
+            if (bypass_state != kPeriodogramCacheStateBypass ||
+                miss_state != expected_first ||
+                hit_state != expected_reuse ||
+                automatic_state != expected_reuse)
+            {
+                throw std::runtime_error(
+                    "periodogram cache route mismatch for case " + test_case.id);
+            }
+
+            std::string mismatch;
+            for (const auto &candidate : {
+                     std::pair<const char *, const OutputBundle *>(
+                         "first_cached", &first_cached),
+                     std::pair<const char *, const OutputBundle *>(
+                         "second_cached", &second_cached),
+                     std::pair<const char *, const OutputBundle *>(
+                         "automatic", &automatic)})
+            {
+                if (!bitwise_equal_output_bundles(
+                        bypass,
+                        *candidate.second,
+                        &mismatch))
+                {
+                    throw std::runtime_error(
+                        "periodogram bypass/cache mismatch for case " +
+                        test_case.id + "/" + candidate.first + " at " + mismatch);
+                }
+            }
+
+            const int states[] = {
+                bypass_state,
+                miss_state,
+                hit_state,
+                automatic_state};
+            for (int state : states)
+            {
+                cache_misses += state == kPeriodogramCacheStateMiss ? 1 : 0;
+                cache_hits += state == kPeriodogramCacheStateHit ? 1 : 0;
+                bypasses += state == kPeriodogramCacheStateBypass ? 1 : 0;
+            }
+            ++checked_cases;
+            checked_float_outputs += output_float_count(bypass);
+        }
+
+        if (report)
+        {
+            report << "summary\tpass\tchecked_cases\t" << checked_cases
+                   << "\tchecked_float_outputs\t" << checked_float_outputs
+                   << "\tcache_misses\t" << cache_misses
+                   << "\tcache_hits\t" << cache_hits
+                   << "\tbypasses\t" << bypasses
+                   << "\tperformance\tnot_run\n";
+        }
+        std::cout << "[periodogram-cache-device-ab] PASS"
+                  << " checked_cases=" << checked_cases
+                  << " checked_float_outputs=" << checked_float_outputs
+                  << " cache_misses=" << cache_misses
+                  << " cache_hits=" << cache_hits
+                  << " bypasses=" << bypasses
+                  << " performance=not_run\n";
+        return 0;
+    }
+
+    struct WelchCacheProbeCase
+    {
+        std::string id;
+        Shape shape;
+        float fs = 800.0f;
+        int nperseg = 128;
+        int noverlap = 64;
+        int nfft = 128;
+        bool return_onesided = true;
+        std::string scaling = "density";
+        int axis = -1;
+        std::string average = "mean";
+        PeriodogramProbeWindowKind window_kind =
+            PeriodogramProbeWindowKind::Hann;
+        bool cacheable = true;
+    };
+
+    class WelchCacheOverrideReset
+    {
+    public:
+        ~WelchCacheOverrideReset()
+        {
+            cusignal::zx_gpu_backend::spectral_test_hooks::
+                set_welch_cache_override(kWelchCacheAuto);
+            cusignal::zx_gpu_backend::spectral_test_hooks::
+                reset_welch_cache();
+            (void)cusignal::zx_gpu_backend::spectral_test_hooks::
+                consume_last_welch_cache_state();
+        }
+    };
+
+    OutputBundle run_welch_cache_probe_path(
+        const ZxGpuRealArray &x,
+        const WelchCacheProbeCase &test_case,
+        int cache_mode,
+        int *observed_state)
+    {
+        cusignal::zx_gpu_backend::spectral_test_hooks::
+            set_welch_cache_override(cache_mode);
+        const std::size_t line_len = test_case.shape.back();
+        const int window_size =
+            test_case.nperseg > 0
+                ? std::min<int>(
+                      test_case.nperseg,
+                      static_cast<int>(line_len))
+                : std::min<int>(256, static_cast<int>(line_len));
+        ZxGpuWindowSpec window = make_periodogram_cache_probe_window(
+            test_case.window_kind,
+            window_size);
+        OutputBundle output = materialize(make_device_bundle(
+            cusignal::zx_gpu_backend::spectral::welch(
+                x,
+                test_case.fs,
+                std::move(window),
+                test_case.nperseg,
+                test_case.noverlap,
+                test_case.nfft,
+                DetrendSpec{std::string("constant")},
+                test_case.return_onesided,
+                test_case.scaling,
+                test_case.axis,
+                test_case.average)));
+        *observed_state =
+            cusignal::zx_gpu_backend::spectral_test_hooks::
+                consume_last_welch_cache_state();
+        return output;
+    }
+
+    int run_welch_cache_device_ab_probe()
+    {
+        WelchCacheOverrideReset reset;
+        std::ofstream report;
+        const char *report_path =
+            std::getenv("CUSIGNAL_WELCH_CACHE_DEVICE_AB_REPORT");
+        if (report_path != nullptr && report_path[0] != '\0')
+        {
+            report.open(report_path);
+            if (!report)
+            {
+                throw std::runtime_error(
+                    "failed to open welch cache device A/B report");
+            }
+        }
+
+        bool invalid_override_rejected = false;
+        try
+        {
+            cusignal::zx_gpu_backend::spectral_test_hooks::
+                set_welch_cache_override(7);
+        }
+        catch (const std::invalid_argument &)
+        {
+            invalid_override_rejected = true;
+        }
+        if (!invalid_override_rejected)
+        {
+            throw std::runtime_error(
+                "invalid welch cache override was accepted");
+        }
+
+        const std::vector<WelchCacheProbeCase> cases = {
+            {"official_accuracy", {512}, 800.0f, 128, 64, 128, true,
+             "density", -1, "mean", PeriodogramProbeWindowKind::Hann, true},
+            {"official_perf", {32768}, 800.0f, 256, 128, 256, true,
+             "density", -1, "mean", PeriodogramProbeWindowKind::Hann, true},
+            {"spectrum_scaling", {1024}, 1200.0f, 128, 32, 256, true,
+             "spectrum", -1, "mean", PeriodogramProbeWindowKind::Hann, true},
+            {"median_average", {2048}, 1000.0f, 256, 128, 256, true,
+             "density", -1, "median", PeriodogramProbeWindowKind::Hann, true},
+            {"two_sided", {1024}, 900.0f, 128, 64, 128, false,
+             "density", -1, "mean", PeriodogramProbeWindowKind::Hann, true},
+            {"padded_boxcar", {1024}, 1100.0f, 128, 0, 256, true,
+             "density", -1, "mean", PeriodogramProbeWindowKind::Boxcar, true},
+            {"kaiser", {2048}, 1600.0f, 256, 128, 256, true,
+             "density", -1, "mean", PeriodogramProbeWindowKind::Kaiser, true},
+            {"multiline", {2, 512}, 700.0f, 128, 64, 128, true,
+             "density", 1, "mean", PeriodogramProbeWindowKind::Hann, true},
+            {"host_explicit", {512}, 600.0f, 128, 64, 128, true,
+             "density", -1, "mean",
+             PeriodogramProbeWindowKind::HostExplicit, false},
+            {"device_explicit", {512}, 500.0f, 128, 64, 128, true,
+             "density", -1, "mean",
+             PeriodogramProbeWindowKind::DeviceExplicit, false},
+            {"default_window_length", {1024}, 750.0f, 0, -1, 0, true,
+             "density", -1, "mean", PeriodogramProbeWindowKind::Hann, true},
+        };
+
+        std::size_t checked_cases = 0;
+        std::size_t checked_float_outputs = 0;
+        std::size_t cache_misses = 0;
+        std::size_t cache_hits = 0;
+        std::size_t bypasses = 0;
+        for (const WelchCacheProbeCase &test_case : cases)
+        {
+            cusignal::zx_gpu_backend::spectral_test_hooks::
+                reset_welch_cache();
+            const ZxGpuRealArray x = ZxGpuRealArray::from_host(
+                make_periodogram_cache_probe_input(test_case.shape));
+            int bypass_state = -1;
+            int miss_state = -1;
+            int hit_state = -1;
+            int automatic_state = -1;
+            const OutputBundle bypass = run_welch_cache_probe_path(
+                x,
+                test_case,
+                kWelchCacheBypass,
+                &bypass_state);
+            const OutputBundle first_cached = run_welch_cache_probe_path(
+                x,
+                test_case,
+                kWelchCacheEnabled,
+                &miss_state);
+            const OutputBundle second_cached = run_welch_cache_probe_path(
+                x,
+                test_case,
+                kWelchCacheEnabled,
+                &hit_state);
+            const OutputBundle automatic = run_welch_cache_probe_path(
+                x,
+                test_case,
+                kWelchCacheAuto,
+                &automatic_state);
+
+            const int expected_first =
+                test_case.cacheable
+                    ? kWelchCacheStateMiss
+                    : kWelchCacheStateBypass;
+            const int expected_reuse =
+                test_case.cacheable
+                    ? kWelchCacheStateHit
+                    : kWelchCacheStateBypass;
+            if (bypass_state != kWelchCacheStateBypass ||
+                miss_state != expected_first ||
+                hit_state != expected_reuse ||
+                automatic_state != expected_reuse)
+            {
+                throw std::runtime_error(
+                    "welch cache route mismatch for case " + test_case.id);
+            }
+
+            std::string mismatch;
+            for (const auto &candidate : {
+                     std::pair<const char *, const OutputBundle *>(
+                         "first_cached", &first_cached),
+                     std::pair<const char *, const OutputBundle *>(
+                         "second_cached", &second_cached),
+                     std::pair<const char *, const OutputBundle *>(
+                         "automatic", &automatic)})
+            {
+                if (!bitwise_equal_output_bundles(
+                        bypass,
+                        *candidate.second,
+                        &mismatch))
+                {
+                    throw std::runtime_error(
+                        "welch bypass/cache mismatch for case " +
+                        test_case.id + "/" + candidate.first + " at " + mismatch);
+                }
+            }
+
+            const int states[] = {
+                bypass_state,
+                miss_state,
+                hit_state,
+                automatic_state};
+            for (int state : states)
+            {
+                cache_misses += state == kWelchCacheStateMiss ? 1 : 0;
+                cache_hits += state == kWelchCacheStateHit ? 1 : 0;
+                bypasses += state == kWelchCacheStateBypass ? 1 : 0;
+            }
+            ++checked_cases;
+            checked_float_outputs += output_float_count(bypass);
+        }
+
+        cusignal::zx_gpu_backend::spectral_test_hooks::
+            reset_welch_cache();
+        WelchCacheProbeCase base_case = cases.front();
+        WelchCacheProbeCase adjacent_case = base_case;
+        adjacent_case.id = "adjacent_fs";
+        adjacent_case.fs = std::nextafter(base_case.fs, base_case.fs + 1.0f);
+        const ZxGpuRealArray adjacent_x = ZxGpuRealArray::from_host(
+            make_periodogram_cache_probe_input(base_case.shape));
+        int base_miss_state = -1;
+        int adjacent_miss_state = -1;
+        int adjacent_hit_state = -1;
+        int adjacent_bypass_state = -1;
+        const OutputBundle base_cached = run_welch_cache_probe_path(
+            adjacent_x,
+            base_case,
+            kWelchCacheEnabled,
+            &base_miss_state);
+        const OutputBundle adjacent_cached = run_welch_cache_probe_path(
+            adjacent_x,
+            adjacent_case,
+            kWelchCacheEnabled,
+            &adjacent_miss_state);
+        const OutputBundle adjacent_automatic = run_welch_cache_probe_path(
+            adjacent_x,
+            adjacent_case,
+            kWelchCacheAuto,
+            &adjacent_hit_state);
+        const OutputBundle adjacent_bypass = run_welch_cache_probe_path(
+            adjacent_x,
+            adjacent_case,
+            kWelchCacheBypass,
+            &adjacent_bypass_state);
+        (void)base_cached;
+        if (base_miss_state != kWelchCacheStateMiss ||
+            adjacent_miss_state != kWelchCacheStateMiss ||
+            adjacent_hit_state != kWelchCacheStateHit ||
+            adjacent_bypass_state != kWelchCacheStateBypass)
+        {
+            throw std::runtime_error(
+                "welch adjacent-float cache invalidation mismatch");
+        }
+        std::string adjacent_mismatch;
+        if (!bitwise_equal_output_bundles(
+                adjacent_bypass,
+                adjacent_cached,
+                &adjacent_mismatch) ||
+            !bitwise_equal_output_bundles(
+                adjacent_bypass,
+                adjacent_automatic,
+                &adjacent_mismatch))
+        {
+            throw std::runtime_error(
+                "welch adjacent-float bypass/cache mismatch at " +
+                adjacent_mismatch);
+        }
+        cache_misses += 2;
+        cache_hits += 1;
+        bypasses += 1;
+        ++checked_cases;
+        checked_float_outputs += output_float_count(adjacent_bypass);
+
+        if (report)
+        {
+            report << "summary\tpass\tchecked_cases\t" << checked_cases
+                   << "\tchecked_float_outputs\t" << checked_float_outputs
+                   << "\tcache_misses\t" << cache_misses
+                   << "\tcache_hits\t" << cache_hits
+                   << "\tbypasses\t" << bypasses
+                   << "\tperformance\tnot_run\n";
+        }
+        std::cout << "[welch-cache-device-ab] PASS"
+                  << " checked_cases=" << checked_cases
+                  << " checked_float_outputs=" << checked_float_outputs
+                  << " cache_misses=" << cache_misses
+                  << " cache_hits=" << cache_hits
+                  << " bypasses=" << bypasses
+                  << " performance=not_run\n";
+        return 0;
+    }
+
+    struct IstftCacheProbeCase
+    {
+        std::string id;
+        Shape shape;
+        float fs = 400.0f;
+        int nperseg = 64;
+        int noverlap = 48;
+        int nfft = 128;
+        bool input_onesided = true;
+        bool boundary = true;
+        int time_axis = -1;
+        int freq_axis = -2;
+        PeriodogramProbeWindowKind window_kind =
+            PeriodogramProbeWindowKind::Hann;
+        bool cacheable = true;
+    };
+
+    class IstftCacheOverrideReset
+    {
+    public:
+        ~IstftCacheOverrideReset()
+        {
+            cusignal::zx_gpu_backend::spectral_test_hooks::
+                set_istft_cache_override(kIstftCacheAuto);
+            cusignal::zx_gpu_backend::spectral_test_hooks::
+                reset_istft_cache();
+            (void)cusignal::zx_gpu_backend::spectral_test_hooks::
+                consume_last_istft_cache_state();
+        }
+    };
+
+    ComplexArray make_istft_cache_probe_input(const Shape &shape)
+    {
+        ComplexArray input = cusignal::core::make_complex_array(shape);
+        for (std::size_t index = 0; index < input.values.size(); ++index)
+        {
+            const float x = static_cast<float>(index);
+            const float real =
+                0.35f * std::cos(0.017f * x + 0.2f) +
+                0.11f * std::sin(0.031f * x - 0.4f);
+            const float imag =
+                0.29f * std::sin(0.023f * x + 0.1f) -
+                0.07f * std::cos(0.043f * x - 0.3f);
+            input.values[index] = Complex(real, imag);
+        }
+        return input;
+    }
+
+    int resolved_istft_probe_nperseg(const IstftCacheProbeCase &test_case)
+    {
+        if (test_case.nperseg > 0)
+        {
+            return test_case.nperseg;
+        }
+        const std::size_t freq_bins =
+            test_case.shape[test_case.shape.size() - 2];
+        return test_case.input_onesided
+                   ? 2 * (static_cast<int>(freq_bins) - 1)
+                   : static_cast<int>(freq_bins);
+    }
+
+    OutputBundle run_istft_cache_probe_path(
+        const ZxGpuComplexArray &zxx,
+        const IstftCacheProbeCase &test_case,
+        int cache_mode,
+        int *observed_state)
+    {
+        cusignal::zx_gpu_backend::spectral_test_hooks::
+            set_istft_cache_override(cache_mode);
+        ZxGpuWindowSpec window = make_periodogram_cache_probe_window(
+            test_case.window_kind,
+            resolved_istft_probe_nperseg(test_case));
+        OutputBundle output = materialize(make_device_bundle(
+            cusignal::zx_gpu_backend::spectral::istft(
+                zxx,
+                test_case.fs,
+                std::move(window),
+                test_case.nperseg,
+                test_case.noverlap,
+                test_case.nfft,
+                test_case.input_onesided,
+                test_case.boundary,
+                test_case.time_axis,
+                test_case.freq_axis)));
+        *observed_state =
+            cusignal::zx_gpu_backend::spectral_test_hooks::
+                consume_last_istft_cache_state();
+        return output;
+    }
+
+    void require_istft_probe_state(
+        const std::string &case_id,
+        int observed,
+        int expected,
+        const char *path)
+    {
+        if (observed != expected)
+        {
+            throw std::runtime_error(
+                "istft cache route mismatch for case " + case_id +
+                "/" + path);
+        }
+    }
+
+    void require_istft_probe_output(
+        const std::string &case_id,
+        const char *path,
+        const OutputBundle &baseline,
+        const OutputBundle &candidate)
+    {
+        std::string mismatch;
+        if (!bitwise_equal_output_bundles(
+                baseline,
+                candidate,
+                &mismatch))
+        {
+            throw std::runtime_error(
+                "istft bypass/cache mismatch for case " + case_id +
+                "/" + path + " at " + mismatch);
+        }
+    }
+
+    int run_istft_cache_device_ab_probe()
+    {
+        IstftCacheOverrideReset reset;
+        std::ofstream report;
+        const char *report_path =
+            std::getenv("CUSIGNAL_ISTFT_CACHE_DEVICE_AB_REPORT");
+        if (report_path != nullptr && report_path[0] != '\0')
+        {
+            report.open(report_path);
+            if (!report)
+            {
+                throw std::runtime_error(
+                    "failed to open istft cache device A/B report");
+            }
+        }
+
+        bool invalid_override_rejected = false;
+        try
+        {
+            cusignal::zx_gpu_backend::spectral_test_hooks::
+                set_istft_cache_override(7);
+        }
+        catch (const std::invalid_argument &)
+        {
+            invalid_override_rejected = true;
+        }
+        if (!invalid_override_rejected)
+        {
+            throw std::runtime_error(
+                "invalid istft cache override was accepted");
+        }
+
+        const std::vector<IstftCacheProbeCase> cases = {
+            {"official_accuracy", {65, 25}, 400.0f, 64, 48, 128, true,
+             true, -1, -2, PeriodogramProbeWindowKind::Hann, true},
+            {"official_perf", {129, 257}, 400.0f, 128, 96, 256, true,
+             true, -1, -2, PeriodogramProbeWindowKind::Hann, true},
+            {"two_sided", {128, 17}, 900.0f, 128, 64, 128, false,
+             false, -1, -2, PeriodogramProbeWindowKind::Hann, true},
+            {"boundary_disabled", {65, 9}, 600.0f, 64, 32, 128, true,
+             false, -1, -2, PeriodogramProbeWindowKind::Boxcar, true},
+            {"padded_nfft", {129, 11}, 1200.0f, 96, 48, 256, true,
+             true, -1, -2, PeriodogramProbeWindowKind::Hann, true},
+            {"kaiser", {65, 13}, 800.0f, 64, 32, 128, true,
+             true, -1, -2, PeriodogramProbeWindowKind::Kaiser, true},
+            {"default_sizes", {65, 9}, 750.0f, 0, -1, 0, true,
+             true, -1, -2, PeriodogramProbeWindowKind::Hann, true},
+            {"multiline", {2, 65, 9}, 700.0f, 64, 32, 128, true,
+             true, -1, -2, PeriodogramProbeWindowKind::Hann, true},
+            {"host_explicit", {65, 9}, 500.0f, 64, 32, 128, true,
+             false, -1, -2, PeriodogramProbeWindowKind::HostExplicit, false},
+            {"device_explicit", {65, 9}, 550.0f, 64, 32, 128, true,
+             false, -1, -2, PeriodogramProbeWindowKind::DeviceExplicit, false},
+        };
+
+        std::size_t checked_cases = 0;
+        std::size_t checked_float_outputs = 0;
+        std::size_t cache_misses = 0;
+        std::size_t cache_hits = 0;
+        std::size_t bypasses = 0;
+        const auto count_state = [&](int state) {
+            cache_misses += state == kIstftCacheStateMiss ? 1 : 0;
+            cache_hits += state == kIstftCacheStateHit ? 1 : 0;
+            bypasses += state == kIstftCacheStateBypass ? 1 : 0;
+        };
+
+        for (const IstftCacheProbeCase &test_case : cases)
+        {
+            cusignal::zx_gpu_backend::spectral_test_hooks::
+                reset_istft_cache();
+            const ZxGpuComplexArray zxx = ZxGpuComplexArray::from_host(
+                make_istft_cache_probe_input(test_case.shape));
+            int bypass_state = -1;
+            int miss_state = -1;
+            int hit_state = -1;
+            int automatic_state = -1;
+            const OutputBundle bypass = run_istft_cache_probe_path(
+                zxx,
+                test_case,
+                kIstftCacheBypass,
+                &bypass_state);
+            const OutputBundle first_cached = run_istft_cache_probe_path(
+                zxx,
+                test_case,
+                kIstftCacheEnabled,
+                &miss_state);
+            const OutputBundle second_cached = run_istft_cache_probe_path(
+                zxx,
+                test_case,
+                kIstftCacheEnabled,
+                &hit_state);
+            const OutputBundle automatic = run_istft_cache_probe_path(
+                zxx,
+                test_case,
+                kIstftCacheAuto,
+                &automatic_state);
+
+            const int expected_first =
+                test_case.cacheable
+                    ? kIstftCacheStateMiss
+                    : kIstftCacheStateBypass;
+            const int expected_reuse =
+                test_case.cacheable
+                    ? kIstftCacheStateHit
+                    : kIstftCacheStateBypass;
+            require_istft_probe_state(
+                test_case.id,
+                bypass_state,
+                kIstftCacheStateBypass,
+                "bypass");
+            require_istft_probe_state(
+                test_case.id,
+                miss_state,
+                expected_first,
+                "first_cached");
+            require_istft_probe_state(
+                test_case.id,
+                hit_state,
+                expected_reuse,
+                "second_cached");
+            require_istft_probe_state(
+                test_case.id,
+                automatic_state,
+                expected_reuse,
+                "automatic");
+            require_istft_probe_output(
+                test_case.id,
+                "first_cached",
+                bypass,
+                first_cached);
+            require_istft_probe_output(
+                test_case.id,
+                "second_cached",
+                bypass,
+                second_cached);
+            require_istft_probe_output(
+                test_case.id,
+                "automatic",
+                bypass,
+                automatic);
+
+            for (int state : {
+                     bypass_state,
+                     miss_state,
+                     hit_state,
+                     automatic_state})
+            {
+                count_state(state);
+            }
+            ++checked_cases;
+            checked_float_outputs += output_float_count(bypass);
+        }
+
+        cusignal::zx_gpu_backend::spectral_test_hooks::
+            reset_istft_cache();
+        IstftCacheProbeCase base_case = cases.front();
+        IstftCacheProbeCase adjacent_case = base_case;
+        adjacent_case.id = "adjacent_fs";
+        adjacent_case.fs =
+            std::nextafter(base_case.fs, base_case.fs + 1.0f);
+        const ZxGpuComplexArray adjacent_zxx =
+            ZxGpuComplexArray::from_host(
+                make_istft_cache_probe_input(base_case.shape));
+        int base_miss_state = -1;
+        int adjacent_miss_state = -1;
+        int adjacent_hit_state = -1;
+        int adjacent_bypass_state = -1;
+        const OutputBundle base_cached = run_istft_cache_probe_path(
+            adjacent_zxx,
+            base_case,
+            kIstftCacheEnabled,
+            &base_miss_state);
+        const OutputBundle adjacent_cached = run_istft_cache_probe_path(
+            adjacent_zxx,
+            adjacent_case,
+            kIstftCacheEnabled,
+            &adjacent_miss_state);
+        const OutputBundle adjacent_automatic = run_istft_cache_probe_path(
+            adjacent_zxx,
+            adjacent_case,
+            kIstftCacheAuto,
+            &adjacent_hit_state);
+        const OutputBundle adjacent_bypass = run_istft_cache_probe_path(
+            adjacent_zxx,
+            adjacent_case,
+            kIstftCacheBypass,
+            &adjacent_bypass_state);
+        (void)base_cached;
+        require_istft_probe_state(
+            adjacent_case.id,
+            base_miss_state,
+            kIstftCacheStateMiss,
+            "base_miss");
+        require_istft_probe_state(
+            adjacent_case.id,
+            adjacent_miss_state,
+            kIstftCacheStateMiss,
+            "time_axis_miss");
+        require_istft_probe_state(
+            adjacent_case.id,
+            adjacent_hit_state,
+            kIstftCacheStateHit,
+            "time_axis_hit");
+        require_istft_probe_state(
+            adjacent_case.id,
+            adjacent_bypass_state,
+            kIstftCacheStateBypass,
+            "bypass");
+        require_istft_probe_output(
+            adjacent_case.id,
+            "cached",
+            adjacent_bypass,
+            adjacent_cached);
+        require_istft_probe_output(
+            adjacent_case.id,
+            "automatic",
+            adjacent_bypass,
+            adjacent_automatic);
+        for (int state : {
+                 base_miss_state,
+                 adjacent_miss_state,
+                 adjacent_hit_state,
+                 adjacent_bypass_state})
+        {
+            count_state(state);
+        }
+        ++checked_cases;
+        checked_float_outputs += output_float_count(adjacent_bypass);
+
+        cusignal::zx_gpu_backend::spectral_test_hooks::
+            reset_istft_cache();
+        IstftCacheProbeCase changed_window_case = base_case;
+        changed_window_case.id = "changed_window";
+        changed_window_case.window_kind =
+            PeriodogramProbeWindowKind::Kaiser;
+        int hann_miss_state = -1;
+        int kaiser_miss_state = -1;
+        int kaiser_hit_state = -1;
+        int kaiser_bypass_state = -1;
+        const OutputBundle hann_cached = run_istft_cache_probe_path(
+            adjacent_zxx,
+            base_case,
+            kIstftCacheEnabled,
+            &hann_miss_state);
+        const OutputBundle kaiser_cached = run_istft_cache_probe_path(
+            adjacent_zxx,
+            changed_window_case,
+            kIstftCacheEnabled,
+            &kaiser_miss_state);
+        const OutputBundle kaiser_automatic = run_istft_cache_probe_path(
+            adjacent_zxx,
+            changed_window_case,
+            kIstftCacheAuto,
+            &kaiser_hit_state);
+        const OutputBundle kaiser_bypass = run_istft_cache_probe_path(
+            adjacent_zxx,
+            changed_window_case,
+            kIstftCacheBypass,
+            &kaiser_bypass_state);
+        (void)hann_cached;
+        require_istft_probe_state(
+            changed_window_case.id,
+            hann_miss_state,
+            kIstftCacheStateMiss,
+            "hann_miss");
+        require_istft_probe_state(
+            changed_window_case.id,
+            kaiser_miss_state,
+            kIstftCacheStateMiss,
+            "kaiser_miss");
+        require_istft_probe_state(
+            changed_window_case.id,
+            kaiser_hit_state,
+            kIstftCacheStateHit,
+            "kaiser_hit");
+        require_istft_probe_state(
+            changed_window_case.id,
+            kaiser_bypass_state,
+            kIstftCacheStateBypass,
+            "kaiser_bypass");
+        require_istft_probe_output(
+            changed_window_case.id,
+            "cached",
+            kaiser_bypass,
+            kaiser_cached);
+        require_istft_probe_output(
+            changed_window_case.id,
+            "automatic",
+            kaiser_bypass,
+            kaiser_automatic);
+        for (int state : {
+                 hann_miss_state,
+                 kaiser_miss_state,
+                 kaiser_hit_state,
+                 kaiser_bypass_state})
+        {
+            count_state(state);
+        }
+        ++checked_cases;
+        checked_float_outputs += output_float_count(kaiser_bypass);
+
+        if (report)
+        {
+            report << "summary\tpass\tchecked_cases\t" << checked_cases
+                   << "\tchecked_float_outputs\t" << checked_float_outputs
+                   << "\tcache_misses\t" << cache_misses
+                   << "\tcache_hits\t" << cache_hits
+                   << "\tbypasses\t" << bypasses
+                   << "\tperformance\tnot_run\n";
+        }
+        std::cout << "[istft-cache-device-ab] PASS"
+                  << " checked_cases=" << checked_cases
+                  << " checked_float_outputs=" << checked_float_outputs
+                  << " cache_misses=" << cache_misses
+                  << " cache_hits=" << cache_hits
+                  << " bypasses=" << bypasses
+                  << " performance=not_run\n";
+        return 0;
+    }
+
     float median_speedup(const std::optional<TimingStats> &baseline, const std::optional<TimingStats> &candidate)
     {
         if (!baseline.has_value() || !candidate.has_value() || candidate->median_ms <= 0.0)
@@ -2553,6 +3687,15 @@ int run_periodogram_tests(int argc, char **argv)
 {
     try
     {
+        if (std::getenv("CUSIGNAL_PERIODOGRAM_CACHE_DEVICE_AB") != nullptr)
+        {
+            return run_periodogram_cache_device_ab_probe();
+        }
+        if (std::getenv("CUSIGNAL_PERIODOGRAM_CACHE_BYPASS") != nullptr)
+        {
+            cusignal::zx_gpu_backend::spectral_test_hooks::
+                set_periodogram_cache_override(kPeriodogramCacheBypass);
+        }
         return run_spectral_operator_tests("periodogram", argc, argv);
     }
     catch (const std::exception &error)
@@ -2566,6 +3709,15 @@ int run_welch_tests(int argc, char **argv)
 {
     try
     {
+        if (std::getenv("CUSIGNAL_WELCH_CACHE_DEVICE_AB") != nullptr)
+        {
+            return run_welch_cache_device_ab_probe();
+        }
+        if (std::getenv("CUSIGNAL_WELCH_CACHE_BYPASS") != nullptr)
+        {
+            cusignal::zx_gpu_backend::spectral_test_hooks::
+                set_welch_cache_override(kWelchCacheBypass);
+        }
         return run_spectral_operator_tests("welch", argc, argv);
     }
     catch (const std::exception &error)
@@ -2618,6 +3770,15 @@ int run_istft_tests(int argc, char **argv)
 {
     try
     {
+        if (std::getenv("CUSIGNAL_ISTFT_CACHE_DEVICE_AB") != nullptr)
+        {
+            return run_istft_cache_device_ab_probe();
+        }
+        if (std::getenv("CUSIGNAL_ISTFT_CACHE_BYPASS") != nullptr)
+        {
+            cusignal::zx_gpu_backend::spectral_test_hooks::
+                set_istft_cache_override(kIstftCacheBypass);
+        }
         return run_spectral_operator_tests("istft", argc, argv);
     }
     catch (const std::exception &error)

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstddef>
 #include <filesystem>
 #include <fstream>
 #include <functional>
@@ -28,6 +29,7 @@ namespace cusignal
         namespace correlate_test_hooks
         {
             float consume_last_kernel_ms();
+            bool last_correlation_used_fft();
         }
     }
 }
@@ -530,6 +532,27 @@ namespace
         return summarize_timings(std::move(samples));
     }
 
+    TimingStats summarize_measured_kernel_timings(
+        std::vector<float> samples,
+        int warmup,
+        int repeat)
+    {
+        if (warmup < 0 || repeat <= 0)
+        {
+            throw std::invalid_argument("timing requires warmup >= 0 and repeat > 0");
+        }
+        const std::size_t expected =
+            static_cast<std::size_t>(warmup) + static_cast<std::size_t>(repeat);
+        if (samples.size() != expected)
+        {
+            throw std::runtime_error("kernel timing sample count mismatch");
+        }
+        samples.erase(
+            samples.begin(),
+            samples.begin() + static_cast<std::ptrdiff_t>(warmup));
+        return summarize_timings(std::move(samples));
+    }
+
     void write_real_csv(const fs::path &path, const std::vector<float> &values)
     {
         fs::create_directories(path.parent_path());
@@ -995,6 +1018,42 @@ namespace
             }
         }
 
+        {
+            summary.accuracy_cases += 1;
+            std::vector<float> left_values(65, 0.0f);
+            std::vector<float> right_values(65, 0.0f);
+            for (std::size_t index = 0; index < left_values.size(); ++index)
+            {
+                left_values[index] = std::sin(0.07f * static_cast<float>(index));
+                right_values[index] = std::cos(0.11f * static_cast<float>(index));
+            }
+            const RealArray left = make_real_array(Shape{left_values.size()}, left_values);
+            const RealArray right = make_real_array(Shape{right_values.size()}, right_values);
+            const RealArray cpu = cusignal::cpu::correlate::correlate(left, right, "same", "auto");
+            const ZxGpuRealArray gpu_device =
+                cusignal::zx_gpu_backend::correlate::correlate(left, right, "same", "auto");
+            const bool used_fft =
+                cusignal::zx_gpu_backend::correlate_test_hooks::last_correlation_used_fft();
+            const RealArray gpu = gpu_device.get();
+            const ErrorMetrics error = compare_real(cpu.values, gpu.values);
+            summary.cpu_gpu_error.max_abs_error =
+                std::max(summary.cpu_gpu_error.max_abs_error, error.max_abs_error);
+            summary.cpu_gpu_error.max_rel_error =
+                std::max(summary.cpu_gpu_error.max_rel_error, error.max_rel_error);
+            summary.cpu_gpu_error.rmse =
+                std::max(summary.cpu_gpu_error.rmse, error.rmse);
+            summary.reference_error.max_abs_error =
+                std::max(summary.reference_error.max_abs_error, error.max_abs_error);
+            summary.reference_error.max_rel_error =
+                std::max(summary.reference_error.max_rel_error, error.max_rel_error);
+            summary.reference_error.rmse =
+                std::max(summary.reference_error.rmse, error.rmse);
+            const bool contract_pass = used_fft && error.max_abs_error < 1e-4f;
+            summary.pass = summary.pass && contract_pass;
+            std::cout << "[correlate] auto_fft_path_contract="
+                      << (contract_pass ? "PASS" : "FAIL") << "\n";
+        }
+
         if (options.case_set == "perf" || options.case_set == "full" || options.case_set == "smoke")
         {
             summary.perf_cases = 1;
@@ -1012,7 +1071,35 @@ namespace
                 cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
                 kernel_samples.push_back(cusignal::zx_gpu_backend::correlate_test_hooks::consume_last_kernel_ms());
             });
-            summary.gpu_kernel_perf = summarize_timings(std::move(kernel_samples));
+            summary.gpu_kernel_perf = summarize_measured_kernel_timings(
+                std::move(kernel_samples), options.warmup, options.repeat);
+
+            if (!options.gpu_only_perf)
+            {
+                const RealArray cpu =
+                    cusignal::cpu::correlate::correlate(
+                        perf.in1_real, perf.in2_real, perf.mode, perf.method);
+                const ZxGpuRealArray gpu_device =
+                    cusignal::zx_gpu_backend::correlate::correlate(
+                        perf.in1_real, perf.in2_real, perf.mode, perf.method);
+                const bool used_fft =
+                    cusignal::zx_gpu_backend::correlate_test_hooks::last_correlation_used_fft();
+                const RealArray gpu = gpu_device.get();
+                const ErrorMetrics error = compare_real(cpu.values, gpu.values);
+                summary.cpu_gpu_error.max_abs_error =
+                    std::max(summary.cpu_gpu_error.max_abs_error, error.max_abs_error);
+                summary.cpu_gpu_error.max_rel_error =
+                    std::max(summary.cpu_gpu_error.max_rel_error, error.max_rel_error);
+                summary.cpu_gpu_error.rmse =
+                    std::max(summary.cpu_gpu_error.rmse, error.rmse);
+                const bool perf_surface_pass =
+                    used_fft && error.max_abs_error < 2e-3f && error.rmse < 5e-4f;
+                summary.pass = summary.pass && perf_surface_pass;
+                std::cout << "[correlate] fft_perf_surface_contract="
+                          << (perf_surface_pass ? "PASS" : "FAIL")
+                          << " max_abs=" << format_float(error.max_abs_error)
+                          << " rmse=" << format_float(error.rmse) << "\n";
+            }
 
             if (options.emit_report)
             {
@@ -1119,7 +1206,8 @@ namespace
                 cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
                 kernel_samples.push_back(cusignal::zx_gpu_backend::correlate_test_hooks::consume_last_kernel_ms());
             });
-            summary.gpu_kernel_perf = summarize_timings(std::move(kernel_samples));
+            summary.gpu_kernel_perf = summarize_measured_kernel_timings(
+                std::move(kernel_samples), options.warmup, options.repeat);
 
             if (options.emit_report)
             {
@@ -1179,7 +1267,8 @@ namespace
                 cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
                 kernel_samples.push_back(cusignal::zx_gpu_backend::correlate_test_hooks::consume_last_kernel_ms());
             });
-            summary.gpu_kernel_perf = summarize_timings(std::move(kernel_samples));
+            summary.gpu_kernel_perf = summarize_measured_kernel_timings(
+                std::move(kernel_samples), options.warmup, options.repeat);
             if (options.emit_report)
             {
                 if (!options.gpu_only_perf)

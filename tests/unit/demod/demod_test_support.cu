@@ -7,6 +7,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <limits>
 #include <numeric>
 #include <optional>
 #include <sstream>
@@ -298,9 +299,76 @@ namespace
         }
     }
 
+    float reference_wrapped_phase_difference(const Complex &current, const Complex &next)
+    {
+        float delta = std::atan2(next.imag(), next.real()) -
+            std::atan2(current.imag(), current.real());
+        if (delta > 3.14159265358979323846f)
+        {
+            delta -= 6.28318530717958647692f;
+        }
+        else if (delta < -3.14159265358979323846f)
+        {
+            delta += 6.28318530717958647692f;
+        }
+        return delta;
+    }
+
+    Case long_wrapped_phase_case()
+    {
+        constexpr std::size_t count = 4096;
+        constexpr float phase_step = 2.9f;
+        std::vector<Complex> values;
+        values.reserve(count);
+        for (std::size_t index = 0; index < count; ++index)
+        {
+            const float phase = phase_step * static_cast<float>(index);
+            values.emplace_back(std::cos(phase), std::sin(phase));
+        }
+
+        std::vector<float> expected(count - 1, 0.0f);
+        for (std::size_t index = 0; index + 1 < count; ++index)
+        {
+            expected[index] = reference_wrapped_phase_difference(
+                values[index], values[index + 1]);
+        }
+        return {
+            "long_wrapped_phase",
+            make_complex_array(Shape{count}, std::move(values)),
+            -1,
+            make_real_array(Shape{count - 1}, std::move(expected)),
+            false};
+    }
+
+    Case amplitude_extremes_case()
+    {
+        const float huge = std::numeric_limits<float>::max() * 0.25f;
+        const float tiny = std::numeric_limits<float>::min() * 4.0f;
+        std::vector<Complex> values{
+            Complex(huge, 0.0f),
+            Complex(huge * std::cos(0.4f), huge * std::sin(0.4f)),
+            Complex(tiny * std::cos(0.8f), tiny * std::sin(0.8f)),
+            Complex(tiny * std::cos(1.2f), tiny * std::sin(1.2f)),
+            Complex(0.0f, 0.0f),
+            Complex(std::cos(0.5f), std::sin(0.5f))};
+        const std::size_t count = values.size();
+        std::vector<float> expected(count - 1, 0.0f);
+        for (std::size_t index = 0; index + 1 < count; ++index)
+        {
+            expected[index] = reference_wrapped_phase_difference(
+                values[index], values[index + 1]);
+        }
+        return {
+            "amplitude_extremes",
+            make_complex_array(Shape{count}, std::move(values)),
+            -1,
+            make_real_array(Shape{count - 1}, std::move(expected)),
+            false};
+    }
+
     std::vector<Case> accuracy_cases()
     {
-        return {
+        std::vector<Case> cases{
             {"constant_step",
              make_complex_array(
                  Shape{4},
@@ -338,7 +406,15 @@ namespace
              3,
              {},
              true},
+            {"single_sample",
+             make_complex_array(Shape{1}, {Complex(1.0f, 0.0f)}),
+             -1,
+             make_real_array(Shape{0}, {}),
+             false},
         };
+        cases.push_back(long_wrapped_phase_case());
+        cases.push_back(amplitude_extremes_case());
+        return cases;
     }
 
     Case perf_case()

@@ -56,8 +56,7 @@ namespace
         const float *t,
         std::size_t size,
         float f0,
-        float t1,
-        float f1,
+        float beta,
         float phi,
         float *output)
     {
@@ -67,7 +66,7 @@ namespace
             return;
         }
 
-        const float phase = cusignal::waveforms_detail::linear_phase(t[index], f0, t1, f1);
+        const float phase = cusignal::waveforms_detail::linear_phase_from_beta(t[index], f0, beta);
         output[index] = cos(phase + phi);
     }
 
@@ -75,8 +74,7 @@ namespace
         const float *t,
         std::size_t size,
         float f0,
-        float t1,
-        float f1,
+        float beta,
         float phi,
         float2 *output)
     {
@@ -87,7 +85,7 @@ namespace
         }
 
         const float angle =
-            cusignal::waveforms_detail::linear_phase(t[index], f0, t1, f1) + phi;
+            cusignal::waveforms_detail::linear_phase_from_beta(t[index], f0, beta) + phi;
         output[index] = float2{cos(angle), sin(angle)};
     }
 
@@ -150,6 +148,7 @@ namespace
         output[index] = cos(phase + phi);
     }
 
+    template <bool ReturnQuadrature, bool ReturnEnvelope>
     __global__ void gausspulse_kernel(
         const float *t,
         std::size_t size,
@@ -165,15 +164,13 @@ namespace
             return;
         }
 
-        signal[index] = cusignal::waveforms_detail::gausspulse_signal(t[index], a, fc);
-        if (quadrature != nullptr)
-        {
-            quadrature[index] = cusignal::waveforms_detail::gausspulse_quadrature(t[index], a, fc);
-        }
-        if (envelope != nullptr)
-        {
-            envelope[index] = cusignal::waveforms_detail::gausspulse_envelope(t[index], a);
-        }
+        cusignal::waveforms_detail::gausspulse_components<ReturnQuadrature, ReturnEnvelope>(
+            t[index],
+            a,
+            fc,
+            signal + index,
+            ReturnQuadrature ? quadrature + index : nullptr,
+            ReturnEnvelope ? envelope + index : nullptr);
     }
 
     __global__ void sawtooth_scalar_kernel(
@@ -283,13 +280,13 @@ namespace cusignal
 
                 if (normalized_type == "complex")
                 {
+                    const float linear_beta = (f1 - f0) / t1;
                     core::ZxGpuComplexSignal complex_output(size);
                     chirp_linear_complex_kernel<<<blocks, kThreadsPerBlock>>>(
                         t_device.data(),
                         size,
                         f0,
-                        t1,
-                        f1,
+                        linear_beta,
                         phi_radians,
                         complex_output.data());
                     check_kernel_launch("chirp_linear_complex_kernel");
@@ -299,12 +296,12 @@ namespace cusignal
                 core::ZxGpuRealSignal output(size);
                 if (is_linear_method(normalized_method))
                 {
+                    const float linear_beta = (f1 - f0) / t1;
                     chirp_linear_real_kernel<<<blocks, kThreadsPerBlock>>>(
                         t_device.data(),
                         size,
                         f0,
-                        t1,
-                        f1,
+                        linear_beta,
                         phi_radians,
                         output.data());
                     check_kernel_launch("chirp_linear_real_kernel");
@@ -388,14 +385,26 @@ namespace cusignal
                 core::ZxGpuRealSignal quadrature = retquad ? core::ZxGpuRealSignal(size) : core::ZxGpuRealSignal{};
                 core::ZxGpuRealSignal envelope = retenv ? core::ZxGpuRealSignal(size) : core::ZxGpuRealSignal{};
 
-                gausspulse_kernel<<<block_count(size), kThreadsPerBlock>>>(
-                    t_device.data(),
-                    size,
-                    a,
-                    fc,
-                    signal.data(),
-                    retquad ? quadrature.data() : nullptr,
-                    retenv ? envelope.data() : nullptr);
+                if (retquad && retenv)
+                {
+                    gausspulse_kernel<true, true><<<block_count(size), kThreadsPerBlock>>>(
+                        t_device.data(), size, a, fc, signal.data(), quadrature.data(), envelope.data());
+                }
+                else if (retquad)
+                {
+                    gausspulse_kernel<true, false><<<block_count(size), kThreadsPerBlock>>>(
+                        t_device.data(), size, a, fc, signal.data(), quadrature.data(), nullptr);
+                }
+                else if (retenv)
+                {
+                    gausspulse_kernel<false, true><<<block_count(size), kThreadsPerBlock>>>(
+                        t_device.data(), size, a, fc, signal.data(), nullptr, envelope.data());
+                }
+                else
+                {
+                    gausspulse_kernel<false, false><<<block_count(size), kThreadsPerBlock>>>(
+                        t_device.data(), size, a, fc, signal.data(), nullptr, nullptr);
+                }
                 check_kernel_launch("gausspulse_kernel");
 
                 if (retquad && retenv)

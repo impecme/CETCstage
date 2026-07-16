@@ -38,16 +38,20 @@ namespace cusignal
 
                 for (std::size_t line_index = 0; line_index < input_plan.line_count; ++line_index)
                 {
-                    const core::ComplexSignal line =
-                        axis_detail::extract_complex_line(x, input_plan, line_index);
-                    core::RealSignal phase(line.size(), 0.0f);
-                    for (std::size_t index = 0; index < line.size(); ++index)
+                    const std::size_t input_base =
+                        axis_detail::line_base_offset(input_plan, line_index);
+                    const std::size_t output_base =
+                        axis_detail::line_base_offset(output_plan, line_index);
+                    for (std::size_t index = 0; index + 1 < input_plan.axis_size; ++index)
                     {
-                        phase[index] = std::atan2(line[index].imag(), line[index].real());
+                        const core::Complex &current =
+                            x.values[input_base + index * input_plan.axis_stride];
+                        const core::Complex &next =
+                            x.values[input_base + (index + 1) * input_plan.axis_stride];
+                        output.values[output_base + index * output_plan.axis_stride] =
+                            detail::wrapped_phase_difference(
+                                current.real(), current.imag(), next.real(), next.imag());
                     }
-                    const core::RealSignal unwrapped = detail::unwrap_phase(phase);
-                    const core::RealSignal diffed = detail::diff_phase(unwrapped);
-                    axis_detail::store_line(output, output_plan, line_index, diffed);
                 }
                 return output;
             }

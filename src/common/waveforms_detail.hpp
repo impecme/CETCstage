@@ -38,14 +38,21 @@ namespace cusignal
             return value;
         }
 
+        CUSIGNAL_WAVEFORMS_HD inline float linear_phase_from_beta(
+            float t,
+            float f0,
+            float beta)
+        {
+            return 2.0f * kPi * (f0 * t + 0.5f * beta * t * t);
+        }
+
         CUSIGNAL_WAVEFORMS_HD inline float linear_phase(
             float t,
             float f0,
             float t1,
             float f1)
         {
-            const float beta = (f1 - f0) / t1;
-            return 2.0f * kPi * (f0 * t + 0.5f * beta * t * t);
+            return linear_phase_from_beta(t, f0, (f1 - f0) / t1);
         }
 
         CUSIGNAL_WAVEFORMS_HD inline float quadratic_phase(
@@ -326,6 +333,28 @@ namespace cusignal
             const float envelope = gausspulse_envelope(t, a);
             const float angle = 2.0f * kPi * fc * t;
             return envelope * ::sinf(angle);
+        }
+
+        template <bool ReturnQuadrature, bool ReturnEnvelope>
+        CUSIGNAL_WAVEFORMS_HD inline void gausspulse_components(
+            float t,
+            float a,
+            float fc,
+            float *signal,
+            float *quadrature,
+            float *envelope)
+        {
+            const float envelope_value = gausspulse_envelope(t, a);
+            const float angle = 2.0f * kPi * fc * t;
+            *signal = envelope_value * ::cosf(angle);
+            if constexpr (ReturnQuadrature)
+            {
+                *quadrature = envelope_value * ::sinf(angle);
+            }
+            if constexpr (ReturnEnvelope)
+            {
+                *envelope = envelope_value;
+            }
         }
 
         inline void validate_1d_index(std::size_t size, std::size_t index)

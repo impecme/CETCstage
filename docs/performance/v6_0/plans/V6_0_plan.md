@@ -11,6 +11,19 @@
 
 V6 允许更激进的数据流重排、workspace 复用、kernel fusion、FFT plan/cache 复用和任务级公共 fused operator，但必须保持 V5.5 的接口、类型、精度、步骤报告和平台兼容要求。
 
+执行顺序固定为 Task2 P0、Task1 P0、内部执行基础设施、任务相关 P1、赛题算子 P2。详细代码审计、实测热点和 Amdahl 预算见 `../performance_audit.md`。
+
+智能体协作按 `../agent_collaboration.md` 执行：主智能体是唯一常驻写入者，阶段 Owner 默认只读，`gpu_04` 正式测量全局串行，patch 在昂贵全量回归前接受 Standards/Spec 双轴审查。协作规则不改变本计划的范围、顺序或关闭门禁。
+
+## 小版本交付规则
+
+- V6.0 总交付索引为 `docs/submission/READMEV6_0.md`。
+- V6.1-V6.8 每个小版本必须维护对应的 `docs/submission/READMEV6_x.md`，格式参考 V5。
+- 每次小版本状态、保留优化或关闭结论变化时，同步更新计划、台账和交付文件。
+- 小版本关闭时，交付文件必须包含范围、保留/回退项、性能对照、correctness、证据路径和下一阶段。
+- 未关闭阶段只记录已验证结果和待交付门禁，禁止把计划值写成完成值。
+- 容器长日志、probe 和图件仍留在 `/home/usr_04/CETC_garbage/`，交付文件只引用结论和路径。
+
 ## 开源措施对照
 
 | 来源 | 可借鉴措施 | V6 落地方式 |
@@ -67,14 +80,21 @@ V6 允许更激进的数据流重排、workspace 复用、kernel fusion、FFT pl
 8. Performance Analysis of Parallel FFT on Large Multi-GPU Systems. IPDPS, 2022. https://www.netlib.org/utk/people/JackDongarra/PAPERS/Performance_Analysis-fft-ipdps22.pdf
 9. Evaluating the performance of CUDA Graphs in common GPGPU algorithms. https://www.diva-portal.org/smash/get/diva2%3A1779194/FULLTEXT01.pdf
 
+## 实测约束与性能预算
+
+- 当前可用 L6 日志来自旧部署，只能确定热点，不能证明 V6-0008 至 V6-0011 的收益。
+- Task2 L6 旧部署为 `77.302 ms`：`cwt=34.408 ms`、`spectrogram=26.363 ms`、`correlate=9.749 ms`，前三项占 91.2%。总耗时下降 45%-65% 要求前三项合计约下降 49%-71%。
+- Task1 L6 旧部署为 `7.463 ms`：`pulse_compression=3.466 ms`、`pulse_doppler=1.631 ms`、`ca_cfar=1.008 ms`，前三项占 81.8%。总耗时下降 35%-50% 要求前三项合计约下降 43%-61%。
+- V5.5 最终任务报告只覆盖 scale 3，不能作为 V6 L6 百分比基线。V6.1 必须重建当前源码、同配置的绝对基线。
+
 ## 强化目标
 
 | 指标 | V6 目标 |
 |---|---|
-| Task1 L6 GPU total | 相比 V5.5 终测下降 35%-50%；若受 full ambgfun surface 输出规模限制，必须给出 bytes/FFT/launch 分解证据 |
-| Task2 L6 GPU total | 相比 V5.5 终测下降 45%-65% |
-| Task2 L5/L6 `spectrogram + cwt + correlate` | 三项合计至少下降 50%，作为 Task2 主目标 |
-| Task1 L5/L6 `ambgfun + pulse_doppler + ca_cfar` | 三项合计至少下降 35%，作为 Task1 主目标 |
+| Task1 L6 GPU total | 相比 V6.1 同源码基线下降 35%-50%；建议 stage 目标为 pulse compression >=50%、pulse Doppler >=35%、CFAR >=35% |
+| Task2 L6 GPU total | 相比 V6.1 同源码基线下降 45%-65% |
+| Task2 L5/L6 `cwt + spectrogram + correlate` | 三项合计下降 50%-70%；建议 stage 目标为 CWT >=60%、spectrogram >=60%、correlate >=40% |
+| Task1 L5/L6 `pulse_compression + pulse_doppler + ca_cfar` | 三项合计至少下降 43%；`ambgfun` 任务路径和公共 full surface 分开统计 |
 | 任务步骤 | 14/14 独立计时、14/14 独立精度、failure_count=0 |
 | all81 correctness | 81/81 passed |
 | dtype 覆盖 | `operator_dtype_missing_edges=0` |
@@ -82,29 +102,41 @@ V6 允许更激进的数据流重排、workspace 复用、kernel fusion、FFT pl
 
 目标不是硬放宽阈值，而是用分解报告证明确实减少了 kernel launch、global memory traffic、FFT plan 重建、host/device copy 或无用中间矩阵落地。
 
-## P0：Task1 深度优化
+百分比是挑战目标，不是 correctness 门禁。未达到目标时必须保留同规模绝对耗时和瓶颈分解，不能换用不同 scale、repeat 或旧版本分母。
+
+## P0：内部执行基础设施
+
+| 工作项 | 优化措施 | 验证要求 |
+|---|---|---|
+| execution context | 统一任务级 stream、event、workspace 和计时策略；任务层计时时允许关闭公共算子嵌套同步 | 14 步字段保留；另有 pipeline wall time；stage sum 与 wall 差异可解释 |
+| FFT plan/cache | 按 transform type、nfft、batch、layout、stream 建立有界多键 cache；记录 create/hit/miss | Task1 不再在 batch=1、num_pulses、samples 间反复重建 plan |
+| allocation/cache | 将任务热点中的模块私有 `DeviceBuffer` 接入统一 workspace；记录 allocation、bytes 和高水位 | 不增加长期显存；cold/warm 分开报告 |
+| 并行分支 | 探测 ZQ500 concurrent kernels、非默认 stream 和 `cufftSetStream`；Task2 filter 后四分支按依赖并行 | 每分支用 stream event 独立计时；不支持时明确转为串行/fusion |
+| 内部 timing | 复用 event，避免每个公共算子调用创建/销毁两个 event | 单算子 kernel timing 不丢；小算子 E2E 固定开销下降 |
+
+## P0：Task1 深度优化（V6.4，Task2 后执行）
 
 | 工作项 | 优化措施 | 验证要求 |
 |---|---|---|
 | Task1 task graph / pipeline plan | 固定 L1-L6 输入规模，预分配 pulse、doppler、power、CFAR、ambgfun workspace；避免每步重复 malloc/free 和 host sync | 每步 timing 不丢；GPU total 与各 stage sum 可解释 |
-| `pulse_compression` | template FFT 频谱预计算并 device resident；pulse FFT、乘模板、IFFT 和 magnitude 候选融合；复用 FFT plan/workspace | `pulse_compression` error 不回退；L5/L6 分解显示 plan/copy 开销下降 |
+| `pulse_compression` | 分离 template/pulse/Doppler plan；template FFT、norm 和 window key 缓存并 device resident；pulse FFT、乘模板、IFFT 候选融合 | `pulse_compression` error 不回退；L5/L6 分解显示 plan create 和模板准备下降 |
 | `pulse_doppler` | Doppler FFT 后 `fftshift + power_map` 融合；按行/列 coalesced 写回；保留公共算子接口 | `pulse_doppler_fftshift` 和 `power_map` 仍独立报告，融合算子内部拆 event |
 | `ca_cfar` / `detect_peak` | 积分图或行列前缀和 CFAR；阈值、mask、peak selection device resident；最终只回传少量标量 | CFAR 阈值误差和 peak 一致性通过 |
-| `ambgfun` | 第二轮算法级改写：评估 full surface 是否必须全量落地；若必须落地，优化 batched FFT/extract/zero-fill；若任务只消费 peak/ROI，新增公共 `ambgfun_metrics`，full `ambgfun` 保持独立算子语义 | 不改变现有 `ambgfun` API；任务路径若改用 metrics，必须保留 representative surface 校验 |
-| `mvdr` | covariance 构造、diagonal loading、small Hermitian solve 合并；避免显式 inverse；小矩阵放 shared/register | `mvdr` 独立测试通过；若任务链路不直接使用，仍作为 radartools 深化项保留 |
+| `ambgfun` | 任务内耗时与公共 full surface 分开；先复用已上传模板，再评估 batched FFT/extract/zero-fill 和 metrics 路径 | 不改变现有 `ambgfun` API；任务路径若改用 metrics，必须保留 representative surface 校验 |
+| `mvdr` | 归入公共 P1；先拆 handle/alloc/copy/sync，再评估 covariance 和 small Hermitian solve | `mvdr` 独立测试通过；不得抢占 Task1 P0 资源 |
 
-## P0：Task2 深度优化
+## P0：Task2 深度优化（V6.2-V6.3，先执行）
 
 | 工作项 | 优化措施 | 验证要求 |
 |---|---|---|
-| Task2 task graph / pipeline plan | `filter -> demod -> correlate -> spectrogram -> cwt -> fusion -> measurement -> kalman` 使用统一 workspace；中间结果默认 device resident | 8 个计算步骤仍独立计时/精度 |
+| Task2 task graph / pipeline plan | filter 后 `demod/correlate/spectrogram/cwt` 按依赖并行；统一 stream/event/workspace，中间结果 device resident | 8 个计算步骤仍独立计时/精度；另记 pipeline wall time |
 | `filter` | L5/L6 评估 FIR direct shared tile vs dlFFT/overlap-save/shared-memory overlap-save；tap FFT/window cache；filter 输出实部投影和 demod 输入融合 | filtered error 通过；filter L6 明显下降 |
 | `demod` | 相位差、unwrap、score 合并；多 frame 一次 kernel；减少小 kernel 和临时数组 | demod error 通过；低 scale 不因 fusion 退化 |
 | `correlate` | 长模板采用 FFT/overlap-save 候选；短模板走 direct tile；相关输出 magnitude、argmax、normalize 融合为公共 `correlate_score` | correlate score 与原报告一致 |
-| `spectrogram` | segment pack + window multiply + R2C plan/cache；band score 直接 reduce，完整谱图只用于代表帧/报告 | spectrogram step error 通过；L5/L6 spectrogram 至少下降 40% |
-| `cwt` | 多尺度 wavelet table cache；引入 fCWT 式 scale-independent/scale-dependent 分离、downsampled wavelet 和 FFT 复用；convolution + abs + scale reduction + normalize 融合；默认不落完整 `widths x samples` 矩阵 | cwt step error 通过；L5/L6 cwt 至少下降 50% |
+| `spectrogram` | 全 frame segment pack + window multiply + batched R2C plan/cache；band score reduce，并从同一结果抽代表帧 | spectrogram step error 通过；L5/L6 spectrogram 目标至少下降 60% |
+| `cwt` | wavelet table cache；先做 shared halo tile，再比较 FFT/fCWT、downsampled wavelet 和 score-only reduce；默认不落完整矩阵 | cwt step error 通过；L5/L6 cwt 目标至少下降 60% |
 | `feature_fusion_peak` | smoothing、weighted sum、argrelmax 和 top-k candidate 合并为公共 fused operator | feature score 与 peak 输出一致 |
-| `measurement_conversion` / `kalman` | measurement prepare、Kalman update、track RMSE 统计合并；小矩阵状态放寄存器/共享内存 | measurement 和 Kalman 两步仍有独立误差 |
+| `measurement_conversion` / `kalman` | 仅做 alias、冗余清零、allocation 和小矩阵固定开销清理 | 两步仍有独立误差；因 L6 占比低，不作为深度优化主线 |
 
 ## P1：任务相关算子深度优化
 
@@ -131,21 +163,30 @@ V6 允许更激进的数据流重排、workspace 复用、kernel fusion、FFT pl
 
 | 工作包 | 内容 | 关闭条件 |
 |---|---|---|
-| V6.0-01 | 建立 Task1/Task2 L1-L6 repeat=5 基线，输出 stage breakdown、copy/alloc/cache/FFT plan 统计 | 两任务 14 步全部 pass；热点排序和 V5.5 对比明确 |
-| V6.0-02 | 开源/论文措施适配探针：CUDA Graph、workspace plan、FFT overlap-save、shared-memory overlap-save、direct/FFT auto threshold、prefix-sum/SAT CFAR、fCWT downsampled wavelet | 每项给出 supported/unsupported/limited 结论和最小 probe |
-| V6.0-03 | Task2 第一批：`spectrogram + cwt + correlate` 融合和 score-only 公共算子；优先验证 fCWT/overlap-save 两类论文策略 | Task2 L6 GPU total 下降至少 30%，8 步精度通过 |
-| V6.0-04 | Task2 第二批：filter/demod/fusion/kalman 小步骤合并 | Task2 L6 GPU total 累计下降 45%-65% |
-| V6.0-05 | Task1 第一批：pulse/doppler/power/CFAR device-resident 链路 | Task1 L6 GPU total 下降至少 20% |
-| V6.0-06 | Task1 第二批：`ambgfun` 算法级评估与可行改写 | 若 full surface 必须保留，给出瓶颈分解；若 metrics 可替代，新增公共 metrics 算子并保留代表面校验 |
-| V6.0-07 | P1/P2 算子库批次优化 | 单算子 full、模块 full、任务 smoke 均通过 |
-| V6.0-08 | 全量回归与报告收束 | all81 81/81、dtype 缺口 0、任务 L1-L6 通过、`data/reports` 仍精简 |
+| V6.1（原 V6.0-01/02） | 当前源码 correctness、Task1/Task2 L1-L6 冷/暖基线、编译/runtime/stream/FFT 探针 | Task2 L3/L5/L6 先通过；两任务 repeat=3；源码 SHA、退出码和热点分解完整 |
+| V6.2 | Task2 第一批：按 `cwt -> spectrogram -> correlate` 做算法级替换 | Task2 L6 至少下降 30%，8 步精度通过 |
+| V6.3 | Task2 第二批：execution plan、多 stream、filter 和低风险融合 | Task2 L6 累计下降 45%-65% |
+| V6.4 | Task1 第一批：multi-key FFT plan、模板缓存、Doppler/power/CFAR | Task1 L6 至少下降 20% |
+| V6.5 | Task1 收口；公共 `ambgfun/mvdr` 约束和开销分解 | Task1 累计下降 35%-50%；公共算子单列结果 |
+| V6.6 | 内部执行基础设施推广和任务相关 P1 算子 | event/plan/allocation/copy 统计下降，模块 full 与任务 smoke 通过 |
+| V6.7 | 赛题算子库 P2 低风险轻度优化 | 单算子 full 和受影响模块 full 通过；有独立 E2E 收益 |
+| V6.8 | 当前源码全量回归与报告收束 | all81 81/81、dtype 缺口 0、任务 L1-L6 通过、`data/reports` 仍精简 |
+
+## 测量协议与止损
+
+- 每个候选固定源码 SHA、dirty diff、编译 flags、shape、seed 和输入；同一容器内做 A/B。
+- cold=1 单列，warmup>=2、repeat>=5，报告 median/p95；阶段开发先 repeat=3，收口才 repeat=5。
+- 记录 stage wall、kernel event、launch 数、copy bytes、allocation、plan create/hit/miss、GPU/RSS 高水位。
+- correctness 未通过时不登记收益。单 stage 收益低于 5%且任务总计低于 2%，连续三轮后停止；复杂度明显增加而总收益低于 3%时回退。
+- L1/L2 退化超过 10%时增加 shape threshold；不为统一实现牺牲小规模。
+- CUDA Graph 在稳定 stream/workspace/plan 后只做一次支持探针，不作为关键路径。
 
 ## 验证阶梯
 
 1. 静态构建：改动模块对应 target 必须通过。
 2. 单算子 CTest：改动算子对应独立测试必须通过。
 3. 单任务 L3：先验证功能、schema、精度。
-4. 任务 L1-L6 repeat=3：验证所有规模稳定。
+4. 任务 L1-L6 repeat=3：验证所有规模稳定，并分开 cold/warm/setup/pipeline wall。
 5. 任务 L1-L6 repeat=5：进入阶段收口才使用。
 6. all81 benchmark：阶段收口必须 81/81 passed。
 7. full 回归：最终交付前跑全库 full、接口审计、类型契约和 dtype 覆盖。
@@ -156,3 +197,4 @@ V6 允许更激进的数据流重排、workspace 复用、kernel fusion、FFT pl
 - 每条记录必须写清来源措施、是否满足赛题约束、实际改动、任务影响、单算子影响和验证命令。
 - 候选失败也要记录，避免重复尝试。
 - 中间报告和日志放 `/home/usr_04/CETC_garbage/`，正式报告只保留终测汇总。
+- 日志必须捕获 stdout/stderr、真实退出码、源码 fingerprint 和编译信息；源码不一致的日志只能作为历史证据。

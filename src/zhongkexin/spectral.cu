@@ -6,6 +6,8 @@
 #include <algorithm>
 #include <cmath>
 #include <complex>
+#include <cstdint>
+#include <cstring>
 #include <functional>
 #include <numeric>
 #include <stdexcept>
@@ -40,7 +42,35 @@ namespace
     constexpr float kPi = 3.141592653589793238462643383279502884;
     constexpr float kVectorStrengthPhaseFloor = 1.0e-5f;
     constexpr int kVectorStrengthMaxBlocksPerPeriod = 1024;
+    constexpr int kVectorStrengthPairMinBlocksPerPeriod = 256;
+    constexpr int kPeriodogramCacheAuto = -1;
+    constexpr int kPeriodogramCacheBypass = 0;
+    constexpr int kPeriodogramCacheEnabled = 1;
+    constexpr int kPeriodogramCacheStateBypass = 0;
+    constexpr int kPeriodogramCacheStateMiss = 1;
+    constexpr int kPeriodogramCacheStateHit = 2;
+    constexpr int kWelchCacheAuto = -1;
+    constexpr int kWelchCacheBypass = 0;
+    constexpr int kWelchCacheEnabled = 1;
+    constexpr int kWelchCacheStateBypass = 0;
+    constexpr int kWelchCacheStateMiss = 1;
+    constexpr int kWelchCacheStateHit = 2;
+    constexpr int kIstftCacheAuto = -1;
+    constexpr int kIstftCacheBypass = 0;
+    constexpr int kIstftCacheEnabled = 1;
+    constexpr int kIstftCacheStateBypass = 0;
+    constexpr int kIstftCacheStateMiss = 1;
+    constexpr int kIstftCacheStateHit = 2;
     thread_local float g_last_kernel_ms = 0.0;
+    thread_local int g_periodogram_cache_override = kPeriodogramCacheAuto;
+    thread_local int g_last_periodogram_cache_state = kPeriodogramCacheStateBypass;
+    thread_local bool g_periodogram_cache_reset_requested = false;
+    thread_local int g_welch_cache_override = kWelchCacheAuto;
+    thread_local int g_last_welch_cache_state = kWelchCacheStateBypass;
+    thread_local bool g_welch_cache_reset_requested = false;
+    thread_local int g_istft_cache_override = kIstftCacheAuto;
+    thread_local int g_last_istft_cache_state = kIstftCacheStateBypass;
+    thread_local bool g_istft_cache_reset_requested = false;
 
     void throw_on_zx_gpu_error(cudaError_t status, const char *what)
     {
@@ -251,6 +281,10 @@ namespace
         DeviceBuffer<float> norm_scratch;
         DeviceBuffer<float> reduction_scratch_a;
         DeviceBuffer<float> reduction_scratch_b;
+        ZxGpuRealSignal periodogram_window_storage;
+        std::string periodogram_window_key;
+        float periodogram_window_scale = 0.0f;
+        bool periodogram_window_valid = false;
         ZxGpuRealSignal csd_window_storage;
         std::string csd_window_key;
         float csd_window_scale = 0.0f;
@@ -277,6 +311,14 @@ namespace
         return count == 0 ? 0 : static_cast<int>((count + kThreadsPerBlock - 1) / kThreadsPerBlock);
     }
 
+    std::string float_cache_key(float value)
+    {
+        static_assert(sizeof(float) == sizeof(std::uint32_t), "float32 cache key");
+        std::uint32_t bits = 0;
+        std::memcpy(&bits, &value, sizeof(bits));
+        return std::to_string(bits);
+    }
+
     bool build_csd_window_cache_key(
         const ZxGpuWindowSpec &window,
         int size,
@@ -285,7 +327,7 @@ namespace
         std::string &key)
     {
         key = "size=" + std::to_string(size) +
-              ";fs=" + std::to_string(fs) +
+              ";fs=" + float_cache_key(fs) +
               ";scaling=" + scaling + ";";
         if (const auto *name = std::get_if<std::string>(&window))
         {
@@ -294,26 +336,26 @@ namespace
         }
         if (const auto *value = std::get_if<float>(&window))
         {
-            key += "scalar=" + std::to_string(*value);
+            key += "scalar=" + float_cache_key(*value);
             return true;
         }
         if (const auto *value = std::get_if<cusignal::core::NamedFloatParameter>(&window))
         {
-            key += "named1=" + value->name + ":" + std::to_string(value->value);
+            key += "named1=" + value->name + ":" + float_cache_key(value->value);
             return true;
         }
         if (const auto *value = std::get_if<cusignal::core::NamedFloatPairParameter>(&window))
         {
             key += "named2=" + value->name + ":" +
-                   std::to_string(value->first) + ":" +
-                   std::to_string(value->second);
+                   float_cache_key(value->first) + ":" +
+                   float_cache_key(value->second);
             return true;
         }
         if (const auto *value = std::get_if<cusignal::core::NamedTaylorParameter>(&window))
         {
             key += "taylor=" + value->name + ":" +
                    std::to_string(value->nbar) + ":" +
-                   std::to_string(value->sll) + ":" +
+                   float_cache_key(value->sll) + ":" +
                    (value->norm ? "1" : "0");
             return true;
         }
@@ -328,7 +370,7 @@ namespace
     {
         const std::string key =
             "nfft=" + std::to_string(nfft) +
-            ";fs=" + std::to_string(fs) +
+            ";fs=" + float_cache_key(fs) +
             ";onesided=" + (onesided ? std::string("1") : std::string("0"));
         if (!workspace.frequency_axis_valid || workspace.frequency_axis_key != key)
         {
@@ -352,12 +394,38 @@ namespace
             "input=" + std::to_string(input_size) +
             ";nperseg=" + std::to_string(nperseg) +
             ";step=" + std::to_string(step) +
-            ";fs=" + std::to_string(fs) +
+            ";fs=" + float_cache_key(fs) +
             ";boundary=" + (boundary ? std::string("1") : std::string("0"));
         if (!workspace.time_axis_valid || workspace.time_axis_key != key)
         {
             workspace.time_axis_storage = ZxGpuRealSignal::from_host(
                 detail::segment_times(input_size, nperseg, step, fs, boundary));
+            workspace.time_axis_key = key;
+            workspace.time_axis_valid = true;
+        }
+        return workspace.time_axis_storage;
+    }
+
+    const ZxGpuRealSignal &cached_sample_times(
+        SpectralWorkspace &workspace,
+        std::size_t output_size,
+        float fs,
+        bool *cache_hit)
+    {
+        const std::string key =
+            "output=" + std::to_string(output_size) +
+            ";fs=" + float_cache_key(fs);
+        *cache_hit =
+            workspace.time_axis_valid && workspace.time_axis_key == key;
+        if (!*cache_hit)
+        {
+            RealSignal times(output_size, 0.0);
+            for (std::size_t index = 0; index < output_size; ++index)
+            {
+                times[index] = static_cast<float>(index) / fs;
+            }
+            workspace.time_axis_storage =
+                ZxGpuRealSignal::from_host(times);
             workspace.time_axis_key = key;
             workspace.time_axis_valid = true;
         }
@@ -663,6 +731,133 @@ namespace
         output[freq_index] = normalize && dot > 0.0f ? (2.0f * power / dot) : power;
     }
 
+    __global__ void lombscargle_parallel_pair_kernel(
+        const float *x,
+        const float *y,
+        const float *freqs,
+        int sample_count,
+        int freq_count,
+        const float *y_mean,
+        const float *y_dot,
+        bool precenter,
+        bool normalize,
+        float *output)
+    {
+        const int freq_index0 = 2 * static_cast<int>(blockIdx.x);
+        if (freq_index0 >= freq_count)
+        {
+            return;
+        }
+        const int freq_index1 = freq_index0 + 1;
+        const bool has_second = freq_index1 < freq_count;
+
+        __shared__ float xc0_cache[kThreadsPerBlock];
+        __shared__ float xs0_cache[kThreadsPerBlock];
+        __shared__ float cc0_cache[kThreadsPerBlock];
+        __shared__ float ss0_cache[kThreadsPerBlock];
+        __shared__ float xc1_cache[kThreadsPerBlock];
+        __shared__ float xs1_cache[kThreadsPerBlock];
+        __shared__ float cc1_cache[kThreadsPerBlock];
+        __shared__ float ss1_cache[kThreadsPerBlock];
+
+        const float w0 = freqs[freq_index0];
+        const float w1 = has_second ? freqs[freq_index1] : 0.0f;
+        const float center = precenter ? y_mean[0] : 0.0f;
+        float xc0 = 0.0f;
+        float xs0 = 0.0f;
+        float cc0 = 0.0f;
+        float ss0 = 0.0f;
+        float xc1 = 0.0f;
+        float xs1 = 0.0f;
+        float cc1 = 0.0f;
+        float ss1 = 0.0f;
+        for (int sample = threadIdx.x; sample < sample_count; sample += blockDim.x)
+        {
+            const float x_value = x[sample];
+            const float y_value = y[sample] - center;
+            float s0 = 0.0f;
+            float c0 = 0.0f;
+            lombscargle_sincos_fast(w0 * x_value, s0, c0);
+            xc0 = fmaf(y_value, c0, xc0);
+            xs0 = fmaf(y_value, s0, xs0);
+            cc0 = fmaf(c0, c0, cc0);
+            ss0 = fmaf(s0, s0, ss0);
+
+            if (has_second)
+            {
+                float s1 = 0.0f;
+                float c1 = 0.0f;
+                lombscargle_sincos_fast(w1 * x_value, s1, c1);
+                xc1 = fmaf(y_value, c1, xc1);
+                xs1 = fmaf(y_value, s1, xs1);
+                cc1 = fmaf(c1, c1, cc1);
+                ss1 = fmaf(s1, s1, ss1);
+            }
+        }
+
+        xc0_cache[threadIdx.x] = xc0;
+        xs0_cache[threadIdx.x] = xs0;
+        cc0_cache[threadIdx.x] = cc0;
+        ss0_cache[threadIdx.x] = ss0;
+        xc1_cache[threadIdx.x] = xc1;
+        xs1_cache[threadIdx.x] = xs1;
+        cc1_cache[threadIdx.x] = cc1;
+        ss1_cache[threadIdx.x] = ss1;
+        __syncthreads();
+        for (int stride = blockDim.x / 2; stride >= 64; stride >>= 1)
+        {
+            if (threadIdx.x < stride)
+            {
+                xc0_cache[threadIdx.x] += xc0_cache[threadIdx.x + stride];
+                xs0_cache[threadIdx.x] += xs0_cache[threadIdx.x + stride];
+                cc0_cache[threadIdx.x] += cc0_cache[threadIdx.x + stride];
+                ss0_cache[threadIdx.x] += ss0_cache[threadIdx.x + stride];
+                xc1_cache[threadIdx.x] += xc1_cache[threadIdx.x + stride];
+                xs1_cache[threadIdx.x] += xs1_cache[threadIdx.x + stride];
+                cc1_cache[threadIdx.x] += cc1_cache[threadIdx.x + stride];
+                ss1_cache[threadIdx.x] += ss1_cache[threadIdx.x + stride];
+            }
+            __syncthreads();
+        }
+        if (threadIdx.x < 32)
+        {
+            for (int stride = 32; stride > 0; stride >>= 1)
+            {
+                if (threadIdx.x < stride)
+                {
+                    xc0_cache[threadIdx.x] += xc0_cache[threadIdx.x + stride];
+                    xs0_cache[threadIdx.x] += xs0_cache[threadIdx.x + stride];
+                    cc0_cache[threadIdx.x] += cc0_cache[threadIdx.x + stride];
+                    ss0_cache[threadIdx.x] += ss0_cache[threadIdx.x + stride];
+                    xc1_cache[threadIdx.x] += xc1_cache[threadIdx.x + stride];
+                    xs1_cache[threadIdx.x] += xs1_cache[threadIdx.x + stride];
+                    cc1_cache[threadIdx.x] += cc1_cache[threadIdx.x + stride];
+                    ss1_cache[threadIdx.x] += ss1_cache[threadIdx.x + stride];
+                }
+                __syncwarp();
+            }
+        }
+        if (threadIdx.x != 0)
+        {
+            return;
+        }
+
+        const float power0 =
+            0.5f * ((cc0_cache[0] > 0.0f ? (xc0_cache[0] * xc0_cache[0]) / cc0_cache[0] : 0.0f) +
+                    (ss0_cache[0] > 0.0f ? (xs0_cache[0] * xs0_cache[0]) / ss0_cache[0] : 0.0f));
+        const float dot = normalize ? y_dot[0] : 0.0f;
+        output[freq_index0] = normalize && dot > 0.0f ? (2.0f * power0 / dot) : power0;
+
+        if (has_second)
+        {
+            const float power1 =
+                0.5f * ((cc1_cache[0] > 0.0f ? (xc1_cache[0] * xc1_cache[0]) / cc1_cache[0] : 0.0f) +
+                        (ss1_cache[0] > 0.0f ? (xs1_cache[0] * xs1_cache[0]) / ss1_cache[0] : 0.0f));
+            output[freq_index1] =
+                normalize && dot > 0.0f ? (2.0f * power1 / dot) : power1;
+        }
+    }
+
     __global__ void vectorstrength_partial_kernel(
         const float *events,
         int event_count,
@@ -703,7 +898,7 @@ namespace
         imag_cache[threadIdx.x] = sum_imag;
         __syncthreads();
 
-        for (int stride = blockDim.x / 2; stride > 0; stride >>= 1)
+        for (int stride = blockDim.x / 2; stride >= 64; stride >>= 1)
         {
             if (threadIdx.x < stride)
             {
@@ -712,12 +907,110 @@ namespace
             }
             __syncthreads();
         }
+        if (threadIdx.x < 32)
+        {
+            for (int stride = 32; stride > 0; stride >>= 1)
+            {
+                if (threadIdx.x < stride)
+                {
+                    real_cache[threadIdx.x] += real_cache[threadIdx.x + stride];
+                    imag_cache[threadIdx.x] += imag_cache[threadIdx.x + stride];
+                }
+                __syncwarp();
+            }
+        }
 
         if (threadIdx.x == 0)
         {
             const int offset = period_index * blocks_per_period + tile_index;
             partial_real[offset] = real_cache[0];
             partial_imag[offset] = imag_cache[0];
+        }
+    }
+
+    __global__ void vectorstrength_partial_pair_kernel(
+        const float *events,
+        int event_count,
+        const float *periods,
+        int blocks_per_period,
+        float *partial_real,
+        float *partial_imag)
+    {
+        const int first_period_index = blockIdx.x * 2;
+        const int second_period_index = first_period_index + 1;
+        const int tile_index = blockIdx.y;
+
+        __shared__ float first_real_cache[kThreadsPerBlock];
+        __shared__ float first_imag_cache[kThreadsPerBlock];
+        __shared__ float second_real_cache[kThreadsPerBlock];
+        __shared__ float second_imag_cache[kThreadsPerBlock];
+
+        const float first_period = periods[first_period_index];
+        const float second_period = periods[second_period_index];
+        float first_sum_real = 0.0f;
+        float first_sum_imag = 0.0f;
+        float first_sum_real_c = 0.0f;
+        float first_sum_imag_c = 0.0f;
+        float second_sum_real = 0.0f;
+        float second_sum_imag = 0.0f;
+        float second_sum_real_c = 0.0f;
+        float second_sum_imag_c = 0.0f;
+        for (int sample = tile_index * blockDim.x + threadIdx.x;
+             sample < event_count;
+             sample += blocks_per_period * blockDim.x)
+        {
+            const float event = events[sample];
+            float s = 0.0f;
+            float c = 0.0f;
+            vectorstrength_sincos_poly(vectorstrength_angle(event, first_period), s, c);
+            kahan_add(c, first_sum_real, first_sum_real_c);
+            kahan_add(s, first_sum_imag, first_sum_imag_c);
+
+            vectorstrength_sincos_poly(vectorstrength_angle(event, second_period), s, c);
+            kahan_add(c, second_sum_real, second_sum_real_c);
+            kahan_add(s, second_sum_imag, second_sum_imag_c);
+        }
+
+        first_real_cache[threadIdx.x] = first_sum_real;
+        first_imag_cache[threadIdx.x] = first_sum_imag;
+        second_real_cache[threadIdx.x] = second_sum_real;
+        second_imag_cache[threadIdx.x] = second_sum_imag;
+        __syncthreads();
+
+        for (int stride = blockDim.x / 2; stride >= 64; stride >>= 1)
+        {
+            if (threadIdx.x < stride)
+            {
+                first_real_cache[threadIdx.x] += first_real_cache[threadIdx.x + stride];
+                first_imag_cache[threadIdx.x] += first_imag_cache[threadIdx.x + stride];
+                second_real_cache[threadIdx.x] += second_real_cache[threadIdx.x + stride];
+                second_imag_cache[threadIdx.x] += second_imag_cache[threadIdx.x + stride];
+            }
+            __syncthreads();
+        }
+        if (threadIdx.x < 32)
+        {
+            for (int stride = 32; stride > 0; stride >>= 1)
+            {
+                if (threadIdx.x < stride)
+                {
+                    first_real_cache[threadIdx.x] += first_real_cache[threadIdx.x + stride];
+                    first_imag_cache[threadIdx.x] += first_imag_cache[threadIdx.x + stride];
+                    second_real_cache[threadIdx.x] += second_real_cache[threadIdx.x + stride];
+                    second_imag_cache[threadIdx.x] += second_imag_cache[threadIdx.x + stride];
+                }
+                __syncwarp();
+            }
+        }
+
+        if (threadIdx.x == 0)
+        {
+            const int first_offset = first_period_index * blocks_per_period + tile_index;
+            const int second_offset = second_period_index * blocks_per_period + tile_index;
+            partial_real[first_offset] = first_real_cache[0];
+            partial_imag[first_offset] = first_imag_cache[0];
+            partial_real[second_offset] = second_real_cache[0];
+            partial_imag[second_offset] = second_imag_cache[0];
         }
     }
 
@@ -1633,18 +1926,37 @@ namespace cusignal
                         check_kernel_launch("lombscargle_finalize_dot_kernel");
                     }
 
-                    lombscargle_parallel_kernel<<<freq_count, kThreadsPerBlock>>>(
-                        x_device.data(),
-                        y_device.data(),
-                        freqs_device.data(),
-                        sample_count,
-                        freq_count,
-                        workspace.real_scratch.get(),
-                        workspace.real_scratch.get() + 1,
-                        precenter,
-                        normalize,
-                        output.data());
-                    check_kernel_launch("lombscargle_parallel_kernel");
+                    if (sample_count >= 1024 && freq_count >= 1024)
+                    {
+                        const int pair_block_count = (freq_count + 1) / 2;
+                        lombscargle_parallel_pair_kernel<<<pair_block_count, kThreadsPerBlock>>>(
+                            x_device.data(),
+                            y_device.data(),
+                            freqs_device.data(),
+                            sample_count,
+                            freq_count,
+                            workspace.real_scratch.get(),
+                            workspace.real_scratch.get() + 1,
+                            precenter,
+                            normalize,
+                            output.data());
+                        check_kernel_launch("lombscargle_parallel_pair_kernel");
+                    }
+                    else
+                    {
+                        lombscargle_parallel_kernel<<<freq_count, kThreadsPerBlock>>>(
+                            x_device.data(),
+                            y_device.data(),
+                            freqs_device.data(),
+                            sample_count,
+                            freq_count,
+                            workspace.real_scratch.get(),
+                            workspace.real_scratch.get() + 1,
+                            precenter,
+                            normalize,
+                            output.data());
+                        check_kernel_launch("lombscargle_parallel_kernel");
+                    }
                 });
                 return output;
             }
@@ -1660,6 +1972,13 @@ namespace cusignal
                 int axis)
             {
                 thread_local SpectralWorkspace workspace;
+                if (g_periodogram_cache_reset_requested)
+                {
+                    workspace.periodogram_window_valid = false;
+                    workspace.frequency_axis_valid = false;
+                    g_periodogram_cache_reset_requested = false;
+                }
+                g_last_periodogram_cache_state = kPeriodogramCacheStateBypass;
                 const core::ZxGpuRealArray &x_device = core::as_device_array(x, workspace.x_storage);
                 require_last_axis(x_device, axis);
                 const std::size_t line_len = x_device.shape().back();
@@ -1668,9 +1987,49 @@ namespace cusignal
                     nfft > 0 ? nfft : static_cast<int>(line_len);
                 const int effective_len =
                     (nfft > 0 && static_cast<std::size_t>(nfft) < line_len) ? nfft : static_cast<int>(line_len);
-                const core::ZxGpuRealSignal window_values =
-                    zx_gpu_backend::windows::get_window(window, effective_len, true);
-                const RealSignal window_host = window_values.get();
+                std::string window_cache_key;
+                const bool cacheable_window =
+                    build_csd_window_cache_key(
+                        window,
+                        effective_len,
+                        fs,
+                        scaling,
+                        window_cache_key);
+                const bool use_window_cache =
+                    cacheable_window &&
+                    g_periodogram_cache_override != kPeriodogramCacheBypass;
+                core::ZxGpuRealSignal transient_window;
+                const core::ZxGpuRealSignal *window_values = nullptr;
+                float scale = 0.0f;
+                if (use_window_cache &&
+                    workspace.periodogram_window_valid &&
+                    workspace.periodogram_window_key == window_cache_key)
+                {
+                    window_values = &workspace.periodogram_window_storage;
+                    scale = workspace.periodogram_window_scale;
+                    g_last_periodogram_cache_state = kPeriodogramCacheStateHit;
+                }
+                else
+                {
+                    transient_window =
+                        zx_gpu_backend::windows::get_window(window, effective_len, true);
+                    const RealSignal window_host = transient_window.get();
+                    scale = scaling == "density" ? detail::density_scale(window_host, fs)
+                                                 : detail::spectrum_scale(window_host);
+                    if (use_window_cache)
+                    {
+                        workspace.periodogram_window_storage = std::move(transient_window);
+                        workspace.periodogram_window_key = window_cache_key;
+                        workspace.periodogram_window_scale = scale;
+                        workspace.periodogram_window_valid = true;
+                        window_values = &workspace.periodogram_window_storage;
+                        g_last_periodogram_cache_state = kPeriodogramCacheStateMiss;
+                    }
+                    else
+                    {
+                        window_values = &transient_window;
+                    }
+                }
                 const detail::SegmentConfig config{
                     effective_len,
                     0,
@@ -1690,13 +2049,10 @@ namespace cusignal
                 }
                 else
                 {
-                    workspace.fft_x.zero(total_fft);
+                    workspace.fft_x.reserve(total_fft);
                 }
                 core::ZxGpuRealArray values =
                     core::make_zx_gpu_real_array(core::replace_axis_size(x_device.shape(), axis, freq_count));
-                const float scale =
-                    scaling == "density" ? detail::density_scale(window_host, fs)
-                                         : detail::spectrum_scale(window_host);
                 const int detrend_code = detrend_mode_code(detrend);
 
                 ScopedZxGpuEvents events;
@@ -1715,7 +2071,7 @@ namespace cusignal
                                 config.nperseg,
                                 config.step,
                                 config.nfft,
-                                window_values.data(),
+                                window_values->data(),
                                 workspace.real_fft_x.get());
                             check_kernel_launch("prepare_segments_real_constant_kernel(periodogram)");
                         }
@@ -1731,7 +2087,7 @@ namespace cusignal
                                 config.nfft,
                                 0,
                                 0,
-                                window_values.data(),
+                                window_values->data(),
                                 detrend_code,
                                 workspace.real_fft_x.get());
                             check_kernel_launch("prepare_segments_real_kernel(periodogram)");
@@ -1762,7 +2118,7 @@ namespace cusignal
                             config.nfft,
                             0,
                             0,
-                            window_values.data(),
+                            window_values->data(),
                             detrend_code,
                             workspace.fft_x.get());
                         check_kernel_launch("prepare_segments_kernel(periodogram)");
@@ -1789,8 +2145,16 @@ namespace cusignal
                 });
 
                 spectral_api::ZxGpuRealSpectrumResult result;
-                result.frequencies = core::ZxGpuRealSignal::from_host(
-                    detail::frequency_axis(config.nfft, fs, return_onesided));
+                if (g_periodogram_cache_override == kPeriodogramCacheBypass)
+                {
+                    result.frequencies = core::ZxGpuRealSignal::from_host(
+                        detail::frequency_axis(config.nfft, fs, return_onesided));
+                }
+                else
+                {
+                    result.frequencies =
+                        cached_frequency_axis(workspace, config.nfft, fs, return_onesided);
+                }
                 result.values = std::move(values);
                 return result;
             }
@@ -1809,47 +2173,113 @@ namespace cusignal
                 const std::string &average)
             {
                 thread_local SpectralWorkspace workspace;
+                if (g_welch_cache_reset_requested)
+                {
+                    workspace.segment_window_valid = false;
+                    workspace.frequency_axis_valid = false;
+                    g_welch_cache_reset_requested = false;
+                }
+                g_last_welch_cache_state = kWelchCacheStateBypass;
                 const core::ZxGpuRealArray &x_device = core::as_device_array(x, workspace.x_storage);
                 require_last_axis(x_device, axis);
                 const std::string avg = detail::normalize_average(average);
                 const std::size_t line_len = x_device.shape().back();
                 const std::size_t line_count = line_count_last_axis(x_device.shape());
-                const core::ZxGpuRealSignal window_values =
-                    zx_gpu_backend::windows::get_window(window, nperseg > 0 ? std::min<int>(nperseg, static_cast<int>(line_len)) : std::min<int>(256, static_cast<int>(line_len)), true);
-                const RealSignal window_host = window_values.get();
+                const int window_size =
+                    nperseg > 0 ? std::min<int>(nperseg, static_cast<int>(line_len))
+                                : std::min<int>(256, static_cast<int>(line_len));
+                std::string window_cache_key;
+                const bool cacheable_window =
+                    build_csd_window_cache_key(
+                        window,
+                        window_size,
+                        fs,
+                        scaling,
+                        window_cache_key);
+                const bool use_window_cache =
+                    cacheable_window &&
+                    g_welch_cache_override != kWelchCacheBypass;
+                core::ZxGpuRealSignal transient_window;
+                const core::ZxGpuRealSignal *window_values = nullptr;
+                float scale = 0.0f;
+                if (use_window_cache &&
+                    workspace.segment_window_valid &&
+                    workspace.segment_window_key == window_cache_key)
+                {
+                    window_values = &workspace.segment_window_storage;
+                    scale = workspace.segment_window_scale;
+                    g_last_welch_cache_state = kWelchCacheStateHit;
+                }
+                else
+                {
+                    transient_window =
+                        zx_gpu_backend::windows::get_window(window, window_size, true);
+                    const RealSignal window_host = transient_window.get();
+                    scale = scaling == "density" ? detail::density_scale(window_host, fs)
+                                                 : detail::spectrum_scale(window_host);
+                    if (use_window_cache)
+                    {
+                        workspace.segment_window_storage = std::move(transient_window);
+                        workspace.segment_window_key = window_cache_key;
+                        workspace.segment_window_scale = scale;
+                        workspace.segment_window_valid = true;
+                        window_values = &workspace.segment_window_storage;
+                        g_last_welch_cache_state = kWelchCacheStateMiss;
+                    }
+                    else
+                    {
+                        window_values = &transient_window;
+                    }
+                }
                 const detail::SegmentConfig config = detail::resolve_segment_config(
                     line_len,
-                    static_cast<int>(window_values.size()),
+                    static_cast<int>(window_values->size()),
                     noverlap,
                     nfft,
-                    static_cast<int>(window_values.size()),
-                    static_cast<int>(window_values.size()) / 2);
+                    static_cast<int>(window_values->size()),
+                    static_cast<int>(window_values->size()) / 2);
                 const std::size_t nseg =
                     1 + (line_len - static_cast<std::size_t>(config.nperseg)) / static_cast<std::size_t>(config.step);
                 const std::size_t total_fft = total_segments(line_count, nseg) * static_cast<std::size_t>(config.nfft);
-                workspace.fft_x.zero(total_fft);
+                workspace.fft_x.reserve(total_fft);
                 core::ZxGpuRealArray values =
                     core::make_zx_gpu_real_array(core::replace_axis_size(x_device.shape(), axis, detail::frequency_count(config.nfft, return_onesided)));
-                const float scale =
-                    scaling == "density" ? detail::density_scale(window_host, fs)
-                                         : detail::spectrum_scale(window_host);
+                const int detrend_code = detrend_mode_code(detrend);
 
                 ScopedZxGpuEvents events;
                 measure_gpu_compute(events, [&]() {
-                    prepare_segments_kernel<<<block_count(total_fft), kThreadsPerBlock>>>(
-                        x_device.data(),
-                        static_cast<int>(line_count),
-                        static_cast<int>(line_len),
-                        static_cast<int>(nseg),
-                        config.nperseg,
-                        config.step,
-                        config.nfft,
-                        0,
-                        0,
-                        window_values.data(),
-                        detrend_mode_code(detrend),
-                        workspace.fft_x.get());
-                    check_kernel_launch("prepare_segments_kernel(welch)");
+                    if (detrend_code == 1)
+                    {
+                        const int segment_count = static_cast<int>(line_count * nseg);
+                        prepare_segments_complex_constant_kernel<<<segment_count, kThreadsPerBlock>>>(
+                            x_device.data(),
+                            static_cast<int>(line_count),
+                            static_cast<int>(line_len),
+                            static_cast<int>(nseg),
+                            config.nperseg,
+                            config.step,
+                            config.nfft,
+                            window_values->data(),
+                            workspace.fft_x.get());
+                        check_kernel_launch("prepare_segments_complex_constant_kernel(welch)");
+                    }
+                    else
+                    {
+                        prepare_segments_kernel<<<block_count(total_fft), kThreadsPerBlock>>>(
+                            x_device.data(),
+                            static_cast<int>(line_count),
+                            static_cast<int>(line_len),
+                            static_cast<int>(nseg),
+                            config.nperseg,
+                            config.step,
+                            config.nfft,
+                            0,
+                            0,
+                            window_values->data(),
+                            detrend_code,
+                            workspace.fft_x.get());
+                        check_kernel_launch("prepare_segments_kernel(welch)");
+                    }
                     workspace.forward_plan.ensure(config.nfft, static_cast<int>(line_count * nseg));
                     throw_on_cufft_error(
                         cufftExecC2C(workspace.forward_plan.handle, workspace.fft_x.get(), workspace.fft_x.get(), CUFFT_FORWARD),
@@ -1872,8 +2302,16 @@ namespace cusignal
                 });
 
                 spectral_api::ZxGpuRealSpectrumResult result;
-                result.frequencies = core::ZxGpuRealSignal::from_host(
-                    detail::frequency_axis(config.nfft, fs, return_onesided));
+                if (g_welch_cache_override == kWelchCacheBypass)
+                {
+                    result.frequencies = core::ZxGpuRealSignal::from_host(
+                        detail::frequency_axis(config.nfft, fs, return_onesided));
+                }
+                else
+                {
+                    result.frequencies =
+                        cached_frequency_axis(workspace, config.nfft, fs, return_onesided);
+                }
                 result.values = std::move(values);
                 return result;
             }
@@ -1967,8 +2405,8 @@ namespace cusignal
                 }
                 else
                 {
-                    workspace.fft_x.zero(total_fft);
-                    workspace.fft_y.zero(total_fft);
+                    workspace.fft_x.reserve(total_fft);
+                    workspace.fft_y.reserve(total_fft);
                 }
                 core::ZxGpuComplexArray values(
                     core::replace_axis_size(x_device.shape(), axis, freq_count),
@@ -2226,7 +2664,7 @@ namespace cusignal
                 }
                 else
                 {
-                    workspace.fft_x.zero(total_fft);
+                    workspace.fft_x.reserve(total_fft);
                 }
                 const float scale = normalized_mode == "psd" ? base_scale : std::sqrt(base_scale);
                 const std::size_t freq_count = detail::frequency_count(config.nfft, return_onesided);
@@ -2308,20 +2746,38 @@ namespace cusignal
                     }
                     else
                     {
-                        prepare_segments_kernel<<<block_count(total_fft), kThreadsPerBlock>>>(
-                            x_device.data(),
-                            static_cast<int>(line_count),
-                            static_cast<int>(line_len),
-                            static_cast<int>(nseg),
-                            config.nperseg,
-                            config.step,
-                            config.nfft,
-                            0,
-                            0,
-                            window_values->data(),
-                            detrend_code,
-                            workspace.fft_x.get());
-                        check_kernel_launch("prepare_segments_kernel(spectrogram)");
+                        if (detrend_code == 1)
+                        {
+                            const int segment_count = static_cast<int>(line_count * nseg);
+                            prepare_segments_complex_constant_kernel<<<segment_count, kThreadsPerBlock>>>(
+                                x_device.data(),
+                                static_cast<int>(line_count),
+                                static_cast<int>(line_len),
+                                static_cast<int>(nseg),
+                                config.nperseg,
+                                config.step,
+                                config.nfft,
+                                window_values->data(),
+                                workspace.fft_x.get());
+                            check_kernel_launch("prepare_segments_complex_constant_kernel(spectrogram)");
+                        }
+                        else
+                        {
+                            prepare_segments_kernel<<<block_count(total_fft), kThreadsPerBlock>>>(
+                                x_device.data(),
+                                static_cast<int>(line_count),
+                                static_cast<int>(line_len),
+                                static_cast<int>(nseg),
+                                config.nperseg,
+                                config.step,
+                                config.nfft,
+                                0,
+                                0,
+                                window_values->data(),
+                                detrend_code,
+                                workspace.fft_x.get());
+                            check_kernel_launch("prepare_segments_kernel(spectrogram)");
+                        }
                         workspace.forward_plan.ensure(config.nfft, static_cast<int>(line_count * nseg));
                         throw_on_cufft_error(
                             cufftExecC2C(workspace.forward_plan.handle, workspace.fft_x.get(), workspace.fft_x.get(), CUFFT_FORWARD),
@@ -2457,7 +2913,7 @@ namespace cusignal
                 const std::size_t nseg =
                     1 + (working_len - static_cast<std::size_t>(config.nperseg)) / static_cast<std::size_t>(config.step);
                 const std::size_t total_fft = total_segments(line_count, nseg) * static_cast<std::size_t>(config.nfft);
-                workspace.fft_x.zero(total_fft);
+                workspace.fft_x.reserve(total_fft);
                 const float scale = std::sqrt(spectrum_scale);
                 const std::size_t freq_count = detail::frequency_count(config.nfft, return_onesided);
                 Shape output_shape = core::replace_axis_size(x_device.shape(), axis, freq_count);
@@ -2520,6 +2976,13 @@ namespace cusignal
                 int freq_axis)
             {
                 thread_local SpectralWorkspace workspace;
+                if (g_istft_cache_reset_requested)
+                {
+                    workspace.segment_window_valid = false;
+                    workspace.time_axis_valid = false;
+                    g_istft_cache_reset_requested = false;
+                }
+                g_last_istft_cache_state = kIstftCacheStateBypass;
                 const core::ZxGpuComplexArray &z_device = core::as_device_array(zxx, workspace.z_storage);
                 const std::size_t rank = z_device.rank();
                 const std::size_t normalized_time = core::normalize_axis(time_axis, rank);
@@ -2540,11 +3003,56 @@ namespace cusignal
                     throw std::invalid_argument("noverlap must be less than nperseg.");
                 }
                 const int step = resolved_nperseg - resolved_noverlap;
-                const core::ZxGpuRealSignal window_values =
-                    zx_gpu_backend::windows::get_window(window, resolved_nperseg, true);
-                const RealSignal window_host = window_values.get();
-                const float window_sum =
-                    std::accumulate(window_host.begin(), window_host.end(), 0.0);
+                std::string window_cache_key;
+                const bool cacheable_window =
+                    build_csd_window_cache_key(
+                        window,
+                        resolved_nperseg,
+                        0.0f,
+                        "istft",
+                        window_cache_key);
+                const bool use_setup_cache =
+                    cacheable_window &&
+                    g_istft_cache_override != kIstftCacheBypass;
+                core::ZxGpuRealSignal transient_window;
+                const core::ZxGpuRealSignal *window_values = nullptr;
+                float window_sum = 0.0f;
+                bool window_cache_hit = false;
+                if (use_setup_cache &&
+                    workspace.segment_window_valid &&
+                    workspace.segment_window_key == window_cache_key)
+                {
+                    window_values = &workspace.segment_window_storage;
+                    window_sum = workspace.segment_window_scale;
+                    window_cache_hit = true;
+                }
+                else
+                {
+                    transient_window =
+                        zx_gpu_backend::windows::get_window(
+                            window,
+                            resolved_nperseg,
+                            true);
+                    const RealSignal window_host = transient_window.get();
+                    window_sum =
+                        std::accumulate(
+                            window_host.begin(),
+                            window_host.end(),
+                            0.0);
+                    if (use_setup_cache)
+                    {
+                        workspace.segment_window_storage =
+                            std::move(transient_window);
+                        workspace.segment_window_key = window_cache_key;
+                        workspace.segment_window_scale = window_sum;
+                        workspace.segment_window_valid = true;
+                        window_values = &workspace.segment_window_storage;
+                    }
+                    else
+                    {
+                        window_values = &transient_window;
+                    }
+                }
                 const std::size_t spectrum_count = outer_count * time_count * static_cast<std::size_t>(resolved_nfft);
                 workspace.fft_full.zero(spectrum_count);
                 const std::size_t final_length = boundary
@@ -2554,14 +3062,31 @@ namespace cusignal
                 Shape output_shape = outer_shape;
                 output_shape.push_back(final_length);
                 result.signal = core::make_zx_gpu_real_array(output_shape);
-                result.times = core::ZxGpuRealSignal::from_host([&]() {
-                    RealSignal times(final_length, 0.0);
-                    for (std::size_t index = 0; index < final_length; ++index)
-                    {
-                        times[index] = static_cast<float>(index) / fs;
-                    }
-                    return times;
-                }());
+                if (use_setup_cache)
+                {
+                    bool time_cache_hit = false;
+                    result.times =
+                        cached_sample_times(
+                            workspace,
+                            final_length,
+                            fs,
+                            &time_cache_hit);
+                    g_last_istft_cache_state =
+                        window_cache_hit && time_cache_hit
+                            ? kIstftCacheStateHit
+                            : kIstftCacheStateMiss;
+                }
+                else
+                {
+                    result.times = core::ZxGpuRealSignal::from_host([&]() {
+                        RealSignal times(final_length, 0.0);
+                        for (std::size_t index = 0; index < final_length; ++index)
+                        {
+                            times[index] = static_cast<float>(index) / fs;
+                        }
+                        return times;
+                    }());
+                }
 
                 ScopedZxGpuEvents events;
                 measure_gpu_compute(events, [&]() {
@@ -2596,7 +3121,7 @@ namespace cusignal
                         resolved_nperseg,
                         step,
                         window_sum,
-                        window_values.data(),
+                        window_values->data(),
                         boundary ? resolved_nperseg / 2 : 0,
                         static_cast<int>(final_length),
                         result.signal.data());
@@ -2673,8 +3198,8 @@ namespace cusignal
                     1 + (line_len - static_cast<std::size_t>(config.nperseg)) / static_cast<std::size_t>(config.step);
                 const std::size_t total_fft = total_segments(line_count, nseg) * static_cast<std::size_t>(config.nfft);
                 const std::size_t freq_count = detail::frequency_count(config.nfft, true);
-                workspace.fft_x.zero(total_fft);
-                workspace.fft_y.zero(total_fft);
+                workspace.fft_x.reserve(total_fft);
+                workspace.fft_y.reserve(total_fft);
 
                 spectral_api::ZxGpuRealSpectrumResult result;
                 result.frequencies = cached_frequency_axis(workspace, config.nfft, fs, true);
@@ -2866,15 +3391,52 @@ namespace cusignal
                         static_cast<std::size_t>(blocks_per_period);
                     workspace.reduction_scratch_a.reserve(partial_count);
                     workspace.reduction_scratch_b.reserve(partial_count);
-                    vectorstrength_partial_kernel<<<dim3(period_count, blocks_per_period), kThreadsPerBlock>>>(
-                        events_device.data(),
-                        event_count,
-                        period_device->data(),
-                        period_count,
-                        blocks_per_period,
-                        workspace.reduction_scratch_a.get(),
-                        workspace.reduction_scratch_b.get());
-                    check_kernel_launch("vectorstrength_partial_kernel(vector)");
+                    const bool use_pair_kernel =
+                        period_count >= 2 &&
+                        blocks_per_period >= kVectorStrengthPairMinBlocksPerPeriod;
+                    if (use_pair_kernel)
+                    {
+                        const int pair_count = period_count / 2;
+                        vectorstrength_partial_pair_kernel<<<
+                            dim3(pair_count, blocks_per_period),
+                            kThreadsPerBlock>>>(
+                            events_device.data(),
+                            event_count,
+                            period_device->data(),
+                            blocks_per_period,
+                            workspace.reduction_scratch_a.get(),
+                            workspace.reduction_scratch_b.get());
+                        check_kernel_launch("vectorstrength_partial_pair_kernel(vector)");
+                        if (period_count % 2 != 0)
+                        {
+                            const std::size_t final_period_offset =
+                                static_cast<std::size_t>(pair_count * 2) *
+                                static_cast<std::size_t>(blocks_per_period);
+                            vectorstrength_partial_kernel<<<
+                                dim3(1, blocks_per_period),
+                                kThreadsPerBlock>>>(
+                                events_device.data(),
+                                event_count,
+                                period_device->data() + pair_count * 2,
+                                1,
+                                blocks_per_period,
+                                workspace.reduction_scratch_a.get() + final_period_offset,
+                                workspace.reduction_scratch_b.get() + final_period_offset);
+                            check_kernel_launch("vectorstrength_partial_kernel(vector_tail)");
+                        }
+                    }
+                    else
+                    {
+                        vectorstrength_partial_kernel<<<dim3(period_count, blocks_per_period), kThreadsPerBlock>>>(
+                            events_device.data(),
+                            event_count,
+                            period_device->data(),
+                            period_count,
+                            blocks_per_period,
+                            workspace.reduction_scratch_a.get(),
+                            workspace.reduction_scratch_b.get());
+                        check_kernel_launch("vectorstrength_partial_kernel(vector)");
+                    }
                     vectorstrength_finalize_kernel<<<period_count, kThreadsPerBlock>>>(
                         workspace.reduction_scratch_a.get(),
                         workspace.reduction_scratch_b.get(),
@@ -2895,6 +3457,78 @@ namespace cusignal
                 const float value = g_last_kernel_ms;
                 g_last_kernel_ms = 0.0;
                 return value;
+            }
+
+            int consume_last_periodogram_cache_state()
+            {
+                const int value = g_last_periodogram_cache_state;
+                g_last_periodogram_cache_state = kPeriodogramCacheStateBypass;
+                return value;
+            }
+
+            void set_periodogram_cache_override(int mode)
+            {
+                if (mode != kPeriodogramCacheAuto &&
+                    mode != kPeriodogramCacheBypass &&
+                    mode != kPeriodogramCacheEnabled)
+                {
+                    throw std::invalid_argument("invalid periodogram cache override");
+                }
+                g_periodogram_cache_override = mode;
+            }
+
+            void reset_periodogram_cache()
+            {
+                g_periodogram_cache_reset_requested = true;
+                g_last_periodogram_cache_state = kPeriodogramCacheStateBypass;
+            }
+
+            int consume_last_welch_cache_state()
+            {
+                const int value = g_last_welch_cache_state;
+                g_last_welch_cache_state = kWelchCacheStateBypass;
+                return value;
+            }
+
+            void set_welch_cache_override(int mode)
+            {
+                if (mode != kWelchCacheAuto &&
+                    mode != kWelchCacheBypass &&
+                    mode != kWelchCacheEnabled)
+                {
+                    throw std::invalid_argument("invalid welch cache override");
+                }
+                g_welch_cache_override = mode;
+            }
+
+            void reset_welch_cache()
+            {
+                g_welch_cache_reset_requested = true;
+                g_last_welch_cache_state = kWelchCacheStateBypass;
+            }
+
+            int consume_last_istft_cache_state()
+            {
+                const int value = g_last_istft_cache_state;
+                g_last_istft_cache_state = kIstftCacheStateBypass;
+                return value;
+            }
+
+            void set_istft_cache_override(int mode)
+            {
+                if (mode != kIstftCacheAuto &&
+                    mode != kIstftCacheBypass &&
+                    mode != kIstftCacheEnabled)
+                {
+                    throw std::invalid_argument("invalid istft cache override");
+                }
+                g_istft_cache_override = mode;
+            }
+
+            void reset_istft_cache()
+            {
+                g_istft_cache_reset_requested = true;
+                g_last_istft_cache_state = kIstftCacheStateBypass;
             }
         } // namespace spectral_test_hooks
     } // namespace zx_gpu_backend

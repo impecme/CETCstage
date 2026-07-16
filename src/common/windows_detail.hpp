@@ -215,17 +215,18 @@ namespace cusignal
             const float half_x = 0.5f * ax;
             const float y = half_x * half_x;
 
-            float sum = 1.0;
-            float term = 1.0;
+            float sum = 1.0f;
+            float term = 1.0f;
             for (int order = 1; order < 256; ++order)
             {
                 const float denominator = static_cast<float>(order) * static_cast<float>(order);
                 term *= y / denominator;
-                sum += term;
-                if (term <= sum * 1.0e-16f)
+                const float next_sum = sum + term;
+                if (next_sum == sum)
                 {
                     break;
                 }
+                sum = next_sum;
             }
             return sum;
         }

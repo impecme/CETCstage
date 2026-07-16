@@ -1,13 +1,16 @@
 #include "cusignal/correlate/correlate.hpp"
 
 #include <cuda_runtime.h>
+#include <cufft.h>
 
 #include <algorithm>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
 #include "cusignal/core/helpers.hpp"
+#include "cusignal/core/platform_zx_gpu_libraries.hpp"
 
 #include "../common/correlate_detail.hpp"
 
@@ -23,6 +26,7 @@ namespace
 
     constexpr int kThreadsPerBlock = 256;
     thread_local float g_last_kernel_ms = 0.0f;
+    thread_local bool g_last_correlation_used_fft = false;
 
     void throw_on_zx_gpu_error(cudaError_t status, const char *what)
     {
@@ -75,6 +79,47 @@ namespace
         cudaEvent_t stop_ = nullptr;
     };
 
+    struct GenericPlan
+    {
+        cufftHandle handle = 0;
+        int size = 0;
+        int batch = 0;
+
+        ~GenericPlan()
+        {
+            if (handle != 0)
+            {
+                cufftDestroy(handle);
+            }
+        }
+
+        GenericPlan(const GenericPlan &) = delete;
+        GenericPlan &operator=(const GenericPlan &) = delete;
+        GenericPlan() = default;
+
+        void ensure(int n, int b)
+        {
+            if (handle != 0 && size == n && batch == b)
+            {
+                return;
+            }
+            if (handle != 0)
+            {
+                cusignal::core::platform::throw_on_cufft_error(
+                    cufftDestroy(handle),
+                    "cufftDestroy(correlate)");
+                handle = 0;
+                size = 0;
+                batch = 0;
+            }
+            cusignal::core::platform::throw_on_cufft_error(
+                cufftPlan1d(&handle, n, CUFFT_C2C, b),
+                "cufftPlan1d(correlate)");
+            size = n;
+            batch = b;
+        }
+    };
+
     struct CorrelateWorkspace
     {
         ZxGpuRealArray real_left_storage;
@@ -88,6 +133,9 @@ namespace
         ZxGpuIndexSignal output_shape_storage;
         ZxGpuIndexSignal output_strides_storage;
         ZxGpuIndexSignal start_storage;
+        ZxGpuComplexArray fft_storage;
+        GenericPlan fft_forward_plan;
+        GenericPlan fft_inverse_plan;
     };
 
     thread_local CorrelateWorkspace g_workspace;
@@ -138,6 +186,228 @@ namespace
     __device__ inline float2 complex_add(float2 lhs, float2 rhs)
     {
         return float2{lhs.x + rhs.x, lhs.y + rhs.y};
+    }
+
+    int next_fft_size(std::size_t full_size)
+    {
+        if (full_size == 0 || full_size > static_cast<std::size_t>(std::numeric_limits<int>::max()))
+        {
+            throw std::invalid_argument("correlate FFT length is out of range");
+        }
+        std::size_t size = 1;
+        while (size < full_size)
+        {
+            if (size > static_cast<std::size_t>(std::numeric_limits<int>::max()) / 2)
+            {
+                throw std::invalid_argument("correlate FFT length is out of range");
+            }
+            size *= 2;
+        }
+        return static_cast<int>(size);
+    }
+
+    bool should_use_fft_1d(
+        const Shape &left_shape,
+        const Shape &right_shape,
+        const std::string &method)
+    {
+        if (left_shape.size() != 1 || right_shape.size() != 1)
+        {
+            return false;
+        }
+        const std::string normalized_method = detail::normalize_method(method);
+        if (normalized_method == "fft")
+        {
+            return true;
+        }
+        if (normalized_method == "direct")
+        {
+            return false;
+        }
+        constexpr std::size_t kAutoDirectWorkLimit = 4096;
+        return right_shape.front() != 0 &&
+               left_shape.front() > kAutoDirectWorkLimit / right_shape.front();
+    }
+
+    __global__ void pack_real_fft_inputs_kernel(
+        const float *left,
+        std::size_t left_size,
+        const float *right,
+        std::size_t right_size,
+        std::size_t fft_size,
+        float2 *packed)
+    {
+        const std::size_t index =
+            static_cast<std::size_t>(blockIdx.x) * blockDim.x + static_cast<std::size_t>(threadIdx.x);
+        if (index >= fft_size)
+        {
+            return;
+        }
+        packed[index] = index < left_size ? float2{left[index], 0.0f} : float2{0.0f, 0.0f};
+        packed[fft_size + index] = index < right_size
+            ? float2{right[right_size - 1 - index], 0.0f}
+            : float2{0.0f, 0.0f};
+    }
+
+    __global__ void pack_complex_fft_inputs_kernel(
+        const float2 *left,
+        std::size_t left_size,
+        const float2 *right,
+        std::size_t right_size,
+        std::size_t fft_size,
+        float2 *packed)
+    {
+        const std::size_t index =
+            static_cast<std::size_t>(blockIdx.x) * blockDim.x + static_cast<std::size_t>(threadIdx.x);
+        if (index >= fft_size)
+        {
+            return;
+        }
+        packed[index] = index < left_size ? left[index] : float2{0.0f, 0.0f};
+        packed[fft_size + index] = index < right_size
+            ? complex_conj(right[right_size - 1 - index])
+            : float2{0.0f, 0.0f};
+    }
+
+    __global__ void multiply_fft_inputs_kernel(float2 *packed, std::size_t fft_size)
+    {
+        const std::size_t index =
+            static_cast<std::size_t>(blockIdx.x) * blockDim.x + static_cast<std::size_t>(threadIdx.x);
+        if (index < fft_size)
+        {
+            packed[index] = complex_mul(packed[index], packed[fft_size + index]);
+        }
+    }
+
+    __global__ void extract_real_fft_correlation_kernel(
+        const float2 *values,
+        std::size_t start,
+        std::size_t output_size,
+        float scale,
+        float *output)
+    {
+        const std::size_t index =
+            static_cast<std::size_t>(blockIdx.x) * blockDim.x + static_cast<std::size_t>(threadIdx.x);
+        if (index < output_size)
+        {
+            output[index] = values[start + index].x * scale;
+        }
+    }
+
+    __global__ void extract_complex_fft_correlation_kernel(
+        const float2 *values,
+        std::size_t start,
+        std::size_t output_size,
+        float scale,
+        float2 *output)
+    {
+        const std::size_t index =
+            static_cast<std::size_t>(blockIdx.x) * blockDim.x + static_cast<std::size_t>(threadIdx.x);
+        if (index < output_size)
+        {
+            const float2 value = values[start + index];
+            output[index] = float2{value.x * scale, value.y * scale};
+        }
+    }
+
+    float run_real_fft_correlation(
+        const ZxGpuRealArray &left,
+        const ZxGpuRealArray &right,
+        std::size_t crop_start,
+        ZxGpuRealArray &output)
+    {
+        const std::size_t full_size = left.size() + right.size() - 1;
+        const int fft_size = next_fft_size(full_size);
+        const std::size_t fft_size_u = static_cast<std::size_t>(fft_size);
+        g_workspace.fft_storage.resize(Shape{2, fft_size_u}, false);
+        g_workspace.fft_forward_plan.ensure(fft_size, 2);
+        g_workspace.fft_inverse_plan.ensure(fft_size, 1);
+        float2 *packed = reinterpret_cast<float2 *>(g_workspace.fft_storage.data());
+
+        ScopedZxGpuEvents events;
+        return events.measure([&]() {
+            pack_real_fft_inputs_kernel<<<block_count(fft_size_u), kThreadsPerBlock>>>(
+                left.data(),
+                left.size(),
+                right.data(),
+                right.size(),
+                fft_size_u,
+                packed);
+            check_kernel_launch("pack_real_fft_inputs_kernel");
+            cusignal::core::platform::throw_on_cufft_error(
+                cufftExecC2C(
+                    g_workspace.fft_forward_plan.handle,
+                    reinterpret_cast<cufftComplex *>(packed),
+                    reinterpret_cast<cufftComplex *>(packed),
+                    CUFFT_FORWARD),
+                "cufftExecC2C(correlate real forward)");
+            multiply_fft_inputs_kernel<<<block_count(fft_size_u), kThreadsPerBlock>>>(packed, fft_size_u);
+            check_kernel_launch("multiply_fft_inputs_kernel(real)");
+            cusignal::core::platform::throw_on_cufft_error(
+                cufftExecC2C(
+                    g_workspace.fft_inverse_plan.handle,
+                    reinterpret_cast<cufftComplex *>(packed),
+                    reinterpret_cast<cufftComplex *>(packed),
+                    CUFFT_INVERSE),
+                "cufftExecC2C(correlate real inverse)");
+            extract_real_fft_correlation_kernel<<<block_count(output.size()), kThreadsPerBlock>>>(
+                packed,
+                crop_start,
+                output.size(),
+                1.0f / static_cast<float>(fft_size),
+                output.data());
+            check_kernel_launch("extract_real_fft_correlation_kernel");
+        });
+    }
+
+    float run_complex_fft_correlation(
+        const ZxGpuComplexArray &left,
+        const ZxGpuComplexArray &right,
+        std::size_t crop_start,
+        ZxGpuComplexArray &output)
+    {
+        const std::size_t full_size = left.size() + right.size() - 1;
+        const int fft_size = next_fft_size(full_size);
+        const std::size_t fft_size_u = static_cast<std::size_t>(fft_size);
+        g_workspace.fft_storage.resize(Shape{2, fft_size_u}, false);
+        g_workspace.fft_forward_plan.ensure(fft_size, 2);
+        g_workspace.fft_inverse_plan.ensure(fft_size, 1);
+        float2 *packed = reinterpret_cast<float2 *>(g_workspace.fft_storage.data());
+
+        ScopedZxGpuEvents events;
+        return events.measure([&]() {
+            pack_complex_fft_inputs_kernel<<<block_count(fft_size_u), kThreadsPerBlock>>>(
+                reinterpret_cast<const float2 *>(left.data()),
+                left.size(),
+                reinterpret_cast<const float2 *>(right.data()),
+                right.size(),
+                fft_size_u,
+                packed);
+            check_kernel_launch("pack_complex_fft_inputs_kernel");
+            cusignal::core::platform::throw_on_cufft_error(
+                cufftExecC2C(
+                    g_workspace.fft_forward_plan.handle,
+                    reinterpret_cast<cufftComplex *>(packed),
+                    reinterpret_cast<cufftComplex *>(packed),
+                    CUFFT_FORWARD),
+                "cufftExecC2C(correlate complex forward)");
+            multiply_fft_inputs_kernel<<<block_count(fft_size_u), kThreadsPerBlock>>>(packed, fft_size_u);
+            check_kernel_launch("multiply_fft_inputs_kernel(complex)");
+            cusignal::core::platform::throw_on_cufft_error(
+                cufftExecC2C(
+                    g_workspace.fft_inverse_plan.handle,
+                    reinterpret_cast<cufftComplex *>(packed),
+                    reinterpret_cast<cufftComplex *>(packed),
+                    CUFFT_INVERSE),
+                "cufftExecC2C(correlate complex inverse)");
+            extract_complex_fft_correlation_kernel<<<block_count(output.size()), kThreadsPerBlock>>>(
+                packed,
+                crop_start,
+                output.size(),
+                1.0f / static_cast<float>(fft_size),
+                reinterpret_cast<float2 *>(output.data()));
+            check_kernel_launch("extract_complex_fft_correlation_kernel");
+        });
     }
 
     __device__ inline std::size_t wrap_index_device(long long index, int size)
@@ -445,6 +715,7 @@ namespace cusignal
                 const std::string &mode,
                 const std::string &method)
             {
+                g_last_correlation_used_fft = false;
                 const ZxGpuRealArray &left = core::as_device_array(in1, g_workspace.real_left_storage);
                 const ZxGpuRealArray &right = core::as_device_array(in2, g_workspace.real_right_storage);
                 detail::ensure_same_rank(left.shape(), right.shape());
@@ -461,6 +732,13 @@ namespace cusignal
                 if (output.size() == 0)
                 {
                     g_last_kernel_ms = 0.0f;
+                    return output;
+                }
+
+                if (should_use_fft_1d(left.shape(), right.shape(), method))
+                {
+                    g_last_correlation_used_fft = true;
+                    g_last_kernel_ms = run_real_fft_correlation(left, right, start.front(), output);
                     return output;
                 }
 
@@ -492,6 +770,7 @@ namespace cusignal
                 const std::string &mode,
                 const std::string &method)
             {
+                g_last_correlation_used_fft = false;
                 const ZxGpuComplexArray &left = core::as_device_array(in1, g_workspace.complex_left_storage);
                 const ZxGpuComplexArray &right = core::as_device_array(in2, g_workspace.complex_right_storage);
                 detail::ensure_same_rank(left.shape(), right.shape());
@@ -508,6 +787,13 @@ namespace cusignal
                 if (output.size() == 0)
                 {
                     g_last_kernel_ms = 0.0f;
+                    return output;
+                }
+
+                if (should_use_fft_1d(left.shape(), right.shape(), method))
+                {
+                    g_last_correlation_used_fft = true;
+                    g_last_kernel_ms = run_complex_fft_correlation(left, right, start.front(), output);
                     return output;
                 }
 
@@ -540,6 +826,7 @@ namespace cusignal
                 const std::string &boundary,
                 float fillvalue)
             {
+                g_last_correlation_used_fft = false;
                 const ZxGpuRealArray &left = core::as_device_array(in1, g_workspace.real_left_storage);
                 const ZxGpuRealArray &right = core::as_device_array(in2, g_workspace.real_right_storage);
                 if (left.rank() != 2 || right.rank() != 2)
@@ -600,6 +887,7 @@ namespace cusignal
                 const std::string &boundary,
                 float fillvalue)
             {
+                g_last_correlation_used_fft = false;
                 const ZxGpuComplexArray &left = core::as_device_array(in1, g_workspace.complex_left_storage);
                 const ZxGpuComplexArray &right = core::as_device_array(in2, g_workspace.complex_right_storage);
                 if (left.rank() != 2 || right.rank() != 2)
@@ -658,6 +946,7 @@ namespace cusignal
                 int in2_len,
                 const std::string &mode)
             {
+                g_last_correlation_used_fft = false;
                 if (in1_len <= 0 || in2_len <= 0)
                 {
                     throw std::invalid_argument("input lengths must be positive");
@@ -705,6 +994,11 @@ namespace cusignal
                 const float value = g_last_kernel_ms;
                 g_last_kernel_ms = 0.0f;
                 return value;
+            }
+
+            bool last_correlation_used_fft()
+            {
+                return g_last_correlation_used_fft;
             }
         } // namespace correlate_test_hooks
     } // namespace zx_gpu_backend

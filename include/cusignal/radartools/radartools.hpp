@@ -353,6 +353,15 @@ namespace cusignal
                 int nfft = 0);
 
             /**
+             * @brief 执行脉冲多普勒处理并在转置输出时完成行方向 FFT shift。
+             * @note 供任务链路避免额外中间数组；原 `pulse_doppler` 语义不变。
+             */
+            core::ZxGpuComplexArray pulse_doppler_shifted(
+                const core::ComplexArrayLike &x,
+                core::ZxGpuWindowSpec window = std::string(),
+                int nfft = 0);
+
+            /**
              * @brief 计算归一化模糊函数。
              *
              * @param x 第一组脉冲波形。

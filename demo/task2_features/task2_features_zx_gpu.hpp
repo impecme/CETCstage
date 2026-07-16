@@ -4,6 +4,9 @@
 
 namespace cusignal_demo::task2_features
 {
+    inline constexpr float kTaskDemodMinPowerRatio = 1.0f / 65536.0f;
+    inline constexpr float kTaskDemodSmallPhaseLimit = 0.05f;
+
     cusignal::core::ZxGpuRealArray extract_real_part_zx_gpu(const cusignal::core::ZxGpuComplexArray &input);
     cusignal::core::ZxGpuRealArray extract_imag_part_zx_gpu(const cusignal::core::ZxGpuComplexArray &input);
     cusignal::core::ZxGpuComplexArray combine_complex_zx_gpu(

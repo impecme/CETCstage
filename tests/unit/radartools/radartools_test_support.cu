@@ -2235,13 +2235,102 @@ namespace
         print_terminal_summary(op, summary);
         return summary.pass ? 0 : 1;
     }
+
+    bool verify_pulse_host_input_cache_contract()
+    {
+        ComplexArray input;
+        input.shape = Shape{2, 8};
+        input.values.resize(16);
+        for (std::size_t index = 0; index < input.values.size(); ++index)
+        {
+            input.values[index] = Complex(
+                0.25f * static_cast<float>(index + 1),
+                -0.125f * static_cast<float>(index % 5));
+        }
+        ComplexSignal templ{
+            Complex(1.0f, 0.0f),
+            Complex(0.5f, -0.25f),
+            Complex(-0.25f, 0.5f),
+            Complex(0.125f, 0.25f)};
+
+        auto matches_cpu = [&](const ComplexArray &host_input) {
+            const ComplexArray expected = cusignal::cpu::radartools::pulse_compression(
+                host_input, templ, false, std::string{}, 8);
+            const ComplexArray actual = cusignal::zx_gpu_backend::radartools::pulse_compression(
+                host_input, templ, false, std::string{}, 8).get();
+            const ErrorMetrics error = compute_complex_error(
+                expected.shape,
+                expected.values,
+                actual.shape,
+                actual.values);
+            return error.max_abs_error <= 1.0e-4f && error.mixed_error == 0.0f;
+        };
+
+        const bool initial_pass = matches_cpu(input);
+        input.values[3] += Complex(0.75f, -0.5f);
+        const bool mutation_pass = matches_cpu(input);
+        const bool cache_hit_pass = matches_cpu(input);
+        ComplexArray doppler_input = input;
+        doppler_input.values[0] += Complex(-1.25f, 0.75f);
+        (void)cusignal::zx_gpu_backend::radartools::pulse_doppler(
+            doppler_input, std::string{}, 2).get();
+        const bool shared_storage_invalidation_pass = matches_cpu(input);
+        const bool pass = initial_pass && mutation_pass && cache_hit_pass &&
+                          shared_storage_invalidation_pass;
+        std::cout << "[radartools] pulse_host_input_cache_contract="
+                  << (pass ? "PASS" : "FAIL") << '\n';
+        return pass;
+    }
+
+    bool verify_mvdr_host_input_cache_contract()
+    {
+        const fs::path base = reference_root("mvdr");
+        ComplexArray input = load_complex_array(
+            base / "input/calc_cov_true_x.csv", Shape{4, 16});
+        ComplexArray steering = load_complex_array(
+            base / "input/calc_cov_true_sv.csv", Shape{4, 1});
+
+        auto matches_cpu = [&](const cusignal::core::ComplexArrayLike &x_like,
+                               const cusignal::core::ComplexArrayLike &sv_like) {
+            const ComplexArray expected = cusignal::cpu::radartools::mvdr(input, steering, true);
+            const ComplexArray actual = cusignal::zx_gpu_backend::radartools::mvdr(
+                x_like, sv_like, true).get();
+            const ErrorMetrics error = compute_complex_error(
+                expected.shape,
+                expected.values,
+                actual.shape,
+                actual.values);
+            return error.max_abs_error <= 1.0e-3f && error.mixed_error == 0.0f;
+        };
+
+        const bool initial_pass = matches_cpu(input, steering);
+        input.values[17] += Complex(0.125f, -0.0625f);
+        const bool input_mutation_pass = matches_cpu(input, steering);
+        const bool cache_hit_pass = matches_cpu(input, steering);
+        steering.values[2] += Complex(-0.03125f, 0.046875f);
+        const bool steering_mutation_pass = matches_cpu(input, steering);
+        const ZxGpuComplexArray device_input = ZxGpuComplexArray::from_host(input);
+        const ZxGpuComplexArray device_steering = ZxGpuComplexArray::from_host(steering);
+        const bool device_input_pass = matches_cpu(device_input, device_steering);
+        const bool host_after_device_pass = matches_cpu(input, steering);
+        const bool pass = initial_pass && input_mutation_pass && cache_hit_pass &&
+                          steering_mutation_pass && device_input_pass && host_after_device_pass;
+        std::cout << "[radartools] mvdr_host_input_cache_contract="
+                  << (pass ? "PASS" : "FAIL") << '\n';
+        return pass;
+    }
 } // namespace
 
 int run_pulse_compression_tests(int argc, char **argv)
 {
     try
     {
-        return run_radartools_operator_tests("pulse_compression", argc, argv);
+        const int result = run_radartools_operator_tests("pulse_compression", argc, argv);
+        if (result != 0)
+        {
+            return result;
+        }
+        return verify_pulse_host_input_cache_contract() ? 0 : 1;
     }
     catch (const std::exception &error)
     {
@@ -2306,7 +2395,12 @@ int run_mvdr_tests(int argc, char **argv)
 {
     try
     {
-        return run_radartools_operator_tests("mvdr", argc, argv);
+        const int result = run_radartools_operator_tests("mvdr", argc, argv);
+        if (result != 0)
+        {
+            return result;
+        }
+        return verify_mvdr_host_input_cache_contract() ? 0 : 1;
     }
     catch (const std::exception &error)
     {

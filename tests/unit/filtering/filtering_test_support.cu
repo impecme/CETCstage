@@ -3,9 +3,13 @@
 #include <cuda_runtime.h>
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
+#include <cstdint>
+#include <cstdlib>
 #include <ctime>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <functional>
@@ -34,6 +38,17 @@ namespace cusignal
     {
         namespace filtering_test_hooks
         {
+            int consume_last_firfilter2_path();
+            void set_firfilter2_path_override(int path);
+            void set_channelize_poly_path_override(int path);
+            bool resample_auto_uses_windowed_pack(
+                const cusignal::core::Shape &shape,
+                int output_size,
+                int axis,
+                const cusignal::core::ZxGpuWindowSpec &window,
+                const std::string &domain);
+            int consume_last_resample_path();
+            void set_resample_path_override(int path);
             float consume_last_kernel_ms();
         }
     } // namespace zx_gpu_backend
@@ -43,6 +58,23 @@ namespace
 {
     namespace filtering_api = cusignal::filtering_api;
     constexpr float kPi = 3.14159265358979323846f;
+    constexpr int kChannelizePathAuto = -1;
+    constexpr int kChannelizePathGeneric = 0;
+    constexpr int kChannelizePathPoint = 1;
+    constexpr float kChannelizeSweepMinGain = 0.005f;
+    constexpr int kFirfilter2PathAuto = -1;
+    constexpr int kFirfilter2PathGeneric = 0;
+    constexpr int kFirfilter2PathDirect = 1;
+    constexpr std::size_t kFirfilter2DirectTaps = 31;
+    constexpr std::size_t kFirfilter2DirectMinAxisSize = 65536;
+    constexpr float kFirfilter2SweepMinGain = 0.005f;
+    constexpr int kResamplePathAuto = -1;
+    constexpr int kResamplePathGeneric = 0;
+    constexpr int kResamplePathFused = 1;
+    constexpr int kResamplePathWindowedPack = 2;
+    constexpr std::size_t kResampleFusedInputSize = 1048576;
+    constexpr int kResampleFusedOutputSize = 1572864;
+    constexpr float kResampleSweepMinGain = 0.005f;
     using cusignal::core::Complex;
     using cusignal::core::ComplexArray;
     using cusignal::core::ComplexSignal;
@@ -1363,6 +1395,1306 @@ namespace
         return summarize_timings(durations);
     }
 
+    class ChannelizePathOverrideReset
+    {
+    public:
+        ~ChannelizePathOverrideReset()
+        {
+            cusignal::zx_gpu_backend::filtering_test_hooks::set_channelize_poly_path_override(
+                kChannelizePathAuto);
+        }
+    };
+
+    class Firfilter2PathOverrideReset
+    {
+    public:
+        ~Firfilter2PathOverrideReset()
+        {
+            cusignal::zx_gpu_backend::filtering_test_hooks::set_firfilter2_path_override(
+                kFirfilter2PathAuto);
+        }
+    };
+
+    class ResamplePathOverrideReset
+    {
+    public:
+        ~ResamplePathOverrideReset()
+        {
+            cusignal::zx_gpu_backend::filtering_test_hooks::set_resample_path_override(
+                kResamplePathAuto);
+        }
+    };
+
+    ComplexSignal make_channelize_probe_input(std::size_t count)
+    {
+        ComplexSignal input(count);
+        for (std::size_t index = 0; index < count; ++index)
+        {
+            const int real_code = static_cast<int>((index * 17 + 3) % 257) - 128;
+            const int imag_code = static_cast<int>((index * 29 + 11) % 251) - 125;
+            input[index] = Complex(
+                std::ldexp(static_cast<float>(real_code), -9),
+                std::ldexp(static_cast<float>(imag_code), -10));
+        }
+        return input;
+    }
+
+    RealSignal make_channelize_probe_taps(std::size_t count)
+    {
+        RealSignal taps(count);
+        for (std::size_t index = 0; index < count; ++index)
+        {
+            const int code = static_cast<int>((index * 19 + 5) % 101) - 50;
+            taps[index] = std::ldexp(static_cast<float>(code), -11);
+        }
+        return taps;
+    }
+
+    ComplexArray run_channelize_probe_path(
+        const ZxGpuComplexSignal &input,
+        const ZxGpuRealSignal &taps,
+        int n_chans,
+        int path)
+    {
+        cusignal::zx_gpu_backend::filtering_test_hooks::set_channelize_poly_path_override(path);
+        const auto result = cusignal::zx_gpu_backend::filtering::channelize_poly(
+            input,
+            taps,
+            n_chans);
+        cusignal::core::throw_on_zx_gpu_error(
+            cudaDeviceSynchronize(),
+            "cudaDeviceSynchronize channelize device A/B");
+        return result.channels.get();
+    }
+
+    bool bitwise_equal_complex_arrays(
+        const ComplexArray &lhs,
+        const ComplexArray &rhs,
+        std::size_t *first_mismatch)
+    {
+        if (lhs.shape != rhs.shape || lhs.values.size() != rhs.values.size())
+        {
+            *first_mismatch = 0;
+            return false;
+        }
+        for (std::size_t index = 0; index < lhs.values.size(); ++index)
+        {
+            std::uint32_t lhs_real = 0;
+            std::uint32_t lhs_imag = 0;
+            std::uint32_t rhs_real = 0;
+            std::uint32_t rhs_imag = 0;
+            const float lhs_real_value = lhs.values[index].real();
+            const float lhs_imag_value = lhs.values[index].imag();
+            const float rhs_real_value = rhs.values[index].real();
+            const float rhs_imag_value = rhs.values[index].imag();
+            static_assert(sizeof(lhs_real) == sizeof(lhs_real_value), "float32 bit width");
+            std::memcpy(&lhs_real, &lhs_real_value, sizeof(lhs_real));
+            std::memcpy(&lhs_imag, &lhs_imag_value, sizeof(lhs_imag));
+            std::memcpy(&rhs_real, &rhs_real_value, sizeof(rhs_real));
+            std::memcpy(&rhs_imag, &rhs_imag_value, sizeof(rhs_imag));
+            if (lhs_real != rhs_real || lhs_imag != rhs_imag)
+            {
+                *first_mismatch = index;
+                return false;
+            }
+        }
+        return true;
+    }
+
+    struct ChannelizeSweepBatch
+    {
+        std::size_t points = 0;
+        int batch = 0;
+        float generic_e2e_ms = 0.0;
+        float point_e2e_ms = 0.0;
+        float generic_kernel_ms = 0.0;
+        float point_kernel_ms = 0.0;
+        bool dual_gain = false;
+    };
+
+    struct ChannelizePathTimings
+    {
+        TimingStats e2e;
+        TimingStats kernel;
+    };
+
+    ChannelizePathTimings benchmark_channelize_probe_path(
+        const ZxGpuComplexSignal &input,
+        const ZxGpuRealSignal &taps,
+        int path,
+        const CliOptions &options)
+    {
+        cusignal::zx_gpu_backend::filtering_test_hooks::set_channelize_poly_path_override(path);
+        ChannelizePathTimings timings;
+        timings.e2e = benchmark_host_latency(options, [&]() {
+            const auto result = cusignal::zx_gpu_backend::filtering::channelize_poly(input, taps, 8);
+            (void)result;
+            cusignal::core::throw_on_zx_gpu_error(
+                cudaDeviceSynchronize(),
+                "cudaDeviceSynchronize channelize threshold e2e");
+        });
+        timings.kernel = benchmark_gpu_kernel_latency(options, [&]() {
+            (void)cusignal::zx_gpu_backend::filtering::channelize_poly(input, taps, 8);
+        });
+        return timings;
+    }
+
+    int run_channelize_device_ab_probe()
+    {
+        ChannelizePathOverrideReset reset;
+        std::ofstream report;
+        const char *report_path = std::getenv("CUSIGNAL_CHANNELIZE_DEVICE_AB_REPORT");
+        if (report_path != nullptr && report_path[0] != '\0')
+        {
+            report.open(report_path);
+            if (!report)
+            {
+                throw std::runtime_error("failed to open channelize device A/B report");
+            }
+        }
+
+        std::size_t checked_cases = 0;
+        std::size_t checked_outputs = 0;
+        const auto check_case = [&](int n_chans,
+                                    std::size_t points,
+                                    std::size_t remainder,
+                                    std::size_t tap_count) {
+            const ComplexSignal host_input =
+                make_channelize_probe_input(points * static_cast<std::size_t>(n_chans) + remainder);
+            const RealSignal host_taps = make_channelize_probe_taps(tap_count);
+            const ZxGpuComplexSignal input = ZxGpuComplexSignal::from_host(host_input);
+            const ZxGpuRealSignal taps = ZxGpuRealSignal::from_host(host_taps);
+            const ComplexArray generic = run_channelize_probe_path(
+                input, taps, n_chans, kChannelizePathGeneric);
+            const ComplexArray point = run_channelize_probe_path(
+                input, taps, n_chans, kChannelizePathPoint);
+            const ComplexArray automatic = run_channelize_probe_path(
+                input, taps, n_chans, kChannelizePathAuto);
+
+            std::size_t first_mismatch = 0;
+            if (!bitwise_equal_complex_arrays(generic, point, &first_mismatch))
+            {
+                std::ostringstream message;
+                message << "generic/point mismatch: channels=" << n_chans
+                        << " points=" << points << " remainder=" << remainder
+                        << " taps=" << tap_count << " index=" << first_mismatch;
+                throw std::runtime_error(message.str());
+            }
+            const ComplexArray &expected_auto =
+                n_chans == 8 && points >= 256 ? point : generic;
+            if (!bitwise_equal_complex_arrays(automatic, expected_auto, &first_mismatch))
+            {
+                std::ostringstream message;
+                message << "automatic path mismatch: channels=" << n_chans
+                        << " points=" << points << " remainder=" << remainder
+                        << " taps=" << tap_count << " index=" << first_mismatch;
+                throw std::runtime_error(message.str());
+            }
+            ++checked_cases;
+            checked_outputs += generic.values.size();
+        };
+
+        const std::array<std::size_t, 5> tap_counts = {1, 8, 97, 104, 105};
+        for (const std::size_t points : {std::size_t{255}, std::size_t{256}, std::size_t{257}})
+        {
+            for (std::size_t remainder = 0; remainder < 8; ++remainder)
+            {
+                for (const std::size_t tap_count : tap_counts)
+                {
+                    check_case(8, points, remainder, tap_count);
+                }
+            }
+        }
+        for (const std::size_t points : {
+                 std::size_t{512}, std::size_t{1024}, std::size_t{4096},
+                 std::size_t{16384}, std::size_t{131072}})
+        {
+            check_case(8, points, points % 8, 97);
+        }
+        check_case(4, 257, 3, 97);
+
+        const bool correctness_only =
+            std::getenv("CUSIGNAL_CHANNELIZE_DEVICE_AB_CORRECTNESS_ONLY") != nullptr;
+        if (correctness_only)
+        {
+            if (report)
+            {
+                report << "summary\tpass\tchecked_cases\t" << checked_cases
+                       << "\tchecked_complex_outputs\t" << checked_outputs
+                       << "\tthreshold\tnot_run\n";
+            }
+            std::cout << "[channelize-device-ab] PASS checked_cases=" << checked_cases
+                      << " checked_complex_outputs=" << checked_outputs
+                      << " threshold=not_run\n";
+            return 0;
+        }
+
+        const std::array<std::size_t, 8> sweep_points = {
+            255, 256, 257, 512, 1024, 4096, 16384, 131072};
+        std::vector<ChannelizeSweepBatch> sweep;
+        CliOptions timing_options;
+        timing_options.warmup = 2;
+        timing_options.repeat = 10;
+        for (const std::size_t points : sweep_points)
+        {
+            const ZxGpuComplexSignal input = ZxGpuComplexSignal::from_host(
+                make_channelize_probe_input(points * 8));
+            const ZxGpuRealSignal taps = ZxGpuRealSignal::from_host(
+                make_channelize_probe_taps(97));
+            for (int batch = 1; batch <= 5; ++batch)
+            {
+                ChannelizePathTimings generic;
+                ChannelizePathTimings point;
+                if (batch % 2 == 1)
+                {
+                    generic = benchmark_channelize_probe_path(
+                        input, taps, kChannelizePathGeneric, timing_options);
+                    point = benchmark_channelize_probe_path(
+                        input, taps, kChannelizePathPoint, timing_options);
+                }
+                else
+                {
+                    point = benchmark_channelize_probe_path(
+                        input, taps, kChannelizePathPoint, timing_options);
+                    generic = benchmark_channelize_probe_path(
+                        input, taps, kChannelizePathGeneric, timing_options);
+                }
+                sweep.push_back(ChannelizeSweepBatch{
+                    points,
+                    batch,
+                    generic.e2e.median_ms,
+                    point.e2e.median_ms,
+                    generic.kernel.median_ms,
+                    point.kernel.median_ms,
+                    point.e2e.median_ms <=
+                            generic.e2e.median_ms * (1.0f - kChannelizeSweepMinGain) &&
+                        point.kernel.median_ms <=
+                            generic.kernel.median_ms * (1.0f - kChannelizeSweepMinGain)});
+            }
+        }
+
+        std::map<std::size_t, int> gain_batches;
+        for (const ChannelizeSweepBatch &row : sweep)
+        {
+            if (row.dual_gain)
+            {
+                ++gain_batches[row.points];
+            }
+        }
+        std::size_t crossover = 0;
+        for (std::size_t index = 1; index + 1 < sweep_points.size(); ++index)
+        {
+            const std::size_t points = sweep_points[index];
+            const std::size_t next_points = sweep_points[index + 1];
+            if (points >= 256 && gain_batches[points] >= 4 && gain_batches[next_points] >= 4)
+            {
+                crossover = points;
+                break;
+            }
+        }
+        bool all_routed_sizes_ok = true;
+        for (const std::size_t points : sweep_points)
+        {
+            if (points >= 256 && gain_batches[points] < 4)
+            {
+                all_routed_sizes_ok = false;
+            }
+        }
+        const bool threshold_ok = crossover == 256 && all_routed_sizes_ok;
+
+        if (report)
+        {
+            report << "points\tbatch\tgeneric_e2e_ms\tpoint_e2e_ms\t"
+                      "generic_kernel_ms\tpoint_kernel_ms\tdual_gain\n";
+            for (const ChannelizeSweepBatch &row : sweep)
+            {
+                report << row.points << '\t' << row.batch << '\t'
+                       << row.generic_e2e_ms << '\t' << row.point_e2e_ms << '\t'
+                       << row.generic_kernel_ms << '\t' << row.point_kernel_ms << '\t'
+                       << (row.dual_gain ? "true" : "false") << '\n';
+            }
+            report << "summary\t" << (threshold_ok ? "pass" : "fail")
+                   << "\tchecked_cases\t" << checked_cases
+                   << "\tchecked_complex_outputs\t" << checked_outputs
+                   << "\tcrossover\t" << crossover
+                   << "\tall_routed_sizes_ok\t" << (all_routed_sizes_ok ? "true" : "false")
+                   << "\tmin_gain\t" << kChannelizeSweepMinGain << '\n';
+        }
+        std::cout << "[channelize-device-ab] " << (threshold_ok ? "PASS" : "FAIL")
+                  << " checked_cases=" << checked_cases
+                  << " checked_complex_outputs=" << checked_outputs
+                  << " crossover=" << crossover << '\n';
+        return threshold_ok ? 0 : 1;
+    }
+
+    RealSignal make_firfilter2_probe_taps(std::size_t count)
+    {
+        RealSignal taps(count);
+        for (std::size_t index = 0; index < count; ++index)
+        {
+            const int code = static_cast<int>((index * 23 + 7) % 67) - 33;
+            taps[index] = std::ldexp(static_cast<float>(code), -10);
+        }
+        return taps;
+    }
+
+    RealArray run_firfilter2_probe_path(
+        const ZxGpuRealSignal &taps,
+        const ZxGpuRealArray &input,
+        int axis,
+        const std::string &padtype,
+        int padlen,
+        int path,
+        int *observed_path)
+    {
+        cusignal::zx_gpu_backend::filtering_test_hooks::set_firfilter2_path_override(path);
+        const ZxGpuRealArray result = cusignal::zx_gpu_backend::filtering::firfilter2(
+            taps, input, axis, padtype, padlen, "pad", -1);
+        cusignal::core::throw_on_zx_gpu_error(
+            cudaDeviceSynchronize(),
+            "cudaDeviceSynchronize firfilter2 device A/B");
+        *observed_path =
+            cusignal::zx_gpu_backend::filtering_test_hooks::consume_last_firfilter2_path();
+        return result.get();
+    }
+
+    bool bitwise_equal_real_arrays(
+        const RealArray &lhs,
+        const RealArray &rhs,
+        std::size_t *first_mismatch)
+    {
+        if (lhs.shape != rhs.shape || lhs.values.size() != rhs.values.size())
+        {
+            *first_mismatch = 0;
+            return false;
+        }
+        for (std::size_t index = 0; index < lhs.values.size(); ++index)
+        {
+            std::uint32_t lhs_bits = 0;
+            std::uint32_t rhs_bits = 0;
+            static_assert(sizeof(lhs_bits) == sizeof(lhs.values[index]), "float32 bit width");
+            std::memcpy(&lhs_bits, &lhs.values[index], sizeof(lhs_bits));
+            std::memcpy(&rhs_bits, &rhs.values[index], sizeof(rhs_bits));
+            if (lhs_bits != rhs_bits)
+            {
+                *first_mismatch = index;
+                return false;
+            }
+        }
+        return true;
+    }
+
+    bool firfilter2_auto_uses_direct(const Shape &shape, int axis, std::size_t tap_count)
+    {
+        const int normalized_axis = axis < 0 ? axis + static_cast<int>(shape.size()) : axis;
+        std::size_t axis_stride = 1;
+        for (std::size_t dimension = static_cast<std::size_t>(normalized_axis) + 1;
+             dimension < shape.size();
+             ++dimension)
+        {
+            axis_stride *= shape[dimension];
+        }
+        const std::size_t axis_size = shape[static_cast<std::size_t>(normalized_axis)];
+        const std::size_t line_count = shape_size(shape) / axis_size;
+        return tap_count == kFirfilter2DirectTaps &&
+               line_count == 1 &&
+               axis_stride == 1 &&
+               axis_size >= kFirfilter2DirectMinAxisSize;
+    }
+
+    struct Firfilter2PathTimings
+    {
+        TimingStats e2e;
+        TimingStats kernel;
+    };
+
+    Firfilter2PathTimings benchmark_firfilter2_probe_path(
+        const ZxGpuRealSignal &taps,
+        const ZxGpuRealArray &input,
+        int path,
+        const CliOptions &options)
+    {
+        cusignal::zx_gpu_backend::filtering_test_hooks::set_firfilter2_path_override(path);
+        Firfilter2PathTimings timings;
+        timings.e2e = benchmark_host_latency(options, [&]() {
+            const auto result = cusignal::zx_gpu_backend::filtering::firfilter2(
+                taps, input, 0, "odd", -1, "pad", -1);
+            (void)result;
+            cusignal::core::throw_on_zx_gpu_error(
+                cudaDeviceSynchronize(),
+                "cudaDeviceSynchronize firfilter2 threshold e2e");
+        });
+        timings.kernel = benchmark_gpu_kernel_latency(options, [&]() {
+            (void)cusignal::zx_gpu_backend::filtering::firfilter2(
+                taps, input, 0, "odd", -1, "pad", -1);
+        });
+        return timings;
+    }
+
+    struct Firfilter2SweepBatch
+    {
+        std::size_t axis_size = 0;
+        int batch = 0;
+        float generic_e2e_ms = 0.0f;
+        float direct_e2e_ms = 0.0f;
+        float generic_kernel_ms = 0.0f;
+        float direct_kernel_ms = 0.0f;
+        bool dual_gain = false;
+    };
+
+    int run_firfilter2_device_ab_probe()
+    {
+        Firfilter2PathOverrideReset reset;
+        std::ofstream report;
+        std::ofstream route_report;
+        std::ofstream summary_report;
+        const char *report_path = std::getenv("CUSIGNAL_FIRFILTER2_DEVICE_AB_REPORT");
+        if (report_path != nullptr && report_path[0] != '\0')
+        {
+            report.open(report_path);
+            route_report.open(std::string(report_path) + ".routes.tsv");
+            summary_report.open(std::string(report_path) + ".summary.tsv");
+            if (!report || !route_report || !summary_report)
+            {
+                throw std::runtime_error("failed to open firfilter2 device A/B report");
+            }
+            route_report << "case\tshape\taxis\ttaps\tpadtype\tpadlen\t"
+                            "observed_path\texpected_path\n";
+            summary_report << "checked_cases\tchecked_float_outputs\tconfigured_threshold\t"
+                              "observed_crossover\troute_threshold_pass\t"
+                              "all_routed_sizes_gain_pass\tsweep_min_gain\twarmup\trepeat\t"
+                              "batches\tprobe_pass\n";
+        }
+
+        struct CorrectnessCase
+        {
+            Shape shape;
+            int axis;
+            std::size_t tap_count;
+            std::string padtype;
+            int padlen;
+        };
+        const std::vector<CorrectnessCase> cases = {
+            {Shape{1024}, 0, 1, "none", -1},
+            {Shape{1024}, 0, 2, "odd", -1},
+            {Shape{1024}, 0, 3, "even", 5},
+            {Shape{1024}, 0, 31, "constant", -1},
+            {Shape{1024}, 0, 256, "odd", -1},
+            {Shape{3, 257}, 1, 31, "odd", -1},
+            {Shape{257, 4}, 0, 31, "even", 17},
+            {Shape{2, 257, 3}, 1, 31, "constant", -1},
+            {Shape{65535}, 0, 31, "odd", -1},
+            {Shape{65536}, 0, 31, "odd", -1},
+            {Shape{1, 65536}, -1, 31, "odd", 0},
+            {Shape{65537}, 0, 31, "odd", -1},
+            {Shape{1048576}, 0, 31, "odd", -1},
+        };
+
+        std::size_t checked_cases = 0;
+        std::size_t checked_outputs = 0;
+        std::size_t observed_crossover = 0;
+        for (const CorrectnessCase &test_case : cases)
+        {
+            const ZxGpuRealArray input = ZxGpuRealArray::from_host(
+                make_generated_real_array(test_case.shape, 0.75f, 0.1f));
+            const ZxGpuRealSignal taps = ZxGpuRealSignal::from_host(
+                make_firfilter2_probe_taps(test_case.tap_count));
+            int generic_path = kFirfilter2PathAuto;
+            int direct_path = kFirfilter2PathAuto;
+            int automatic_path = kFirfilter2PathAuto;
+            const RealArray generic = run_firfilter2_probe_path(
+                taps,
+                input,
+                test_case.axis,
+                test_case.padtype,
+                test_case.padlen,
+                kFirfilter2PathGeneric,
+                &generic_path);
+            const RealArray direct = run_firfilter2_probe_path(
+                taps,
+                input,
+                test_case.axis,
+                test_case.padtype,
+                test_case.padlen,
+                kFirfilter2PathDirect,
+                &direct_path);
+            const RealArray automatic = run_firfilter2_probe_path(
+                taps,
+                input,
+                test_case.axis,
+                test_case.padtype,
+                test_case.padlen,
+                kFirfilter2PathAuto,
+                &automatic_path);
+
+            const int expected_automatic_path =
+                firfilter2_auto_uses_direct(test_case.shape, test_case.axis, test_case.tap_count)
+                    ? kFirfilter2PathDirect
+                    : kFirfilter2PathGeneric;
+            if (generic_path != kFirfilter2PathGeneric ||
+                direct_path != kFirfilter2PathDirect ||
+                automatic_path != expected_automatic_path)
+            {
+                std::ostringstream message;
+                message << "path selection mismatch: generic=" << generic_path
+                        << " direct=" << direct_path
+                        << " automatic=" << automatic_path
+                        << " expected_auto=" << expected_automatic_path;
+                throw std::runtime_error(message.str());
+            }
+            const int normalized_axis =
+                test_case.axis < 0
+                    ? test_case.axis + static_cast<int>(test_case.shape.size())
+                    : test_case.axis;
+            const std::size_t axis_size =
+                test_case.shape[static_cast<std::size_t>(normalized_axis)];
+            if (automatic_path == kFirfilter2PathDirect &&
+                (observed_crossover == 0 || axis_size < observed_crossover))
+            {
+                observed_crossover = axis_size;
+            }
+            if (route_report)
+            {
+                std::ostringstream shape_text;
+                for (std::size_t index = 0; index < test_case.shape.size(); ++index)
+                {
+                    if (index != 0)
+                    {
+                        shape_text << 'x';
+                    }
+                    shape_text << test_case.shape[index];
+                }
+                route_report << checked_cases + 1 << '\t' << shape_text.str() << '\t'
+                             << test_case.axis << '\t' << test_case.tap_count << '\t'
+                             << test_case.padtype << '\t' << test_case.padlen << '\t'
+                             << automatic_path << '\t' << expected_automatic_path << '\n';
+            }
+
+            std::size_t first_mismatch = 0;
+            if (!bitwise_equal_real_arrays(generic, direct, &first_mismatch))
+            {
+                std::ostringstream message;
+                message << "generic/direct mismatch: shape=";
+                for (const std::size_t dimension : test_case.shape)
+                {
+                    message << dimension << 'x';
+                }
+                message << " axis=" << test_case.axis
+                        << " taps=" << test_case.tap_count
+                        << " padtype=" << test_case.padtype
+                        << " padlen=" << test_case.padlen
+                        << " index=" << first_mismatch;
+                throw std::runtime_error(message.str());
+            }
+            const RealArray &expected_auto =
+                expected_automatic_path == kFirfilter2PathDirect ? direct : generic;
+            if (!bitwise_equal_real_arrays(automatic, expected_auto, &first_mismatch))
+            {
+                std::ostringstream message;
+                message << "automatic path mismatch: axis=" << test_case.axis
+                        << " taps=" << test_case.tap_count
+                        << " index=" << first_mismatch;
+                throw std::runtime_error(message.str());
+            }
+            ++checked_cases;
+            checked_outputs += generic.values.size();
+        }
+        const bool route_threshold_ok =
+            observed_crossover == kFirfilter2DirectMinAxisSize;
+
+        const bool correctness_only =
+            std::getenv("CUSIGNAL_FIRFILTER2_DEVICE_AB_CORRECTNESS_ONLY") != nullptr;
+        if (correctness_only)
+        {
+            if (summary_report)
+            {
+                summary_report << checked_cases << '\t' << checked_outputs << '\t'
+                               << kFirfilter2DirectMinAxisSize << '\t'
+                               << observed_crossover << '\t'
+                               << (route_threshold_ok ? "true" : "false")
+                               << "\tnot_run\t" << kFirfilter2SweepMinGain
+                               << "\t0\t0\t0\t"
+                               << (route_threshold_ok ? "true" : "false") << '\n';
+            }
+            std::cout << "[firfilter2-device-ab] "
+                      << (route_threshold_ok ? "PASS" : "FAIL")
+                      << " checked_cases=" << checked_cases
+                      << " checked_float_outputs=" << checked_outputs
+                      << " observed_crossover=" << observed_crossover
+                      << " sweep=not_run\n";
+            return route_threshold_ok ? 0 : 1;
+        }
+
+        const std::array<std::size_t, 5> sweep_sizes = {
+            65535, 65536, 65537, 262144, 1048576};
+        std::vector<Firfilter2SweepBatch> sweep;
+        CliOptions timing_options;
+        timing_options.warmup = 2;
+        timing_options.repeat = 10;
+        const ZxGpuRealSignal taps = ZxGpuRealSignal::from_host(
+            make_firfilter2_probe_taps(kFirfilter2DirectTaps));
+        for (const std::size_t axis_size : sweep_sizes)
+        {
+            const ZxGpuRealArray input = ZxGpuRealArray::from_host(
+                make_generated_real_array(Shape{axis_size}, 0.75f, 0.1f));
+            for (int batch = 1; batch <= 5; ++batch)
+            {
+                Firfilter2PathTimings generic;
+                Firfilter2PathTimings direct;
+                if (batch % 2 == 1)
+                {
+                    generic = benchmark_firfilter2_probe_path(
+                        taps, input, kFirfilter2PathGeneric, timing_options);
+                    direct = benchmark_firfilter2_probe_path(
+                        taps, input, kFirfilter2PathDirect, timing_options);
+                }
+                else
+                {
+                    direct = benchmark_firfilter2_probe_path(
+                        taps, input, kFirfilter2PathDirect, timing_options);
+                    generic = benchmark_firfilter2_probe_path(
+                        taps, input, kFirfilter2PathGeneric, timing_options);
+                }
+                sweep.push_back(Firfilter2SweepBatch{
+                    axis_size,
+                    batch,
+                    generic.e2e.median_ms,
+                    direct.e2e.median_ms,
+                    generic.kernel.median_ms,
+                    direct.kernel.median_ms,
+                    direct.e2e.median_ms <=
+                            generic.e2e.median_ms * (1.0f - kFirfilter2SweepMinGain) &&
+                        direct.kernel.median_ms <=
+                            generic.kernel.median_ms * (1.0f - kFirfilter2SweepMinGain)});
+            }
+        }
+
+        std::map<std::size_t, int> gain_batches;
+        for (const Firfilter2SweepBatch &row : sweep)
+        {
+            if (row.dual_gain)
+            {
+                ++gain_batches[row.axis_size];
+            }
+        }
+        bool all_routed_sizes_ok = true;
+        for (const std::size_t axis_size : sweep_sizes)
+        {
+            if (axis_size >= kFirfilter2DirectMinAxisSize && gain_batches[axis_size] < 4)
+            {
+                all_routed_sizes_ok = false;
+            }
+        }
+        const bool sweep_gain_ok = gain_batches[kFirfilter2DirectMinAxisSize] >= 4 &&
+                                   gain_batches[kFirfilter2DirectMinAxisSize + 1] >= 4 &&
+                                   all_routed_sizes_ok;
+        const bool probe_ok = route_threshold_ok && sweep_gain_ok;
+
+        if (report)
+        {
+            report << "axis_size\tbatch\tgeneric_e2e_ms\tdirect_e2e_ms\t"
+                      "generic_kernel_ms\tdirect_kernel_ms\tdual_gain\n";
+            for (const Firfilter2SweepBatch &row : sweep)
+            {
+                report << row.axis_size << '\t' << row.batch << '\t'
+                       << row.generic_e2e_ms << '\t' << row.direct_e2e_ms << '\t'
+                       << row.generic_kernel_ms << '\t' << row.direct_kernel_ms << '\t'
+                       << (row.dual_gain ? "true" : "false") << '\n';
+            }
+        }
+        if (summary_report)
+        {
+            summary_report << checked_cases << '\t' << checked_outputs << '\t'
+                           << kFirfilter2DirectMinAxisSize << '\t'
+                           << observed_crossover << '\t'
+                           << (route_threshold_ok ? "true" : "false") << '\t'
+                           << (all_routed_sizes_ok ? "true" : "false") << '\t'
+                           << kFirfilter2SweepMinGain << '\t'
+                           << timing_options.warmup << '\t' << timing_options.repeat
+                           << "\t5\t" << (probe_ok ? "true" : "false") << '\n';
+        }
+        std::cout << "[firfilter2-device-ab] " << (probe_ok ? "PASS" : "FAIL")
+                  << " checked_cases=" << checked_cases
+                  << " checked_float_outputs=" << checked_outputs
+                  << " configured_threshold=" << kFirfilter2DirectMinAxisSize
+                  << " observed_crossover=" << observed_crossover
+                  << " sweep_gain=" << (sweep_gain_ok ? "pass" : "fail") << '\n';
+        return probe_ok ? 0 : 1;
+    }
+
+    RealSignal make_resample_probe_window(std::size_t size)
+    {
+        RealSignal window(size);
+        for (std::size_t index = 0; index < size; ++index)
+        {
+            const int code = static_cast<int>((index * 37 + 11) % 127) - 63;
+            window[index] = static_cast<float>(code) * (1.0f / 256.0f);
+        }
+        return window;
+    }
+
+    RealArray run_resample_probe_path(
+        const ZxGpuRealArray &input,
+        int output_size,
+        int axis,
+        const ZxGpuWindowSpec &window,
+        const std::string &domain,
+        int path,
+        int *observed_path,
+        std::size_t trace_case = 0,
+        const char *trace_path = nullptr)
+    {
+        const bool trace = trace_case != 0 && trace_path != nullptr;
+        const auto trace_stage = [&](const char *stage) {
+            if (trace)
+            {
+                std::cerr << "[resample-device-ab-trace] case=" << trace_case
+                          << " path=" << trace_path << " stage=" << stage << std::endl;
+            }
+        };
+        trace_stage("before_call");
+        cusignal::zx_gpu_backend::filtering_test_hooks::set_resample_path_override(path);
+        const ZxGpuRealArray result = cusignal::zx_gpu_backend::filtering::resample(
+            input, output_size, axis, window, domain);
+        trace_stage("after_resample");
+        cusignal::core::throw_on_zx_gpu_error(
+            cudaDeviceSynchronize(),
+            "cudaDeviceSynchronize resample device A/B");
+        trace_stage("after_device_sync");
+        *observed_path =
+            cusignal::zx_gpu_backend::filtering_test_hooks::consume_last_resample_path();
+        const RealArray host_result = result.get();
+        trace_stage("after_get");
+        return host_result;
+    }
+
+    struct ResamplePathTimings
+    {
+        TimingStats e2e;
+        TimingStats kernel;
+    };
+
+    ResamplePathTimings benchmark_resample_probe_path(
+        const ZxGpuRealArray &input,
+        int output_size,
+        int path,
+        const CliOptions &options)
+    {
+        cusignal::zx_gpu_backend::filtering_test_hooks::set_resample_path_override(path);
+        ResamplePathTimings timings;
+        timings.e2e = benchmark_host_latency(options, [&]() {
+            const auto result = cusignal::zx_gpu_backend::filtering::resample(
+                input, output_size, 0, std::string("hann"), "time");
+            (void)result;
+            cusignal::core::throw_on_zx_gpu_error(
+                cudaDeviceSynchronize(),
+                "cudaDeviceSynchronize resample threshold e2e");
+        });
+        if (cusignal::zx_gpu_backend::filtering_test_hooks::consume_last_resample_path() != path)
+        {
+            throw std::runtime_error("resample E2E benchmark path mismatch");
+        }
+        timings.kernel = benchmark_gpu_kernel_latency(options, [&]() {
+            (void)cusignal::zx_gpu_backend::filtering::resample(
+                input, output_size, 0, std::string("hann"), "time");
+        });
+        if (cusignal::zx_gpu_backend::filtering_test_hooks::consume_last_resample_path() != path)
+        {
+            throw std::runtime_error("resample kernel benchmark path mismatch");
+        }
+        return timings;
+    }
+
+    bool resample_auto_uses_windowed_pack(
+        const Shape &shape,
+        int output_size,
+        int axis,
+        const ZxGpuWindowSpec &window,
+        const std::string &domain)
+    {
+        return cusignal::zx_gpu_backend::filtering_test_hooks::
+            resample_auto_uses_windowed_pack(
+                shape, output_size, axis, window, domain);
+    }
+
+    struct ResampleAutoRouteCase
+    {
+        Shape shape;
+        int output_size;
+        int axis;
+        std::string window;
+        std::string domain;
+        bool expected;
+    };
+
+    const std::vector<ResampleAutoRouteCase> &resample_auto_route_cases()
+    {
+        static const std::vector<ResampleAutoRouteCase> cases = {
+            {Shape{1048576}, 1572864, 0, "hann", "time", true},
+            {Shape{1, 1048576}, 1572864, -1, "hann", "time", true},
+            {Shape{1048576}, 1572863, 0, "hann", "time", false},
+            {Shape{1048576}, 1572865, 0, "hann", "time", false},
+            {Shape{1048575}, 1572864, 0, "hann", "time", false},
+            {Shape{1048577}, 1572864, 0, "hann", "time", false},
+            {Shape{1048576}, 1572864, 0, "hann", "freq", false},
+            {Shape{1048576}, 1572864, 0, "hamming", "time", false},
+            {Shape{2, 1048576}, 1572864, 1, "hann", "time", false},
+            {Shape{1048576, 2}, 1572864, 0, "hann", "time", false},
+        };
+        return cases;
+    }
+
+    std::size_t validate_resample_auto_route_cases(std::ostream *route_report)
+    {
+        const auto &cases = resample_auto_route_cases();
+        for (std::size_t route_index = 0; route_index < cases.size(); ++route_index)
+        {
+            const ResampleAutoRouteCase &route_case = cases[route_index];
+            const bool observed = resample_auto_uses_windowed_pack(
+                route_case.shape,
+                route_case.output_size,
+                route_case.axis,
+                ZxGpuWindowSpec{route_case.window},
+                route_case.domain);
+            if (observed != route_case.expected)
+            {
+                std::ostringstream message;
+                message << "resample host auto-route mismatch: case=" << route_index + 1
+                        << " observed=" << observed
+                        << " expected=" << route_case.expected;
+                throw std::runtime_error(message.str());
+            }
+            if (route_report != nullptr)
+            {
+                std::ostringstream shape_text;
+                for (std::size_t index = 0; index < route_case.shape.size(); ++index)
+                {
+                    if (index != 0)
+                    {
+                        shape_text << 'x';
+                    }
+                    shape_text << route_case.shape[index];
+                }
+                *route_report << "auto_" << route_index + 1 << '\t' << shape_text.str() << '\t'
+                              << route_case.axis << '\t' << route_case.output_size << '\t'
+                              << route_case.window << '\t' << route_case.domain << '\t'
+                              << (observed ? kResamplePathWindowedPack : kResamplePathGeneric)
+                              << '\t'
+                              << (route_case.expected ? kResamplePathWindowedPack
+                                                      : kResamplePathGeneric)
+                              << '\n';
+            }
+        }
+        return cases.size();
+    }
+
+    int run_resample_auto_route_host_probe()
+    {
+        const std::size_t checked_cases = validate_resample_auto_route_cases(nullptr);
+        std::cout << "[resample-auto-route-host] PASS checked_cases=" << checked_cases
+                  << " device_arrays=0 resample_calls=0\n";
+        return 0;
+    }
+
+    struct ResampleSweepBatch
+    {
+        std::size_t input_size = 0;
+        std::size_t output_size = 0;
+        int batch = 0;
+        float pack_e2e_ms = 0.0f;
+        float windowed_e2e_ms = 0.0f;
+        float pack_kernel_ms = 0.0f;
+        float windowed_kernel_ms = 0.0f;
+        bool dual_gain = false;
+    };
+
+    int run_resample_device_ab_probe()
+    {
+        ResamplePathOverrideReset reset;
+        std::ofstream report;
+        std::ofstream route_report;
+        std::ofstream summary_report;
+        const char *report_path = std::getenv("CUSIGNAL_RESAMPLE_DEVICE_AB_REPORT");
+        if (report_path != nullptr && report_path[0] != '\0')
+        {
+            report.open(report_path);
+            route_report.open(std::string(report_path) + ".routes.tsv");
+            summary_report.open(std::string(report_path) + ".summary.tsv");
+            if (!report || !route_report || !summary_report)
+            {
+                throw std::runtime_error("failed to open resample device A/B report");
+            }
+            report << "input_size\toutput_size\tbatch\tpack_e2e_ms\twindowed_e2e_ms\t"
+                      "pack_kernel_ms\twindowed_kernel_ms\tdual_gain\n";
+            route_report << "case\tshape\taxis\toutput_size\twindow\tdomain\t"
+                            "observed_path\texpected_path\n";
+            summary_report << "checked_cases\tchecked_float_outputs\tinvalid_window_checks\t"
+                              "all_routes_pass\t"
+                              "main_size_gain_pass\tsweep_min_gain\twarmup\trepeat\t"
+                              "batches\tprobe_pass\n";
+        }
+
+        struct CorrectnessCase
+        {
+            Shape shape;
+            int output_size;
+            int axis;
+            std::string window;
+            std::string domain;
+        };
+        const std::vector<CorrectnessCase> cases = {
+            {Shape{1}, 2, 0, "", "time"},
+            {Shape{2}, 1, 0, "", "time"},
+            {Shape{2}, 3, 0, "hann", "time"},
+            {Shape{3}, 2, 0, "hann", "time"},
+            {Shape{7}, 7, 0, "", "time"},
+            {Shape{8}, 8, 0, "hann", "time"},
+            {Shape{7}, 11, 0, "hann", "time"},
+            {Shape{8}, 12, 0, "hann", "time"},
+            {Shape{11}, 7, 0, "hann", "time"},
+            {Shape{12}, 8, 0, "hann", "time"},
+            {Shape{9}, 13, 0, "explicit_host", "time"},
+            {Shape{8}, 12, 0, "explicit_host", "time"},
+            {Shape{12}, 8, 0, "explicit_host", "time"},
+            {Shape{8}, 12, 0, "explicit_device", "time"},
+            {Shape{12}, 8, 0, "explicit_device", "time"},
+            {Shape{8}, 12, 0, "hamming", "time"},
+            {Shape{3, 8}, 12, 1, "hann", "time"},
+            {Shape{8, 3}, 12, 0, "hann", "time"},
+            {Shape{2, 7, 3}, 11, 1, "hann", "time"},
+            {Shape{12}, 20, -1, "hann", "freq"},
+            {Shape{12}, 18, -1, "hann", "time"},
+            {Shape{1023}, 1535, 0, "hann", "time"},
+            {Shape{1024}, 1536, 0, "hann", "time"},
+            {Shape{1025}, 1537, 0, "hann", "time"},
+            {Shape{1048576}, 1572864, 0, "hann", "time"},
+            {Shape{1, 1048576}, 1572864, -1, "hann", "time"},
+            {Shape{1048576}, 1572864, 0, "hann", "freq"},
+            {Shape{1048576}, 1572864, 0, "hamming", "time"},
+            {Shape{2, 1048576}, 1572864, 1, "hann", "time"},
+            {Shape{1048576, 2}, 1572864, 0, "hann", "time"},
+            {Shape{1572864}, 1048576, 0, "hann", "time"},
+        };
+
+        const bool trace = std::getenv("CUSIGNAL_RESAMPLE_DEVICE_AB_TRACE") != nullptr;
+        std::size_t selected_case = 0;
+        if (const char *case_text = std::getenv("CUSIGNAL_RESAMPLE_DEVICE_AB_CASE");
+            case_text != nullptr && case_text[0] != '\0')
+        {
+            char *end = nullptr;
+            const unsigned long long parsed = std::strtoull(case_text, &end, 10);
+            if (end == case_text || *end != '\0' || parsed == 0 || parsed > cases.size())
+            {
+                throw std::invalid_argument(
+                    "CUSIGNAL_RESAMPLE_DEVICE_AB_CASE must select an existing one-based case");
+            }
+            selected_case = static_cast<std::size_t>(parsed);
+        }
+
+        std::size_t checked_cases = 0;
+        std::size_t checked_outputs = 0;
+        bool all_routes_pass = true;
+        const std::size_t auto_route_checks = validate_resample_auto_route_cases(
+            route_report ? static_cast<std::ostream *>(&route_report) : nullptr);
+        for (std::size_t case_index = 0; case_index < cases.size(); ++case_index)
+        {
+            const std::size_t case_number = case_index + 1;
+            if (selected_case != 0 && selected_case != case_number)
+            {
+                continue;
+            }
+            const CorrectnessCase &test_case = cases[case_index];
+            if (trace)
+            {
+                std::cerr << "[resample-device-ab-trace] case=" << case_number
+                          << " stage=case_begin" << std::endl;
+            }
+            const ZxGpuRealArray input = ZxGpuRealArray::from_host(
+                make_generated_real_array(test_case.shape, 0.95f, 0.0f));
+            const int normalized_axis =
+                test_case.axis < 0
+                    ? test_case.axis + static_cast<int>(test_case.shape.size())
+                    : test_case.axis;
+            ZxGpuWindowSpec window_spec = std::string(test_case.window);
+            std::optional<ZxGpuRealSignal> device_window;
+            if (test_case.window == "explicit_host")
+            {
+                window_spec = make_resample_probe_window(
+                    test_case.shape[static_cast<std::size_t>(normalized_axis)]);
+            }
+            else if (test_case.window == "explicit_device")
+            {
+                device_window.emplace(ZxGpuRealSignal::from_host(
+                    make_resample_probe_window(
+                        test_case.shape[static_cast<std::size_t>(normalized_axis)])));
+                window_spec = *device_window;
+            }
+            int generic_path = kResamplePathAuto;
+            int fused_path = kResamplePathAuto;
+            int windowed_path = kResamplePathAuto;
+            int automatic_path = kResamplePathAuto;
+            const auto run_traced_path = [&](int path, const char *path_name, int *observed_path) {
+                RealArray result = run_resample_probe_path(
+                    input,
+                    test_case.output_size,
+                    test_case.axis,
+                    window_spec,
+                    test_case.domain,
+                    path,
+                    observed_path,
+                    trace ? case_number : 0,
+                    trace ? path_name : nullptr);
+                if (trace)
+                {
+                    std::cerr << "[resample-device-ab-trace] case=" << case_number
+                              << " path=" << path_name << " stage=path_end observed="
+                              << *observed_path << std::endl;
+                }
+                return result;
+            };
+            const RealArray generic =
+                run_traced_path(kResamplePathGeneric, "generic", &generic_path);
+            const RealArray fused =
+                run_traced_path(kResamplePathFused, "pack", &fused_path);
+            const RealArray windowed = run_traced_path(
+                kResamplePathWindowedPack, "windowed_pack", &windowed_path);
+            const RealArray automatic =
+                run_traced_path(kResamplePathAuto, "auto", &automatic_path);
+            const int expected_automatic_path = resample_auto_uses_windowed_pack(
+                                                    test_case.shape,
+                                                    test_case.output_size,
+                                                    test_case.axis,
+                                                    window_spec,
+                                                    test_case.domain)
+                                                    ? kResamplePathWindowedPack
+                                                    : kResamplePathGeneric;
+            if (generic_path != kResamplePathGeneric ||
+                fused_path != kResamplePathFused ||
+                windowed_path != kResamplePathWindowedPack ||
+                automatic_path != expected_automatic_path)
+            {
+                std::ostringstream message;
+                message << "resample path selection mismatch: generic=" << generic_path
+                        << " fused=" << fused_path
+                        << " windowed=" << windowed_path
+                        << " automatic=" << automatic_path;
+                throw std::runtime_error(message.str());
+            }
+            all_routes_pass = all_routes_pass && automatic_path == expected_automatic_path;
+
+            std::size_t first_mismatch = 0;
+            if (!bitwise_equal_real_arrays(generic, fused, &first_mismatch))
+            {
+                std::ostringstream message;
+                message << "resample generic/fused mismatch: input_size="
+                        << test_case.shape[static_cast<std::size_t>(
+                               test_case.axis < 0
+                                   ? test_case.axis + static_cast<int>(test_case.shape.size())
+                                   : test_case.axis)]
+                        << " output_size=" << test_case.output_size
+                        << " axis=" << test_case.axis
+                        << " index=" << first_mismatch;
+                throw std::runtime_error(message.str());
+            }
+            if (!bitwise_equal_real_arrays(fused, windowed, &first_mismatch))
+            {
+                std::ostringstream message;
+                message << "resample pack/windowed-pack mismatch: output_size="
+                        << test_case.output_size
+                        << " axis=" << test_case.axis
+                        << " window=" << test_case.window
+                        << " index=" << first_mismatch;
+                throw std::runtime_error(message.str());
+            }
+            const RealArray &expected_auto =
+                expected_automatic_path == kResamplePathWindowedPack ? windowed : generic;
+            if (!bitwise_equal_real_arrays(automatic, expected_auto, &first_mismatch))
+            {
+                std::ostringstream message;
+                message << "resample automatic path mismatch: output_size="
+                        << test_case.output_size << " index=" << first_mismatch;
+                throw std::runtime_error(message.str());
+            }
+            if (route_report)
+            {
+                std::ostringstream shape_text;
+                for (std::size_t index = 0; index < test_case.shape.size(); ++index)
+                {
+                    if (index != 0)
+                    {
+                        shape_text << 'x';
+                    }
+                    shape_text << test_case.shape[index];
+                }
+                route_report << case_number << '\t' << shape_text.str() << '\t'
+                             << test_case.axis << '\t' << test_case.output_size << '\t'
+                             << (test_case.window.empty() ? "none" : test_case.window) << '\t'
+                             << test_case.domain << '\t' << automatic_path << '\t'
+                             << expected_automatic_path << '\n';
+            }
+            ++checked_cases;
+            checked_outputs += generic.values.size();
+            if (trace)
+            {
+                std::cerr << "[resample-device-ab-trace] case=" << case_number
+                          << " stage=case_end" << std::endl;
+            }
+        }
+
+        if (selected_case != 0)
+        {
+            std::cout << "[resample-device-ab] " << (all_routes_pass ? "PASS" : "FAIL")
+                      << " selected_case=" << selected_case
+                      << " checked_cases=" << checked_cases
+                      << " checked_float_outputs=" << checked_outputs
+                      << " auto_route_checks=" << auto_route_checks
+                      << " invalid_window_checks=not_run sweep=not_run\n";
+            return all_routes_pass ? 0 : 1;
+        }
+
+        std::size_t invalid_window_checks = 0;
+        const ZxGpuRealArray invalid_input = ZxGpuRealArray::from_host(
+            make_generated_real_array(Shape{8}, 0.95f, 0.0f));
+        const auto expect_invalid_window = [&](const ZxGpuWindowSpec &window_spec, const char *label) {
+            if (trace)
+            {
+                std::cerr << "[resample-device-ab-trace] invalid_window=" << label
+                          << " stage=begin" << std::endl;
+            }
+            cusignal::zx_gpu_backend::filtering_test_hooks::set_resample_path_override(
+                kResamplePathWindowedPack);
+            try
+            {
+                (void)cusignal::zx_gpu_backend::filtering::resample(
+                    invalid_input, 12, 0, window_spec, "time");
+                cusignal::core::throw_on_zx_gpu_error(
+                    cudaDeviceSynchronize(),
+                    "cudaDeviceSynchronize resample invalid window");
+            }
+            catch (const std::invalid_argument &)
+            {
+                ++invalid_window_checks;
+                if (trace)
+                {
+                    std::cerr << "[resample-device-ab-trace] invalid_window=" << label
+                              << " stage=pass" << std::endl;
+                }
+                return;
+            }
+            throw std::runtime_error(std::string("resample invalid window did not throw: ") + label);
+        };
+        expect_invalid_window(RealSignal{}, "empty host window");
+        expect_invalid_window(ZxGpuRealSignal{}, "empty device window");
+        expect_invalid_window(make_resample_probe_window(7), "wrong host window length");
+        expect_invalid_window(
+            ZxGpuRealSignal::from_host(make_resample_probe_window(7)),
+            "wrong device window length");
+
+        const bool correctness_only =
+            std::getenv("CUSIGNAL_RESAMPLE_DEVICE_AB_CORRECTNESS_ONLY") != nullptr;
+        if (correctness_only)
+        {
+            if (summary_report)
+            {
+                summary_report << checked_cases << '\t' << checked_outputs << '\t'
+                               << invalid_window_checks << '\t'
+                               << (all_routes_pass ? "true" : "false")
+                               << "\tnot_run\t" << kResampleSweepMinGain
+                               << "\t0\t0\t0\t" << (all_routes_pass ? "true" : "false") << '\n';
+            }
+            std::cout << "[resample-device-ab] " << (all_routes_pass ? "PASS" : "FAIL")
+                      << " checked_cases=" << checked_cases
+                      << " checked_float_outputs=" << checked_outputs
+                      << " auto_route_checks=" << auto_route_checks
+                      << " invalid_window_checks=" << invalid_window_checks
+                      << " sweep=not_run\n";
+            return all_routes_pass ? 0 : 1;
+        }
+
+        const std::array<std::size_t, 5> sweep_sizes = {
+            1024, 16384, 65536, 262144, 1048576};
+        std::vector<ResampleSweepBatch> sweep;
+        CliOptions timing_options;
+        timing_options.warmup = 2;
+        timing_options.repeat = 10;
+        for (const std::size_t input_size : sweep_sizes)
+        {
+            const std::size_t output_size = input_size + input_size / 2;
+            const ZxGpuRealArray input = ZxGpuRealArray::from_host(
+                make_generated_real_array(Shape{input_size}, 0.95f, 0.0f));
+            for (int batch = 1; batch <= 5; ++batch)
+            {
+                ResamplePathTimings pack;
+                ResamplePathTimings windowed;
+                if (batch % 2 == 1)
+                {
+                    pack = benchmark_resample_probe_path(
+                        input, static_cast<int>(output_size), kResamplePathFused, timing_options);
+                    windowed = benchmark_resample_probe_path(
+                        input, static_cast<int>(output_size), kResamplePathWindowedPack, timing_options);
+                }
+                else
+                {
+                    windowed = benchmark_resample_probe_path(
+                        input, static_cast<int>(output_size), kResamplePathWindowedPack, timing_options);
+                    pack = benchmark_resample_probe_path(
+                        input, static_cast<int>(output_size), kResamplePathFused, timing_options);
+                }
+                sweep.push_back(ResampleSweepBatch{
+                    input_size,
+                    output_size,
+                    batch,
+                    pack.e2e.median_ms,
+                    windowed.e2e.median_ms,
+                    pack.kernel.median_ms,
+                    windowed.kernel.median_ms,
+                    windowed.e2e.median_ms <=
+                            pack.e2e.median_ms * (1.0f - kResampleSweepMinGain) &&
+                        windowed.kernel.median_ms <=
+                            pack.kernel.median_ms * (1.0f - kResampleSweepMinGain)});
+            }
+        }
+
+        std::map<std::size_t, int> gain_batches;
+        for (const ResampleSweepBatch &row : sweep)
+        {
+            if (row.dual_gain)
+            {
+                ++gain_batches[row.input_size];
+            }
+        }
+        const bool main_size_gain_pass =
+            gain_batches[kResampleFusedInputSize] >= 4;
+        const bool probe_ok = all_routes_pass && main_size_gain_pass;
+        if (report)
+        {
+            for (const ResampleSweepBatch &row : sweep)
+            {
+                report << row.input_size << '\t' << row.output_size << '\t' << row.batch << '\t'
+                       << row.pack_e2e_ms << '\t' << row.windowed_e2e_ms << '\t'
+                       << row.pack_kernel_ms << '\t' << row.windowed_kernel_ms << '\t'
+                       << (row.dual_gain ? "true" : "false") << '\n';
+            }
+        }
+        if (summary_report)
+        {
+            summary_report << checked_cases << '\t' << checked_outputs << '\t'
+                           << invalid_window_checks << '\t'
+                           << (all_routes_pass ? "true" : "false") << '\t'
+                           << (main_size_gain_pass ? "true" : "false") << '\t'
+                           << kResampleSweepMinGain << '\t'
+                           << timing_options.warmup << '\t' << timing_options.repeat
+                           << "\t5\t" << (probe_ok ? "true" : "false") << '\n';
+        }
+        std::cout << "[resample-device-ab] " << (probe_ok ? "PASS" : "FAIL")
+                  << " checked_cases=" << checked_cases
+                  << " checked_float_outputs=" << checked_outputs
+                  << " auto_route_checks=" << auto_route_checks
+                  << " invalid_window_checks=" << invalid_window_checks
+                  << " main_size_gain=" << (main_size_gain_pass ? "pass" : "fail") << '\n';
+        return probe_ok ? 0 : 1;
+    }
+
     float median_speedup(const std::optional<TimingStats> &lhs, const std::optional<TimingStats> &rhs)
     {
         if (!lhs.has_value() || !rhs.has_value() || rhs->median_ms <= 0.0)
@@ -2095,6 +3427,38 @@ namespace
                                 : compute_error_metrics(flatten(lhs.real_output), flatten(rhs.real_output), mixed_atol);
     }
 
+    CaseReport evaluate_firfilter_complex_shared_output_contract(
+        std::size_t tap_count,
+        const char *case_id)
+    {
+        CaseReport report;
+        report.case_id = case_id;
+        report.category = "accuracy";
+
+        const RealSignal taps = make_lowpass_like_taps(tap_count);
+        const ComplexArray input = make_generated_complex_array(Shape{3, 2305}, 0.75f);
+        const ComplexArray cpu_output = cusignal::cpu::filtering::firfilter(taps, input, -1);
+        const ZxGpuRealSignal taps_device = ZxGpuRealSignal::from_host(taps);
+        const ZxGpuComplexArray input_device = ZxGpuComplexArray::from_host(input);
+        const ComplexArray gpu_output =
+            cusignal::zx_gpu_backend::filtering::firfilter(taps_device, input_device, -1).get();
+
+        report.samples = cpu_output.values.size();
+        report.cpu_gpu_error =
+            compute_error_metrics(flatten(cpu_output), flatten(gpu_output), 1.0e-5f);
+        report.pass = report.cpu_gpu_error.max_abs_error <= 5.0e-5f &&
+            report.cpu_gpu_error.mixed_error <= 1.0e-4f;
+        if (!report.pass)
+        {
+            report.note = "complex FIR shared-output contract mismatch";
+        }
+        std::cout << "[filtering/firfilter] " << case_id << '='
+                  << (report.pass ? "PASS" : "FAIL")
+                  << " max_abs=" << report.cpu_gpu_error.max_abs_error
+                  << " mixed=" << report.cpu_gpu_error.mixed_error << '\n';
+        return report;
+    }
+
     bool output_within_tolerance(const OutputBundle &lhs, const OutputBundle &rhs, float atol, float rtol)
     {
         if (lhs.main_complex != rhs.main_complex)
@@ -2623,6 +3987,27 @@ namespace
                     reports.push_back(make_failed_case_report(test_case, error.what()));
                 }
             }
+            if (op == "firfilter")
+            {
+                const auto append_shared_output_contract = [&](std::size_t tap_count, const char *case_id)
+                {
+                    try
+                    {
+                        reports.push_back(evaluate_firfilter_complex_shared_output_contract(tap_count, case_id));
+                    }
+                    catch (const std::exception &error)
+                    {
+                        CaseReport report;
+                        report.case_id = case_id;
+                        report.category = "accuracy";
+                        report.pass = false;
+                        report.note = error.what();
+                        reports.push_back(std::move(report));
+                    }
+                };
+                append_shared_output_contract(193, "complex64_shared_quad_output");
+                append_shared_output_contract(257, "complex64_shared_dual_output");
+            }
         }
         if (include_perf_cases(options))
         {
@@ -2718,6 +4103,10 @@ int run_firfilter2_tests(int argc, char **argv)
 {
     try
     {
+        if (std::getenv("CUSIGNAL_FIRFILTER2_DEVICE_AB") != nullptr)
+        {
+            return run_firfilter2_device_ab_probe();
+        }
         return run_filtering_operator_tests("firfilter2", argc, argv);
     }
     catch (const std::exception &error)
@@ -2809,6 +4198,10 @@ int run_channelize_poly_tests(int argc, char **argv)
 {
     try
     {
+        if (std::getenv("CUSIGNAL_CHANNELIZE_DEVICE_AB") != nullptr)
+        {
+            return run_channelize_device_ab_probe();
+        }
         return run_filtering_operator_tests("channelize_poly", argc, argv);
     }
     catch (const std::exception &error)
@@ -2835,6 +4228,14 @@ int run_resample_tests(int argc, char **argv)
 {
     try
     {
+        if (std::getenv("CUSIGNAL_RESAMPLE_AUTO_ROUTE_HOST_PROBE") != nullptr)
+        {
+            return run_resample_auto_route_host_probe();
+        }
+        if (std::getenv("CUSIGNAL_RESAMPLE_DEVICE_AB") != nullptr)
+        {
+            return run_resample_device_ab_probe();
+        }
         return run_filtering_operator_tests("resample", argc, argv);
     }
     catch (const std::exception &error)

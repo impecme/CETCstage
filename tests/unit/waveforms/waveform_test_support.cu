@@ -702,8 +702,7 @@ namespace
         const float *t,
         std::size_t size,
         float f0,
-        float t1,
-        float f1,
+        float beta,
         float phi,
         float *output)
     {
@@ -712,7 +711,7 @@ namespace
         {
             return;
         }
-        const float phase = cusignal::waveforms_detail::linear_phase(t[index], f0, t1, f1);
+        const float phase = cusignal::waveforms_detail::linear_phase_from_beta(t[index], f0, beta);
         output[index] = cos(phase + phi);
     }
 
@@ -720,11 +719,9 @@ namespace
         const float *t,
         std::size_t size,
         float f0,
-        float t1,
-        float f1,
+        float beta,
         float phi,
-        float *real_output,
-        float *imag_output)
+        float2 *output)
     {
         const std::size_t index = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
         if (index >= size)
@@ -732,9 +729,8 @@ namespace
             return;
         }
         const float angle =
-            cusignal::waveforms_detail::linear_phase(t[index], f0, t1, f1) + phi;
-        real_output[index] = cos(angle);
-        imag_output[index] = sin(angle);
+            cusignal::waveforms_detail::linear_phase_from_beta(t[index], f0, beta) + phi;
+        output[index] = float2{cos(angle), sin(angle)};
     }
 
     __global__ void chirp_quadratic_kernel(
@@ -793,6 +789,7 @@ namespace
         output[index] = cos(phase + phi);
     }
 
+    template <bool ReturnQuadrature, bool ReturnEnvelope>
     __global__ void gausspulse_kernel(
         const float *t,
         std::size_t size,
@@ -807,15 +804,13 @@ namespace
         {
             return;
         }
-        signal[index] = cusignal::waveforms_detail::gausspulse_signal(t[index], a, fc);
-        if (quadrature != nullptr)
-        {
-            quadrature[index] = cusignal::waveforms_detail::gausspulse_quadrature(t[index], a, fc);
-        }
-        if (envelope != nullptr)
-        {
-            envelope[index] = cusignal::waveforms_detail::gausspulse_envelope(t[index], a);
-        }
+        cusignal::waveforms_detail::gausspulse_components<ReturnQuadrature, ReturnEnvelope>(
+            t[index],
+            a,
+            fc,
+            signal + index,
+            ReturnQuadrature ? quadrature + index : nullptr,
+            ReturnEnvelope ? envelope + index : nullptr);
     }
 
     __global__ void sawtooth_scalar_kernel(
@@ -1936,9 +1931,10 @@ namespace
 
         DeviceBuffer<float> device_t(test_case.t.size());
         device_t.copy_from_host(test_case.t.data(), test_case.t.size(), "cudaMemcpy chirp kernel input");
-        DeviceBuffer<float> device_output(test_case.t.size());
-        DeviceBuffer<float> device_imag(test_case.type == "complex" ? test_case.t.size() : 0);
+        DeviceBuffer<float> device_output(test_case.type == "complex" ? 0 : test_case.t.size());
+        DeviceBuffer<float2> device_complex(test_case.type == "complex" ? test_case.t.size() : 0);
         const float phi = cusignal::waveforms_detail::degrees_to_radians(test_case.phi);
+        const float linear_beta = (test_case.f1 - test_case.f0) / test_case.t1;
         const int blocks = block_count(test_case.t.size());
 
         return benchmark_gpu_kernel_latency(options, [&]() {
@@ -1949,11 +1945,9 @@ namespace
                     device_t.get(),
                     test_case.t.size(),
                     test_case.f0,
-                    test_case.t1,
-                    test_case.f1,
+                    linear_beta,
                     phi,
-                    device_output.get(),
-                    device_imag.get());
+                    device_complex.get());
                 return;
             }
             if (cusignal::waveforms_detail::is_linear_method(method))
@@ -1962,8 +1956,7 @@ namespace
                     device_t.get(),
                     test_case.t.size(),
                     test_case.f0,
-                    test_case.t1,
-                    test_case.f1,
+                    linear_beta,
                     phi,
                     device_output.get());
             }
@@ -2020,14 +2013,30 @@ namespace
             cusignal::waveforms_detail::compute_gausspulse_a(test_case.fc, test_case.bw, test_case.bwr);
 
         return benchmark_gpu_kernel_latency(options, [&]() {
-            gausspulse_kernel<<<block_count(test_case.t.size()), kThreadsPerBlock>>>(
-                device_t.get(),
-                test_case.t.size(),
-                a,
-                test_case.fc,
-                signal.get(),
-                test_case.retquad ? quadrature.get() : nullptr,
-                test_case.retenv ? envelope.get() : nullptr);
+            if (test_case.retquad && test_case.retenv)
+            {
+                gausspulse_kernel<true, true><<<block_count(test_case.t.size()), kThreadsPerBlock>>>(
+                    device_t.get(), test_case.t.size(), a, test_case.fc,
+                    signal.get(), quadrature.get(), envelope.get());
+            }
+            else if (test_case.retquad)
+            {
+                gausspulse_kernel<true, false><<<block_count(test_case.t.size()), kThreadsPerBlock>>>(
+                    device_t.get(), test_case.t.size(), a, test_case.fc,
+                    signal.get(), quadrature.get(), nullptr);
+            }
+            else if (test_case.retenv)
+            {
+                gausspulse_kernel<false, true><<<block_count(test_case.t.size()), kThreadsPerBlock>>>(
+                    device_t.get(), test_case.t.size(), a, test_case.fc,
+                    signal.get(), nullptr, envelope.get());
+            }
+            else
+            {
+                gausspulse_kernel<false, false><<<block_count(test_case.t.size()), kThreadsPerBlock>>>(
+                    device_t.get(), test_case.t.size(), a, test_case.fc,
+                    signal.get(), nullptr, nullptr);
+            }
         });
     }
 

@@ -6,6 +6,8 @@
 
 #include "cusignal/core/helpers.hpp"
 
+#include "../common/demod_detail.hpp"
+
 namespace
 {
     using cusignal::core::ComplexArrayLike;
@@ -13,6 +15,8 @@ namespace
     using cusignal::core::ZxGpuIndexSignal;
     using cusignal::core::ZxGpuRealArray;
     using cusignal::core::IndexVector;
+
+    namespace demod_detail = cusignal::demod_detail;
 
     constexpr int kThreadsPerBlock = 256;
     thread_local float g_last_kernel_ms = 0.0f;
@@ -229,10 +233,9 @@ namespace
             line_base_offset_device(output_shape, output_strides, output_rank, axis, line_index);
         const float2 current = input[input_base + axis_index * axis_stride];
         const float2 next = input[input_base + (axis_index + 1) * axis_stride];
-        const float real = next.x * current.x + next.y * current.y;
-        const float imag = next.y * current.x - next.x * current.y;
         output[output_base + axis_index * static_cast<std::size_t>(output_strides[axis])] =
-            atan2f(imag, real);
+            demod_detail::wrapped_phase_difference(
+                current.x, current.y, next.x, next.y);
     }
 } // namespace
 

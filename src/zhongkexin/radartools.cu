@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cmath>
 #include <complex>
+#include <cstring>
 #include <stdexcept>
 #include <utility>
 #include <vector>
@@ -20,7 +21,9 @@
 namespace
 {
     using cusignal::core::Complex;
+    using cusignal::core::ComplexArray;
     using cusignal::core::ComplexArrayLike;
+    using cusignal::core::ComplexSignal;
     using cusignal::core::ComplexSignalLike;
     using cusignal::core::ZxGpuComplexArray;
     using cusignal::core::ZxGpuComplexSignal;
@@ -34,7 +37,10 @@ namespace
     constexpr int kCfarFftWindowThreshold = 256;
     constexpr int kCfarFftMinSize = 4096;
     constexpr int kCfarSmall2dFootprint = 256;
+    constexpr int kDetectPeakMaxBlocks = 256;
     constexpr int kMvdrSmallMaxSensors = 8;
+    constexpr std::size_t kPulseHostInputCacheMaxElements = 1U << 20;
+    constexpr std::size_t kMvdrHostInputCacheMaxElements = 1U << 20;
     thread_local float g_last_kernel_ms = 0.0;
 
     void throw_on_zx_gpu_error(cudaError_t status, const char *what)
@@ -218,7 +224,15 @@ namespace
         ZxGpuComplexSignal templ_storage;
         DeviceBuffer<cufftComplex> template_fft;
         DeviceBuffer<cufftComplex> doppler_transposed;
-        GenericPlan plan;
+        GenericPlan pulse_plan;
+        GenericPlan doppler_plan;
+        ComplexArray cached_host_input;
+        ComplexSignal cached_host_template;
+        std::string cached_window_name;
+        int cached_template_nfft = 0;
+        bool cached_template_normalize = false;
+        bool host_input_cache_valid = false;
+        bool template_fft_cache_valid = false;
     };
 
     struct AmbgfunWorkspace
@@ -233,6 +247,9 @@ namespace
         std::size_t normalized_x_size = 0;
         std::size_t normalized_y_size = 0;
         bool normalized_cache_valid = false;
+        ComplexSignal cached_host_2d_x;
+        ComplexSignal cached_host_2d_y;
+        bool host_2d_cache_valid = false;
         GenericPlan plan;
     };
 
@@ -402,6 +419,10 @@ namespace
     {
         ZxGpuComplexArray x_storage;
         ZxGpuComplexArray sv_storage;
+        ComplexArray cached_host_x;
+        ComplexArray cached_host_sv;
+        bool host_x_cache_valid = false;
+        bool host_sv_cache_valid = false;
         DeviceBuffer<cuComplex> centered;
         DeviceBuffer<cuComplex> covariance;
         DeviceBuffer<cuComplex> rhs;
@@ -460,6 +481,42 @@ namespace
     int block_count(std::size_t size)
     {
         return size == 0 ? 0 : static_cast<int>((size + kThreadsPerBlock - 1) / kThreadsPerBlock);
+    }
+
+    const ZxGpuComplexArray &as_cached_mvdr_device_array(
+        const ComplexArrayLike &input,
+        ZxGpuComplexArray &device_storage,
+        ComplexArray &cached_host_input,
+        bool &cache_valid)
+    {
+        if (const auto *device = std::get_if<ZxGpuComplexArray>(&input))
+        {
+            return *device;
+        }
+
+        const ComplexArray &host = std::get<ComplexArray>(input);
+        const bool cacheable = host.values.size() <= kMvdrHostInputCacheMaxElements;
+        const bool cache_hit =
+            cacheable &&
+            cache_valid &&
+            cached_host_input.shape == host.shape &&
+            cached_host_input.values.size() == host.values.size() &&
+            (host.values.empty() ||
+             std::memcmp(
+                 cached_host_input.values.data(),
+                 host.values.data(),
+                 host.values.size() * sizeof(Complex)) == 0);
+        if (!cache_hit)
+        {
+            cache_valid = false;
+            device_storage.copy_from(host);
+            if (cacheable)
+            {
+                cached_host_input = host;
+                cache_valid = true;
+            }
+        }
+        return device_storage;
     }
 
     __device__ inline float2 make_complex(float real, float imag)
@@ -569,7 +626,8 @@ namespace
         float2 *values,
         const cufftComplex *templ_fft,
         std::size_t total,
-        int nfft)
+        int nfft,
+        float inverse_fft_scale)
     {
         const std::size_t index =
             static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
@@ -580,7 +638,10 @@ namespace
         const std::size_t col = index % static_cast<std::size_t>(nfft);
         const float2 lhs = values[index];
         const float2 rhs = make_complex(templ_fft[col].x, templ_fft[col].y);
-        values[index] = complex_mul(lhs, complex_conj(rhs));
+        const float2 product = complex_mul(lhs, complex_conj(rhs));
+        values[index] = make_complex(
+            product.x * inverse_fft_scale,
+            product.y * inverse_fft_scale);
     }
 
     __global__ void scale_complex_kernel(float2 *values, std::size_t size, float scale)
@@ -651,6 +712,7 @@ namespace
         const cufftComplex *transposed,
         std::size_t samples,
         int nfft,
+        bool shift_rows,
         float2 *output)
     {
         const std::size_t flat =
@@ -663,7 +725,10 @@ namespace
         const std::size_t row = flat / samples;
         const std::size_t col = flat % samples;
         const cufftComplex value = transposed[col * static_cast<std::size_t>(nfft) + row];
-        output[flat] = make_complex(value.x, value.y);
+        const std::size_t output_row = shift_rows
+            ? (row + static_cast<std::size_t>(nfft) / 2) % static_cast<std::size_t>(nfft)
+            : row;
+        output[output_row * samples + col] = make_complex(value.x, value.y);
     }
 
     __global__ void copy_scale_complex_kernel(
@@ -1178,6 +1243,53 @@ namespace
         }
     }
 
+    __global__ void cfar_2d_row_prefix_parallel_kernel(
+        const float *array,
+        std::size_t rows,
+        std::size_t cols,
+        float *row_prefix)
+    {
+        __shared__ float chunk_prefix[kThreadsPerBlock];
+        const std::size_t row = static_cast<std::size_t>(blockIdx.x);
+        if (row >= rows)
+        {
+            return;
+        }
+        const std::size_t chunk_size =
+            (cols + static_cast<std::size_t>(blockDim.x) - 1) /
+            static_cast<std::size_t>(blockDim.x);
+        const std::size_t begin = static_cast<std::size_t>(threadIdx.x) * chunk_size;
+        const std::size_t end_candidate = begin + chunk_size;
+        const std::size_t end = end_candidate < cols ? end_candidate : cols;
+        float chunk_sum = 0.0f;
+        for (std::size_t col = begin; col < end; ++col)
+        {
+            chunk_sum += array[row * cols + col];
+        }
+        chunk_prefix[threadIdx.x] = chunk_sum;
+        __syncthreads();
+
+        if (threadIdx.x == 0)
+        {
+            float running = 0.0f;
+            for (unsigned int chunk = 0; chunk < blockDim.x; ++chunk)
+            {
+                const float value = chunk_prefix[chunk];
+                chunk_prefix[chunk] = running;
+                running += value;
+            }
+            row_prefix[row * (cols + 1)] = 0.0f;
+        }
+        __syncthreads();
+
+        float running = chunk_prefix[threadIdx.x];
+        for (std::size_t col = begin; col < end; ++col)
+        {
+            running += array[row * cols + col];
+            row_prefix[row * (cols + 1) + col + 1] = running;
+        }
+    }
+
     __device__ float cfar_integral_rect_sum(
         const float *integral,
         std::size_t stride,
@@ -1631,7 +1743,9 @@ namespace cusignal
                     core::ZxGpuIndexSignal(3, false),
                     core::ZxGpuRealSignal(2, false)};
                 const std::size_t size = power_device.size();
-                const int partial_count = std::max(1, block_count(size));
+                const int partial_count = std::max(
+                    1,
+                    std::min(block_count(size), kDetectPeakMaxBlocks));
                 g_workspace.task_pipeline.detection_block_indices.reserve(static_cast<std::size_t>(partial_count));
                 g_workspace.task_pipeline.detection_block_values.reserve(static_cast<std::size_t>(partial_count));
                 ScopedZxGpuEvents events;
@@ -1664,78 +1778,147 @@ namespace cusignal
                 core::ZxGpuWindowSpec window,
                 int nfft)
             {
-                const ZxGpuComplexArray &x_device = core::as_device_array(x, g_workspace.pulse.x_storage);
-                const ZxGpuComplexSignal &templ_device = core::as_device_signal(templ, g_workspace.pulse.templ_storage);
-                detail::ensure_rank(x_device, 2, "x");
-                if (templ_device.empty())
+                const ComplexArray *host_input = std::get_if<ComplexArray>(&x);
+                const ZxGpuComplexArray *x_device = std::get_if<ZxGpuComplexArray>(&x);
+                const bool cacheable_host_input =
+                    host_input != nullptr &&
+                    host_input->values.size() <= kPulseHostInputCacheMaxElements;
+                const bool host_input_cache_hit =
+                    cacheable_host_input &&
+                    g_workspace.pulse.host_input_cache_valid &&
+                    g_workspace.pulse.cached_host_input.shape == host_input->shape &&
+                    g_workspace.pulse.cached_host_input.values.size() == host_input->values.size() &&
+                    (host_input->values.empty() ||
+                     std::memcmp(
+                         g_workspace.pulse.cached_host_input.values.data(),
+                         host_input->values.data(),
+                         host_input->values.size() * sizeof(Complex)) == 0);
+                if (host_input != nullptr)
+                {
+                    if (!host_input_cache_hit)
+                    {
+                        g_workspace.pulse.x_storage.copy_from(*host_input);
+                        if (cacheable_host_input)
+                        {
+                            g_workspace.pulse.cached_host_input = *host_input;
+                            g_workspace.pulse.host_input_cache_valid = true;
+                        }
+                        else
+                        {
+                            g_workspace.pulse.cached_host_input = ComplexArray{};
+                            g_workspace.pulse.host_input_cache_valid = false;
+                        }
+                    }
+                    x_device = &g_workspace.pulse.x_storage;
+                }
+                if (x_device == nullptr)
+                {
+                    throw std::invalid_argument("x has an unsupported storage type");
+                }
+                detail::ensure_rank(*x_device, 2, "x");
+                const ComplexSignal *host_template = std::get_if<ComplexSignal>(&templ);
+                const ZxGpuComplexSignal *device_template = std::get_if<ZxGpuComplexSignal>(&templ);
+                const std::size_t template_size =
+                    host_template != nullptr ? host_template->size() : device_template->size();
+                if (template_size == 0)
                 {
                     throw std::invalid_argument("templ must not be empty");
                 }
 
-                const std::size_t num_pulses = x_device.shape()[0];
-                const std::size_t samples = x_device.shape()[1];
+                const std::size_t num_pulses = x_device->shape()[0];
+                const std::size_t samples = x_device->shape()[1];
                 const int resolved_nfft = nfft > 0 ? nfft : static_cast<int>(samples);
                 ZxGpuComplexArray output(core::Shape{num_pulses, static_cast<std::size_t>(resolved_nfft)}, false);
-                const ZxGpuRealSignal window_signal = resolve_window_signal(std::move(window), static_cast<int>(templ_device.size()));
-                const bool use_window = !window_signal.empty();
-
-                g_workspace.beamformer.ensure_handles();
                 g_workspace.pulse.template_fft.reserve(static_cast<std::size_t>(resolved_nfft));
 
-                ScopedZxGpuEvents events;
-                g_last_kernel_ms = static_cast<float>(events.measure([&]() {
-                    pack_template_kernel<<<block_count(static_cast<std::size_t>(resolved_nfft)), kThreadsPerBlock>>>(
-                        reinterpret_cast<const float2 *>(templ_device.data()),
-                        use_window ? window_signal.data() : nullptr,
-                        templ_device.size(),
-                        use_window,
-                        g_workspace.pulse.template_fft.get(),
-                        resolved_nfft);
-                    check_kernel_launch("pack_template_kernel");
+                const std::string *window_name = std::get_if<std::string>(&window);
+                const bool cacheable_template = host_template != nullptr && window_name != nullptr;
+                const bool template_cache_hit =
+                    cacheable_template &&
+                    g_workspace.pulse.template_fft_cache_valid &&
+                    g_workspace.pulse.cached_template_nfft == resolved_nfft &&
+                    g_workspace.pulse.cached_template_normalize == normalize &&
+                    g_workspace.pulse.cached_window_name == *window_name &&
+                    g_workspace.pulse.cached_host_template == *host_template;
 
+                const ZxGpuComplexSignal *template_device = device_template;
+                ZxGpuRealSignal window_signal;
+                bool use_window = false;
+                if (!template_cache_hit)
+                {
+                    g_workspace.pulse.template_fft_cache_valid = false;
+                    if (host_template != nullptr)
+                    {
+                        g_workspace.pulse.templ_storage.copy_from(*host_template);
+                        template_device = &g_workspace.pulse.templ_storage;
+                    }
+                    window_signal = resolve_window_signal(std::move(window), static_cast<int>(template_size));
+                    use_window = !window_signal.empty();
                     if (normalize)
                     {
-                        float norm = 0.0;
-                        throw_on_cublas_error(
-                            cublasScnrm2(
-                                g_workspace.beamformer.cublas,
-                                resolved_nfft,
-                                reinterpret_cast<const cuComplex *>(g_workspace.pulse.template_fft.get()),
-                                1,
-                                &norm),
-                            "cublasScnrm2(template)");
-                        if (!(norm > 0.0))
+                        g_workspace.beamformer.ensure_handles();
+                    }
+                }
+
+                ScopedZxGpuEvents events;
+                bool template_prepared = false;
+                g_last_kernel_ms = static_cast<float>(events.measure([&]() {
+                    if (!template_cache_hit)
+                    {
+                        pack_template_kernel<<<block_count(static_cast<std::size_t>(resolved_nfft)), kThreadsPerBlock>>>(
+                            reinterpret_cast<const float2 *>(template_device->data()),
+                            use_window ? window_signal.data() : nullptr,
+                            template_size,
+                            use_window,
+                            g_workspace.pulse.template_fft.get(),
+                            resolved_nfft);
+                        check_kernel_launch("pack_template_kernel");
+
+                        if (normalize)
                         {
-                            throw std::invalid_argument("template norm must be > 0");
+                            float norm = 0.0;
+                            throw_on_cublas_error(
+                                cublasScnrm2(
+                                    g_workspace.beamformer.cublas,
+                                    resolved_nfft,
+                                    reinterpret_cast<const cuComplex *>(g_workspace.pulse.template_fft.get()),
+                                    1,
+                                    &norm),
+                                "cublasScnrm2(template)");
+                            if (!(norm > 0.0))
+                            {
+                                throw std::invalid_argument("template norm must be > 0");
+                            }
+                            scale_complex_kernel<<<block_count(static_cast<std::size_t>(resolved_nfft)), kThreadsPerBlock>>>(
+                                reinterpret_cast<float2 *>(g_workspace.pulse.template_fft.get()),
+                                static_cast<std::size_t>(resolved_nfft),
+                                1.0 / norm);
+                            check_kernel_launch("scale_complex_kernel(template)");
                         }
-                        scale_complex_kernel<<<block_count(static_cast<std::size_t>(resolved_nfft)), kThreadsPerBlock>>>(
-                            reinterpret_cast<float2 *>(g_workspace.pulse.template_fft.get()),
-                            static_cast<std::size_t>(resolved_nfft),
-                            1.0 / norm);
-                        check_kernel_launch("scale_complex_kernel(template)");
+
+                        g_workspace.pulse.pulse_plan.ensure(resolved_nfft, 1);
+                        throw_on_cufft_error(
+                            cufftExecC2C(
+                                g_workspace.pulse.pulse_plan.handle,
+                                g_workspace.pulse.template_fft.get(),
+                                g_workspace.pulse.template_fft.get(),
+                                CUFFT_FORWARD),
+                            "cufftExecC2C(template forward)");
+                        template_prepared = true;
                     }
 
-                    g_workspace.pulse.plan.ensure(resolved_nfft, 1);
-                    throw_on_cufft_error(
-                        cufftExecC2C(
-                            g_workspace.pulse.plan.handle,
-                            g_workspace.pulse.template_fft.get(),
-                            g_workspace.pulse.template_fft.get(),
-                            CUFFT_FORWARD),
-                        "cufftExecC2C(template forward)");
-
                     pack_pulse_rows_kernel<<<block_count(num_pulses * static_cast<std::size_t>(resolved_nfft)), kThreadsPerBlock>>>(
-                        reinterpret_cast<const float2 *>(x_device.data()),
+                        reinterpret_cast<const float2 *>(x_device->data()),
                         num_pulses,
                         samples,
                         resolved_nfft,
                         reinterpret_cast<float2 *>(output.data()));
                     check_kernel_launch("pack_pulse_rows_kernel");
 
-                    g_workspace.pulse.plan.ensure(resolved_nfft, static_cast<int>(num_pulses));
+                    g_workspace.pulse.pulse_plan.ensure(resolved_nfft, static_cast<int>(num_pulses));
                     throw_on_cufft_error(
                         cufftExecC2C(
-                            g_workspace.pulse.plan.handle,
+                            g_workspace.pulse.pulse_plan.handle,
                             reinterpret_cast<cufftComplex *>(output.data()),
                             reinterpret_cast<cufftComplex *>(output.data()),
                             CUFFT_FORWARD),
@@ -1745,32 +1928,41 @@ namespace cusignal
                         reinterpret_cast<float2 *>(output.data()),
                         g_workspace.pulse.template_fft.get(),
                         output.size(),
-                        resolved_nfft);
+                        resolved_nfft,
+                        1.0f / static_cast<float>(resolved_nfft));
                     check_kernel_launch("multiply_conj_template_kernel");
 
                     throw_on_cufft_error(
                         cufftExecC2C(
-                            g_workspace.pulse.plan.handle,
+                            g_workspace.pulse.pulse_plan.handle,
                             reinterpret_cast<cufftComplex *>(output.data()),
                             reinterpret_cast<cufftComplex *>(output.data()),
                             CUFFT_INVERSE),
                         "cufftExecC2C(pulse inverse)");
-
-                    scale_complex_kernel<<<block_count(output.size()), kThreadsPerBlock>>>(
-                        reinterpret_cast<float2 *>(output.data()),
-                        output.size(),
-                        1.0 / static_cast<float>(resolved_nfft));
-                    check_kernel_launch("scale_complex_kernel(output)");
                 }));
+
+                if (template_prepared && cacheable_template)
+                {
+                    g_workspace.pulse.cached_host_template = *host_template;
+                    g_workspace.pulse.cached_window_name = *window_name;
+                    g_workspace.pulse.cached_template_nfft = resolved_nfft;
+                    g_workspace.pulse.cached_template_normalize = normalize;
+                    g_workspace.pulse.template_fft_cache_valid = true;
+                }
 
                 return output;
             }
 
-            core::ZxGpuComplexArray pulse_doppler(
+            core::ZxGpuComplexArray pulse_doppler_impl(
                 const core::ComplexArrayLike &x,
                 core::ZxGpuWindowSpec window,
-                int nfft)
+                int nfft,
+                bool shift_output)
             {
+                if (std::holds_alternative<ComplexArray>(x))
+                {
+                    g_workspace.pulse.host_input_cache_valid = false;
+                }
                 const ZxGpuComplexArray &x_device = core::as_device_array(x, g_workspace.pulse.x_storage);
                 detail::ensure_rank(x_device, 2, "x");
                 const std::size_t pulses = x_device.shape()[0];
@@ -1805,10 +1997,10 @@ namespace cusignal
                         g_workspace.pulse.doppler_transposed.get());
                     check_kernel_launch("pack_pulse_doppler_kernel");
 
-                    g_workspace.pulse.plan.ensure(resolved_nfft, static_cast<int>(samples));
+                    g_workspace.pulse.doppler_plan.ensure(resolved_nfft, static_cast<int>(samples));
                     throw_on_cufft_error(
                         cufftExecC2C(
-                            g_workspace.pulse.plan.handle,
+                            g_workspace.pulse.doppler_plan.handle,
                             g_workspace.pulse.doppler_transposed.get(),
                             g_workspace.pulse.doppler_transposed.get(),
                             CUFFT_FORWARD),
@@ -1818,11 +2010,28 @@ namespace cusignal
                         g_workspace.pulse.doppler_transposed.get(),
                         samples,
                         resolved_nfft,
+                        shift_output,
                         reinterpret_cast<float2 *>(output.data()));
                     check_kernel_launch("transpose_doppler_output_kernel");
                 }));
 
                 return output;
+            }
+
+            core::ZxGpuComplexArray pulse_doppler(
+                const core::ComplexArrayLike &x,
+                core::ZxGpuWindowSpec window,
+                int nfft)
+            {
+                return pulse_doppler_impl(x, std::move(window), nfft, false);
+            }
+
+            core::ZxGpuComplexArray pulse_doppler_shifted(
+                const core::ComplexArrayLike &x,
+                core::ZxGpuWindowSpec window,
+                int nfft)
+            {
+                return pulse_doppler_impl(x, std::move(window), nfft, true);
             }
 
             radartools_api::ZxGpuAmbgfunResult ambgfun(
@@ -1846,16 +2055,37 @@ namespace cusignal
                 detail::ensure_positive(fs, "fs");
                 detail::ensure_positive(prf, "prf");
                 const std::string normalized_cut = detail::normalize_cut(cut);
-                const ZxGpuComplexSignal &x_device = core::as_device_signal(x, g_workspace.ambgfun.x_storage);
-                const ZxGpuComplexSignal &y_device = core::as_device_signal(y, g_workspace.ambgfun.y_storage);
-                if (x_device.empty() || y_device.empty())
+                const ComplexSignal *host_x = std::get_if<ComplexSignal>(&x);
+                const ComplexSignal *host_y = std::get_if<ComplexSignal>(&y);
+                const bool cacheable_host_2d =
+                    normalized_cut == "2d" &&
+                    host_x != nullptr &&
+                    host_y != nullptr &&
+                    host_x->size() <= 512 &&
+                    host_y->size() <= 512;
+                const bool host_2d_cache_hit =
+                    cacheable_host_2d &&
+                    g_workspace.ambgfun.host_2d_cache_valid &&
+                    g_workspace.ambgfun.cached_host_2d_x == *host_x &&
+                    g_workspace.ambgfun.cached_host_2d_y == *host_y;
+
+                const ZxGpuComplexSignal *x_device = nullptr;
+                const ZxGpuComplexSignal *y_device = nullptr;
+                std::size_t xlen = host_2d_cache_hit ? host_x->size() : 0;
+                std::size_t ylen = host_2d_cache_hit ? host_y->size() : 0;
+                if (!host_2d_cache_hit)
+                {
+                    x_device = &core::as_device_signal(x, g_workspace.ambgfun.x_storage);
+                    y_device = &core::as_device_signal(y, g_workspace.ambgfun.y_storage);
+                    xlen = x_device->size();
+                    ylen = y_device->size();
+                }
+                if (xlen == 0 || ylen == 0)
                 {
                     throw std::invalid_argument("ambgfun inputs must not be empty");
                 }
 
                 g_workspace.beamformer.ensure_handles();
-                const std::size_t xlen = x_device.size();
-                const std::size_t ylen = y_device.size();
                 const int len_seq = static_cast<int>(xlen + ylen);
                 const int nfreq = detail::next_power_of_two(len_seq - 1);
 
@@ -1865,22 +2095,24 @@ namespace cusignal
                 const bool cacheable_device_inputs =
                     std::holds_alternative<ZxGpuComplexSignal>(x) &&
                     std::holds_alternative<ZxGpuComplexSignal>(y);
-                const bool normalized_cache_hit =
+                const bool device_cache_hit =
                     cacheable_device_inputs &&
                     g_workspace.ambgfun.normalized_cache_valid &&
-                    g_workspace.ambgfun.normalized_x_ptr == x_device.data() &&
-                    g_workspace.ambgfun.normalized_y_ptr == y_device.data() &&
+                    g_workspace.ambgfun.normalized_x_ptr == x_device->data() &&
+                    g_workspace.ambgfun.normalized_y_ptr == y_device->data() &&
                     g_workspace.ambgfun.normalized_x_size == xlen &&
                     g_workspace.ambgfun.normalized_y_size == ylen;
+                const bool normalized_cache_hit = host_2d_cache_hit || device_cache_hit;
                 if (!normalized_cache_hit)
                 {
+                    g_workspace.ambgfun.host_2d_cache_valid = false;
                     float x_norm = 0.0;
                     float y_norm = 0.0;
                     throw_on_cublas_error(
                         cublasScnrm2(
                             g_workspace.beamformer.cublas,
                             static_cast<int>(xlen),
-                            reinterpret_cast<const cuComplex *>(x_device.data()),
+                            reinterpret_cast<const cuComplex *>(x_device->data()),
                             1,
                             &x_norm),
                         "cublasScnrm2(x)");
@@ -1888,7 +2120,7 @@ namespace cusignal
                         cublasScnrm2(
                             g_workspace.beamformer.cublas,
                             static_cast<int>(ylen),
-                            reinterpret_cast<const cuComplex *>(y_device.data()),
+                            reinterpret_cast<const cuComplex *>(y_device->data()),
                             1,
                             &y_norm),
                         "cublasScnrm2(y)");
@@ -1898,23 +2130,30 @@ namespace cusignal
                     }
 
                     copy_scale_complex_kernel<<<block_count(xlen), kThreadsPerBlock>>>(
-                        reinterpret_cast<const float2 *>(x_device.data()),
+                        reinterpret_cast<const float2 *>(x_device->data()),
                         reinterpret_cast<float2 *>(g_workspace.ambgfun.x_buffer.get()),
                         xlen,
                         1.0 / x_norm);
                     check_kernel_launch("copy_scale_complex_kernel(x)");
                     copy_scale_complex_kernel<<<block_count(ylen), kThreadsPerBlock>>>(
-                        reinterpret_cast<const float2 *>(y_device.data()),
+                        reinterpret_cast<const float2 *>(y_device->data()),
                         reinterpret_cast<float2 *>(g_workspace.ambgfun.y_buffer.get()),
                         ylen,
                         1.0 / y_norm);
                     check_kernel_launch("copy_scale_complex_kernel(y)");
 
-                    g_workspace.ambgfun.normalized_x_ptr = cacheable_device_inputs ? x_device.data() : nullptr;
-                    g_workspace.ambgfun.normalized_y_ptr = cacheable_device_inputs ? y_device.data() : nullptr;
+                    g_workspace.ambgfun.normalized_x_ptr = cacheable_device_inputs ? x_device->data() : nullptr;
+                    g_workspace.ambgfun.normalized_y_ptr = cacheable_device_inputs ? y_device->data() : nullptr;
                     g_workspace.ambgfun.normalized_x_size = xlen;
                     g_workspace.ambgfun.normalized_y_size = ylen;
-                    g_workspace.ambgfun.normalized_cache_valid = cacheable_device_inputs;
+                    g_workspace.ambgfun.normalized_cache_valid =
+                        cacheable_device_inputs && normalized_cut == "2d";
+                    if (cacheable_host_2d)
+                    {
+                        g_workspace.ambgfun.cached_host_2d_x = *host_x;
+                        g_workspace.ambgfun.cached_host_2d_y = *host_y;
+                        g_workspace.ambgfun.host_2d_cache_valid = true;
+                    }
                 }
 
                 if (normalized_cut == "2d")
@@ -2315,12 +2554,25 @@ namespace cusignal
                         const std::size_t stride = cols + 1;
                         g_workspace.cfar.row_prefix.reserve(rows * stride);
                         g_workspace.cfar.integral.reserve((rows + 1) * stride);
-                        cfar_2d_row_prefix_kernel<<<static_cast<unsigned int>(rows), 1>>>(
-                            array_device.data(),
-                            rows,
-                            cols,
-                            g_workspace.cfar.row_prefix.get());
-                        check_kernel_launch("cfar_2d_row_prefix_kernel");
+                        if (rows >= 128 && cols >= 1024 && cols <= 2048)
+                        {
+                            cfar_2d_row_prefix_parallel_kernel<<<
+                                static_cast<unsigned int>(rows), kThreadsPerBlock>>>(
+                                array_device.data(),
+                                rows,
+                                cols,
+                                g_workspace.cfar.row_prefix.get());
+                            check_kernel_launch("cfar_2d_row_prefix_parallel_kernel");
+                        }
+                        else
+                        {
+                            cfar_2d_row_prefix_kernel<<<static_cast<unsigned int>(rows), 1>>>(
+                                array_device.data(),
+                                rows,
+                                cols,
+                                g_workspace.cfar.row_prefix.get());
+                            check_kernel_launch("cfar_2d_row_prefix_kernel");
+                        }
                         cfar_2d_integral_column_kernel<<<block_count(stride), kThreadsPerBlock>>>(
                             g_workspace.cfar.row_prefix.get(),
                             rows,
@@ -2351,8 +2603,16 @@ namespace cusignal
                 const core::ComplexArrayLike &sv,
                 bool calc_cov)
             {
-                const ZxGpuComplexArray &x_device = core::as_device_array(x, g_workspace.beamformer.x_storage);
-                const ZxGpuComplexArray &sv_device = core::as_device_array(sv, g_workspace.beamformer.sv_storage);
+                const ZxGpuComplexArray &x_device = as_cached_mvdr_device_array(
+                    x,
+                    g_workspace.beamformer.x_storage,
+                    g_workspace.beamformer.cached_host_x,
+                    g_workspace.beamformer.host_x_cache_valid);
+                const ZxGpuComplexArray &sv_device = as_cached_mvdr_device_array(
+                    sv,
+                    g_workspace.beamformer.sv_storage,
+                    g_workspace.beamformer.cached_host_sv,
+                    g_workspace.beamformer.host_sv_cache_valid);
                 if (sv_device.empty())
                 {
                     throw std::invalid_argument("sv must not be empty");

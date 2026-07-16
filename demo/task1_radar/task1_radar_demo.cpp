@@ -1180,11 +1180,10 @@ namespace cusignal_demo::task1_radar
         artifacts.pulse_compression = std::move(pulse_compression);
 
         auto [pulse_doppler, pulse_doppler_ms] = measure_gpu_ms([&]() {
-            auto shifted = cusignal::zx_gpu_backend::radartools::pulse_doppler(
+            return cusignal::zx_gpu_backend::radartools::pulse_doppler_shifted(
                 artifacts.pulse_compression,
                 config.pulse_doppler_window,
                 config.pulse_doppler_nfft);
-            return cusignal::zx_gpu_backend::radartools::fftshift_rows(shifted);
         });
         timings.push_back({"pulse_doppler", 0.0, pulse_doppler_ms});
         artifacts.pulse_doppler = std::move(pulse_doppler);
@@ -1378,7 +1377,7 @@ namespace cusignal_demo::task1_radar
             shape_text(run.cpu.rx_matrix.shape), shape_text(run.cpu.pulse_compression.shape),
             "complex64", "complex64", &run.pulse_compression_error, true,
             thresholds.pulse_compression_mixed, "public operator"));
-        steps.push_back(make("pulse_doppler", "radartools/pulse_doppler + radartools/fftshift_rows",
+        steps.push_back(make("pulse_doppler", "radartools/pulse_doppler_shifted",
             shape_text(run.cpu.pulse_compression.shape), shape_text(run.cpu.pulse_doppler.shape),
             "complex64", "complex64", &run.pulse_doppler_error, true,
             thresholds.pulse_doppler_mixed, "public operators"));

@@ -2,6 +2,7 @@
 
 #include <cuda_runtime.h>
 #include <algorithm>
+#include <cmath>
 #include <string>
 #include <variant>
 #include <vector>
@@ -160,6 +161,34 @@ namespace
             amplitude * (1.0f - xsq * inv_a_sq) * expf(-xsq * inv_two_a_sq);
     }
 
+    __global__ void ricker_symmetric_kernel(
+        float *output,
+        std::size_t count,
+        float amplitude,
+        float inv_a_sq,
+        float inv_two_a_sq)
+    {
+        const std::size_t index =
+            static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+        const std::size_t work_count = (count + 1) / 2;
+        if (index >= work_count)
+        {
+            return;
+        }
+
+        const float x = detail::centered_coordinate(index, count);
+        const float xsq = x * x;
+        const float value =
+            amplitude * (1.0f - xsq * inv_a_sq) * expf(-xsq * inv_two_a_sq);
+        output[index] = value;
+
+        const std::size_t mirror_index = count - 1 - index;
+        if (mirror_index != index)
+        {
+            output[mirror_index] = value;
+        }
+    }
+
     __global__ void morlet2_kernel(
         float2 *output,
         std::size_t count,
@@ -177,6 +206,35 @@ namespace
         const float scaled = amplitude * expf(-0.5f * x * x);
         const float phase = w * x;
         output[index] = make_complex(cosf(phase) * scaled, sinf(phase) * scaled);
+    }
+
+    __global__ void morlet2_symmetric_kernel(
+        float2 *output,
+        std::size_t count,
+        float inv_s,
+        float amplitude,
+        float w)
+    {
+        const std::size_t index =
+            static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+        const std::size_t work_count = (count + 1) / 2;
+        if (index >= work_count)
+        {
+            return;
+        }
+
+        const float x = detail::centered_coordinate(index, count) * inv_s;
+        const float scaled = amplitude * expf(-0.5f * x * x);
+        const float phase = w * x;
+        const float real = cosf(phase) * scaled;
+        const float imag = sinf(phase) * scaled;
+        output[index] = make_complex(real, imag);
+
+        const std::size_t mirror_index = count - 1 - index;
+        if (mirror_index != index)
+        {
+            output[mirror_index] = make_complex(real, -imag);
+        }
     }
 
     __global__ void cwt_kernel(
@@ -287,7 +345,9 @@ namespace
         float2 *output)
     {
         const std::size_t width_index = static_cast<std::size_t>(blockIdx.y);
-        const std::size_t tile_start = static_cast<std::size_t>(blockIdx.x) * blockDim.x;
+        const std::size_t outputs_per_block = 2 * static_cast<std::size_t>(blockDim.x);
+        const std::size_t tile_start =
+            static_cast<std::size_t>(blockIdx.x) * outputs_per_block;
         const int kernel_size = kernel_sizes[width_index];
         if (kernel_size <= 0 || data_count == 0)
         {
@@ -299,10 +359,12 @@ namespace
         const long base =
             static_cast<long>(tile_start) + static_cast<long>(start) -
             static_cast<long>(kernel_size - 1);
-        const int shared_count = blockDim.x + kernel_size - 1;
-        for (int local_index = threadIdx.x; local_index < shared_count; local_index += blockDim.x)
+        const std::size_t shared_count = outputs_per_block + kernel_size - 1;
+        for (std::size_t local_index = threadIdx.x;
+             local_index < shared_count;
+             local_index += blockDim.x)
         {
-            const long global_index = base + local_index;
+            const long global_index = base + static_cast<long>(local_index);
             tile_data[local_index] =
                 (global_index >= 0 && global_index < static_cast<long>(data_count))
                     ? data[static_cast<std::size_t>(global_index)]
@@ -310,21 +372,29 @@ namespace
         }
         __syncthreads();
 
-        const std::size_t sample_index = tile_start + threadIdx.x;
-        if (sample_index >= data_count)
+        const std::size_t sample0 = tile_start + threadIdx.x;
+        if (sample0 >= data_count)
         {
             return;
         }
+        const std::size_t sample1 = sample0 + static_cast<std::size_t>(blockDim.x);
 
         const int kernel_offset = kernel_offsets[width_index];
-        float real = 0.0f;
+        float real0 = 0.0f;
+        float real1 = 0.0f;
         for (int kernel_index = 0; kernel_index < kernel_size; ++kernel_index)
         {
-            const int shared_index = threadIdx.x + kernel_size - 1 - kernel_index;
+            const int shared_index0 = threadIdx.x + kernel_size - 1 - kernel_index;
             const std::size_t table_index = static_cast<std::size_t>(kernel_offset + kernel_index);
-            real = fmaf(tile_data[shared_index], kernel_real[table_index], real);
+            const float coefficient = kernel_real[table_index];
+            real0 = fmaf(tile_data[shared_index0], coefficient, real0);
+            real1 = fmaf(tile_data[shared_index0 + blockDim.x], coefficient, real1);
         }
-        output[width_index * data_count + sample_index] = make_complex(real, 0.0f);
+        output[width_index * data_count + sample0] = make_complex(real0, 0.0f);
+        if (sample1 < data_count)
+        {
+            output[width_index * data_count + sample1] = make_complex(real1, 0.0f);
+        }
     }
 
 } // namespace
@@ -410,13 +480,28 @@ namespace cusignal
                 const float inv_two_a_sq = 0.5f / a_sq;
                 ScopedZxGpuEvents events;
                 g_last_kernel_ms = static_cast<float>(events.measure([&]() {
-                    ricker_kernel<<<block_count(count), kThreadsPerBlock>>>(
-                        output.data(),
-                        count,
-                        amplitude,
-                        inv_a_sq,
-                        inv_two_a_sq);
-                    check_kernel_launch("ricker_kernel");
+                    constexpr std::size_t kMaxExactFloatInteger = std::size_t{1} << 24;
+                    if (count <= kMaxExactFloatInteger)
+                    {
+                        const std::size_t work_count = (count + 1) / 2;
+                        ricker_symmetric_kernel<<<block_count(work_count), kThreadsPerBlock>>>(
+                            output.data(),
+                            count,
+                            amplitude,
+                            inv_a_sq,
+                            inv_two_a_sq);
+                        check_kernel_launch("ricker_symmetric_kernel");
+                    }
+                    else
+                    {
+                        ricker_kernel<<<block_count(count), kThreadsPerBlock>>>(
+                            output.data(),
+                            count,
+                            amplitude,
+                            inv_a_sq,
+                            inv_two_a_sq);
+                        check_kernel_launch("ricker_kernel");
+                    }
                 }));
                 return output;
             }
@@ -438,13 +523,37 @@ namespace cusignal
                 const float amplitude = std::sqrt(inv_s) * detail::kPiNegQuarter;
                 ScopedZxGpuEvents events;
                 g_last_kernel_ms = static_cast<float>(events.measure([&]() {
-                    morlet2_kernel<<<block_count(count), kThreadsPerBlock>>>(
-                        reinterpret_cast<float2 *>(output.data()),
-                        count,
-                        inv_s,
-                        amplitude,
-                        w);
-                    check_kernel_launch("morlet2_kernel");
+                    constexpr std::size_t kMaxExactFloatInteger = std::size_t{1} << 24;
+                    const float max_coordinate =
+                        (static_cast<float>(count) - 1.0f) * 0.5f;
+                    const float max_scaled_coordinate =
+                        max_coordinate * std::abs(inv_s);
+                    const float max_phase = max_scaled_coordinate * std::abs(w);
+                    if (count <= kMaxExactFloatInteger &&
+                        std::isfinite(inv_s) &&
+                        std::isfinite(amplitude) &&
+                        std::isfinite(max_scaled_coordinate) &&
+                        std::isfinite(max_phase))
+                    {
+                        const std::size_t work_count = (count + 1) / 2;
+                        morlet2_symmetric_kernel<<<block_count(work_count), kThreadsPerBlock>>>(
+                            reinterpret_cast<float2 *>(output.data()),
+                            count,
+                            inv_s,
+                            amplitude,
+                            w);
+                        check_kernel_launch("morlet2_symmetric_kernel");
+                    }
+                    else
+                    {
+                        morlet2_kernel<<<block_count(count), kThreadsPerBlock>>>(
+                            reinterpret_cast<float2 *>(output.data()),
+                            count,
+                            inv_s,
+                            amplitude,
+                            w);
+                        check_kernel_launch("morlet2_kernel");
+                    }
                 }));
                 return output;
             }
@@ -518,11 +627,14 @@ namespace cusignal
                         g_workspace.cwt_cache_max_kernel_size <= kMaxSharedKernelSize)
                     {
                         const std::size_t shared_bytes =
-                            (static_cast<std::size_t>(kThreadsPerBlock) +
+                            (2 * static_cast<std::size_t>(kThreadsPerBlock) +
                              g_workspace.cwt_cache_max_kernel_size - 1) *
                             sizeof(float);
+                        const std::size_t outputs_per_block =
+                            2 * static_cast<std::size_t>(kThreadsPerBlock);
                         const dim3 grid(
-                            static_cast<unsigned int>(block_count(data_device.size())),
+                            static_cast<unsigned int>(
+                                (data_device.size() + outputs_per_block - 1) / outputs_per_block),
                             static_cast<unsigned int>(widths_device->size()));
                         cwt_ricker_shared_kernel<<<grid, kThreadsPerBlock, shared_bytes>>>(
                             data_device.data(),

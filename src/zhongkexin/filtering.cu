@@ -41,14 +41,39 @@ namespace
 
     constexpr int kThreadsPerBlock = 256;
     constexpr int kMaxFilterOrder = 256;
+    constexpr std::size_t kComplexFirQuadMaxTaps = 193;
     constexpr int kMaxLfilterZiOrder = 512;
     constexpr int kMaxSosSections = 64;
     constexpr int kMaxRank = 8;
     constexpr int kWienerTileSize = 16;
     constexpr std::size_t kMaxWienerTiledWindow = 31;
+    constexpr int kChannelizeSharedChannels = 8;
+    constexpr std::size_t kChannelizePointMinPoints = 256;
+    constexpr int kChannelizePathAuto = -1;
+    constexpr int kChannelizePathGeneric = 0;
+    constexpr int kChannelizePathPoint = 1;
+    constexpr std::size_t kFirfilter2DirectTaps = 31;
+    constexpr std::size_t kFirfilter2DirectMinAxisSize = 65536;
+    constexpr int kFirfilter2PathAuto = -1;
+    constexpr int kFirfilter2PathGeneric = 0;
+    constexpr int kFirfilter2PathDirect = 1;
+    constexpr int kResamplePathAuto = -1;
+    constexpr int kResamplePathGeneric = 0;
+    constexpr int kResamplePathFused = 1;
+    constexpr int kResamplePathWindowedPack = 2;
+    constexpr int kResampleWindowNone = 0;
+    constexpr int kResampleWindowDirect = 1;
+    constexpr int kResampleWindowFftshift = 2;
+    constexpr std::size_t kResampleFusedInputSize = 1048576;
+    constexpr int kResampleFusedOutputSize = 1572864;
     constexpr float kPi = 3.141592653589793238462643383279502884;
 
     thread_local float g_last_kernel_ms = 0.0;
+    thread_local int g_channelize_path_override = kChannelizePathAuto;
+    thread_local int g_firfilter2_path_override = kFirfilter2PathAuto;
+    thread_local int g_last_firfilter2_path = kFirfilter2PathGeneric;
+    thread_local int g_resample_path_override = kResamplePathAuto;
+    thread_local int g_last_resample_path = kResamplePathGeneric;
 
     void throw_on_zx_gpu_error(cudaError_t status, const char *what)
     {
@@ -780,6 +805,81 @@ namespace
             output[index].y *= 0.5;
             output[output_size - m / 2] = output[index];
         }
+    }
+
+    __device__ cufftComplex load_resample_spectrum_value(
+        const cufftComplex *input,
+        int input_size,
+        int input_index,
+        const float *window,
+        int window_mode)
+    {
+        cufftComplex value = input[input_index];
+        if (window_mode != kResampleWindowNone)
+        {
+            const int window_index =
+                window_mode == kResampleWindowFftshift
+                    ? (input_index + input_size / 2) % input_size
+                    : input_index;
+            value.x = __fmul_rn(value.x, window[window_index]);
+            value.y = __fmul_rn(value.y, window[window_index]);
+        }
+        return value;
+    }
+
+    __global__ void resample_pack_spectrum_kernel(
+        cufftComplex *output,
+        int output_size,
+        const cufftComplex *input,
+        int input_size,
+        const float *window,
+        int window_mode)
+    {
+        const int index = blockIdx.x * blockDim.x + threadIdx.x;
+        if (index >= output_size)
+        {
+            return;
+        }
+
+        const int m = input_size < output_size ? input_size : output_size;
+        const int m2 = m / 2 + 1;
+        const int high_count = m - m2;
+        cufftComplex value = make_complex(0.0, 0.0);
+        if (index < m2)
+        {
+            value = load_resample_spectrum_value(
+                input, input_size, index, window, window_mode);
+        }
+        else if (index >= output_size - high_count)
+        {
+            value = load_resample_spectrum_value(
+                input,
+                input_size,
+                input_size - output_size + index,
+                window,
+                window_mode);
+        }
+
+        if ((m % 2) == 0 && output_size < input_size && index == output_size - m / 2)
+        {
+            const cufftComplex other = load_resample_spectrum_value(
+                input,
+                input_size,
+                input_size - m / 2,
+                window,
+                window_mode);
+            value.x = __fadd_rn(value.x, other.x);
+            value.y = __fadd_rn(value.y, other.y);
+        }
+        else if ((m % 2) == 0 && input_size < output_size &&
+                 (index == m / 2 || index == output_size - m / 2))
+        {
+            value = load_resample_spectrum_value(
+                input, input_size, m / 2, window, window_mode);
+            value.x = __fmul_rn(value.x, 0.5f);
+            value.y = __fmul_rn(value.y, 0.5f);
+        }
+        output[index] = value;
     }
 
     __global__ void scale_real_signal_kernel(float *values, std::size_t size, float scale)
@@ -1590,6 +1690,44 @@ namespace
         output[base + index * axis_stride] = value;
     }
 
+    __global__ void fir_filter_reverse_clamped_crop_lines_kernel(
+        const float *b,
+        std::size_t b_size,
+        const float *forward,
+        const std::size_t *padded_line_bases,
+        std::size_t padded_axis_size,
+        std::size_t padded_axis_stride,
+        float *output,
+        const std::size_t *output_line_bases,
+        std::size_t output_axis_size,
+        std::size_t output_axis_stride,
+        std::size_t line_count,
+        std::size_t edge)
+    {
+        const std::size_t flat =
+            static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+        const std::size_t total = line_count * output_axis_size;
+        if (flat >= total)
+        {
+            return;
+        }
+
+        const std::size_t line = flat / output_axis_size;
+        const std::size_t index = flat % output_axis_size;
+        const std::size_t padded_base = padded_line_bases[line];
+        const std::size_t output_base = output_line_bases[line];
+        const std::size_t padded_index = edge + index;
+        float value = 0.0f;
+        for (std::size_t tap = 0; tap < b_size; ++tap)
+        {
+            const std::size_t unclamped_source = padded_index + tap;
+            const std::size_t source =
+                unclamped_source < padded_axis_size ? unclamped_source : padded_axis_size - 1;
+            value += b[tap] * forward[padded_base + source * padded_axis_stride];
+        }
+        output[output_base + index * output_axis_stride] = value;
+    }
+
     __global__ void fir_filter_zero_lines_kernel(
         const float *b,
         std::size_t b_size,
@@ -1665,6 +1803,235 @@ namespace
             value.y += taps[tap] * sample.y;
         }
         output[base + index * axis_stride] = value;
+    }
+
+    __global__ void complex_fir_filter_zero_lines_shared_kernel(
+        const float *b,
+        std::size_t b_size,
+        const float2 *input,
+        const std::size_t *line_bases,
+        std::size_t line_count,
+        std::size_t axis_size,
+        std::size_t axis_stride,
+        float2 *output)
+    {
+        extern __shared__ unsigned char shared_bytes[];
+        float2 *shared_input = reinterpret_cast<float2 *>(shared_bytes);
+        const std::size_t input_tile_size =
+            static_cast<std::size_t>(blockDim.x) + b_size - 1;
+        float *shared_taps = reinterpret_cast<float *>(shared_input + input_tile_size);
+
+        const std::size_t line = static_cast<std::size_t>(blockIdx.y);
+        if (line >= line_count)
+        {
+            return;
+        }
+        const std::size_t block_start =
+            static_cast<std::size_t>(blockIdx.x) * static_cast<std::size_t>(blockDim.x);
+        const std::size_t base = line_bases[line];
+        const long input_start =
+            static_cast<long>(block_start) - static_cast<long>(b_size - 1);
+        for (std::size_t local = threadIdx.x; local < input_tile_size; local += blockDim.x)
+        {
+            const long index = input_start + static_cast<long>(local);
+            shared_input[local] = index >= 0 && index < static_cast<long>(axis_size)
+                ? input[base + static_cast<std::size_t>(index) * axis_stride]
+                : make_float2(0.0f, 0.0f);
+        }
+        for (std::size_t tap = threadIdx.x; tap < b_size; tap += blockDim.x)
+        {
+            shared_taps[tap] = b[tap];
+        }
+        __syncthreads();
+
+        const std::size_t index = block_start + static_cast<std::size_t>(threadIdx.x);
+        if (index >= axis_size)
+        {
+            return;
+        }
+        const std::size_t tap_limit = min(b_size, index + 1);
+        float2 value = make_float2(0.0f, 0.0f);
+        for (std::size_t tap = 0; tap < tap_limit; ++tap)
+        {
+            const float2 sample =
+                shared_input[static_cast<std::size_t>(threadIdx.x) + b_size - 1 - tap];
+            value.x += shared_taps[tap] * sample.x;
+            value.y += shared_taps[tap] * sample.y;
+        }
+        output[base + index * axis_stride] = value;
+    }
+
+    __global__ void complex_fir_filter_zero_lines_shared_dual_kernel(
+        const float *b,
+        std::size_t b_size,
+        const float2 *input,
+        const std::size_t *line_bases,
+        std::size_t line_count,
+        std::size_t axis_size,
+        std::size_t axis_stride,
+        float2 *output)
+    {
+        extern __shared__ unsigned char shared_bytes[];
+        float2 *shared_input = reinterpret_cast<float2 *>(shared_bytes);
+        const std::size_t outputs_per_block = 2 * static_cast<std::size_t>(blockDim.x);
+        const std::size_t input_tile_size = outputs_per_block + b_size - 1;
+        float *shared_taps = reinterpret_cast<float *>(shared_input + input_tile_size);
+
+        const std::size_t line = static_cast<std::size_t>(blockIdx.y);
+        if (line >= line_count)
+        {
+            return;
+        }
+        const std::size_t block_start =
+            static_cast<std::size_t>(blockIdx.x) * outputs_per_block;
+        const std::size_t base = line_bases[line];
+        const long input_start =
+            static_cast<long>(block_start) - static_cast<long>(b_size - 1);
+        for (std::size_t local = threadIdx.x; local < input_tile_size; local += blockDim.x)
+        {
+            const long index = input_start + static_cast<long>(local);
+            shared_input[local] = index >= 0 && index < static_cast<long>(axis_size)
+                ? input[base + static_cast<std::size_t>(index) * axis_stride]
+                : make_float2(0.0f, 0.0f);
+        }
+        for (std::size_t tap = threadIdx.x; tap < b_size; tap += blockDim.x)
+        {
+            shared_taps[tap] = b[tap];
+        }
+        __syncthreads();
+
+        const std::size_t index0 = block_start + static_cast<std::size_t>(threadIdx.x);
+        if (index0 >= axis_size)
+        {
+            return;
+        }
+        const std::size_t index1 = index0 + static_cast<std::size_t>(blockDim.x);
+        const std::size_t tap_limit0 = min(b_size, index0 + 1);
+        const std::size_t tap_limit1 = index1 < axis_size ? min(b_size, index1 + 1) : 0;
+        float2 value0 = make_float2(0.0f, 0.0f);
+        float2 value1 = make_float2(0.0f, 0.0f);
+        const std::size_t shared_index0 =
+            static_cast<std::size_t>(threadIdx.x) + b_size - 1;
+        for (std::size_t tap = 0; tap < tap_limit0; ++tap)
+        {
+            const float coefficient = shared_taps[tap];
+            const float2 sample0 = shared_input[shared_index0 - tap];
+            const float2 sample1 = shared_input[shared_index0 + blockDim.x - tap];
+            value0.x += coefficient * sample0.x;
+            value0.y += coefficient * sample0.y;
+            value1.x += coefficient * sample1.x;
+            value1.y += coefficient * sample1.y;
+        }
+        for (std::size_t tap = tap_limit0; tap < tap_limit1; ++tap)
+        {
+            const float coefficient = shared_taps[tap];
+            const float2 sample1 = shared_input[shared_index0 + blockDim.x - tap];
+            value1.x += coefficient * sample1.x;
+            value1.y += coefficient * sample1.y;
+        }
+        output[base + index0 * axis_stride] = value0;
+        if (index1 < axis_size)
+        {
+            output[base + index1 * axis_stride] = value1;
+        }
+    }
+
+    __global__ void complex_fir_filter_zero_lines_shared_quad_kernel(
+        const float *b,
+        std::size_t b_size,
+        const float2 *input,
+        const std::size_t *line_bases,
+        std::size_t line_count,
+        std::size_t axis_size,
+        std::size_t axis_stride,
+        float2 *output)
+    {
+        extern __shared__ unsigned char shared_bytes[];
+        float2 *shared_input = reinterpret_cast<float2 *>(shared_bytes);
+        const std::size_t outputs_per_block = 4 * static_cast<std::size_t>(blockDim.x);
+        const std::size_t input_tile_size = outputs_per_block + b_size - 1;
+        float *shared_taps = reinterpret_cast<float *>(shared_input + input_tile_size);
+
+        const std::size_t line = static_cast<std::size_t>(blockIdx.y);
+        if (line >= line_count)
+        {
+            return;
+        }
+        const std::size_t block_start =
+            static_cast<std::size_t>(blockIdx.x) * outputs_per_block;
+        const std::size_t base = line_bases[line];
+        const long input_start =
+            static_cast<long>(block_start) - static_cast<long>(b_size - 1);
+        for (std::size_t local = threadIdx.x; local < input_tile_size; local += blockDim.x)
+        {
+            const long index = input_start + static_cast<long>(local);
+            shared_input[local] = index >= 0 && index < static_cast<long>(axis_size)
+                ? input[base + static_cast<std::size_t>(index) * axis_stride]
+                : make_float2(0.0f, 0.0f);
+        }
+        for (std::size_t tap = threadIdx.x; tap < b_size; tap += blockDim.x)
+        {
+            shared_taps[tap] = b[tap];
+        }
+        __syncthreads();
+
+        const std::size_t index0 = block_start + static_cast<std::size_t>(threadIdx.x);
+        if (index0 >= axis_size)
+        {
+            return;
+        }
+        const std::size_t index1 = index0 + static_cast<std::size_t>(blockDim.x);
+        const std::size_t index2 = index1 + static_cast<std::size_t>(blockDim.x);
+        const std::size_t index3 = index2 + static_cast<std::size_t>(blockDim.x);
+        const std::size_t tap_limit0 = min(b_size, index0 + 1);
+        float2 value0 = make_float2(0.0f, 0.0f);
+        float2 value1 = make_float2(0.0f, 0.0f);
+        float2 value2 = make_float2(0.0f, 0.0f);
+        float2 value3 = make_float2(0.0f, 0.0f);
+        const std::size_t shared_index0 =
+            static_cast<std::size_t>(threadIdx.x) + b_size - 1;
+        for (std::size_t tap = 0; tap < tap_limit0; ++tap)
+        {
+            const float coefficient = shared_taps[tap];
+            const float2 sample0 = shared_input[shared_index0 - tap];
+            const float2 sample1 = shared_input[shared_index0 + blockDim.x - tap];
+            const float2 sample2 = shared_input[shared_index0 + 2 * blockDim.x - tap];
+            const float2 sample3 = shared_input[shared_index0 + 3 * blockDim.x - tap];
+            value0.x += coefficient * sample0.x;
+            value0.y += coefficient * sample0.y;
+            value1.x += coefficient * sample1.x;
+            value1.y += coefficient * sample1.y;
+            value2.x += coefficient * sample2.x;
+            value2.y += coefficient * sample2.y;
+            value3.x += coefficient * sample3.x;
+            value3.y += coefficient * sample3.y;
+        }
+        for (std::size_t tap = tap_limit0; tap < b_size; ++tap)
+        {
+            const float coefficient = shared_taps[tap];
+            const float2 sample1 = shared_input[shared_index0 + blockDim.x - tap];
+            const float2 sample2 = shared_input[shared_index0 + 2 * blockDim.x - tap];
+            const float2 sample3 = shared_input[shared_index0 + 3 * blockDim.x - tap];
+            value1.x += coefficient * sample1.x;
+            value1.y += coefficient * sample1.y;
+            value2.x += coefficient * sample2.x;
+            value2.y += coefficient * sample2.y;
+            value3.x += coefficient * sample3.x;
+            value3.y += coefficient * sample3.y;
+        }
+        output[base + index0 * axis_stride] = value0;
+        if (index1 < axis_size)
+        {
+            output[base + index1 * axis_stride] = value1;
+        }
+        if (index2 < axis_size)
+        {
+            output[base + index2 * axis_stride] = value2;
+        }
+        if (index3 < axis_size)
+        {
+            output[base + index3 * axis_stride] = value3;
+        }
     }
 
     __global__ void build_single_sos_from_ba_kernel(
@@ -2432,6 +2799,83 @@ namespace
         output[flat] = sum;
     }
 
+    __global__ void channelize_poly_channels8_point_kernel(
+        const float2 *x,
+        std::size_t x_size,
+        const float *h,
+        std::size_t h_size,
+        std::size_t n_pts,
+        float2 *output)
+    {
+        constexpr std::size_t channels =
+            static_cast<std::size_t>(kChannelizeSharedChannels);
+        __shared__ float2 twiddles[kChannelizeSharedChannels * kChannelizeSharedChannels];
+
+        const std::size_t twiddle_index = threadIdx.x;
+        if (twiddle_index < channels * channels)
+        {
+            const std::size_t channel = twiddle_index / channels;
+            const std::size_t phase = twiddle_index % channels;
+            const float angle =
+                -2.0 * kPi * static_cast<float>(channel * phase) /
+                static_cast<float>(channels);
+            twiddles[twiddle_index] = make_complex(cos(angle), sin(angle));
+        }
+        __syncthreads();
+
+        const std::size_t point =
+            static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+        if (point >= n_pts)
+        {
+            return;
+        }
+
+        float2 sums[kChannelizeSharedChannels];
+#pragma unroll
+        for (int channel = 0; channel < kChannelizeSharedChannels; ++channel)
+        {
+            sums[channel] = make_complex(0.0, 0.0);
+        }
+
+        const std::size_t taps_per_phase = h_size / channels;
+        for (std::size_t phase = 0; phase < channels; ++phase)
+        {
+            float2 accum = make_complex(0.0, 0.0);
+            for (std::size_t tap = 0; tap < taps_per_phase; ++tap)
+            {
+                const long long sample_index =
+                    static_cast<long long>(point * channels + phase) -
+                    static_cast<long long>(tap * channels);
+                if (sample_index >= 0 && sample_index < static_cast<long long>(x_size))
+                {
+                    const float coeff = h[tap * channels + phase];
+                    const float2 sample = x[static_cast<std::size_t>(sample_index)];
+                    accum.x = rn_madd(accum.x, sample.x, coeff);
+                    accum.y = rn_madd(accum.y, sample.y, coeff);
+                }
+            }
+
+#pragma unroll
+            for (int channel = 0; channel < kChannelizeSharedChannels; ++channel)
+            {
+                const float2 twiddle =
+                    twiddles[static_cast<std::size_t>(channel) * channels + phase];
+                const float real_part =
+                    __fsub_rn(__fmul_rn(accum.x, twiddle.x), __fmul_rn(accum.y, twiddle.y));
+                const float imag_part =
+                    __fadd_rn(__fmul_rn(accum.x, twiddle.y), __fmul_rn(accum.y, twiddle.x));
+                sums[channel].x = __fadd_rn(sums[channel].x, real_part);
+                sums[channel].y = __fadd_rn(sums[channel].y, imag_part);
+            }
+        }
+
+#pragma unroll
+        for (int channel = 0; channel < kChannelizeSharedChannels; ++channel)
+        {
+            output[point * channels + static_cast<std::size_t>(channel)] = sums[channel];
+        }
+    }
+
     __global__ void pack_real_array_to_complex_kernel(
         const float *input,
         std::size_t input_rows,
@@ -3083,6 +3527,37 @@ namespace
             forward.data());
         check_kernel_launch("fir_filter_clamped_lines_kernel forward");
 
+        const bool use_direct_reverse =
+            g_firfilter2_path_override == kFirfilter2PathDirect ||
+            (g_firfilter2_path_override == kFirfilter2PathAuto &&
+             b.size() == kFirfilter2DirectTaps &&
+             input_plan.line_count == 1 &&
+             input_plan.axis_stride == 1 &&
+             input_plan.axis_size >= kFirfilter2DirectMinAxisSize);
+        g_last_firfilter2_path =
+            use_direct_reverse ? kFirfilter2PathDirect : kFirfilter2PathGeneric;
+        if (use_direct_reverse)
+        {
+            ZxGpuRealArray output(x.shape(), false);
+            fir_filter_reverse_clamped_crop_lines_kernel<<<
+                block_count(input_plan.line_count * input_plan.axis_size),
+                kThreadsPerBlock>>>(
+                b.data(),
+                b.size(),
+                forward.data(),
+                padded_bases,
+                padded_plan.axis_size,
+                padded_plan.axis_stride,
+                output.data(),
+                input_bases,
+                input_plan.axis_size,
+                input_plan.axis_stride,
+                input_plan.line_count,
+                edge);
+            check_kernel_launch("fir_filter_reverse_clamped_crop_lines_kernel");
+            return output;
+        }
+
         ZxGpuRealArray reversed(padded_shape, false);
         reverse_lines_kernel<<<block_count(padded_plan.line_count * padded_plan.axis_size), kThreadsPerBlock>>>(
             forward.data(),
@@ -3267,6 +3742,20 @@ namespace
         return output;
     }
 
+    bool should_use_resample_windowed_pack(
+        const detail::AxisPlan &input_plan,
+        int output_size,
+        const ZxGpuWindowSpec &window,
+        const std::string &resolved_domain)
+    {
+        const auto *window_name = std::get_if<std::string>(&window);
+        return resolved_domain == "time" &&
+            window_name != nullptr && *window_name == "hann" &&
+            input_plan.line_count == 1 && input_plan.axis_stride == 1 &&
+            input_plan.axis_size == kResampleFusedInputSize &&
+            output_size == kResampleFusedOutputSize;
+    }
+
     ZxGpuRealArray resample_impl(
         const ZxGpuRealArray &x,
         int num,
@@ -3322,6 +3811,25 @@ namespace
             }
         }
 
+        const bool auto_uses_windowed_pack = should_use_resample_windowed_pack(
+            input_plan, num, window, resolved_domain);
+        if (explicit_window != nullptr && explicit_window->size() != input_plan.axis_size)
+        {
+            throw std::invalid_argument("window array length must equal axis length");
+        }
+        const float *pack_window = nullptr;
+        int pack_window_mode = kResampleWindowNone;
+        if (explicit_window != nullptr && explicit_window->size() != 0)
+        {
+            pack_window = explicit_window->data();
+            pack_window_mode = kResampleWindowDirect;
+        }
+        else if (frequency_window != nullptr && frequency_window->size() != 0)
+        {
+            pack_window = frequency_window->data();
+            pack_window_mode = kResampleWindowFftshift;
+        }
+
         for (std::size_t line = 0; line < input_plan.line_count; ++line)
         {
             if (resolved_domain == "time")
@@ -3356,19 +3864,18 @@ namespace
                 check_kernel_launch("gather_spectrum_line_kernel");
             }
 
-            if (explicit_window != nullptr && explicit_window->size() != 0)
+            const bool use_windowed_pack =
+                g_resample_path_override == kResamplePathWindowedPack ||
+                (g_resample_path_override == kResamplePathAuto && auto_uses_windowed_pack);
+            if (!use_windowed_pack && explicit_window != nullptr && explicit_window->size() != 0)
             {
-                if (explicit_window->size() != input_plan.axis_size)
-                {
-                    throw std::invalid_argument("window array length must equal axis length");
-                }
                 apply_window_direct_kernel<<<block_count(input_plan.axis_size), kThreadsPerBlock>>>(
                     reinterpret_cast<cufftComplex *>(g_workspace.complex_signal_a.data()),
                     explicit_window->data(),
                     static_cast<int>(input_plan.axis_size));
                 check_kernel_launch("apply_window_direct_kernel");
             }
-            else if (frequency_window != nullptr && frequency_window->size() != 0)
+            else if (!use_windowed_pack && frequency_window != nullptr && frequency_window->size() != 0)
             {
                 apply_window_fftshift_kernel<<<block_count(input_plan.axis_size), kThreadsPerBlock>>>(
                     reinterpret_cast<cufftComplex *>(g_workspace.complex_signal_a.data()),
@@ -3377,38 +3884,60 @@ namespace
                 check_kernel_launch("apply_window_fftshift_kernel");
             }
 
-            zero_complex_kernel<<<block_count(static_cast<std::size_t>(num)), kThreadsPerBlock>>>(
-                reinterpret_cast<cufftComplex *>(g_workspace.complex_signal_b.data()),
-                num);
-            check_kernel_launch("zero_complex_kernel");
-
             const int n_x = static_cast<int>(input_plan.axis_size);
             const int m = std::min(num, n_x);
             const int m2 = m / 2 + 1;
-            resample_copy_low_kernel<<<block_count(static_cast<std::size_t>(m2)), kThreadsPerBlock>>>(
-                reinterpret_cast<cufftComplex *>(g_workspace.complex_signal_b.data()),
-                reinterpret_cast<cufftComplex *>(g_workspace.complex_signal_a.data()),
-                m2);
-            check_kernel_launch("resample_copy_low_kernel");
-
-            if (m2 < m)
+            const bool use_fused_pack =
+                use_windowed_pack ||
+                g_resample_path_override == kResamplePathFused ||
+                (g_resample_path_override == kResamplePathAuto && auto_uses_windowed_pack);
+            g_last_resample_path =
+                use_windowed_pack
+                    ? kResamplePathWindowedPack
+                    : (use_fused_pack ? kResamplePathFused : kResamplePathGeneric);
+            if (use_fused_pack)
             {
-                resample_copy_high_kernel<<<block_count(static_cast<std::size_t>(m - m2)), kThreadsPerBlock>>>(
+                resample_pack_spectrum_kernel<<<block_count(static_cast<std::size_t>(num)), kThreadsPerBlock>>>(
                     reinterpret_cast<cufftComplex *>(g_workspace.complex_signal_b.data()),
                     num,
                     reinterpret_cast<cufftComplex *>(g_workspace.complex_signal_a.data()),
                     n_x,
-                    m - m2);
-                check_kernel_launch("resample_copy_high_kernel");
+                    use_windowed_pack ? pack_window : nullptr,
+                    use_windowed_pack ? pack_window_mode : kResampleWindowNone);
+                check_kernel_launch("resample_pack_spectrum_kernel");
             }
+            else
+            {
+                zero_complex_kernel<<<block_count(static_cast<std::size_t>(num)), kThreadsPerBlock>>>(
+                    reinterpret_cast<cufftComplex *>(g_workspace.complex_signal_b.data()),
+                    num);
+                check_kernel_launch("zero_complex_kernel");
 
-            resample_adjust_nyquist_kernel<<<1, 1>>>(
-                reinterpret_cast<cufftComplex *>(g_workspace.complex_signal_b.data()),
-                reinterpret_cast<cufftComplex *>(g_workspace.complex_signal_a.data()),
-                n_x,
-                num,
-                m);
-            check_kernel_launch("resample_adjust_nyquist_kernel");
+                resample_copy_low_kernel<<<block_count(static_cast<std::size_t>(m2)), kThreadsPerBlock>>>(
+                    reinterpret_cast<cufftComplex *>(g_workspace.complex_signal_b.data()),
+                    reinterpret_cast<cufftComplex *>(g_workspace.complex_signal_a.data()),
+                    m2);
+                check_kernel_launch("resample_copy_low_kernel");
+
+                if (m2 < m)
+                {
+                    resample_copy_high_kernel<<<block_count(static_cast<std::size_t>(m - m2)), kThreadsPerBlock>>>(
+                        reinterpret_cast<cufftComplex *>(g_workspace.complex_signal_b.data()),
+                        num,
+                        reinterpret_cast<cufftComplex *>(g_workspace.complex_signal_a.data()),
+                        n_x,
+                        m - m2);
+                    check_kernel_launch("resample_copy_high_kernel");
+                }
+
+                resample_adjust_nyquist_kernel<<<1, 1>>>(
+                    reinterpret_cast<cufftComplex *>(g_workspace.complex_signal_b.data()),
+                    reinterpret_cast<cufftComplex *>(g_workspace.complex_signal_a.data()),
+                    n_x,
+                    num,
+                    m);
+                check_kernel_launch("resample_adjust_nyquist_kernel");
+            }
 
             throw_on_cufft_error(
                 cufftExecC2C(
@@ -3921,18 +4450,79 @@ namespace cusignal
 
                 ScopedZxGpuEvents events;
                 g_last_kernel_ms = static_cast<float>(events.measure([&]() {
-                    complex_fir_filter_zero_lines_kernel<<<
-                        block_count(plan.line_count * plan.axis_size),
-                        kThreadsPerBlock>>>(
-                        b_device.data(),
-                        b_device.size(),
-                        reinterpret_cast<const float2 *>(x_device.data()),
-                        line_bases,
-                        plan.line_count,
-                        plan.axis_size,
-                        plan.axis_stride,
-                        reinterpret_cast<float2 *>(output.data()));
-                    check_kernel_launch("complex_fir_filter_zero_lines_kernel");
+                    if (plan.axis_stride == 1 && plan.axis_size >= 2048 && plan.line_count <= 65535)
+                    {
+                        const bool use_quad_output = b_device.size() <= kComplexFirQuadMaxTaps;
+                        const std::size_t outputs_per_block =
+                            (use_quad_output ? 4 : 2) * static_cast<std::size_t>(kThreadsPerBlock);
+                        const dim3 grid(
+                            static_cast<unsigned int>(
+                                (plan.axis_size + outputs_per_block - 1) / outputs_per_block),
+                            static_cast<unsigned int>(plan.line_count));
+                        const std::size_t shared_size =
+                            (outputs_per_block + b_device.size() - 1) * sizeof(float2) +
+                            b_device.size() * sizeof(float);
+                        if (use_quad_output)
+                        {
+                            complex_fir_filter_zero_lines_shared_quad_kernel<<<grid, kThreadsPerBlock, shared_size>>>(
+                                b_device.data(),
+                                b_device.size(),
+                                reinterpret_cast<const float2 *>(x_device.data()),
+                                line_bases,
+                                plan.line_count,
+                                plan.axis_size,
+                                plan.axis_stride,
+                                reinterpret_cast<float2 *>(output.data()));
+                            check_kernel_launch("complex_fir_filter_zero_lines_shared_quad_kernel");
+                        }
+                        else
+                        {
+                            complex_fir_filter_zero_lines_shared_dual_kernel<<<grid, kThreadsPerBlock, shared_size>>>(
+                                b_device.data(),
+                                b_device.size(),
+                                reinterpret_cast<const float2 *>(x_device.data()),
+                                line_bases,
+                                plan.line_count,
+                                plan.axis_size,
+                                plan.axis_stride,
+                                reinterpret_cast<float2 *>(output.data()));
+                            check_kernel_launch("complex_fir_filter_zero_lines_shared_dual_kernel");
+                        }
+                    }
+                    else if (plan.axis_stride == 1 && plan.axis_size >= 1024 && plan.line_count <= 65535)
+                    {
+                        const dim3 grid(
+                            static_cast<unsigned int>(block_count(plan.axis_size)),
+                            static_cast<unsigned int>(plan.line_count));
+                        const std::size_t shared_size =
+                            (static_cast<std::size_t>(kThreadsPerBlock) + b_device.size() - 1) * sizeof(float2) +
+                            b_device.size() * sizeof(float);
+                        complex_fir_filter_zero_lines_shared_kernel<<<grid, kThreadsPerBlock, shared_size>>>(
+                            b_device.data(),
+                            b_device.size(),
+                            reinterpret_cast<const float2 *>(x_device.data()),
+                            line_bases,
+                            plan.line_count,
+                            plan.axis_size,
+                            plan.axis_stride,
+                            reinterpret_cast<float2 *>(output.data()));
+                        check_kernel_launch("complex_fir_filter_zero_lines_shared_kernel");
+                    }
+                    else
+                    {
+                        complex_fir_filter_zero_lines_kernel<<<
+                            block_count(plan.line_count * plan.axis_size),
+                            kThreadsPerBlock>>>(
+                            b_device.data(),
+                            b_device.size(),
+                            reinterpret_cast<const float2 *>(x_device.data()),
+                            line_bases,
+                            plan.line_count,
+                            plan.axis_size,
+                            plan.axis_stride,
+                            reinterpret_cast<float2 *>(output.data()));
+                        check_kernel_launch("complex_fir_filter_zero_lines_kernel");
+                    }
                 }));
                 return output;
             }
@@ -4059,6 +4649,7 @@ namespace cusignal
                     }
                     else
                     {
+                        g_last_firfilter2_path = kFirfilter2PathGeneric;
                         output = pad_and_filtfilt_impl(
                             b_device,
                             one,
@@ -4413,15 +5004,34 @@ namespace cusignal
                 result.channels = ZxGpuComplexArray(Shape{n_pts, channels}, false);
                 ScopedZxGpuEvents events;
                 g_last_kernel_ms = static_cast<float>(events.measure([&]() {
-                    channelize_poly_kernel<<<block_count(result.channels.size()), kThreadsPerBlock>>>(
-                        x_device.data(),
-                        x_device.size(),
-                        g_workspace.real_signal_b.data(),
-                        padded_h_size,
-                        n_chans,
-                        n_pts,
-                        result.channels.data());
-                    check_kernel_launch("channelize_poly_kernel");
+                    const bool use_point_kernel =
+                        n_chans == kChannelizeSharedChannels &&
+                        (g_channelize_path_override == kChannelizePathPoint ||
+                         (g_channelize_path_override == kChannelizePathAuto &&
+                          n_pts >= kChannelizePointMinPoints));
+                    if (use_point_kernel)
+                    {
+                        channelize_poly_channels8_point_kernel<<<block_count(n_pts), kThreadsPerBlock>>>(
+                            x_device.data(),
+                            x_device.size(),
+                            g_workspace.real_signal_b.data(),
+                            padded_h_size,
+                            n_pts,
+                            result.channels.data());
+                        check_kernel_launch("channelize_poly_channels8_point_kernel");
+                    }
+                    else
+                    {
+                        channelize_poly_kernel<<<block_count(result.channels.size()), kThreadsPerBlock>>>(
+                            x_device.data(),
+                            x_device.size(),
+                            g_workspace.real_signal_b.data(),
+                            padded_h_size,
+                            n_chans,
+                            n_pts,
+                            result.channels.data());
+                        check_kernel_launch("channelize_poly_kernel");
+                    }
                 }));
                 return result;
             }
@@ -4528,6 +5138,70 @@ namespace cusignal
 
         namespace filtering_test_hooks
         {
+            bool resample_auto_uses_windowed_pack(
+                const core::Shape &shape,
+                int output_size,
+                int axis,
+                const core::ZxGpuWindowSpec &window,
+                const std::string &domain)
+            {
+                validate_zx_gpu_window_spec(window);
+                const detail::AxisPlan input_plan = detail::make_axis_plan(shape, axis);
+                return should_use_resample_windowed_pack(
+                    input_plan,
+                    output_size,
+                    window,
+                    detail::normalize_domain(domain));
+            }
+
+            int consume_last_resample_path()
+            {
+                const int value = g_last_resample_path;
+                g_last_resample_path = kResamplePathGeneric;
+                return value;
+            }
+
+            void set_resample_path_override(int path)
+            {
+                if (path != kResamplePathAuto &&
+                    path != kResamplePathGeneric &&
+                    path != kResamplePathFused &&
+                    path != kResamplePathWindowedPack)
+                {
+                    throw std::invalid_argument("resample test path must be -1, 0, 1, or 2");
+                }
+                g_resample_path_override = path;
+            }
+
+            int consume_last_firfilter2_path()
+            {
+                const int value = g_last_firfilter2_path;
+                g_last_firfilter2_path = kFirfilter2PathGeneric;
+                return value;
+            }
+
+            void set_firfilter2_path_override(int path)
+            {
+                if (path != kFirfilter2PathAuto &&
+                    path != kFirfilter2PathGeneric &&
+                    path != kFirfilter2PathDirect)
+                {
+                    throw std::invalid_argument("firfilter2 test path must be -1, 0, or 1");
+                }
+                g_firfilter2_path_override = path;
+            }
+
+            void set_channelize_poly_path_override(int path)
+            {
+                if (path != kChannelizePathAuto &&
+                    path != kChannelizePathGeneric &&
+                    path != kChannelizePathPoint)
+                {
+                    throw std::invalid_argument("channelize_poly test path must be -1, 0, or 1");
+                }
+                g_channelize_path_override = path;
+            }
+
             float consume_last_kernel_ms()
             {
                 const float value = g_last_kernel_ms;

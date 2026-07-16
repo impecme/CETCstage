@@ -11,6 +11,7 @@
 
 #include "cusignal/core/helpers.hpp"
 #include "cusignal/core/types.hpp"
+#include "../../src/common/demod_detail.hpp"
 #include "../../src/common/wavelets_detail.hpp"
 
 namespace cusignal_demo::task2_features
@@ -18,6 +19,7 @@ namespace cusignal_demo::task2_features
     namespace
     {
         namespace wavelets_detail = cusignal::wavelets_detail;
+        namespace demod_detail = cusignal::demod_detail;
         using cusignal::core::ZxGpuComplexArray;
         using cusignal::core::ZxGpuIndexSignal;
         using cusignal::core::ZxGpuRealArray;
@@ -53,6 +55,7 @@ namespace cusignal_demo::task2_features
             ZxGpuRealSignal cwt_kernel_imag;
             std::vector<float> cached_cwt_widths;
             std::size_t cached_cwt_sample_count = 0;
+            std::size_t cached_cwt_max_kernel_size = 0;
             bool cwt_kernel_table_valid = false;
         };
 
@@ -70,6 +73,7 @@ namespace cusignal_demo::task2_features
         {
             throw_on_zx_gpu_error(cudaGetLastError(), what);
         }
+
 
         std::size_t block_count(std::size_t total)
         {
@@ -370,9 +374,19 @@ namespace cusignal_demo::task2_features
                     const std::size_t source_col = col < cols - 1 ? col : cols - 2;
                     const float2 current = input[row_offset + source_col];
                     const float2 next = input[row_offset + source_col + 1];
-                    const float real = next.x * current.x + next.y * current.y;
-                    const float imag = next.y * current.x - next.x * current.y;
-                    value = atan2f(imag, real);
+                    value = demod_detail::wrapped_phase_difference(
+                        current.x, current.y, next.x, next.y);
+                    if (fabsf(value) <= kTaskDemodSmallPhaseLimit)
+                    {
+                        const float current_power = fmaf(current.x, current.x, current.y * current.y);
+                        const float next_power = fmaf(next.x, next.x, next.y * next.y);
+                        const float max_power = fmaxf(current_power, next_power);
+                        if (max_power > 0.0f &&
+                            fminf(current_power, next_power) <= kTaskDemodMinPowerRatio * max_power)
+                        {
+                            value = 0.0f;
+                        }
+                    }
                 }
                 output[row_offset + col] = value;
                 local_max = fmaxf(local_max, value);
@@ -463,37 +477,69 @@ namespace cusignal_demo::task2_features
             int crop_start,
             float *output)
         {
+            extern __shared__ float2 shared_values[];
+            float2 *shared_input = shared_values;
+            const std::size_t outputs_per_block =
+                2 * static_cast<std::size_t>(blockDim.x);
+            float2 *shared_template = shared_input + outputs_per_block + templ_len - 1;
+
             const std::size_t row = static_cast<std::size_t>(blockIdx.y);
-            const std::size_t col =
-                static_cast<std::size_t>(blockIdx.x) * static_cast<std::size_t>(blockDim.x) +
-                static_cast<std::size_t>(threadIdx.x);
-            if (row >= rows || col >= cols)
+            if (row >= rows)
             {
                 return;
             }
 
-            float real = 0.0f;
-            float imag = 0.0f;
+            const std::size_t block_start =
+                static_cast<std::size_t>(blockIdx.x) * outputs_per_block;
+            const std::size_t input_tile_size = outputs_per_block + templ_len - 1;
+            const long long input_start =
+                static_cast<long long>(block_start) + static_cast<long long>(crop_start) -
+                static_cast<long long>(templ_len - 1);
             const float2 *frame = frames + row * cols;
+            for (std::size_t index = threadIdx.x; index < input_tile_size; index += blockDim.x)
+            {
+                const long long input_index = input_start + static_cast<long long>(index);
+                shared_input[index] = input_index >= 0 && input_index < static_cast<long long>(cols)
+                    ? frame[static_cast<std::size_t>(input_index)]
+                    : make_float2(0.0f, 0.0f);
+            }
+            for (std::size_t index = threadIdx.x; index < templ_len; index += blockDim.x)
+            {
+                shared_template[index] = templ[index];
+            }
+            __syncthreads();
+
+            const std::size_t col0 = block_start + static_cast<std::size_t>(threadIdx.x);
+            if (col0 >= cols)
+            {
+                return;
+            }
+            const std::size_t col1 = col0 + static_cast<std::size_t>(blockDim.x);
+
+            float real0 = 0.0f;
+            float imag0 = 0.0f;
+            float real1 = 0.0f;
+            float imag1 = 0.0f;
             for (std::size_t k = 0; k < templ_len; ++k)
             {
-                const long long input_index =
-                    static_cast<long long>(col) +
-                    static_cast<long long>(crop_start) +
-                    static_cast<long long>(k) -
-                    static_cast<long long>(templ_len - 1);
-                if (input_index < 0 || input_index >= static_cast<long long>(cols))
-                {
-                    continue;
-                }
-                const float2 lhs = frame[static_cast<std::size_t>(input_index)];
-                const float2 rhs = templ[k];
-                real = fmaf(lhs.x, rhs.x, real);
-                real = fmaf(lhs.y, rhs.y, real);
-                imag = fmaf(lhs.y, rhs.x, imag);
-                imag = fmaf(-lhs.x, rhs.y, imag);
+                const float2 rhs = shared_template[k];
+                const std::size_t shared_index = static_cast<std::size_t>(threadIdx.x) + k;
+                const float2 lhs0 = shared_input[shared_index];
+                const float2 lhs1 = shared_input[shared_index + blockDim.x];
+                real0 = fmaf(lhs0.x, rhs.x, real0);
+                real0 = fmaf(lhs0.y, rhs.y, real0);
+                imag0 = fmaf(lhs0.y, rhs.x, imag0);
+                imag0 = fmaf(-lhs0.x, rhs.y, imag0);
+                real1 = fmaf(lhs1.x, rhs.x, real1);
+                real1 = fmaf(lhs1.y, rhs.y, real1);
+                imag1 = fmaf(lhs1.y, rhs.x, imag1);
+                imag1 = fmaf(-lhs1.x, rhs.y, imag1);
             }
-            output[row * cols + col] = hypotf(real, imag);
+            output[row * cols + col0] = hypotf(real0, imag0);
+            if (col1 < cols)
+            {
+                output[row * cols + col1] = hypotf(real1, imag1);
+            }
         }
 
         __global__ void spectrogram_band_energy_kernel(
@@ -948,6 +994,97 @@ namespace cusignal_demo::task2_features
             }
         }
 
+        __global__ void direct_spectrogram_segment_energy_grouped_kernel(
+            const float *frames,
+            const float *cos_table,
+            const float *sin_table,
+            std::size_t sample_count,
+            int nperseg,
+            int step,
+            int nseg,
+            int band_bin_count,
+            float scale,
+            float *time_energy)
+        {
+            constexpr int kBinGroupSize = 8;
+            constexpr int kBinGroupsPerBlock = kThreadsPerBlock / kBinGroupSize;
+            __shared__ float shared[kThreadsPerBlock];
+            __shared__ float shared_bin_energy[512];
+
+            const std::size_t segment_flat = static_cast<std::size_t>(blockIdx.x);
+            const int seg = static_cast<int>(segment_flat % static_cast<std::size_t>(nseg));
+            const std::size_t frame = segment_flat / static_cast<std::size_t>(nseg);
+            const float *frame_ptr = frames + frame * sample_count;
+            const int start = seg * step;
+
+            float mean_sum = 0.0f;
+            for (int sample = threadIdx.x; sample < nperseg; sample += blockDim.x)
+            {
+                mean_sum += frame_ptr[static_cast<std::size_t>(start + sample)];
+            }
+            shared[threadIdx.x] = mean_sum;
+            __syncthreads();
+            for (unsigned int stride = blockDim.x / 2; stride > 0; stride >>= 1)
+            {
+                if (threadIdx.x < stride)
+                {
+                    shared[threadIdx.x] += shared[threadIdx.x + stride];
+                }
+                __syncthreads();
+            }
+            const float mean = shared[0] / static_cast<float>(nperseg);
+
+            const int lane = threadIdx.x % kBinGroupSize;
+            const int group = threadIdx.x / kBinGroupSize;
+            for (int bin_base = 0; bin_base < band_bin_count; bin_base += kBinGroupsPerBlock)
+            {
+                const int bin = bin_base + group;
+                float real = 0.0f;
+                float imag = 0.0f;
+                if (bin < band_bin_count)
+                {
+                    const std::size_t table_offset =
+                        static_cast<std::size_t>(bin) * static_cast<std::size_t>(nperseg);
+                    for (int sample = lane; sample < nperseg; sample += kBinGroupSize)
+                    {
+                        const float value = frame_ptr[static_cast<std::size_t>(start + sample)] - mean;
+                        real += value * cos_table[table_offset + static_cast<std::size_t>(sample)];
+                        imag += value * sin_table[table_offset + static_cast<std::size_t>(sample)];
+                    }
+                }
+                for (int offset = kBinGroupSize / 2; offset > 0; offset >>= 1)
+                {
+                    real += __shfl_down_sync(0xffffffffu, real, offset, kBinGroupSize);
+                    imag += __shfl_down_sync(0xffffffffu, imag, offset, kBinGroupSize);
+                }
+                if (lane == 0 && bin < band_bin_count)
+                {
+                    shared_bin_energy[bin] = hypotf(real, imag) * scale;
+                }
+            }
+            __syncthreads();
+
+            float local_sum = 0.0f;
+            for (int bin = threadIdx.x; bin < band_bin_count; bin += blockDim.x)
+            {
+                local_sum += shared_bin_energy[bin];
+            }
+            shared[threadIdx.x] = local_sum;
+            __syncthreads();
+            for (unsigned int stride = blockDim.x / 2; stride > 0; stride >>= 1)
+            {
+                if (threadIdx.x < stride)
+                {
+                    shared[threadIdx.x] += shared[threadIdx.x + stride];
+                }
+                __syncthreads();
+            }
+            if (threadIdx.x == 0)
+            {
+                time_energy[segment_flat] = shared[0];
+            }
+        }
+
         __global__ void cwt_max_kernel(
             const float2 *values,
             std::size_t widths,
@@ -1102,6 +1239,218 @@ namespace cusignal_demo::task2_features
                 best_sq = fmaxf(best_sq, fmaf(real, real, imag * imag));
             }
             output[flat] = sqrtf(best_sq);
+        }
+
+        __global__ void batched_cwt_max_score_shared_kernel(
+            const float *frames,
+            std::size_t frame_count,
+            std::size_t sample_count,
+            std::size_t width_count,
+            const int *kernel_sizes,
+            const int *kernel_starts,
+            const int *kernel_offsets,
+            const float *kernel_real,
+            const float *kernel_imag,
+            float *output)
+        {
+            const std::size_t frame = static_cast<std::size_t>(blockIdx.y);
+            const std::size_t outputs_per_block =
+                2 * static_cast<std::size_t>(blockDim.x);
+            const std::size_t tile_start =
+                static_cast<std::size_t>(blockIdx.x) * outputs_per_block;
+            if (frame >= frame_count)
+            {
+                return;
+            }
+
+            extern __shared__ float tile_data[];
+            const std::size_t sample0 = tile_start + threadIdx.x;
+            const std::size_t sample1 = sample0 + static_cast<std::size_t>(blockDim.x);
+            const float *frame_ptr = frames + frame * sample_count;
+            float best_sq0 = 0.0f;
+            float best_sq1 = 0.0f;
+            for (std::size_t width_index = 0; width_index < width_count; ++width_index)
+            {
+                const int kernel_size = kernel_sizes[width_index];
+                if (kernel_size <= 0)
+                {
+                    continue;
+                }
+
+                const int start = kernel_starts[width_index];
+                const long tile_base =
+                    static_cast<long>(tile_start) + static_cast<long>(start) -
+                    static_cast<long>(kernel_size - 1);
+                const std::size_t tile_size =
+                    outputs_per_block +
+                    static_cast<std::size_t>(kernel_size) - 1;
+                for (std::size_t local_index = threadIdx.x;
+                     local_index < tile_size;
+                     local_index += blockDim.x)
+                {
+                    const long global_index = tile_base + static_cast<long>(local_index);
+                    tile_data[local_index] =
+                        global_index >= 0 && global_index < static_cast<long>(sample_count)
+                        ? frame_ptr[static_cast<std::size_t>(global_index)]
+                        : 0.0f;
+                }
+                __syncthreads();
+
+                if (sample0 < sample_count)
+                {
+                    const int kernel_offset = kernel_offsets[width_index];
+                    float real0 = 0.0f;
+                    float imag0 = 0.0f;
+                    float real1 = 0.0f;
+                    float imag1 = 0.0f;
+                    for (int kernel_index = 0; kernel_index < kernel_size; ++kernel_index)
+                    {
+                        const std::size_t shared_index0 =
+                            static_cast<std::size_t>(threadIdx.x) +
+                            static_cast<std::size_t>(kernel_size - 1 - kernel_index);
+                        const std::size_t table_index =
+                            static_cast<std::size_t>(kernel_offset + kernel_index);
+                        const float coeff_real = kernel_real[table_index];
+                        const float coeff_imag = kernel_imag[table_index];
+                        const float value0 = tile_data[shared_index0];
+                        const float value1 = tile_data[shared_index0 + blockDim.x];
+                        real0 = fmaf(value0, coeff_real, real0);
+                        imag0 = fmaf(value0, coeff_imag, imag0);
+                        real1 = fmaf(value1, coeff_real, real1);
+                        imag1 = fmaf(value1, coeff_imag, imag1);
+                    }
+                    best_sq0 = fmaxf(best_sq0, fmaf(real0, real0, imag0 * imag0));
+                    best_sq1 = fmaxf(best_sq1, fmaf(real1, real1, imag1 * imag1));
+                }
+                __syncthreads();
+            }
+
+            if (sample0 < sample_count)
+            {
+                output[frame * sample_count + sample0] = sqrtf(best_sq0);
+            }
+            if (sample1 < sample_count)
+            {
+                output[frame * sample_count + sample1] = sqrtf(best_sq1);
+            }
+        }
+
+        __global__ void batched_cwt_max_score_shared_quad_kernel(
+            const float *frames,
+            std::size_t frame_count,
+            std::size_t sample_count,
+            std::size_t width_count,
+            const int *kernel_sizes,
+            const int *kernel_starts,
+            const int *kernel_offsets,
+            const float *kernel_real,
+            const float *kernel_imag,
+            float *output)
+        {
+            const std::size_t frame = static_cast<std::size_t>(blockIdx.y);
+            const std::size_t outputs_per_block =
+                4 * static_cast<std::size_t>(blockDim.x);
+            const std::size_t tile_start =
+                static_cast<std::size_t>(blockIdx.x) * outputs_per_block;
+            if (frame >= frame_count)
+            {
+                return;
+            }
+
+            extern __shared__ float tile_data[];
+            const std::size_t sample0 = tile_start + threadIdx.x;
+            const std::size_t sample1 = sample0 + static_cast<std::size_t>(blockDim.x);
+            const std::size_t sample2 = sample1 + static_cast<std::size_t>(blockDim.x);
+            const std::size_t sample3 = sample2 + static_cast<std::size_t>(blockDim.x);
+            const float *frame_ptr = frames + frame * sample_count;
+            float best_sq0 = 0.0f;
+            float best_sq1 = 0.0f;
+            float best_sq2 = 0.0f;
+            float best_sq3 = 0.0f;
+            for (std::size_t width_index = 0; width_index < width_count; ++width_index)
+            {
+                const int kernel_size = kernel_sizes[width_index];
+                if (kernel_size <= 0)
+                {
+                    continue;
+                }
+
+                const int start = kernel_starts[width_index];
+                const long tile_base =
+                    static_cast<long>(tile_start) + static_cast<long>(start) -
+                    static_cast<long>(kernel_size - 1);
+                const std::size_t tile_size =
+                    outputs_per_block +
+                    static_cast<std::size_t>(kernel_size) - 1;
+                for (std::size_t local_index = threadIdx.x;
+                     local_index < tile_size;
+                     local_index += blockDim.x)
+                {
+                    const long global_index = tile_base + static_cast<long>(local_index);
+                    tile_data[local_index] =
+                        global_index >= 0 && global_index < static_cast<long>(sample_count)
+                        ? frame_ptr[static_cast<std::size_t>(global_index)]
+                        : 0.0f;
+                }
+                __syncthreads();
+
+                if (sample0 < sample_count)
+                {
+                    const int kernel_offset = kernel_offsets[width_index];
+                    float real0 = 0.0f;
+                    float imag0 = 0.0f;
+                    float real1 = 0.0f;
+                    float imag1 = 0.0f;
+                    float real2 = 0.0f;
+                    float imag2 = 0.0f;
+                    float real3 = 0.0f;
+                    float imag3 = 0.0f;
+                    for (int kernel_index = 0; kernel_index < kernel_size; ++kernel_index)
+                    {
+                        const std::size_t shared_index0 =
+                            static_cast<std::size_t>(threadIdx.x) +
+                            static_cast<std::size_t>(kernel_size - 1 - kernel_index);
+                        const std::size_t table_index =
+                            static_cast<std::size_t>(kernel_offset + kernel_index);
+                        const float coeff_real = kernel_real[table_index];
+                        const float coeff_imag = kernel_imag[table_index];
+                        const float value0 = tile_data[shared_index0];
+                        const float value1 = tile_data[shared_index0 + blockDim.x];
+                        const float value2 = tile_data[shared_index0 + 2 * blockDim.x];
+                        const float value3 = tile_data[shared_index0 + 3 * blockDim.x];
+                        real0 = fmaf(value0, coeff_real, real0);
+                        imag0 = fmaf(value0, coeff_imag, imag0);
+                        real1 = fmaf(value1, coeff_real, real1);
+                        imag1 = fmaf(value1, coeff_imag, imag1);
+                        real2 = fmaf(value2, coeff_real, real2);
+                        imag2 = fmaf(value2, coeff_imag, imag2);
+                        real3 = fmaf(value3, coeff_real, real3);
+                        imag3 = fmaf(value3, coeff_imag, imag3);
+                    }
+                    best_sq0 = fmaxf(best_sq0, fmaf(real0, real0, imag0 * imag0));
+                    best_sq1 = fmaxf(best_sq1, fmaf(real1, real1, imag1 * imag1));
+                    best_sq2 = fmaxf(best_sq2, fmaf(real2, real2, imag2 * imag2));
+                    best_sq3 = fmaxf(best_sq3, fmaf(real3, real3, imag3 * imag3));
+                }
+                __syncthreads();
+            }
+
+            if (sample0 < sample_count)
+            {
+                output[frame * sample_count + sample0] = sqrtf(best_sq0);
+            }
+            if (sample1 < sample_count)
+            {
+                output[frame * sample_count + sample1] = sqrtf(best_sq1);
+            }
+            if (sample2 < sample_count)
+            {
+                output[frame * sample_count + sample2] = sqrtf(best_sq2);
+            }
+            if (sample3 < sample_count)
+            {
+                output[frame * sample_count + sample3] = sqrtf(best_sq3);
+            }
         }
 
         __global__ void weighted_sum_kernel(
@@ -1564,6 +1913,11 @@ namespace cusignal_demo::task2_features
 
             const wavelets_detail::CwtKernelTable kernel_table =
                 wavelets_detail::build_cwt_kernel_table(widths, sample_count, "morlet2");
+            g_workspace.cached_cwt_max_kernel_size = kernel_table.kernel_sizes.empty()
+                ? 0
+                : static_cast<std::size_t>(*std::max_element(
+                      kernel_table.kernel_sizes.begin(),
+                      kernel_table.kernel_sizes.end()));
             g_workspace.cwt_kernel_sizes = ZxGpuIndexSignal::from_host(kernel_table.kernel_sizes);
             g_workspace.cwt_kernel_starts = ZxGpuIndexSignal::from_host(kernel_table.kernel_starts);
             g_workspace.cwt_kernel_offsets = ZxGpuIndexSignal::from_host(kernel_table.kernel_offsets);
@@ -1855,10 +2209,15 @@ namespace cusignal_demo::task2_features
         const int crop_start = static_cast<int>(full_size / 2 - cols / 2);
         if (cols >= 2048)
         {
+            constexpr std::size_t kCorrelateOutputsPerBlock =
+                2 * static_cast<std::size_t>(kThreadsPerBlock);
             const dim3 grid(
-                static_cast<unsigned int>(block_count(cols)),
+                static_cast<unsigned int>(
+                    (cols + kCorrelateOutputsPerBlock - 1) / kCorrelateOutputsPerBlock),
                 static_cast<unsigned int>(frames.shape()[0]));
-            batched_correlate_score_tiled_kernel<<<grid, kThreadsPerBlock>>>(
+            const std::size_t shared_bytes =
+                (kCorrelateOutputsPerBlock + 2 * templ_len - 1) * sizeof(float2);
+            batched_correlate_score_tiled_kernel<<<grid, kThreadsPerBlock, shared_bytes>>>(
                 reinterpret_cast<const float2 *>(frames.data()),
                 reinterpret_cast<const float2 *>(templ.data()),
                 frames.shape()[0],
@@ -2007,7 +2366,7 @@ namespace cusignal_demo::task2_features
         g_workspace.temp_storage_a.resize(Shape{frame_count, static_cast<std::size_t>(nseg)}, false);
         if (nperseg >= 256)
         {
-            direct_spectrogram_segment_energy_large_kernel<<<g_workspace.temp_storage_a.size(), kThreadsPerBlock>>>(
+            direct_spectrogram_segment_energy_grouped_kernel<<<g_workspace.temp_storage_a.size(), kThreadsPerBlock>>>(
                 frames.data(),
                 g_workspace.direct_cos_table.data(),
                 g_workspace.direct_sin_table.data(),
@@ -2018,7 +2377,7 @@ namespace cusignal_demo::task2_features
                 band_bin_count,
                 scale,
                 g_workspace.temp_storage_a.data());
-            check_kernel_launch("direct_spectrogram_segment_energy_large_kernel");
+            check_kernel_launch("direct_spectrogram_segment_energy_grouped_kernel");
         }
         else
         {
@@ -2070,18 +2429,74 @@ namespace cusignal_demo::task2_features
         const std::size_t width_count = widths.size();
         prepare_cwt_kernel_table(widths, sample_count);
 
-        batched_cwt_max_score_fused_kernel<<<block_count(output.size()), kThreadsPerBlock>>>(
-            frames.data(),
-            frame_count,
-            sample_count,
-            width_count,
-            g_workspace.cwt_kernel_sizes.data(),
-            g_workspace.cwt_kernel_starts.data(),
-            g_workspace.cwt_kernel_offsets.data(),
-            g_workspace.cwt_kernel_real.data(),
-            g_workspace.cwt_kernel_imag.data(),
-            output.data());
-        check_kernel_launch("batched_cwt_max_score_fused_kernel");
+        constexpr std::size_t kMaxSharedCwtKernelSize = 2048;
+        if (g_workspace.cached_cwt_max_kernel_size > 0 &&
+            g_workspace.cached_cwt_max_kernel_size <= kMaxSharedCwtKernelSize)
+        {
+            if (sample_count >= 2048)
+            {
+                constexpr std::size_t kCwtOutputsPerBlock =
+                    4 * static_cast<std::size_t>(kThreadsPerBlock);
+                const std::size_t shared_bytes =
+                    (kCwtOutputsPerBlock +
+                     g_workspace.cached_cwt_max_kernel_size - 1) * sizeof(float);
+                const dim3 grid(
+                    static_cast<unsigned int>(
+                        (sample_count + kCwtOutputsPerBlock - 1) / kCwtOutputsPerBlock),
+                    static_cast<unsigned int>(frame_count));
+                batched_cwt_max_score_shared_quad_kernel<<<grid, kThreadsPerBlock, shared_bytes>>>(
+                    frames.data(),
+                    frame_count,
+                    sample_count,
+                    width_count,
+                    g_workspace.cwt_kernel_sizes.data(),
+                    g_workspace.cwt_kernel_starts.data(),
+                    g_workspace.cwt_kernel_offsets.data(),
+                    g_workspace.cwt_kernel_real.data(),
+                    g_workspace.cwt_kernel_imag.data(),
+                    output.data());
+                check_kernel_launch("batched_cwt_max_score_shared_quad_kernel");
+            }
+            else
+            {
+                constexpr std::size_t kCwtOutputsPerBlock =
+                    2 * static_cast<std::size_t>(kThreadsPerBlock);
+                const std::size_t shared_bytes =
+                    (kCwtOutputsPerBlock +
+                     g_workspace.cached_cwt_max_kernel_size - 1) * sizeof(float);
+                const dim3 grid(
+                    static_cast<unsigned int>(
+                        (sample_count + kCwtOutputsPerBlock - 1) / kCwtOutputsPerBlock),
+                    static_cast<unsigned int>(frame_count));
+                batched_cwt_max_score_shared_kernel<<<grid, kThreadsPerBlock, shared_bytes>>>(
+                    frames.data(),
+                    frame_count,
+                    sample_count,
+                    width_count,
+                    g_workspace.cwt_kernel_sizes.data(),
+                    g_workspace.cwt_kernel_starts.data(),
+                    g_workspace.cwt_kernel_offsets.data(),
+                    g_workspace.cwt_kernel_real.data(),
+                    g_workspace.cwt_kernel_imag.data(),
+                    output.data());
+                check_kernel_launch("batched_cwt_max_score_shared_kernel");
+            }
+        }
+        else
+        {
+            batched_cwt_max_score_fused_kernel<<<block_count(output.size()), kThreadsPerBlock>>>(
+                frames.data(),
+                frame_count,
+                sample_count,
+                width_count,
+                g_workspace.cwt_kernel_sizes.data(),
+                g_workspace.cwt_kernel_starts.data(),
+                g_workspace.cwt_kernel_offsets.data(),
+                g_workspace.cwt_kernel_real.data(),
+                g_workspace.cwt_kernel_imag.data(),
+                output.data());
+            check_kernel_launch("batched_cwt_max_score_fused_kernel");
+        }
         return output;
     }
 

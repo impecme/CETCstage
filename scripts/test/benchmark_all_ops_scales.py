@@ -23,8 +23,9 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -251,6 +252,22 @@ def create_argument_parser() -> argparse.ArgumentParser:
         "--keep-old-output",
         action="store_true",
         help="Keep old benchmark CSV/Markdown files in the output directory.",
+    )
+    parser.add_argument(
+        "--checkpoint",
+        action="store_true",
+        help=(
+            "Rewrite latest_all_ops_scale_benchmark.csv after every completed row. "
+            "This preserves partial results if a long benchmark is interrupted."
+        ),
+    )
+    parser.add_argument(
+        "--progress-jsonl",
+        default="",
+        help=(
+            "Optional JSONL event log with run/case start and end timestamps. "
+            "Used to align external GPU telemetry with each operator/scale window."
+        ),
     )
     parser.add_argument(
         "--keep-generated-samples",
@@ -1363,6 +1380,20 @@ def append_note(existing: str, extra: str) -> str:
     return f"{existing} | {extra}" if existing else extra
 
 
+def append_progress_event(path: Path | None, event: str, **fields: Any) -> None:
+    if path is None:
+        return
+    payload = {
+        "event": event,
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        "timestamp_unix": time.time(),
+        **fields,
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(payload, ensure_ascii=False, sort_keys=True) + "\n")
+
+
 def csv_columns() -> list[str]:
     return [
         "run_id",
@@ -1795,6 +1826,11 @@ def main() -> int:
     runner_script = resolve_path(repo_root, args.runner_script)
     build_dir = resolve_path(repo_root, args.build_dir)
     output_dir = resolve_path(repo_root, args.output_dir)
+    progress_path = (
+        resolve_path(repo_root, args.progress_jsonl)
+        if args.progress_jsonl
+        else None
+    )
     baseline_file = (
         resolve_path(repo_root, args.cpu_baseline_file)
         if args.cpu_baseline_file
@@ -1841,6 +1877,12 @@ def main() -> int:
     rows: list[dict[str, Any]] = []
     has_failure = False
 
+    output_dir.mkdir(parents=True, exist_ok=True)
+    if not args.keep_old_output:
+        clean_benchmark_outputs(output_dir)
+    if progress_path is not None and progress_path.exists():
+        progress_path.unlink()
+
     backups = backup_manifests(targets)
     log(f"selected operators: {len(targets)}")
     log(f"operator set: {args.operator_set}")
@@ -1856,6 +1898,17 @@ def main() -> int:
     log(
         f"timing: warmup={args.warmup} repeat={args.repeat}"
         f"{' (demo-fast)' if args.demo_fast else ''}"
+    )
+    append_progress_event(
+        progress_path,
+        "run_start",
+        run_id=run_id,
+        operator_count=len(targets),
+        scale_levels=args.scale_levels,
+        scale_profile=args.scale_profile,
+        warmup=args.warmup,
+        repeat=args.repeat,
+        platform=args.platform,
     )
     if args.do_build:
         build_selected_targets(repo_root, build_dir, target_names, args.platform)
@@ -1882,6 +1935,21 @@ def main() -> int:
                     family,
                     args.warmup,
                     args.repeat,
+                )
+                case_started = time.monotonic()
+                append_progress_event(
+                    progress_path,
+                    "case_start",
+                    run_id=run_id,
+                    target_index=target_index,
+                    target_count=len(targets),
+                    module=target.module,
+                    operator=target.operator,
+                    scale_level=scale_index,
+                    scale_value=scale_value,
+                    scale_family=family,
+                    warmup=args.warmup,
+                    repeat=args.repeat,
                 )
                 try:
                     shape_note = rewrite_manifest(target, original_text, scale_value)
@@ -1993,9 +2061,39 @@ def main() -> int:
                     row["error_note"] = str(exc)
                     has_failure = True
                 rows.append(row)
+                append_progress_event(
+                    progress_path,
+                    "case_end",
+                    run_id=run_id,
+                    target_index=target_index,
+                    target_count=len(targets),
+                    module=target.module,
+                    operator=target.operator,
+                    scale_level=scale_index,
+                    scale_value=scale_value,
+                    scale_family=family,
+                    status=row["status"],
+                    passed=row["pass"] == "true",
+                    return_code=row["return_code"],
+                    duration_s=time.monotonic() - case_started,
+                    gpu_e2e_median_ms=row["gpu_e2e_median_ms"],
+                    gpu_kernel_median_ms=row["gpu_kernel_median_ms"],
+                    error_note=row["error_note"],
+                )
+                if args.checkpoint:
+                    write_csv(
+                        output_dir / "latest_all_ops_scale_benchmark.csv",
+                        rows,
+                    )
     finally:
         log("restoring original manifests")
         restore_manifests(backups)
+        append_progress_event(
+            progress_path,
+            "manifests_restored",
+            run_id=run_id,
+            restored_count=len(backups),
+        )
         if args.gpu_only and baseline_changed and baseline is not None:
             save_baseline(baseline_file, baseline)
             log(f"updated CPU baseline cache: {baseline_file}")
@@ -2004,6 +2102,14 @@ def main() -> int:
     if args.scale_profile == "large-gpu" and args.report_mode == "full":
         write_large_gpu_candidate_report(output_dir, rows)
     log(f"rows={len(rows)}")
+    append_progress_event(
+        progress_path,
+        "run_end",
+        run_id=run_id,
+        row_count=len(rows),
+        failed_row_count=sum(row.get("status") != "passed" for row in rows),
+        status="failed" if has_failure else "passed",
+    )
     return 1 if has_failure else 0
 
 

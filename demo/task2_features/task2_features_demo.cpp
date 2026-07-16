@@ -97,6 +97,7 @@ namespace cusignal_demo::task2_features
     using StageTiming = cusignal_demo::report::StageTiming;
 
     void write_spectrogram_breakdown_csv(const std::vector<StageTiming> &timings);
+    void write_gpu_validation_timings_csv(const std::vector<StageTiming> &timings);
 
     struct DemoOptions
     {
@@ -1245,6 +1246,29 @@ namespace cusignal_demo::task2_features
         return output;
     }
 
+    void stabilize_demod_phase_cpu(const ComplexSignal &frame, RealSignal &demod)
+    {
+        if (frame.size() != demod.size() + 1)
+        {
+            throw std::invalid_argument("stabilize_demod_phase_cpu size mismatch");
+        }
+        for (std::size_t index = 0; index < demod.size(); ++index)
+        {
+            if (std::fabs(demod[index]) > kTaskDemodSmallPhaseLimit)
+            {
+                continue;
+            }
+            const float current_power = std::norm(frame[index]);
+            const float next_power = std::norm(frame[index + 1]);
+            const float max_power = std::max(current_power, next_power);
+            if (max_power > 0.0f &&
+                std::min(current_power, next_power) <= kTaskDemodMinPowerRatio * max_power)
+            {
+                demod[index] = 0.0f;
+            }
+        }
+    }
+
     RealSignal spectrogram_band_score_cpu(
         const RealArray &values,
         const RealSignal &freqs,
@@ -1584,6 +1608,7 @@ namespace cusignal_demo::task2_features
             return cusignal::cpu::demod::fm_demod(as_complex_array(frame), -1);
         });
         demod_ms += demod_elapsed;
+        stabilize_demod_phase_cpu(frame, demod_array.values);
         result.demod_score = normalize_nonnegative_cpu(
             pad_last_value_cpu(demod_array.values, frame.size()));
 
@@ -1827,6 +1852,9 @@ namespace cusignal_demo::task2_features
         float cwt_ms = 0.0;
         float fusion_ms = 0.0;
         std::vector<StageTiming> spectrogram_breakdown;
+        std::vector<StageTiming> gpu_validation_timings;
+        gpu_validation_timings.push_back(
+            {"representative_filter", 0.0f, representative_filter_measured.second});
 
         auto raw_correlate_scores_measured = measure_gpu_ms([&]() {
             return batched_correlate_score_zx_gpu(artifacts.filtered, template_device);
@@ -1848,9 +1876,11 @@ namespace cusignal_demo::task2_features
                     representative_correlate_frame,
                     template_device,
                     "same",
-                    "fft");
+                    "direct");
             return normalize_nonnegative_zx_gpu(complex_abs_zx_gpu(representative_correlate));
         });
+        gpu_validation_timings.push_back(
+            {"representative_correlate", 0.0f, representative_correlate_measured.second});
         (void)representative_correlate_measured;
 
         auto raw_spectrogram_scores_measured = measure_gpu_ms([&]() {
@@ -1904,6 +1934,8 @@ namespace cusignal_demo::task2_features
         artifacts.spectrogram_values = std::get<ZxGpuRealArray>(spectrogram_result.values);
         artifacts.spectrogram_freqs = spectrogram_result.frequencies;
         artifacts.spectrogram_times = spectrogram_result.times;
+        gpu_validation_timings.push_back(
+            {"representative_spectrogram", 0.0f, representative_spectrogram_measured.second});
 
         auto raw_wavelet_scores_measured = measure_gpu_ms([&]() {
             return batched_cwt_max_score_zx_gpu(filtered_real, widths);
@@ -1925,6 +1957,8 @@ namespace cusignal_demo::task2_features
                 widths_device);
         });
         artifacts.cwt_values = std::move(representative_cwt_measured.first);
+        gpu_validation_timings.push_back(
+            {"representative_cwt", 0.0f, representative_cwt_measured.second});
 
         auto [fusion_done, fusion_elapsed] = measure_gpu_ms([&]() {
             fuse_feature_scores_zx_gpu(
@@ -1945,6 +1979,7 @@ namespace cusignal_demo::task2_features
         timings.push_back({"correlate", 0.0, correlate_ms});
         timings.push_back({"spectrogram", 0.0, spectrogram_ms});
         write_spectrogram_breakdown_csv(spectrogram_breakdown);
+        write_gpu_validation_timings_csv(gpu_validation_timings);
         timings.push_back({"cwt", 0.0, cwt_ms});
         timings.push_back({"feature_fusion", 0.0, fusion_ms});
 
@@ -2142,6 +2177,23 @@ namespace cusignal_demo::task2_features
             }
         }
         output << "pipeline_total,0.000000," << total << ",true\n";
+    }
+
+    void write_gpu_validation_timings_csv(const std::vector<StageTiming> &timings)
+    {
+        const fs::path path = report_root() / "latest_gpu_validation_timings.csv";
+        fs::create_directories(path.parent_path());
+        std::ofstream output(path);
+        if (!output)
+        {
+            throw std::runtime_error("failed to write CSV file: " + path.string());
+        }
+        output << "substage,gpu_ms,counted_in_pipeline\n";
+        output << std::fixed << std::setprecision(6);
+        for (const StageTiming &timing : timings)
+        {
+            output << timing.name << ',' << timing.gpu_ms << ",false\n";
+        }
     }
 
     void write_unified_step_metrics(
