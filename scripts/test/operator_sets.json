@@ -163,6 +163,50 @@
       "expected_count": 53,
       "include_sets": ["all81"],
       "exclude_sets": ["extended28"]
+    },
+    "demo_top30": {
+      "expected_count": 30,
+      "operators": [
+        "wavelets/cwt",
+        "windows/general_gaussian",
+        "windows/kaiser",
+        "filtering/wiener",
+        "spectral/lombscargle",
+        "windows/taylor",
+        "windows/flattop",
+        "windows/general_cosine",
+        "waveforms/gausspulse",
+        "windows/gaussian",
+        "wavelets/morlet",
+        "windows/blackmanharris",
+        "windows/nuttall",
+        "waveforms/chirp",
+        "radartools/pulse_compression",
+        "windows/cosine",
+        "windows/exponential",
+        "filtering/channelize_poly",
+        "windows/blackman",
+        "radartools/ambgfun",
+        "wavelets/morlet2",
+        "windows/hamming",
+        "waveforms/square",
+        "spectral/vectorstrength",
+        "bsplines/gauss_spline",
+        "windows/bohman",
+        "filtering/lfilter_zi",
+        "peak_finding/argrelmin",
+        "peak_finding/argrelextrema",
+        "peak_finding/argrelmax"
+      ]
+    },
+    "demo_cache_probe4": {
+      "expected_count": 4,
+      "operators": [
+        "radartools/ambgfun",
+        "wavelets/cwt",
+        "waveforms/gausspulse",
+        "filtering/wiener"
+      ]
     }
   }
 }

@@ -24,7 +24,7 @@ V6 从 V5 的全库迁移、类型兼容和全量验收中独立出来，单独�
 | V6.5 | `plans/V6_5_plan.md` | `../../submission/READMEV6_5.md` | 已关闭 | Task1 L6 累计下降 41.14%；公共 `ambgfun` 扩容回退；公共 `mvdr` E2E 下降 78.41% |
 | V6.6 | `plans/V6_6_plan.md` | `../../submission/READMEV6_6.md` | 已关闭 | V6-0098 当前保留源码关闭包通过：七项矩阵全绿、all81 `81/81`、dtype/步骤缺口 0、双任务 L1-L6 与 manifest 通过 |
 | V6.7 | `plans/V6_7_plan.md` | `../../submission/READMEV6_7.md` | 已关闭 | V6-0134 增采样确认 E2E/kernel 下降 30.64%/4.04%，原 `4/5` kernel 稳定门、all81、dtype、14 步、双任务和 manifest 全部通过 |
-| V6.8 | `plans/V6_8_plan.md` | `../../submission/READMEV6_8.md` | 进行中 | V6-0139 首跑被旧 generated unit 样本阻断且未进入 benchmark；V6-0140 已修复清理所有权，V6-0141 已同步待重跑，随后进入 V6-0142 报告收束 |
+| V6.8 | `plans/V6_8_plan.md` | `../../submission/READMEV6_8.md` | 已关闭 | V6-0138 硬门、V6-0141 的 486/486 性能终测和 V6-0142 最终报告收束全部通过；V6 最终交付完成 |
 
 ## 台账入口
 

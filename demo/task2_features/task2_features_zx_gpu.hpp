@@ -16,6 +16,7 @@ namespace cusignal_demo::task2_features
         const cusignal::core::ZxGpuComplexArray &input,
         const cusignal::core::ZxGpuRealSignal &taps,
         cusignal::core::ZxGpuRealArray &real_output);
+    bool task2_fixed_fft_filter_enabled_zx_gpu();
 
     cusignal::core::ZxGpuComplexArray extract_row_complex_zx_gpu(
         const cusignal::core::ZxGpuComplexArray &input,

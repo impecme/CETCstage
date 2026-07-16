@@ -1,0 +1,21 @@
+# V7 性能优化台账
+
+## 规则
+
+- ID 使用从小到大的全局流水号 `V7-NNNN`。
+- correctness 未通过时不登记性能收益。
+- 中间日志和 probe 只放 `/tmp` 与 `/home/usr_04/CETC_garbage/`。
+- V6 已关闭，V7 不修改 V6 台账和最终报告。
+
+## 当前记录
+
+| ID | 阶段 | 模块/文件 | 类型 | 结论/修改 | 状态 | 后续处理 |
+| --- | --- | --- | --- | --- | --- | --- |
+| V7-0001 | V7.0-00 | `/home/usr_04/gpu_mem_changes.log`、V6 终测与历史台账 | 调研/资源审计 | 外部日志为 1 秒级启动快照，缺少参数、持续时间和后续增长；`gpu_08` 的 Task1/Task2 高于 4 GiB 事件分别仅 10/84、7/116。V6 长循环已测得主要重算子 GPU P95 可达 82%-99%，短任务显示 0% 属采样遗漏。V6-0072 大矩阵增存未提速且精度失败；V6-0080 仅数百 MiB 即取得 correlate 稳态 82.05% 收益，证明显存容量与性能不单调 | 已关闭 | 不扩大通用缓存池；优先验证可消除 dlFFT 冷启动的固定尺寸 AOT FFT |
+| V7-0002 | V7.0-01 | `tests/platform/zx_fixed_fft_probe.cu`、`scripts/platform/run_v7_0_fixed_fft_probe.sh` | 平台/性能探针 | 新增单 block shared-memory radix-2 C2C 探针，覆盖 Task1/Task2 五组实际 FFT 尺寸；输出 dlFFT 与 AOT 首次/稳态、误差、工作区和 dlsmi。未修改产品算子。宿主完整 SDK 已通过 `.cu -> .o` 编译和链接 | 已关闭 | 真实结果由 V7-0004 记录 |
+| V7-0003 | V7.0-01 | `gpu_04:/CETC`、`gpu_04:/tmp` | 部署核验/未启动 | 固定归档和控制台均不存在；流式扫描容器 `/tmp` 无任何 V7/fixed-FFT 文件；回读 `/CETC/scripts/platform/run_v7_0_fixed_fft_probe.sh` 明确返回文件不存在。证明上一轮探针未启动，不能产生精度、性能或资源结论 | 已关闭 | 将宿主探针源码和 runner 精确同步到容器并回读 SHA 后，以 V7-0004 重跑 |
+| V7-0004 | V7.0-01 | `tests/platform/zx_fixed_fft_probe.cu`、`scripts/platform/run_v7_0_fixed_fft_probe.sh`、`/home/usr_04/CETC_garbage/cetc_v7_0004_pull_GCi2l8LN/` | 平台/性能探针重跑 | 五组均 rc=0。正变换 relative RMSE=`2.55e-7~3.11e-7`，往返=`1.79e-7~2.15e-7`；dlFFT 首次 forward=`3452-3758 ms`，AOT=`3.26-10.71 ms`，下降 `341-1109` 倍。AOT 稳态比 dlFFT 慢 `1.94-5.81` 倍。dlsmi 760 样本，峰值 `479 MiB`、瞬时 GPU 利用率 100% | 已关闭 | 不替换 Task1 现有 FFT；AOT 仅用于仍为 direct 的 Task2 filter/correlate，并共用工作区 |
+| V7-0005 | V7.1-01 | `demo/task2_features/task2_features_demo.cpp`、`task2_features_zx_gpu.cu/.hpp`、`scripts/platform/run_v7_0_task2_fft_candidate.sh`、`/home/usr_04/CETC_garbage/cetc_v7_0005_pull_nzySolcJ/` | Task2 深度优化/AOT FFT filter+correlate 分支判定 | 静态门全绿、目录恢复 diff 0。correlate-only 精度通过：L3 `6.33735->0.668634 ms`、L6 `4.45944->1.70953 ms`，热点下降 `89.45%/61.66%`；total median 下降 `39.71%/9.77%`。AOT filter 导致 demod mixed error=`1.10305/2.02626`；combined correlate mixed error=`3.72347/3.08109` | 已关闭 | 保留 AOT correlate；AOT filter 改为显式实验开关、产品默认公共 FIR；combined 不再修正。全规模终门合并到 V7-0006 |
+| V7-0006 | V7.2-01 | `demo/task2_features/task2_features_zx_gpu.cu`、`scripts/platform/run_v7_2_spectrogram_candidate.sh`、`/home/usr_04/CETC_garbage/cetc_v7_0006_pull_s3xISZIV/` | Task2 深度优化/AOT spectrogram | 六组 A/B 均 rc=0，精度与业务验证全部通过。L3/L5/L6 spectrogram=`2.55566/3.00601/5.08862 -> 1.34205/2.37907/2.88187 ms`，下降 `47.49%/20.86%/43.37%`；Task2 total median 下降 `25.08%/3.79%/7.78%`。L5 未达到事前设置的 `25%/5%` 挑战门，导致 runner 在全量门前止损，但候选三档均稳定正收益且数值误差与基线一致，因此按算子收益与端到端无退化原则保留 | 已关闭 | 产品默认保留 AOT spectrogram；Task2 六档、Task1 smoke、all81 的完整终门并入 V7-0007，避免重复构建和测量 |
+| V7-0007 | V7.3-01 | `demo/task2_features/task2_features_zx_gpu.cu`、`scripts/platform/run_v7_3_cwt_symmetry_candidate.sh`、`/home/usr_04/CETC_garbage/cetc_v7_0007_pull_5ivh74xt/` | Task2 深度优化/Morlet2 CWT 对称成对卷积/默认关闭 | 六组 A/B 全部 rc=0，精度与业务验证通过，CWT mixed error 与基线完全一致。L3 CWT/total 下降 `10.14%/6.48%`；L5 CWT/total 退化 `1.28%/1.73%`；L6 CWT下降 `3.13%`，但 total 退化 `1.29%`。成对路径虽减少 FMA，却增加第二侧 shared load、和差指令及寄存器压力，大尺寸收益不足 | 已关闭 | 产品默认使用原 CWT；实验代码保留，只有 `CUSIGNAL_TASK2_ENABLE_CWT_SYMMETRY=1` 才启用。完整回归未执行，下一轮不基于该分支；转 5 分钟演示负载与有实际复用收益的显存换性能方案 |
+| V7-0008 | V7.4-01 | `scripts/test/operator_sets.json`、`scripts/platform/run_v7_4_demo_budget.sh`、`select_v7_4_cache_mode.py`、`summarize_v7_4_demo.py`、`docs/performance/v7_0/demo_top30_selection.md` | 五分钟演示/放大数据/显存换性能 A/B | 固定 V6-0141 L6 E2E 加速比前 30 算子；现场采用 `large-gpu` L6、复用预生成 CPU baseline，只重跑 GPU timing。准备阶段包含 all81、dtype、14 步和双任务 L1-L6。四算子 cache A/B 在默认 `512/256 MiB` 与扩大 `4096/3072 MiB` 间自动选择；扩大模式要求总时延至少下降 `2%` 且单项退化不超过 `5%`。现场 Task1 L6、Task2 L6 与 top30 wall 门为 `240 s` | 待容器验证 | 同步到 `gpu_04` 后执行 `V7_DEMO_PHASE=both`；取回固定归档与 console，依据 wall、精度、top30 speedup、dlsmi 峰值和 cache decision 决定是否关闭 V7.4 |

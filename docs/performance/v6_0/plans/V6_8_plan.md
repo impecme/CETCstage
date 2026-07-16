@@ -2,13 +2,13 @@
 
 ## 状态与目标
 
-- 状态：进行中；V6-0139 首次性能终测被旧 generated unit 样本阻断，V6-0140 已修复清理语义，V6-0141 已同步并等待 `gpu_04` 重跑。
+- 状态：已关闭；V6-0138 硬门、V6-0141 性能终测和 V6-0142 报告收束均已通过。
 - 目标：完成 V6 最终验收，保持 V5.5 接口、类型、报告 schema 和报告目录治理。
 - 阶段交付：`docs/submission/READMEV6_8.md`。
 - 最终结果：`data/reports/zhongkexin/v6_final/summary.md` 和 `summary.json`。
 
-`READMEV6_8.md` 是 V6 最终交付说明文件，但只有 V6-0138、V6-0141 和
-V6-0142 全部关闭后才代表最终交付完成。
+`READMEV6_8.md` 是 V6 最终交付说明文件。V6-0138、V6-0141 和 V6-0142
+已全部关闭，V6 最终交付完成。
 
 ## 执行分段
 
@@ -19,8 +19,8 @@ V6-0142 全部关闭后才代表最终交付完成。
 | V6-0138 | 硬门预验收 | all81 full、接口/类型/dtype/步骤审计、平台探针、Task1/Task2 L1-L6 首次进程测量和 warm repeat=5、dlsmi、manifest/report 治理 | 已通过：全部状态为 0；81/81；dtype 缺口 0；24 个任务用例和 168 条分步记录通过 |
 | V6-0139 | 性能终测首跑 | 启动 all81 L1-L6 正式终测 | guard 发现前序 `data/generated/unit/**/input|output_samples` 后停止；benchmark 未运行，失败事实已归档 |
 | V6-0140 | 验收器修复 | generated unit 样本所有权、清理和证据化 | 旧样本先记录路径/大小再清理；guard 与 finalize 所有权一致；本地回放和容器回读通过 |
-| V6-0141 | 性能终测重跑 | all81 L1-L6，warmup=5、repeat=30；任务终值复核；逐算子 GPU 占用采样；V6.1 固定分母对照 | 486 行完整；无 correctness 失败；性能口径和剩余瓶颈可解释 |
-| V6-0142 | 汇总关闭 | 生成 `v6_final/summary.*`，填写本交付文件，核对台账和报告目录 | 最终 JSON/Markdown 一致；`data/reports/` 只保留 V5.5 与 V6 最终汇总 |
+| V6-0141 | 性能终测重跑 | all81 L1-L6，warmup=5、repeat=30；任务终值复核；逐算子 GPU 占用采样；V6.1 固定分母对照 | 已通过：486/486，81/81，失败 0；显存峰值 2453 MiB；manifest/report diff 0 |
+| V6-0142 | 汇总关闭 | 生成 `v6_final/summary.*`，填写本交付文件，核对台账和报告目录 | 已通过：最终 JSON/Markdown 一致；仓库报告目录仅保留 5 个允许文件 |
 
 V6-0138 与 V6-0141 分开运行。硬门失败时不启动长时间的 486 行性能终测。
 
@@ -68,7 +68,20 @@ V6-0138 与 V6-0141 分开运行。硬门失败时不启动长时间的 486 行�
 - manifest/report diff 均为 0；旧脚本 finalize 已清除这些生成样本，事后清单含 81 个
   manifest、0 个 `input/output_samples`。
 
-## V6-0141 容器命令
+## V6-0141 结果
+
+- 证据：`/home/usr_04/CETC_garbage/cetc_v6_0141_pull_L11ItB5U/`。
+- 归档/console SHA256：`5dbb7c2efaea9409b021c485d085f1db1e57a459df9792cdbb28a5b09facd9d5` /
+  `b4342fdc1cf581386b93acb299dcbaf4ca53b6ddd3de29ebe94278048d86df66`。
+- `status.tsv` 全部为 0；all81 L1-L6 `486/486`，81 个算子、6 个规模、失败 0。
+- 正式计时为 warmup=5、repeat=30；逐行 start/end 均为 486，完整 CPU 参考和 GPU timing 已执行。
+- dlsmi 共 2679 个样本，覆盖 400/486 个算子时间窗；显存峰值 `2453/16384 MiB`，
+  瞬时 GPU utilization 最大 100%。
+- 产品源码与 V6-0138 指纹一致；manifest/report diff 均为 0。
+- 全规模主要剩余热点为 `ambgfun L6=167.855 ms`、`hilbert2 L5=97.534 ms` 和
+  `lombscargle L6=11.497 ms`。前两项分别需要算法/FFT 重写，不属于 V6.8 低风险收口改动。
+
+## V6-0141 复现命令
 
 ```bash
 cd /CETC
@@ -101,13 +114,23 @@ printf 'RC=%s\nARCHIVE=%s\nCONSOLE=%s\n' \
 `/tmp`。旧 generated unit 样本先记录路径和大小后清理；退出时只删除脚本已取得所有权的
 unit/demo 报告和样本，并用运行前后 SHA256 证明 `data/reports/` 与全部 manifest 已恢复。
 
-## 关闭条件
+## V6-0142 结果
 
-- all81 correctness 81/81。
-- 接口 81/81、类型兼容缺口 0、dtype 缺口 0。
-- Task1/Task2 14 个计算步骤均有独立计时和精度，L1-L6 首次进程与 warm 报告完整。
-- 平台 compile/runtime/forbidden probes 通过，CUDA Graph 生命周期结果可解释。
-- all81 L1-L6 共 486 行性能结果完整，manifest 前后不变。
-- V5.5 API、类型和报告 schema 不破坏。
-- V6 所有优化、probe、回退和暂缓已记录台账。
-- `data/reports/` 只保留 V5.5 和 V6 最终汇总。
+- 新增 `scripts/platform/finalize_v6_8_delivery.py`，从 V6-0138/0141 仓库外证据生成紧凑终测汇总。
+- 恢复 V5.5 最终摘要且 SHA256 与历史归档一致：
+  `summary.md=fcf879e4...`、`summary.json=e4719263...`。
+- 已生成 `data/reports/zhongkexin/v6_final/summary.md` 和 `summary.json`。
+- `data/reports/` 最终只有 README、V5.5 两份摘要和 V6 两份摘要，共 5 个文件。
+- V6.1 all81 历史包为 warmup=1/repeat=3，本轮为 warmup=5/repeat=30；
+  因协议不同不发布全库百分比，只发布 486 行绝对终值。
+
+## 关闭结果
+
+- all81 correctness 81/81：通过。
+- 接口 81/81、类型兼容缺口 0、dtype 缺口 0：通过。
+- Task1/Task2 14 个计算步骤独立计时和精度，L1-L6 首次进程与 warm 报告：通过。
+- 平台 compile/runtime/forbidden probes 和 CUDA Graph 生命周期：通过。
+- all81 L1-L6 486 行、manifest/report 恢复和同产品源码指纹：通过。
+- V5.5 API、类型和报告 schema：未破坏。
+- V6 优化、probe、回退和暂缓：已全部记录台账。
+- `data/reports/` 治理：通过。

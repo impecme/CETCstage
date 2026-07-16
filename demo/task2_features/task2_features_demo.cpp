@@ -1812,7 +1812,14 @@ namespace cusignal_demo::task2_features
 
         auto [filtered_complex, filter_ms] = measure_gpu_ms([&]() {
             rx_device = ZxGpuComplexArray::from_host(rx_frames);
-            const ZxGpuComplexArray filtered =
+            if (config.num_frames >= 48 &&
+                config.samples_per_frame >= 1024 &&
+                config.filter_numtaps >= 129 &&
+                task2_fixed_fft_filter_enabled_zx_gpu())
+            {
+                return complex_firfilter_zx_gpu(rx_device, taps, filtered_real);
+            }
+            ZxGpuComplexArray filtered =
                 cusignal::zx_gpu_backend::filtering::firfilter(taps, rx_device, -1);
             filtered_real = extract_real_part_zx_gpu(filtered);
             return filtered;
