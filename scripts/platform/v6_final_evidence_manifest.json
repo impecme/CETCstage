@@ -1,0 +1,203 @@
+{
+  "schema_version": "v6_final_evidence_manifest_v1",
+  "version": "V6.8",
+  "acceptance_policy": {
+    "all81_operator_count": 81,
+    "calculation_step_count": 14,
+    "task_case_count": 24,
+    "task_step_row_count": 168,
+    "performance_row_count": 486,
+    "performance_scale_levels": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "performance_warmup": 5,
+    "performance_repeat": 30,
+    "retained_v6_7_direction_count": 21,
+    "v6_1_task_baseline_ms": {
+      "task1_radar": {
+        "total": 7.19016,
+        "pulse_compression": 3.27254,
+        "pulse_doppler": 1.56758,
+        "ca_cfar": 0.997072
+      },
+      "task2_features": {
+        "total": 76.0695,
+        "cwt": 34.0065,
+        "spectrogram": 25.4401,
+        "correlate": 9.75641
+      }
+    },
+    "residual_assessment_policy": [
+      {
+        "module": "radartools",
+        "operator": "ambgfun",
+        "scale_level": 6,
+        "assessment": "compute-bound in the final terminal; prior rejected candidates remain documented in the V6 ledger"
+      },
+      {
+        "module": "filtering",
+        "operator": "hilbert2",
+        "scale_level": 5,
+        "assessment": "unfavorable FFT dimensions; the V6 ledger records the same cliff in the V6.1 baseline"
+      },
+      {
+        "module": "spectral",
+        "operator": "lombscargle",
+        "scale_level": 6,
+        "assessment": "remaining cost is kernel arithmetic after the retained pair-input and reduction work"
+      },
+      {
+        "module": "radartools",
+        "operator": "mvdr",
+        "scale_level": 6,
+        "assessment": "further work requires a cross-call lifecycle or output/synchronization redesign"
+      }
+    ],
+    "benchmark_true_error_threshold": 0.01,
+    "passed_true_error_diagnostic_policy": [
+      {
+        "module": "spectral",
+        "operator": "coherence",
+        "scale_levels": [1, 2, 3, 4, 5],
+        "scope": "the independent all81 accuracy case passed under its historical calibrated float32 tolerance; the V6-0141 perf runner does not fail rows on mixed_error, while the benchmark-wide 1e-2 diagnostic classified these perf rows as true-error"
+      }
+    ],
+    "l6_summary_only_operator_policy": [
+      "correlate/correlate",
+      "correlate/correlate2d",
+      "correlate/correlation_lags",
+      "demod/fm_demod",
+      "estimation/kalman_filter",
+      "peak_finding/argrelextrema",
+      "peak_finding/argrelmax",
+      "peak_finding/argrelmin"
+    ],
+    "task_check_policy": {
+      "task1_radar": {
+        "check_names": [
+          "cpu_gpu_detection_match",
+          "gpu_matches_expected_detection",
+          "gpu_total_ms",
+          "pulse_compression_mixed_error",
+          "pulse_doppler_mixed_error",
+          "cfar_threshold_mixed_error",
+          "ambgfun_surface_mixed_error",
+          "invalid_input_checks",
+          "repeat_business_consistency",
+          "gpu_total_stability",
+          "gpu_free_memory_drift_mib",
+          "rss_current_drift_mib"
+        ],
+        "constant_limits": {
+          "cpu_gpu_detection_match": 1.0,
+          "gpu_matches_expected_detection": 1.0,
+          "pulse_compression_mixed_error": 0.0001,
+          "ambgfun_surface_mixed_error": 0.0001,
+          "invalid_input_checks": 1.0,
+          "repeat_business_consistency": 1.0,
+          "gpu_total_stability": 0.35,
+          "gpu_free_memory_drift_mib": 32.0,
+          "rss_current_drift_mib": 64.0
+        },
+        "scale_limits": {
+          "gpu_total_ms": [10.0, 5.0, 5.0, 10.0, 30.0, 75.0],
+          "pulse_doppler_mixed_error": [0.0001, 0.0001, 0.0001, 0.0001, 0.0003, 0.0005],
+          "cfar_threshold_mixed_error": [0.005, 0.005, 0.005, 0.05, 0.1, 0.5]
+        }
+      },
+      "task2_features": {
+        "check_names": [
+          "cpu_gpu_track_match",
+          "gpu_matches_truth_within_tolerance",
+          "kalman_rmse",
+          "gpu_total_ms",
+          "filtered_mixed_error",
+          "demod_mixed_error",
+          "correlate_mixed_error",
+          "spectrogram_mixed_error",
+          "cwt_mixed_error",
+          "feature_score_mixed_error",
+          "measurement_mixed_error",
+          "kalman_cpu_gpu_rmse",
+          "invalid_input_checks",
+          "repeat_business_consistency",
+          "gpu_total_stability",
+          "gpu_free_memory_drift_mib",
+          "rss_current_drift_mib"
+        ],
+        "constant_limits": {
+          "cpu_gpu_track_match": 1.0,
+          "gpu_matches_truth_within_tolerance": 1.0,
+          "kalman_rmse": 2.0,
+          "filtered_mixed_error": 0.0001,
+          "demod_mixed_error": 0.0005,
+          "correlate_mixed_error": 0.0001,
+          "spectrogram_mixed_error": 0.0001,
+          "cwt_mixed_error": 0.0001,
+          "feature_score_mixed_error": 0.0001,
+          "measurement_mixed_error": 0.0001,
+          "kalman_cpu_gpu_rmse": 2.0,
+          "invalid_input_checks": 1.0,
+          "repeat_business_consistency": 1.0,
+          "gpu_total_stability": 0.35,
+          "gpu_free_memory_drift_mib": 32.0,
+          "rss_current_drift_mib": 64.0
+        },
+        "scale_limits": {
+          "gpu_total_ms": [50.0, 87.5, 150.0, 200.0, 450.0, 900.0]
+        }
+      }
+    },
+    "task_report_step_policy": {
+      "task1_radar": [
+        {"step": "pulse_compression", "operator": "radartools/pulse_compression"},
+        {"step": "pulse_doppler", "operator": "radartools/pulse_doppler_shifted"},
+        {"step": "power_map", "operator": "radartools/power_map"},
+        {"step": "ca_cfar", "operator": "radartools/ca_cfar"},
+        {"step": "ambgfun", "operator": "radartools/ambgfun"},
+        {"step": "final_detection", "operator": "radartools/detect_peak"}
+      ],
+      "task2_features": [
+        {"step": "filter", "operator": "filter_design/firwin + filtering/firfilter public complex64 path"},
+        {"step": "demod", "operator": "demod/fm_demod + private batched score"},
+        {"step": "correlate", "operator": "correlate/correlate + private normalization"},
+        {"step": "spectrogram", "operator": "spectral/spectrogram + private band score"},
+        {"step": "cwt", "operator": "wavelets/cwt + private scale reduction"},
+        {"step": "feature_fusion", "operator": "private weighted fusion + peak selection"},
+        {"step": "measurement_conversion", "operator": "estimation measurement helper"},
+        {"step": "kalman", "operator": "estimation/kalman_filter + private GPU pipeline"}
+      ]
+    }
+  },
+  "tracked_policy_files": {
+    "scripts/test/operator_sets.json": "64c00e0149b537dabf54c4638cead3675f4487e2c65bda182f7a943b18be93c7",
+    "scripts/test/task_step_contracts.json": "200b138199b84f048c04a7c2a83eb18d04e5b137b426d59b3aee89df12533d68",
+    "scripts/test/operator_type_contracts.json": "af50b4a6e36271707987b35728bc121166f4469f1dccf4978c2ee6b964e65e3a",
+    "tests/unit/core_types/test_type_contracts.cu": "5b4ae2b2a442ad7be2f5a7603e11e7f8be60b99f1f0253fc820f7d2df7ea26f3"
+  },
+  "predecessor_reports": {
+    "v5_5_summary_md_sha256": "fcf879e484d6638c454061740bec9acae311b6c46f3fc1dcf1c87e595f4827f9",
+    "v5_5_summary_json_sha256": "e4719263a4e89cf860937cd7c3945aa7685052b165af4893ea67e3d848a1d177"
+  },
+  "runs": {
+    "V6-0138": {
+      "root_name": "cetc_v6_0138_v6_8_preflight_20260716_122947",
+      "archive_name": "cetc_v6_0138_latest.tar.gz",
+      "archive_sha256": "be1fed49bd06e5edc6af8f75f54a509e0db632d2340bcd80b6f9d3adc8cff8eb",
+      "console_name": "cetc_v6_0138_console.log",
+      "console_sha256": "499805429b2a8aabd6c33927824fff831bbb712ac16fd766268275ba0d22bb6f"
+    },
+    "V6-0141": {
+      "root_name": "cetc_v6_0141_v6_8_performance_20260716_131750",
+      "archive_name": "cetc_v6_0141_latest.tar.gz",
+      "archive_sha256": "5dbb7c2efaea9409b021c485d085f1db1e57a459df9792cdbb28a5b09facd9d5",
+      "console_name": "cetc_v6_0141_console.log",
+      "console_sha256": "b4342fdc1cf581386b93acb299dcbaf4ca53b6ddd3de29ebe94278048d86df66"
+    }
+  }
+}

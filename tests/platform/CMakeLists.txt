@@ -59,6 +59,14 @@ add_custom_target(zx_forbidden_api_scan
 
 add_test(NAME zx_compat_runtime_safe COMMAND zx_compat_runtime_probes)
 add_test(
+    NAME finalize_v6_delivery_evidence_test
+    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/test_finalize_v6_8_delivery.py"
+)
+add_test(
+    NAME finalize_v7_delivery_evidence_test
+    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/test_finalize_v7_delivery.py"
+)
+add_test(
     NAME zx_forbidden_api_scan_test
     COMMAND "${Python3_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/scripts/platform/scan_zx_api_usage.py"
         --matrix "${ZX_COMPAT_MATRIX_JSON}"
