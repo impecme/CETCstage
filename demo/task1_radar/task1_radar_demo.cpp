@@ -72,6 +72,18 @@ namespace cusignal_demo::task1_radar
     constexpr float kMixedErrorAtol = 1.0e-5f;
     constexpr float kMixedErrorScale = 1.0e-2f;
 
+    bool environment_flag_enabled(const char *name)
+    {
+        const char *value = std::getenv(name);
+        if (value == nullptr)
+        {
+            return false;
+        }
+        const std::string token(value);
+        return token == "1" || token == "true" || token == "TRUE" ||
+            token == "on" || token == "ON";
+    }
+
     using StageTiming = cusignal_demo::report::StageTiming;
 
     struct DemoOptions
@@ -1659,13 +1671,27 @@ namespace cusignal_demo::task1_radar
         (void)cfar_cpu;
         (void)ambg_cpu;
 
-        const auto [gpu_warmup_device, gpu_warmup_timings] = run_gpu_pipeline(config, cpu.rx_matrix, cpu.tx_template);
-        (void)gpu_warmup_timings;
-        (void)cusignal::zx_gpu_backend::radartools::detect_peak(
-            gpu_warmup_device.range_doppler_power,
-            gpu_warmup_device.cfar_detections,
-            config.pulse_doppler_nfft,
-            config.prf);
+        const bool release_warmup_buffers = environment_flag_enabled(
+            "CUSIGNAL_TASK1_RELEASE_WARMUP_BUFFERS") &&
+            !environment_flag_enabled("CUSIGNAL_TASK1_RETAIN_WARMUP_BUFFERS");
+        const bool trace_storage_reuse = environment_flag_enabled(
+            "CUSIGNAL_TASK1_TRACE_STORAGE_REUSE");
+        const auto cache_before = cusignal::core::device_storage_cache_stats_snapshot();
+        std::optional<GpuArtifacts> retained_gpu_warmup;
+        {
+            auto gpu_warmup_result = run_gpu_pipeline(config, cpu.rx_matrix, cpu.tx_template);
+            GpuArtifacts &gpu_warmup_device = gpu_warmup_result.first;
+            (void)cusignal::zx_gpu_backend::radartools::detect_peak(
+                gpu_warmup_device.range_doppler_power,
+                gpu_warmup_device.cfar_detections,
+                config.pulse_doppler_nfft,
+                config.prf);
+            if (!release_warmup_buffers)
+            {
+                retained_gpu_warmup.emplace(std::move(gpu_warmup_device));
+            }
+        }
+        const auto cache_after_warmup = cusignal::core::device_storage_cache_stats_snapshot();
         auto gpu_pipeline_result = run_gpu_pipeline(config, cpu.rx_matrix, cpu.tx_template);
         GpuArtifacts gpu_device = std::move(gpu_pipeline_result.first);
         std::vector<StageTiming> gpu_stage_times = std::move(gpu_pipeline_result.second);
@@ -1678,6 +1704,22 @@ namespace cusignal_demo::task1_radar
         });
         const DetectionSummary gpu_detection = gpu_detection_device.get();
         HostGpuArtifacts gpu = materialize_gpu_artifacts(gpu_device);
+        if (trace_storage_reuse)
+        {
+            const auto cache_after_measured = cusignal::core::device_storage_cache_stats_snapshot();
+            std::cerr << "[V7-0009] release_warmup_buffers="
+                      << (release_warmup_buffers ? 1 : 0)
+                      << " cache_hits=" << cache_before.cache_hits << ','
+                      << cache_after_warmup.cache_hits << ','
+                      << cache_after_measured.cache_hits
+                      << " allocation_calls=" << cache_before.allocation_calls << ','
+                      << cache_after_warmup.allocation_calls << ','
+                      << cache_after_measured.allocation_calls
+                      << " cached_bytes=" << cache_before.cached_bytes << ','
+                      << cache_after_warmup.cached_bytes << ','
+                      << cache_after_measured.cached_bytes
+                      << '\n';
+        }
 
         stage_timings.push_back({"pulse_compression", pulse_cpu_ms, gpu_stage_times[0].gpu_ms});
         stage_timings.push_back({"pulse_doppler", doppler_cpu_ms, gpu_stage_times[1].gpu_ms});

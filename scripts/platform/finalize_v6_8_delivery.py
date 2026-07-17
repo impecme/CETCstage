@@ -9,6 +9,7 @@ import csv
 import hashlib
 import json
 import math
+import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -29,6 +30,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--performance-console", required=True)
     parser.add_argument("--v5-summary-markdown", required=True)
     parser.add_argument("--v5-summary-json", required=True)
+    parser.add_argument(
+        "--v5-source-dir",
+        help="Optional historical v5_5_final directory used to restore summary.md/json",
+    )
     parser.add_argument("--report-root", default="data/reports")
     parser.add_argument(
         "--output-dir",
@@ -164,6 +169,7 @@ def write_report_readme(report_root: Path) -> None:
         "| --- | --- | --- |",
         "| V5.5 | `zhongkexin/v5_5_final/summary.md` | `zhongkexin/v5_5_final/summary.json` |",
         "| V6 | `zhongkexin/v6_final/summary.md` | `zhongkexin/v6_final/summary.json` |",
+        "| V7 | `zhongkexin/v7_final/summary.md` | `zhongkexin/v7_final/summary.json` |",
         "",
         "禁止在此目录长期保留 unit/demo 中间报告、benchmark 长表、probe 日志和图件。",
     ]
@@ -188,6 +194,8 @@ def main() -> int:
     expected_v5_markdown = report_root / "zhongkexin/v5_5_final/summary.md"
     expected_v5_json = report_root / "zhongkexin/v5_5_final/summary.json"
     expected_output_dir = report_root / "zhongkexin/v6_final"
+    expected_v7_markdown = report_root / "zhongkexin/v7_final/summary.md"
+    expected_v7_json = report_root / "zhongkexin/v7_final/summary.json"
     require(
         v5_summary_markdown == expected_v5_markdown.resolve(),
         "v5-summary-markdown must use the final report path",
@@ -202,6 +210,15 @@ def main() -> int:
     )
     require(not (report_root / "unit").exists(), "data/reports/unit must not exist")
     require(not (report_root / "demo").exists(), "data/reports/demo must not exist")
+    if args.v5_source_dir:
+        v5_source_dir = Path(args.v5_source_dir).resolve()
+        source_markdown = v5_source_dir / "summary.md"
+        source_json = v5_source_dir / "summary.json"
+        require(source_markdown.is_file(), f"missing V5.5 source: {source_markdown}")
+        require(source_json.is_file(), f"missing V5.5 source: {source_json}")
+        expected_v5_markdown.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source_markdown, expected_v5_markdown)
+        shutil.copy2(source_json, expected_v5_json)
     allowed = {
         report_root / "README.md",
         expected_v5_markdown,
@@ -209,10 +226,11 @@ def main() -> int:
         output_dir / "summary.md",
         output_dir / "summary.json",
     }
+    optional_v7 = {expected_v7_markdown, expected_v7_json}
     preexisting = {path for path in report_root.rglob("*") if path.is_file()}
     require(
-        preexisting <= allowed,
-        f"unexpected pre-existing report files: {sorted(preexisting - allowed)}",
+        preexisting <= allowed | optional_v7,
+        f"unexpected pre-existing report files: {sorted(preexisting - allowed - optional_v7)}",
     )
 
     validate_status_table(preflight_root, "V6-0138")
@@ -602,7 +620,10 @@ def main() -> int:
     write_report_readme(report_root)
 
     actual = {path for path in report_root.rglob("*") if path.is_file()}
-    require(actual == allowed, f"unexpected final report files: {sorted(actual - allowed)}")
+    require(
+        actual in (allowed, allowed | optional_v7),
+        f"unexpected final report files: {sorted(actual - allowed - optional_v7)}",
+    )
 
     print(
         json.dumps(

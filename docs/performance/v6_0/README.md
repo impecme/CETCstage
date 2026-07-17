@@ -1,5 +1,11 @@
 # V6 性能优化计划索引
 
+## 当前状态
+
+- V6.1-V6.8、V6 总计划和最终交付均已关闭。
+- 最终门禁与报告见 `../../submission/READMEV6_8.md`；本目录保留历史计划、
+  探针、候选、回退和证据索引，不再新增性能优化记录。
+
 ## 当前目标
 
 V6 从 V5 的全库迁移、类型兼容和全量验收中独立出来，单独面向任务优先性能优化。
@@ -16,7 +22,7 @@ V6 从 V5 的全库迁移、类型兼容和全量验收中独立出来，单独�
 
 | 阶段 | 计划 | 交付文件 | 状态 | 关闭门禁 |
 | --- | --- | --- | --- | --- |
-| V6.0 | `plans/V6_0_plan.md` | `../../submission/READMEV6_0.md` | 规划已复核 | V6 总体目标、范围、量化预算、论文/开源策略和验证阶梯明确 |
+| V6.0 | `plans/V6_0_plan.md` | `../../submission/READMEV6_0.md` | 已关闭 | V6.1-V6.8 全部关闭，V6-0142 已完成最终报告收束 |
 | V6.1 | `plans/V6_1_plan.md` | `../../submission/READMEV6_1.md` | 已关闭 | Task1/Task2 基线、all81、dtype、14 步、Release、device/stream/FFT 和 manifest 已关闭；V6-0098 有效生命周期确认 CUDA Graph 六阶段均成功 |
 | V6.2 | `plans/V6_2_plan.md` | `../../submission/READMEV6_2.md` | 已技术收束 | 保留 CWT/correlate，L6 累计下降 29.69%；距 30%目标差 0.31 个百分点，spectrogram/CWT 候选按止损停止 |
 | V6.3 | `plans/V6_3_plan.md` | `../../submission/READMEV6_3.md` | 已技术收束 | 保留公共 FIR shared-halo；fusion 与双流未达门禁，多 stream 对重计算分支结论为 limited |

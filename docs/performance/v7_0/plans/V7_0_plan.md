@@ -57,9 +57,9 @@ V6 最终 warm 逐步骤基线：
 | V7.1 | Task2 AOT correlate | L3/L6 correlate 至少下降 30%；L3/L6 total 至少下降 15%/8%；精度通过；AOT filter 独立失败不影响 correlate 保留 |
 | V7.2 | Task2 spectrogram AOT FFT | 三档精度通过且保持稳定正收益；已保留 |
 | V7.3 | Task2 Morlet2 CWT 对称成对卷积 | 已关闭；大数据默认关闭 |
-| V7.4 | 5 分钟演示负载与显存换性能 | 双任务和 30 算子完整运行；总 wall 不超过 240 秒，预留 60 秒讲解与波动；扩大缓存只在真实 A/B 通过后启用 |
-| V7.5 | Task1 固定 buffer 与 Graph | L5/L6 总时延至少下降 5%；六步计时字段完整 |
-| V7.6 | 全量回归与交付 | all81、dtype、14 步、Task L1-L6 和报告目录全部通过 |
+| V7.4 | 5 分钟演示负载与显存换性能 | 已关闭；双任务和 30 算子 wall=`101.971 s`，扩大缓存未通过收益门，保持默认缓存 |
+| V7.5 | Task1 固定 buffer 与 Graph | 已关闭；设备分配减少，但两轮合并 L6 退化 `2.38%`，产品默认关闭，不展开 Graph |
+| V7.6 | 全量回归与交付 | 已关闭；all81、dtype、14 步、Task L1-L6、演示 wall 和报告目录均通过 |
 
 每个完成的小版本生成对应 `docs/submission/READMEV7_X.md`。
 
@@ -143,3 +143,61 @@ V6 最终 warm 逐步骤基线：
 - runner：
   `scripts/platform/run_v7_4_demo_budget.sh`；准备缓存放
   `/tmp/cetc_v7_demo_cache/`，日志和归档放 `/tmp`。
+
+## V7-0008 结论
+
+- 准备阶段通过 all81 `81/81`、dtype 缺口 `0`、任务步骤 `14/14` 和
+  Task1/Task2 L1-L6；报告与 generated manifest 恢复 diff 均为 `0`。
+- 现场阶段状态为 `passed`，wall=`101.971 s / 240 s`；Task1 L6
+  `3.88566 ms`，Task2 L6 `20.1547 ms`。
+- 固定 Top30 全部通过，中位加速 `109.919x`，几何平均 `105.455x`。
+- dlsmi 共 `1869` 个样本，进程显存峰值 `2453 MiB`，GPU 利用率峰值
+  `99%`。低平均利用率来自 102 秒现场流程中大量 CPU/进程启动间隔，不能
+  推导为单个 kernel 没有并行工作。
+- 扩大缓存四算子总时延仅下降 `0.096%`；`ambgfun` 额外保留约
+  `1 GiB` 只下降 `0.146%`。未达到 `2%` 门，产品保持默认缓存。
+- 证据：
+  `/home/usr_04/CETC_garbage/cetc_v7_0008_pull_ze3a63s8/`。
+
+## V7-0009 候选
+
+- Task1 当前每次 `run_once` 先保留整套预热输出，再启动测量轮；这些输出
+  在测量结束前仍占有设备块，使 DeviceStorage 无法复用对应 buffer。
+- 首轮候选由显式环境变量启用，于测量前释放不再使用的预热输出；公共
+  接口、算法、精度阈值和六步 timing 字段不变。
+- 先在 L3/L5/L6 做进程隔离的 A/B。只有 L5/L6 total 均至少下降 `5%`
+  且数值验证通过，才将该生命周期策略改为默认；因汇报时限不继续 Graph。
+
+## V7-0009 结论
+
+- 容器完整运行 rc=`0`；L3/L5/L6 baseline total 中位数为
+  `1.40482/2.33539/4.89437 ms`，候选为
+  `1.38284/2.03471/3.90229 ms`，分别下降
+  `1.56%/12.87%/20.27%`。
+- 三档精度逐项完全一致，六步 timing 完整；Task1 L1/L2/L4 与 Task2
+  L1/L6 smoke 全部通过。
+- 五轮后 baseline 累计分配/cache hit=`42/72`，候选=`14/100`；候选
+  首轮完成 14 次分配后不再新增，证明收益来自设备块复用。
+- dtype 缺口 `0`、任务步骤 `14/14`，报告与 generated manifest 恢复
+  diff 均为 `0`。dlsmi 3393 样本，显存峰值 `453 MiB`。
+- 候选曾临时改为默认，V7-0010 使用独立流水号重复同一 A/B；是否保留以
+  第二轮复核和两轮合并结果为准。
+- 证据：
+  `/home/usr_04/CETC_garbage/cetc_v7_0009_pull_YiZwJVyu/`。
+
+## V7-0010/V7-0011 结论
+
+- V7-0010 完整运行并正常归档，静态门、三档精度和六步 timing 全部通过，
+  报告与 manifest 恢复 diff 为 `0`。
+- 第二轮 L3/L5/L6 total 变化为 `+2.73%/+5.90%/-12.81%`；关键 L6
+  未达到 `5%` 门，因此候选被拒绝。
+- 两轮各 5 次合并后，L3/L5/L6 变化为
+  `+2.15%/+12.69%/-2.38%`。两轮进程 wall 均未下降，不能将减少分配
+  直接登记为稳定端到端收益。
+- 缓存证据可复现：baseline allocation/cache hit=`42/72`，候选
+  `14/100`。该路径保留为
+  `CUSIGNAL_TASK1_RELEASE_WARMUP_BUFFERS=1` 实验开关，产品默认使用原
+  生命周期。
+- V7-0011 依据硬门完成默认回退和最终冻结；不再展开 Graph。
+- V7-0010 证据：
+  `/home/usr_04/CETC_garbage/cetc_v7_0010_pull_bR3cnvq7/`。

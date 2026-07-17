@@ -2,6 +2,10 @@
 
 本项目面向第十届集创赛“中科芯”企业命题，围绕 ZQ500 GPU 上的信号处理加速库及算法开发展开。仓库当前只保留 CPU reference + 中科芯 ZQ500 GPU 双链路，覆盖赛题任务 1“雷达目标检测与多普勒分析”和任务 2“多域特征提取定位”，同时保留任务级 demo、单算子测试以及 Python 可视化链路，便于验证精度、性能和工程可交付性。
 
+当前最终状态：V5.5、V6、V7 均已关闭，V7 最终执行编号为 `V7-0011`。
+不再启动 GPU 性能候选；最终机器可读结论见
+`data/reports/zhongkexin/v5_5_final/`、`v6_final/` 和 `v7_final/`。
+
 ## 项目简介
 
 - 面向比赛任务构建可运行、可验证的中科芯 ZQ500 信号处理工程。
@@ -59,7 +63,7 @@ CETC/
 ├── data/
 │   ├── reference/              受版本管理的静态参考输入、输出和 manifest
 │   ├── generated/              运行生成的任务及中间数据
-│   └── reports/                终测报告、任务 smoke、模块回归和组合图件
+│   └── reports/                仅保留 V5.5/V6/V7 最终 Markdown/JSON 汇总
 ├── third_party/
 │   ├── fftw/                   FFTW 离线包与本地安装目录
 │   └── python_wheels/          容器 Python 依赖离线 wheel 缓存
@@ -500,7 +504,7 @@ scripts/platform/run_zhongkexin_stage4.sh 2>&1 | tee stage5_5_extended28_probe.l
 
 V5.5 最终交付结论见 `docs/submission/READMEV5_5.md`。中间 probe、完整日志和大体积图件不进入仓库，只保留 `data/reports/` 下的精简交付证据。
 
-### V6.0 当前阶段验证
+### V6.0 已关闭阶段说明
 
 第六版进入任务优先的强性能优化：Task1/Task2 端到端是 P0，任务相关算子是 P1，赛题提到但不在任务热路径的算子是 P2；原 cuSignal 中赛题未提到且不影响任务链路的算子暂不继续优化。V6 会对照 CUDA/CuPy/SciPy 等开源实现的 memory pool、kernel fusion、FFT/overlap-save、STFT/CWT 和 CUDA Graph 思路，先做 ZQ500 平台探针，再合入满足赛题精度、类型和报告要求的优化。计划见 `docs/performance/v6_0/plans/V6_0_plan.md`，台账见 `docs/performance/v6_0/optimization_change_log.md`。
 
@@ -757,6 +761,8 @@ python3 scripts/test/plot_all_ops_benchmark.py \
 | V5.5 交付文档 | `docs/submission/READMEV5_5.md` | 全库 81、任务步骤、类型兼容、平台适配和关键优化汇总 |
 | V5.5 最终报告汇总 | `data/reports/zhongkexin/v5_5_final/summary.md` | 全库接口、类型兼容、dtype 覆盖和任务步骤审计结论 |
 | V5.5 机器可读摘要 | `data/reports/zhongkexin/v5_5_final/summary.json` | 同一结论的 JSON 摘要 |
+| V6 最终汇总 | `data/reports/zhongkexin/v6_final/summary.md` / `summary.json` | V6-0138/0141 硬门、性能与证据哈希 |
+| V7 最终汇总 | `data/reports/zhongkexin/v7_final/summary.md` / `summary.json` | V7-0011 关闭结论与冻结演示结果 |
 | 单元测试入口 | `tests/unit/` | 81 个已迁移算子的测试覆盖 |
 | 公开接口 | `include/cusignal/` | 库函数头文件与公开 API |
 | ZQ500 GPU 实现 | `src/zhongkexin/` | GPU 加速实现源码 |
@@ -824,9 +830,11 @@ data/generated/
 
 ### `data/reports/`
 
-`reports/` 用来保存所有运行结果的汇总文件。
+`reports/` 在最终交付仓中只保存 V5.5、V6、V7 的紧凑终测汇总。运行期
+demo、unit 长表、日志、缓存和图件不得长期留在这里，应写入 `/tmp` 并在需要
+留证时移至 `/home/usr_04/CETC_garbage/`。
 
-典型落盘路径包括：
+历史运行入口可能临时写入：
 
 - `data/reports/demo/task1_radar/`
 - `data/reports/demo/task2_features/`
@@ -839,7 +847,8 @@ data/generated/
 - `latest_stage_timings.csv`：分阶段耗时
 - `figures/`：由 `visualize_task1.py`、`visualize_task2.py` 生成的图表
 
-其中 `latest_*` 文件始终代表最近一次运行结果，便于快速查看当前状态；如果需要长期归档，建议另行复制保存。
+其中 `latest_*` 是运行期中间产物，不属于最终仓库文件；最终交付仅保留
+`data/reports/README.md` 与三个版本目录中的 `summary.md/json`。
 
 ### 清理策略
 

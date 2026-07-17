@@ -2,7 +2,8 @@
 
 ## 版本信息
 
-- 当前状态：进行中。
+- 当前状态：已关闭；V6-0138 硬门、V6-0141 性能终测和 V6-0142 最终
+  汇总全部通过。
 - 总计划：`docs/performance/v6_0/plans/V6_0_plan.md`。
 - 优化台账：`docs/performance/v6_0/optimization_change_log.md`。
 - 性能审计：`docs/performance/v6_0/performance_audit.md`。
@@ -19,7 +20,7 @@
 | V6.5 Task1 收口与公共 radartools | `READMEV6_5.md` | 已关闭 |
 | V6.6 内部执行基础设施 | `READMEV6_6.md` | 已关闭 |
 | V6.7 赛题算子库轻度优化 | `READMEV6_7.md` | 已关闭 |
-| V6.8 全量回归与报告收束 | `READMEV6_8.md` | 进行中，V6-0138 已修复待重跑 |
+| V6.8 全量回归与报告收束 | `READMEV6_8.md` | 已关闭 |
 
 ## 交付规则
 
@@ -36,3 +37,5 @@
 - V5.5 公共 API、类型和报告 schema 不破坏。
 - Task1/Task2 最终收益使用 V6.1 同源码、同规模基线。
 - V6.1-V6.8 交付文件与台账结论一致。
+
+上述关闭条件均已满足，最终证据和报告路径见 `READMEV6_8.md`。
