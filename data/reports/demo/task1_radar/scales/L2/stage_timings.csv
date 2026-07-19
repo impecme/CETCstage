@@ -1,0 +1,8 @@
+stage,cpu_ms,gpu_ms
+pulse_compression,0.974792,0.248983
+pulse_doppler,1.715750,0.370314
+power_map,0.005160,0.077841
+ca_cfar,0.032990,0.264193
+ambgfun,2.003914,0.310314
+final_detection,0.012100,0.090381
+total,4.744706,1.362026

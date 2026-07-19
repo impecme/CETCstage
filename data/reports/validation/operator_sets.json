@@ -1,0 +1,13 @@
+{
+  "status": "passed",
+  "registry_count": 81,
+  "source_path_check": "passed",
+  "sets": {
+    "all81": 81,
+    "core53": 53,
+    "demo_cache_probe4": 4,
+    "demo_top30": 30,
+    "extended28": 28,
+    "task27": 27
+  }
+}

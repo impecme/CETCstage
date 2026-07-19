@@ -14,7 +14,8 @@ target_compile_definitions(windows_test_support
 cusignal_configure_zx_gpu_source_target(windows_test_support)
 
 function(add_windows_test target)
-    add_executable(${target} windows_test_main.cpp)
+    string(REPLACE "windows_test_" "" op "${target}")
+    add_executable(${target} "test_${op}.cpp")
     target_link_libraries(${target}
         PRIVATE
             windows_test_support

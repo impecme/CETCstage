@@ -260,6 +260,19 @@ namespace cusignal_demo::task1_radar
         ZxGpuAmbgfunSurfaceResult ambgfun;
     };
 
+    // Inputs are prepared once for a task iteration, then shared by the CPU and GPU pipelines.
+    struct TaskInputs
+    {
+        ComplexSignal tx_template;
+        ComplexArray rx_matrix;
+    };
+
+    struct GpuTaskInputs
+    {
+        cusignal::core::ZxGpuComplexSignal tx_template;
+        cusignal::core::ZxGpuComplexArray rx_matrix;
+    };
+
     struct HostGpuArtifacts
     {
         ComplexArray pulse_compression;
@@ -308,7 +321,7 @@ namespace cusignal_demo::task1_radar
 
     fs::path report_root()
     {
-        return repo_root() / "data" / "reports" / "demo" / "task1_radar";
+        return repo_root() / "data" / ".reports_staging" / "demo" / "task1_radar";
     }
 
     bool is_finite_positive(float value)
@@ -801,12 +814,44 @@ namespace cusignal_demo::task1_radar
     template <typename Fn>
     auto measure_gpu_ms(Fn &&fn)
     {
+        cudaEvent_t start_event = nullptr;
+        cudaEvent_t stop_event = nullptr;
+        cusignal::core::throw_on_zx_gpu_error(cudaEventCreate(&start_event), "cudaEventCreate(start)");
+        try
+        {
+            cusignal::core::throw_on_zx_gpu_error(cudaEventCreate(&stop_event), "cudaEventCreate(stop)");
+            cusignal::core::throw_on_zx_gpu_error(cudaEventRecord(start_event), "cudaEventRecord(start)");
+        }
+        catch (...)
+        {
+            (void)cudaEventDestroy(start_event);
+            throw;
+        }
+
         const auto start = std::chrono::steady_clock::now();
-        auto value = fn();
-        cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize");
-        const auto end = std::chrono::steady_clock::now();
-        const float elapsed_ms = std::chrono::duration<float, std::milli>(end - start).count();
-        return std::make_pair(std::move(value), elapsed_ms);
+        try
+        {
+            auto value = fn();
+            cusignal::core::throw_on_zx_gpu_error(cudaEventRecord(stop_event), "cudaEventRecord(stop)");
+            cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize");
+            float kernel_ms = 0.0f;
+            cusignal::core::throw_on_zx_gpu_error(
+                cudaEventElapsedTime(&kernel_ms, start_event, stop_event),
+                "cudaEventElapsedTime");
+            const auto end = std::chrono::steady_clock::now();
+            const float elapsed_ms = std::chrono::duration<float, std::milli>(end - start).count();
+            (void)cudaEventDestroy(stop_event);
+            (void)cudaEventDestroy(start_event);
+            return cusignal_demo::report::GpuMeasurement<decltype(value)>{
+                std::move(value), elapsed_ms, kernel_ms};
+        }
+        catch (...)
+        {
+            if (stop_event != nullptr)
+                (void)cudaEventDestroy(stop_event);
+            (void)cudaEventDestroy(start_event);
+            throw;
+        }
     }
 
     float mixed_error_for_sample(float abs_error, float expected_norm, float reference_scale)
@@ -1165,67 +1210,75 @@ namespace cusignal_demo::task1_radar
         return artifacts;
     }
 
-    CpuArtifacts run_cpu_pipeline(const ScenarioConfig &config)
+    TaskInputs build_task_inputs(const ScenarioConfig &config)
     {
-        const ComplexSignal tx_template = build_template(config);
-        const ComplexArray rx_matrix = simulate_rx_matrix(config, tx_template, true);
-        return run_cpu_pipeline_from_input(config, tx_template, rx_matrix);
+        TaskInputs inputs;
+        inputs.tx_template = build_template(config);
+        inputs.rx_matrix = simulate_rx_matrix(config, inputs.tx_template, true);
+        return inputs;
+    }
+
+    GpuTaskInputs build_gpu_task_inputs(const TaskInputs &inputs)
+    {
+        GpuTaskInputs gpu_inputs;
+        gpu_inputs.tx_template = cusignal::core::ZxGpuComplexSignal::from_host(inputs.tx_template);
+        gpu_inputs.rx_matrix = cusignal::core::ZxGpuComplexArray::from_host(inputs.rx_matrix);
+        return gpu_inputs;
     }
 
     std::pair<GpuArtifacts, std::vector<StageTiming>> run_gpu_pipeline(
         const ScenarioConfig &config,
-        const ComplexArray &rx_matrix,
-        const ComplexSignal &tx_template)
+        const GpuTaskInputs &inputs)
     {
         std::vector<StageTiming> timings;
         GpuArtifacts artifacts;
 
-        auto [pulse_compression, pulse_compression_ms] = measure_gpu_ms([&]() {
+        auto [pulse_compression, pulse_compression_ms, pulse_compression_kernel_ms] = measure_gpu_ms([&]() {
             return cusignal::zx_gpu_backend::radartools::pulse_compression(
-                rx_matrix,
-                tx_template,
+                inputs.rx_matrix,
+                inputs.tx_template,
                 config.pulse_compression_normalize,
                 config.pulse_compression_window,
                 config.pulse_compression_nfft);
         });
-        timings.push_back({"pulse_compression", 0.0, pulse_compression_ms});
+        timings.push_back({"pulse_compression", 0.0, pulse_compression_ms, pulse_compression_kernel_ms});
         artifacts.pulse_compression = std::move(pulse_compression);
 
-        auto [pulse_doppler, pulse_doppler_ms] = measure_gpu_ms([&]() {
+        auto [pulse_doppler, pulse_doppler_ms, pulse_doppler_kernel_ms] = measure_gpu_ms([&]() {
             return cusignal::zx_gpu_backend::radartools::pulse_doppler_shifted(
                 artifacts.pulse_compression,
                 config.pulse_doppler_window,
                 config.pulse_doppler_nfft);
         });
-        timings.push_back({"pulse_doppler", 0.0, pulse_doppler_ms});
+        timings.push_back({"pulse_doppler", 0.0, pulse_doppler_ms, pulse_doppler_kernel_ms});
         artifacts.pulse_doppler = std::move(pulse_doppler);
 
-        auto [range_doppler_power, power_ms] = measure_gpu_ms([&]() {
+        auto [range_doppler_power, power_ms, power_kernel_ms] = measure_gpu_ms([&]() {
             return cusignal::zx_gpu_backend::radartools::power_map(artifacts.pulse_doppler);
         });
-        timings.push_back({"power_map", 0.0, power_ms});
+        timings.push_back({"power_map", 0.0, power_ms, power_kernel_ms});
         artifacts.range_doppler_power = std::move(range_doppler_power);
 
-        auto [cfar, cfar_ms] = measure_gpu_ms([&]() {
+        auto [cfar, cfar_ms, cfar_kernel_ms] = measure_gpu_ms([&]() {
             return cusignal::zx_gpu_backend::radartools::ca_cfar(
                 artifacts.range_doppler_power,
                 config.cfar_guard_cells,
                 config.cfar_reference_cells,
                 config.cfar_pfa);
         });
-        timings.push_back({"ca_cfar", 0.0, cfar_ms});
+        timings.push_back({"ca_cfar", 0.0, cfar_ms, cfar_kernel_ms});
         artifacts.cfar_threshold = std::move(cfar.threshold);
         artifacts.cfar_detections = std::move(cfar.detections);
 
-        auto [ambgfun, ambgfun_ms] = measure_gpu_ms([&]() {
+        auto [ambgfun, ambgfun_ms, ambgfun_kernel_ms] = measure_gpu_ms([&]() {
             return cusignal::zx_gpu_backend::radartools::ambgfun(
-                tx_template,
+                inputs.tx_template,
                 config.fs,
                 config.prf,
                 "2d",
                 0.0f);
         });
-        timings.push_back({"ambgfun", 0.0, ambgfun_ms});
+        timings.push_back({"ambgfun", 0.0, ambgfun_ms, ambgfun_kernel_ms});
         artifacts.ambgfun = std::get<ZxGpuAmbgfunSurfaceResult>(std::move(ambgfun));
 
         return std::make_pair(std::move(artifacts), std::move(timings));
@@ -1243,6 +1296,17 @@ namespace cusignal_demo::task1_radar
         host.ambgfun.delay_axis = gpu.ambgfun.delay_axis.get();
         host.ambgfun.doppler_axis = gpu.ambgfun.doppler_axis.get();
         return host;
+    }
+
+    float gpu_kernel_total_ms(const std::vector<StageTiming> &timings)
+    {
+        float total_ms = 0.0f;
+        for (const StageTiming &timing : timings)
+        {
+            if (std::isfinite(timing.gpu_kernel_ms))
+                total_ms += timing.gpu_kernel_ms;
+        }
+        return total_ms;
     }
 
     void write_generated_inputs(
@@ -1326,13 +1390,17 @@ namespace cusignal_demo::task1_radar
         {
             throw std::runtime_error("failed to write CSV file: " + path.string());
         }
-        output << "stage,cpu_ms,gpu_ms\n";
+        output << "stage,cpu_ms,gpu_ms,gpu_kernel_ms\n";
         output << std::fixed << std::setprecision(6);
         for (const StageTiming &timing : timings)
         {
-            output << timing.name << ',' << timing.cpu_ms << ',' << timing.gpu_ms << '\n';
+            output << timing.name << ',' << timing.cpu_ms << ',' << timing.gpu_ms << ',';
+            if (std::isfinite(timing.gpu_kernel_ms))
+                output << timing.gpu_kernel_ms;
+            output << '\n';
         }
-        output << "total," << cpu_total_ms << ',' << gpu_total_ms << '\n';
+        output << "total," << cpu_total_ms << ',' << gpu_total_ms << ','
+               << gpu_kernel_total_ms(timings) << '\n';
     }
 
     void write_unified_step_metrics(
@@ -1373,12 +1441,14 @@ namespace cusignal_demo::task1_radar
             metric.output_dtype = output_dtype;
             metric.cpu_ms = timing.cpu_ms;
             metric.gpu_e2e_ms = timing.gpu_ms;
+            metric.gpu_kernel_ms = timing.gpu_kernel_ms;
             metric.error_available = error != nullptr;
             metric.complex_error = complex_error;
             if (error)
                 metric.error = *error;
             metric.pass = error && error->mixed_error <= limit;
-            metric.note = note + "; gpu_kernel_ms pending V5.3 operator timing exposure";
+            metric.note = note + "; gpu_kernel_ms is CUDA-event elapsed time for GPU stream work "
+                "in this composite task step";
             return metric;
         };
 
@@ -1416,13 +1486,15 @@ namespace cusignal_demo::task1_radar
         detection.output_dtype = "int32+float32";
         detection.cpu_ms = detection_timing.cpu_ms;
         detection.gpu_e2e_ms = detection_timing.gpu_ms;
+        detection.gpu_kernel_ms = detection_timing.gpu_kernel_ms;
         const ErrorMetrics detection_error = compute_real_error(
             detection_as_signal(run.cpu_detection),
             detection_as_signal(run.gpu_detection));
         detection.error_available = true;
         detection.error = detection_error;
         detection.pass = detection_matches(run.cpu_detection, run.gpu_detection);
-        detection.note = "public operator; exact business-bin comparison plus CPU/GPU detection vector error";
+        detection.note = "public operator; exact business-bin comparison plus CPU/GPU detection vector error; "
+            "gpu_kernel_ms is CUDA-event elapsed time for GPU stream work";
         steps.push_back(std::move(detection));
         cusignal_demo::report::write_step_metrics(report_root(), "task1_radar", steps);
     }
@@ -1487,14 +1559,16 @@ namespace cusignal_demo::task1_radar
                << ambgfun_error.max_abs << " | " << ambgfun_error.max_rel << " | "
                << ambgfun_error.rmse << " |\n\n";
         stream << "## Timing\n\n";
-        stream << "| stage | cpu_ms | gpu_ms |\n";
-        stream << "| --- | ---: | ---: |\n";
+        stream << "| stage | cpu_ms | gpu_ms | gpu_kernel_ms |\n";
+        stream << "| --- | ---: | ---: | ---: |\n";
         stream << std::fixed << std::setprecision(6);
         for (const StageTiming &timing : timings)
         {
-            stream << "| " << timing.name << " | " << timing.cpu_ms << " | " << timing.gpu_ms << " |\n";
+            stream << "| " << timing.name << " | " << timing.cpu_ms << " | " << timing.gpu_ms << " | "
+                   << timing.gpu_kernel_ms << " |\n";
         }
-        stream << "| total | " << cpu_total_ms << " | " << gpu_total_ms << " |\n\n";
+        stream << "| total | " << cpu_total_ms << " | " << gpu_total_ms << " | "
+               << gpu_kernel_total_ms(timings) << " |\n\n";
         stream << "## Validation\n\n";
         stream << "- pass: `" << (validation.pass ? "true" : "false") << "`\n";
         stream << "- repeat_runs: `" << iterations.size() << "`\n";
@@ -1505,9 +1579,8 @@ namespace cusignal_demo::task1_radar
         stream << "## Artifacts\n\n";
         stream << "- inputs: `data/generated/demo/task1_radar/input/`\n";
         stream << "- samples: `data/generated/demo/task1_radar/output_samples/`\n";
-        stream << "- metrics: `data/reports/demo/task1_radar/latest_metrics.json`\n";
-        stream << "- timings: `data/reports/demo/task1_radar/latest_stage_timings.csv`\n";
-        stream << "- figures: run `python3 demo/task1_radar/visualize_task1.py`\n";
+        stream << "- metrics: `data/.reports_staging/demo/task1_radar/latest_metrics.json`\n";
+        stream << "- timings: `data/.reports_staging/demo/task1_radar/latest_stage_timings.csv`\n";
         return stream.str();
     }
 
@@ -1585,9 +1658,11 @@ namespace cusignal_demo::task1_radar
         {
             const StageTiming &timing = timings[index];
             stream << "    \"" << json_escape(timing.name) << "\": {\"cpu_ms\": " << timing.cpu_ms
-                   << ", \"gpu_ms\": " << timing.gpu_ms << "},\n";
+                   << ", \"gpu_ms\": " << timing.gpu_ms << ", \"gpu_kernel_ms\": "
+                   << timing.gpu_kernel_ms << "},\n";
         }
-        stream << "    \"total\": {\"cpu_ms\": " << cpu_total_ms << ", \"gpu_ms\": " << gpu_total_ms << "}\n";
+        stream << "    \"total\": {\"cpu_ms\": " << cpu_total_ms << ", \"gpu_ms\": " << gpu_total_ms
+               << ", \"gpu_kernel_ms\": " << gpu_kernel_total_ms(timings) << "}\n";
         stream << "  },\n";
         auto write_error = [&](const char *name, const ErrorMetrics &metrics, bool trailing_comma) {
             stream << "  \"" << name << "\": {\n";
@@ -1621,7 +1696,10 @@ namespace cusignal_demo::task1_radar
     DemoRunResult run_once(const ScenarioConfig &config)
     {
         validate_config(config);
-        CpuArtifacts cpu = run_cpu_pipeline(config);
+        auto [inputs, input_cpu_ms] = measure_cpu_ms([&]() {
+            return build_task_inputs(config);
+        });
+        CpuArtifacts cpu = run_cpu_pipeline_from_input(config, inputs.tx_template, inputs.rx_matrix);
         const ComplexArray noiseless_rx = simulate_rx_matrix(config, cpu.tx_template, false);
         const CpuArtifacts noiseless = run_cpu_pipeline_from_input(config, cpu.tx_template, noiseless_rx);
 
@@ -1676,10 +1754,14 @@ namespace cusignal_demo::task1_radar
             !environment_flag_enabled("CUSIGNAL_TASK1_RETAIN_WARMUP_BUFFERS");
         const bool trace_storage_reuse = environment_flag_enabled(
             "CUSIGNAL_TASK1_TRACE_STORAGE_REUSE");
+        auto gpu_inputs_measured = measure_gpu_ms([&]() {
+            return build_gpu_task_inputs(inputs);
+        });
+        GpuTaskInputs gpu_inputs = std::move(gpu_inputs_measured.first);
         const auto cache_before = cusignal::core::device_storage_cache_stats_snapshot();
         std::optional<GpuArtifacts> retained_gpu_warmup;
         {
-            auto gpu_warmup_result = run_gpu_pipeline(config, cpu.rx_matrix, cpu.tx_template);
+            auto gpu_warmup_result = run_gpu_pipeline(config, gpu_inputs);
             GpuArtifacts &gpu_warmup_device = gpu_warmup_result.first;
             (void)cusignal::zx_gpu_backend::radartools::detect_peak(
                 gpu_warmup_device.range_doppler_power,
@@ -1692,10 +1774,10 @@ namespace cusignal_demo::task1_radar
             }
         }
         const auto cache_after_warmup = cusignal::core::device_storage_cache_stats_snapshot();
-        auto gpu_pipeline_result = run_gpu_pipeline(config, cpu.rx_matrix, cpu.tx_template);
+        auto gpu_pipeline_result = run_gpu_pipeline(config, gpu_inputs);
         GpuArtifacts gpu_device = std::move(gpu_pipeline_result.first);
         std::vector<StageTiming> gpu_stage_times = std::move(gpu_pipeline_result.second);
-        auto [gpu_detection_device, detection_gpu_ms] = measure_gpu_ms([&]() {
+        auto [gpu_detection_device, detection_gpu_ms, detection_gpu_kernel_ms] = measure_gpu_ms([&]() {
             return cusignal::zx_gpu_backend::radartools::detect_peak(
                 gpu_device.range_doppler_power,
                 gpu_device.cfar_detections,
@@ -1707,7 +1789,7 @@ namespace cusignal_demo::task1_radar
         if (trace_storage_reuse)
         {
             const auto cache_after_measured = cusignal::core::device_storage_cache_stats_snapshot();
-            std::cerr << "[V7-0009] release_warmup_buffers="
+            std::cerr << "[task1] release_warmup_buffers="
                       << (release_warmup_buffers ? 1 : 0)
                       << " cache_hits=" << cache_before.cache_hits << ','
                       << cache_after_warmup.cache_hits << ','
@@ -1721,11 +1803,18 @@ namespace cusignal_demo::task1_radar
                       << '\n';
         }
 
-        stage_timings.push_back({"pulse_compression", pulse_cpu_ms, gpu_stage_times[0].gpu_ms});
-        stage_timings.push_back({"pulse_doppler", doppler_cpu_ms, gpu_stage_times[1].gpu_ms});
-        stage_timings.push_back({"power_map", power_cpu_ms, gpu_stage_times[2].gpu_ms});
-        stage_timings.push_back({"ca_cfar", cfar_cpu_ms, gpu_stage_times[3].gpu_ms});
-        stage_timings.push_back({"ambgfun", ambg_cpu_ms, gpu_stage_times[4].gpu_ms});
+        stage_timings.push_back({"input_construction", input_cpu_ms, gpu_inputs_measured.second,
+                                 gpu_inputs_measured.kernel_ms});
+        stage_timings.push_back({"pulse_compression", pulse_cpu_ms, gpu_stage_times[0].gpu_ms,
+                                 gpu_stage_times[0].gpu_kernel_ms});
+        stage_timings.push_back({"pulse_doppler", doppler_cpu_ms, gpu_stage_times[1].gpu_ms,
+                                 gpu_stage_times[1].gpu_kernel_ms});
+        stage_timings.push_back({"power_map", power_cpu_ms, gpu_stage_times[2].gpu_ms,
+                                 gpu_stage_times[2].gpu_kernel_ms});
+        stage_timings.push_back({"ca_cfar", cfar_cpu_ms, gpu_stage_times[3].gpu_ms,
+                                 gpu_stage_times[3].gpu_kernel_ms});
+        stage_timings.push_back({"ambgfun", ambg_cpu_ms, gpu_stage_times[4].gpu_ms,
+                                 gpu_stage_times[4].gpu_kernel_ms});
 
         auto [cpu_detection, detection_cpu_ms] = measure_cpu_ms([&]() {
             return cusignal::cpu::radartools::detect_peak(
@@ -1734,7 +1823,8 @@ namespace cusignal_demo::task1_radar
                 config.pulse_doppler_nfft,
                 config.prf);
         });
-        stage_timings.push_back({"final_detection", detection_cpu_ms, detection_gpu_ms});
+        stage_timings.push_back(
+            {"final_detection", detection_cpu_ms, detection_gpu_ms, detection_gpu_kernel_ms});
 
         float cpu_total_ms = 0.0;
         float gpu_total_ms = 0.0;
@@ -1874,7 +1964,6 @@ namespace cusignal_demo::task1_radar
                   << " skip_timing_validation=" << bool_json(options.skip_timing_validation) << '\n';
         std::cout << "reports       : "
                   << (report_root() / "latest_summary.md").lexically_relative(repo_root()).string() << '\n';
-        std::cout << "visualization : python3 demo/task1_radar/visualize_task1.py\n";
         return 0;
     }
 } // namespace cusignal_demo::task1_radar

@@ -15,15 +15,11 @@ cusignal_configure_zx_gpu_source_target(radartools_test_support)
 
 function(add_radartools_test target)
     string(REPLACE "radartools_test_" "" op "${target}")
-    add_executable(${target} test_${op}.cpp)
-    target_link_libraries(${target}
-        PRIVATE
-            radartools_test_support
-            cusignal_cpu
-            cusignal_zx_gpu
+    cusignal_add_operator_test(
+        ${target}
+        "${CMAKE_CURRENT_SOURCE_DIR}/test_${op}.cpp"
+        radartools_test_support
     )
-    target_compile_features(${target} PRIVATE cxx_std_17)
-    add_test(NAME ${target} COMMAND ${target})
 endfunction()
 
 foreach(op

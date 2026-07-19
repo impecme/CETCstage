@@ -275,12 +275,12 @@ namespace
 
     fs::path report_root(const std::string &op)
     {
-        return repo_root() / "data" / "reports" / "unit" / "filtering" / op;
+        return repo_root() / "data" / ".reports_staging" / "unit" / "filtering" / op;
     }
 
     fs::path module_report_root()
     {
-        return repo_root() / "data" / "reports" / "unit" / "filtering";
+        return repo_root() / "data" / ".reports_staging" / "unit" / "filtering";
     }
 
     RealArray make_real_array_from_flat(const Shape &shape, const RealSignal &values);
@@ -3644,7 +3644,7 @@ namespace
         {
             std::cout << "gpu_perf_ms   : not_run (accuracy-only; use perf/full case set for timing)\n";
         }
-        std::cout << "reports       : data/reports/unit/filtering/" << op << "/latest_summary.md\n";
+        std::cout << "reports       : data/.reports_staging/unit/filtering/" << op << "/latest_summary.md\n";
     }
 
     CaseReport evaluate_accuracy_case(const std::string &op, const FilteringCase &test_case, const Runner &runner)

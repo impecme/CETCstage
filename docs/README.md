@@ -1,50 +1,20 @@
-# CETC 文档索引
+# 文档索引
 
-## 当前阶段
+本目录只保留最终交付需要的按维度文档。版本计划、候选实验、协作记录和逐轮
+交付说明已移出主仓库。`data/reports/` 是本队 ZQ500 容器对当前代码完整验证
+通过后发布的机器可读数据；在首次验证前，它可以不存在。
 
-| 入口 | 用途 |
+| 文档 | 内容 |
 | --- | --- |
-| `docs/performance/v5_0/README.md` | V5.1-V5.5 性能优化阶段索引、关闭状态和门禁 |
-| `docs/performance/v6_0/README.md` | V6.0 任务优先强性能优化规划入口 |
-| `docs/performance/v6_0/optimization_change_log.md` | V6 来源调研、候选方案、实际改动、验证结果和回退记录 |
-| `docs/performance/v5_0/agent_collaboration.md` | V5.0 性能优化阶段的智能体分工、协作流和验证流 |
-| `docs/performance/v5_0/optimization_change_log.md` | V5.0 性能优化台账，记录优化措施、验证结果和待处理项 |
-| `docs/performance/v5_0/operator_optimization_matrix.md` | 两任务依赖 27、核心 53、全库 81 的类型、接口、测试和性能契约 |
-| `docs/performance/v5_0/final_summary.md` | V5 最终验收、类型兼容、任务步骤和报告收束结论 |
+| [FINAL_DELIVERY.md](FINAL_DELIVERY.md) | 当前交付状态、仓库边界、本轮验证与待办 |
+| [VERSION_HISTORY.md](VERSION_HISTORY.md) | V1-V7 里程碑摘要和兼容性变更 |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | 目录、双实现、内存模型和任务流水线 |
+| [API_COMPATIBILITY.md](API_COMPATIBILITY.md) | 81 算子、公开接口、ZQ500 SDK/API 边界 |
+| [DTYPE_SUPPORT.md](DTYPE_SUPPORT.md) | 支持类型、逐算子契约和限制 |
+| [BUILD_AND_RUN.md](BUILD_AND_RUN.md) | 容器环境、依赖、构建、测试和报告生成 |
+| [VALIDATION_AND_REPORTS.md](VALIDATION_AND_REPORTS.md) | 门禁层级、当前报告发布流程和历史证据边界 |
+| [PERFORMANCE.md](PERFORMANCE.md) | V5/V6/V7 冻结性能结论、保留项和关闭项 |
 
-## 中科芯迁移基线
-
-| 入口 | 用途 |
-| --- | --- |
-| `docs/migration/zhongkexin/README.md` | V4 中科芯迁移文档入口和阶段索引 |
-| `docs/migration/zhongkexin/status.md` | 中科芯迁移当前完成状态 |
-| `docs/migration/zhongkexin/change_log.md` | V4 迁移不兼容、修改和限制台账 |
-| `docs/migration/zhongkexin/platform_notes.md` | 复赛说明文件中的平台约束摘要 |
-| `docs/migration/zhongkexin/task_dependency_matrix.md` | V4.2 Task1/Task2 依赖算子矩阵 |
-| `docs/migration/zhongkexin/full_operator_matrix.md` | V4.3 全量公开算子矩阵 |
-| `docs/migration/zhongkexin/plans/` | V4.0-V4.8 阶段计划归档 |
-
-## 交付材料
-
-| 入口 | 用途 |
-| --- | --- |
-| `docs/submission/technical_document_framework_final.md` | 当前主技术文档 |
-| `docs/submission/project_technical_details_core_optimizations.md` | 面向技术介绍的项目实现细节与核心优化手段摘要 |
-| `docs/submission/READMEV5_0.md` | V5 全算子库性能优化总交付文档 |
-| `docs/submission/READMEV*.md` | 各历史版本交付说明 |
-| `docs/submission/figures/` | 技术文档和 PPT 图件 |
-
-## 历史计划
-
-| 入口 | 用途 |
-| --- | --- |
-| `docs/archive/version_plans/v2/` | V2.x 模块接入和测试体系历史计划 |
-| `docs/archive/version_plans/v3/` | V3.x 任务 demo 历史计划 |
-
-## 维护规则
-
-- V5.1-V5.5 已关闭，历史记录保留在 `docs/performance/v5_0/optimization_change_log.md`。
-- 当前第六版性能优化按 `docs/performance/v6_0/README.md` 推进，新增记录写入 `docs/performance/v6_0/optimization_change_log.md`。
-- V4 迁移基线只在发现迁移遗留问题时更新 `docs/migration/zhongkexin/change_log.md`。
-- 历史计划默认只读归档，不再作为当前执行入口。
-- 临时容器日志、一次性调试日志和 benchmark 产物不放入 `docs/`；需要留证时放在 `data/reports/` 或对应阶段台账中记录路径。
+当前代码验证事实冲突时按以下顺序处理：已校验的结构化终版报告、当前源码与 CMake、
+本文档。V5.5、V6、V7 的历史性能结论以 `PERFORMANCE.md` 为准，不与当前运行数据
+混用；三阶段均已关闭，不再启动 GPU 性能候选。

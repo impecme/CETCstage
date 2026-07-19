@@ -1,5 +1,7 @@
-./scripts/clean_data.sh
-git add docs/ data/ include/ src/ tests/ CMakeLists.txt README.md scripts/ .gitignore auto_git.sh demo/ AGENT.md copy_to_container.sh replace_container_project.sh
+#!/usr/bin/env bash
+
+./scripts/clean.sh
+git add docs/ data/ include/ src/ tests/ CMakeLists.txt README.md scripts/ .gitignore auto_git.sh demo/ DELIVERY_FILES.txt third_party/fftw/dist/fftw-3.3.10.tar.gz
 
 if git diff --cached --quiet; then
 	echo "No staged changes to commit."

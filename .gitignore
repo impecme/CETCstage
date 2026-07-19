@@ -1,12 +1,15 @@
-build/
-build-*/
+/build/
+/build-*/
 __cmake_systeminformation/
 .zq500_sdk_full.delete_me/
+/.vscode/
+/复赛说明文件/
 /*.log
 container_pull/
 third_party/python/
 third_party/python_wheels/
-third_party/fftw/dist/
+third_party/fftw/dist/*
+!third_party/fftw/dist/fftw-3.3.10.tar.gz
 third_party/fftw/src/
 third_party/fftw/build/
 third_party/fftw/install/
@@ -19,3 +22,7 @@ __pycache__/
 # Unit-test generated debug samples. Manifests stay tracked; samples are regenerated.
 data/generated/unit/**/input/
 data/generated/unit/**/output_samples/
+
+# Validation writes raw evidence here, then publishes only compact current-code
+# reports under data/reports/.
+data/.reports_staging/

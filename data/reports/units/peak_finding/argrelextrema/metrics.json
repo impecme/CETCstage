@@ -1,0 +1,80 @@
+{
+  "module": "peak_finding",
+  "operator": "argrelextrema",
+  "generated_at": "2026-07-19 09:26:48",
+  "git_commit": "",
+  "gpu_name": "ZQ500-Q QUAD-0",
+  "compile_config": {
+    "cxx_standard": 201703,
+    "runtime_version": 11070
+  },
+  "summary": {
+    "pass": true,
+    "accuracy_cases": 7,
+    "perf_cases": 1,
+    "max_abs_error": 0,
+    "max_rel_error": 0,
+    "mixed_error": 0,
+    "rmse": 0,
+    "gpu_e2e_speedup": 4.72185,
+    "gpu_kernel_speedup": 5.73609,
+    "cpu_perf": {
+      "warmup": 5,
+      "repeat": 30,
+      "mean_ms": 1.00679,
+      "median_ms": 0.999342,
+      "p95_ms": 1.03887,
+      "min_ms": 0.998342,
+      "max_ms": 1.09312,
+      "std_ms": 0.0185702
+    },
+    "gpu_e2e_perf": {
+      "warmup": 5,
+      "repeat": 30,
+      "mean_ms": 0.212309,
+      "median_ms": 0.211642,
+      "p95_ms": 0.219303,
+      "min_ms": 0.206622,
+      "max_ms": 0.221923,
+      "std_ms": 0.00341604
+    },
+    "gpu_kernel_perf": {
+      "warmup": 5,
+      "repeat": 30,
+      "mean_ms": 0.17473,
+      "median_ms": 0.17422,
+      "p95_ms": 0.183892,
+      "min_ms": 0.16904,
+      "max_ms": 0.183932,
+      "std_ms": 0.00354465
+    },
+    "device_storage_cache": {
+      "cache_enabled": true,
+      "allocation_calls": 16,
+      "allocation_bytes": 264425,
+      "allocation_mib": 0.252175,
+      "cache_hits": 2,
+      "cache_misses": 16,
+      "recycled_blocks": 12,
+      "recycled_bytes": 131293,
+      "recycled_mib": 0.125211,
+      "evicted_blocks": 0,
+      "evicted_bytes": 0,
+      "evicted_mib": 0,
+      "freed_blocks": 0,
+      "freed_bytes": 0,
+      "freed_mib": 0,
+      "cached_blocks": 10,
+      "cached_bytes": 131237,
+      "cached_mib": 0.125157,
+      "peak_cached_bytes": 131237,
+      "peak_cached_mib": 0.125157,
+      "max_cached_blocks": 8,
+      "max_cached_bytes": 536870912,
+      "max_cached_mib": 512,
+      "max_single_cached_bytes": 268435456,
+      "max_single_cached_mib": 256
+    }
+  },
+  "cases": []
+}

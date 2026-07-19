@@ -1,0 +1,10 @@
+stage,cpu_ms,gpu_ms
+filter,1.212735,0.991602
+demod,0.941783,0.210873
+correlate,114.466125,3.087156
+spectrogram,18.471226,1.169014
+cwt,278.326202,1.542488
+feature_fusion,0.170242,0.161372
+measurement_conversion,0.000290,0.000000
+kalman,0.146892,0.138221
+total,413.735504,7.300726

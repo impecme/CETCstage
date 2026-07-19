@@ -15,15 +15,11 @@ cusignal_configure_zx_gpu_source_target(correlate_test_support)
 
 function(add_correlate_test target)
     string(REPLACE "correlate_test_" "" op "${target}")
-    add_executable(${target} test_${op}.cpp)
-    target_link_libraries(${target}
-        PRIVATE
-            correlate_test_support
-            cusignal_cpu
-            cusignal_zx_gpu
+    cusignal_add_operator_test(
+        ${target}
+        "${CMAKE_CURRENT_SOURCE_DIR}/test_${op}.cpp"
+        correlate_test_support
     )
-    target_compile_features(${target} PRIVATE cxx_std_17)
-    add_test(NAME ${target} COMMAND ${target})
 endfunction()
 
 foreach(op

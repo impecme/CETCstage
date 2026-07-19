@@ -304,6 +304,31 @@ namespace cusignal_demo::task2_features
         ZxGpuRealSignal kalman_track;
     };
 
+    // Input construction is timed independently from the task's calculation steps.
+    struct TaskInputs
+    {
+        ComplexSignal target_template;
+        ComplexArray rx_frames;
+        RealSignal truth_track;
+    };
+
+    struct CpuPipelineInputs
+    {
+        RealSignal widths;
+        RealSignal bspline_weights;
+        RealSignal taps;
+    };
+
+    struct GpuPipelineInputs
+    {
+        RealSignal widths_host;
+        ZxGpuRealSignal widths;
+        ZxGpuRealSignal bspline_weights;
+        ZxGpuRealSignal taps;
+        ZxGpuComplexArray target_template;
+        ZxGpuComplexArray rx_frames;
+    };
+
     struct HostGpuArtifacts
     {
         ComplexArray filtered;
@@ -361,7 +386,7 @@ namespace cusignal_demo::task2_features
 
     fs::path report_root()
     {
-        return repo_root() / "data" / "reports" / "demo" / "task2_features";
+        return repo_root() / "data" / ".reports_staging" / "demo" / "task2_features";
     }
 
     bool is_finite_positive(float value)
@@ -1195,12 +1220,44 @@ namespace cusignal_demo::task2_features
     template <typename Fn>
     auto measure_gpu_ms(Fn &&fn)
     {
+        cudaEvent_t start_event = nullptr;
+        cudaEvent_t stop_event = nullptr;
+        cusignal::core::throw_on_zx_gpu_error(cudaEventCreate(&start_event), "cudaEventCreate(start)");
+        try
+        {
+            cusignal::core::throw_on_zx_gpu_error(cudaEventCreate(&stop_event), "cudaEventCreate(stop)");
+            cusignal::core::throw_on_zx_gpu_error(cudaEventRecord(start_event), "cudaEventRecord(start)");
+        }
+        catch (...)
+        {
+            (void)cudaEventDestroy(start_event);
+            throw;
+        }
+
         const auto start = std::chrono::steady_clock::now();
-        auto value = fn();
-        cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize");
-        const auto end = std::chrono::steady_clock::now();
-        const float elapsed_ms = std::chrono::duration<float, std::milli>(end - start).count();
-        return std::make_pair(std::move(value), elapsed_ms);
+        try
+        {
+            auto value = fn();
+            cusignal::core::throw_on_zx_gpu_error(cudaEventRecord(stop_event), "cudaEventRecord(stop)");
+            cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize");
+            float kernel_ms = 0.0f;
+            cusignal::core::throw_on_zx_gpu_error(
+                cudaEventElapsedTime(&kernel_ms, start_event, stop_event),
+                "cudaEventElapsedTime");
+            const auto end = std::chrono::steady_clock::now();
+            const float elapsed_ms = std::chrono::duration<float, std::milli>(end - start).count();
+            (void)cudaEventDestroy(stop_event);
+            (void)cudaEventDestroy(start_event);
+            return cusignal_demo::report::GpuMeasurement<decltype(value)>{
+                std::move(value), elapsed_ms, kernel_ms};
+        }
+        catch (...)
+        {
+            if (stop_event != nullptr)
+                (void)cudaEventDestroy(stop_event);
+            (void)cudaEventDestroy(start_event);
+            throw;
+        }
     }
 
     float sum_positive(const RealSignal &values)
@@ -1572,6 +1629,44 @@ namespace cusignal_demo::task2_features
             config.fs);
     }
 
+    TaskInputs build_task_inputs(const ScenarioConfig &config)
+    {
+        TaskInputs inputs;
+        inputs.target_template = build_target_template(config);
+        const ComplexSignal interferer_signal = build_interferer_signal(config);
+        inputs.rx_frames = simulate_frames(
+            config,
+            inputs.target_template,
+            interferer_signal,
+            true,
+            true);
+        inputs.truth_track = compute_truth_track(config, inputs.target_template);
+        return inputs;
+    }
+
+    CpuPipelineInputs build_cpu_pipeline_inputs(const ScenarioConfig &config)
+    {
+        CpuPipelineInputs inputs;
+        inputs.widths = even_range(4.0f, 32.0f, 2.0f);
+        inputs.bspline_weights = build_bspline_weights_cpu();
+        inputs.taps = build_filter_taps_cpu(config);
+        return inputs;
+    }
+
+    GpuPipelineInputs build_gpu_pipeline_inputs(
+        const ScenarioConfig &config,
+        const TaskInputs &task_inputs)
+    {
+        GpuPipelineInputs inputs;
+        inputs.widths_host = even_range(4.0f, 32.0f, 2.0f);
+        inputs.widths = ZxGpuRealSignal::from_host(inputs.widths_host);
+        inputs.bspline_weights = build_bspline_weights_gpu();
+        inputs.taps = build_filter_taps_gpu(config);
+        inputs.target_template = ZxGpuComplexArray::from_host(as_complex_array(task_inputs.target_template));
+        inputs.rx_frames = ZxGpuComplexArray::from_host(task_inputs.rx_frames);
+        return inputs;
+    }
+
     ComplexArray filter_complex_frames_cpu(
         const RealSignal &taps,
         const ComplexArray &input)
@@ -1681,7 +1776,8 @@ namespace cusignal_demo::task2_features
         const ScenarioConfig &config,
         const ComplexSignal &target_template,
         const ComplexArray &rx_frames,
-        const RealSignal &truth_track)
+        const RealSignal &truth_track,
+        const CpuPipelineInputs &inputs)
     {
         CpuArtifacts artifacts;
         artifacts.target_template = target_template;
@@ -1689,12 +1785,9 @@ namespace cusignal_demo::task2_features
         artifacts.truth_track = truth_track;
 
         std::vector<StageTiming> timings;
-        const RealSignal widths = even_range(4.0f, 32.0f, 2.0f);
-        const RealSignal bspline_weights = build_bspline_weights_cpu();
-        const RealSignal taps = build_filter_taps_cpu(config);
 
         auto [filtered, filter_ms] = measure_cpu_ms([&]() {
-            return filter_complex_frames_cpu(taps, rx_frames);
+            return filter_complex_frames_cpu(inputs.taps, rx_frames);
         });
         artifacts.filtered = std::move(filtered);
         timings.push_back({"filter", filter_ms, 0.0});
@@ -1723,8 +1816,8 @@ namespace cusignal_demo::task2_features
                 config,
                 frame_signal,
                 artifacts.target_template,
-                widths,
-                bspline_weights,
+                inputs.widths,
+                inputs.bspline_weights,
                 demod_ms,
                 correlate_ms,
                 spectrogram_ms,
@@ -1796,42 +1889,34 @@ namespace cusignal_demo::task2_features
 
     std::pair<GpuArtifacts, std::vector<StageTiming>> run_gpu_pipeline(
         const ScenarioConfig &config,
-        const ComplexSignal &target_template,
-        const ComplexArray &rx_frames)
+        const GpuPipelineInputs &inputs)
     {
         GpuArtifacts artifacts;
         std::vector<StageTiming> timings;
-        const RealSignal widths = even_range(4.0f, 32.0f, 2.0f);
-        const ZxGpuRealSignal widths_device = ZxGpuRealSignal::from_host(widths);
-        const ZxGpuRealSignal bspline_weights = build_bspline_weights_gpu();
-        const ZxGpuRealSignal taps = build_filter_taps_gpu(config);
-        const ZxGpuComplexArray template_device = ZxGpuComplexArray::from_host(as_complex_array(target_template));
-
-        ZxGpuComplexArray rx_device;
         ZxGpuRealArray filtered_real;
 
-        auto [filtered_complex, filter_ms] = measure_gpu_ms([&]() {
-            rx_device = ZxGpuComplexArray::from_host(rx_frames);
+        auto [filtered_complex, filter_ms, filter_kernel_ms] = measure_gpu_ms([&]() {
             if (config.num_frames >= 48 &&
                 config.samples_per_frame >= 1024 &&
                 config.filter_numtaps >= 129 &&
                 task2_fixed_fft_filter_enabled_zx_gpu())
             {
-                return complex_firfilter_zx_gpu(rx_device, taps, filtered_real);
+                return complex_firfilter_zx_gpu(inputs.rx_frames, inputs.taps, filtered_real);
             }
             ZxGpuComplexArray filtered =
-                cusignal::zx_gpu_backend::filtering::firfilter(taps, rx_device, -1);
+                cusignal::zx_gpu_backend::filtering::firfilter(inputs.taps, inputs.rx_frames, -1);
             filtered_real = extract_real_part_zx_gpu(filtered);
             return filtered;
         });
         artifacts.filtered = std::move(filtered_complex);
-        timings.push_back({"filter", 0.0, filter_ms});
+        timings.push_back({"filter", 0.0, filter_ms, filter_kernel_ms});
 
         const ZxGpuRealArray representative_filter_input = extract_row_real_zx_gpu(
-            extract_real_part_zx_gpu(rx_device),
+            extract_real_part_zx_gpu(inputs.rx_frames),
             config.representative_frame_index);
         auto representative_filter_measured = measure_gpu_ms([&]() {
-            return cusignal::zx_gpu_backend::filtering::firfilter(taps, representative_filter_input, -1);
+            return cusignal::zx_gpu_backend::filtering::firfilter(
+                inputs.taps, representative_filter_input, -1);
         });
         (void)representative_filter_measured;
 
@@ -1854,24 +1939,31 @@ namespace cusignal_demo::task2_features
         });
         artifacts.demod_scores = std::move(demod_scores_measured.first);
         const float demod_ms = demod_scores_measured.second;
+        const float demod_kernel_ms = demod_scores_measured.kernel_ms;
         float correlate_ms = 0.0;
+        float correlate_kernel_ms = 0.0f;
         float spectrogram_ms = 0.0;
+        float spectrogram_kernel_ms = 0.0f;
         float cwt_ms = 0.0;
+        float cwt_kernel_ms = 0.0f;
         float fusion_ms = 0.0;
+        float fusion_kernel_ms = 0.0f;
         std::vector<StageTiming> spectrogram_breakdown;
         std::vector<StageTiming> gpu_validation_timings;
         gpu_validation_timings.push_back(
             {"representative_filter", 0.0f, representative_filter_measured.second});
 
         auto raw_correlate_scores_measured = measure_gpu_ms([&]() {
-            return batched_correlate_score_zx_gpu(artifacts.filtered, template_device);
+            return batched_correlate_score_zx_gpu(artifacts.filtered, inputs.target_template);
         });
         ZxGpuRealArray raw_correlate_scores = std::move(raw_correlate_scores_measured.first);
         correlate_ms += raw_correlate_scores_measured.second;
+        correlate_kernel_ms += raw_correlate_scores_measured.kernel_ms;
         auto normalized_correlate_scores_measured = measure_gpu_ms([&]() {
             return normalize_rows_nonnegative_zx_gpu(raw_correlate_scores);
         });
         correlate_ms += normalized_correlate_scores_measured.second;
+        correlate_kernel_ms += normalized_correlate_scores_measured.kernel_ms;
         artifacts.correlate_scores = std::move(normalized_correlate_scores_measured.first);
 
         const ZxGpuComplexArray representative_correlate_frame = extract_row_complex_zx_gpu(
@@ -1881,7 +1973,7 @@ namespace cusignal_demo::task2_features
             const ZxGpuComplexArray representative_correlate =
                 cusignal::zx_gpu_backend::correlate::correlate(
                     representative_correlate_frame,
-                    template_device,
+                    inputs.target_template,
                     "same",
                     "direct");
             return normalize_nonnegative_zx_gpu(complex_abs_zx_gpu(representative_correlate));
@@ -1907,11 +1999,13 @@ namespace cusignal_demo::task2_features
         });
         ZxGpuRealArray raw_spectrogram_scores = std::move(raw_spectrogram_scores_measured.first);
         spectrogram_ms += raw_spectrogram_scores_measured.second;
+        spectrogram_kernel_ms += raw_spectrogram_scores_measured.kernel_ms;
         spectrogram_breakdown.push_back({"direct_band_score", 0.0f, raw_spectrogram_scores_measured.second});
         auto normalized_spectrogram_scores_measured = measure_gpu_ms([&]() {
             return normalize_rows_nonnegative_zx_gpu(raw_spectrogram_scores);
         });
         spectrogram_ms += normalized_spectrogram_scores_measured.second;
+        spectrogram_kernel_ms += normalized_spectrogram_scores_measured.kernel_ms;
         spectrogram_breakdown.push_back({"row_normalize", 0.0f, normalized_spectrogram_scores_measured.second});
         spectrogram_scores = std::move(normalized_spectrogram_scores_measured.first);
 
@@ -1945,14 +2039,16 @@ namespace cusignal_demo::task2_features
             {"representative_spectrogram", 0.0f, representative_spectrogram_measured.second});
 
         auto raw_wavelet_scores_measured = measure_gpu_ms([&]() {
-            return batched_cwt_max_score_zx_gpu(filtered_real, widths);
+            return batched_cwt_max_score_zx_gpu(filtered_real, inputs.widths_host);
         });
         ZxGpuRealArray raw_wavelet_scores = std::move(raw_wavelet_scores_measured.first);
         cwt_ms += raw_wavelet_scores_measured.second;
+        cwt_kernel_ms += raw_wavelet_scores_measured.kernel_ms;
         auto normalized_wavelet_scores_measured = measure_gpu_ms([&]() {
             return normalize_rows_nonnegative_zx_gpu(raw_wavelet_scores);
         });
         cwt_ms += normalized_wavelet_scores_measured.second;
+        cwt_kernel_ms += normalized_wavelet_scores_measured.kernel_ms;
         wavelet_scores = std::move(normalized_wavelet_scores_measured.first);
 
         const ZxGpuRealSignal representative_cwt_frame =
@@ -1961,19 +2057,19 @@ namespace cusignal_demo::task2_features
             return cusignal::zx_gpu_backend::wavelets::cwt(
                 representative_cwt_frame,
                 "morlet2",
-                widths_device);
+                inputs.widths);
         });
         artifacts.cwt_values = std::move(representative_cwt_measured.first);
         gpu_validation_timings.push_back(
             {"representative_cwt", 0.0f, representative_cwt_measured.second});
 
-        auto [fusion_done, fusion_elapsed] = measure_gpu_ms([&]() {
+        auto [fusion_done, fusion_elapsed, fusion_kernel_elapsed] = measure_gpu_ms([&]() {
             fuse_feature_scores_zx_gpu(
                 artifacts.correlate_scores,
                 artifacts.demod_scores,
                 wavelet_scores,
                 spectrogram_scores,
-                bspline_weights,
+                inputs.bspline_weights,
                 config.peak_order,
                 artifacts.feature_scores,
                 artifacts.peak_track);
@@ -1981,23 +2077,24 @@ namespace cusignal_demo::task2_features
         });
         (void)fusion_done;
         fusion_ms += fusion_elapsed;
+        fusion_kernel_ms += fusion_kernel_elapsed;
 
-        timings.push_back({"demod", 0.0, demod_ms});
-        timings.push_back({"correlate", 0.0, correlate_ms});
-        timings.push_back({"spectrogram", 0.0, spectrogram_ms});
+        timings.push_back({"demod", 0.0, demod_ms, demod_kernel_ms});
+        timings.push_back({"correlate", 0.0, correlate_ms, correlate_kernel_ms});
+        timings.push_back({"spectrogram", 0.0, spectrogram_ms, spectrogram_kernel_ms});
         write_spectrogram_breakdown_csv(spectrogram_breakdown);
         write_gpu_validation_timings_csv(gpu_validation_timings);
-        timings.push_back({"cwt", 0.0, cwt_ms});
-        timings.push_back({"feature_fusion", 0.0, fusion_ms});
+        timings.push_back({"cwt", 0.0, cwt_ms, cwt_kernel_ms});
+        timings.push_back({"feature_fusion", 0.0, fusion_ms, fusion_kernel_ms});
 
         artifacts.measurement_values = artifacts.peak_track;
-        timings.push_back({"measurement_conversion", 0.0, 0.0});
+        timings.push_back({"measurement_conversion", 0.0, 0.0, 0.0});
 
-        auto [kalman_track, kalman_ms] = measure_gpu_ms([&]() {
+        auto [kalman_track, kalman_ms, kalman_kernel_ms] = measure_gpu_ms([&]() {
             return kalman_track_from_peaks_zx_gpu(artifacts.measurement_values);
         });
         artifacts.kalman_track = std::move(kalman_track);
-        timings.push_back({"kalman", 0.0, kalman_ms});
+        timings.push_back({"kalman", 0.0, kalman_ms, kalman_kernel_ms});
 
         return std::make_pair(std::move(artifacts), std::move(timings));
     }
@@ -2017,6 +2114,17 @@ namespace cusignal_demo::task2_features
         host.measurement_values = gpu.measurement_values.get();
         host.kalman_track = gpu.kalman_track.get();
         return host;
+    }
+
+    float gpu_kernel_total_ms(const std::vector<StageTiming> &timings)
+    {
+        float total_ms = 0.0f;
+        for (const StageTiming &timing : timings)
+        {
+            if (std::isfinite(timing.gpu_kernel_ms))
+                total_ms += timing.gpu_kernel_ms;
+        }
+        return total_ms;
     }
 
     RealSignal compute_truth_track(
@@ -2152,13 +2260,17 @@ namespace cusignal_demo::task2_features
         {
             throw std::runtime_error("failed to write CSV file: " + path.string());
         }
-        output << "stage,cpu_ms,gpu_ms\n";
+        output << "stage,cpu_ms,gpu_ms,gpu_kernel_ms\n";
         output << std::fixed << std::setprecision(6);
         for (const StageTiming &timing : timings)
         {
-            output << timing.name << ',' << timing.cpu_ms << ',' << timing.gpu_ms << '\n';
+            output << timing.name << ',' << timing.cpu_ms << ',' << timing.gpu_ms << ',';
+            if (std::isfinite(timing.gpu_kernel_ms))
+                output << timing.gpu_kernel_ms;
+            output << '\n';
         }
-        output << "total," << cpu_total_ms << ',' << gpu_total_ms << '\n';
+        output << "total," << cpu_total_ms << ',' << gpu_total_ms << ','
+               << gpu_kernel_total_ms(timings) << '\n';
     }
 
     void write_spectrogram_breakdown_csv(const std::vector<StageTiming> &timings)
@@ -2241,12 +2353,18 @@ namespace cusignal_demo::task2_features
             metric.output_dtype = output_dtype;
             metric.cpu_ms = timing.cpu_ms;
             metric.gpu_e2e_ms = timing.gpu_ms;
+            metric.gpu_kernel_ms = timing.gpu_kernel_ms;
             metric.error_available = error != nullptr;
             metric.complex_error = complex_error;
             if (error)
                 metric.error = *error;
             metric.pass = error && error->mixed_error <= limit;
-            metric.note = note + "; gpu_kernel_ms pending V5.3 operator timing exposure";
+            metric.note = note;
+            if (timing.gpu_ms == 0.0f && timing.gpu_kernel_ms == 0.0f)
+                metric.note += "; this data handoff invokes no CUDA work";
+            else
+                metric.note += "; gpu_kernel_ms is CUDA-event elapsed time for GPU stream work "
+                    "in this composite task step";
             return metric;
         };
 
@@ -2361,14 +2479,16 @@ namespace cusignal_demo::task2_features
         stream << "| kalman_track | " << kalman_error.mixed_error << " | " << kalman_error.max_abs << " | "
                << kalman_error.max_rel << " | " << kalman_error.rmse << " |\n\n";
         stream << "## Timing\n\n";
-        stream << "| stage | cpu_ms | gpu_ms |\n";
-        stream << "| --- | ---: | ---: |\n";
+        stream << "| stage | cpu_ms | gpu_ms | gpu_kernel_ms |\n";
+        stream << "| --- | ---: | ---: | ---: |\n";
         stream << std::fixed << std::setprecision(6);
         for (const StageTiming &timing : timings)
         {
-            stream << "| " << timing.name << " | " << timing.cpu_ms << " | " << timing.gpu_ms << " |\n";
+            stream << "| " << timing.name << " | " << timing.cpu_ms << " | " << timing.gpu_ms << " | "
+                   << timing.gpu_kernel_ms << " |\n";
         }
-        stream << "| total | " << cpu_total_ms << " | " << gpu_total_ms << " |\n\n";
+        stream << "| total | " << cpu_total_ms << " | " << gpu_total_ms << " | "
+               << gpu_kernel_total_ms(timings) << " |\n\n";
         stream << "## Validation\n\n";
         stream << "- pass: `" << (validation.pass ? "true" : "false") << "`\n";
         stream << "- repeat_runs: `" << iterations.size() << "`\n";
@@ -2379,9 +2499,8 @@ namespace cusignal_demo::task2_features
         stream << "## Artifacts\n\n";
         stream << "- inputs: `data/generated/demo/task2_features/input/`\n";
         stream << "- samples: `data/generated/demo/task2_features/output_samples/`\n";
-        stream << "- metrics: `data/reports/demo/task2_features/latest_metrics.json`\n";
-        stream << "- timings: `data/reports/demo/task2_features/latest_stage_timings.csv`\n";
-        stream << "- figures: run `python3 demo/task2_features/visualize_task2.py`\n";
+        stream << "- metrics: `data/.reports_staging/demo/task2_features/latest_metrics.json`\n";
+        stream << "- timings: `data/.reports_staging/demo/task2_features/latest_stage_timings.csv`\n";
         return stream.str();
     }
 
@@ -2462,9 +2581,11 @@ namespace cusignal_demo::task2_features
         {
             const StageTiming &timing = timings[index];
             stream << "    \"" << json_escape(timing.name) << "\": {\"cpu_ms\": " << timing.cpu_ms
-                   << ", \"gpu_ms\": " << timing.gpu_ms << "},\n";
+                   << ", \"gpu_ms\": " << timing.gpu_ms << ", \"gpu_kernel_ms\": "
+                   << timing.gpu_kernel_ms << "},\n";
         }
-        stream << "    \"total\": {\"cpu_ms\": " << cpu_total_ms << ", \"gpu_ms\": " << gpu_total_ms << "}\n";
+        stream << "    \"total\": {\"cpu_ms\": " << cpu_total_ms << ", \"gpu_ms\": " << gpu_total_ms
+               << ", \"gpu_kernel_ms\": " << gpu_kernel_total_ms(timings) << "}\n";
         stream << "  },\n";
         auto write_signal = [&](const char *name, const RealSignal &values, bool trailing_comma) {
             stream << "  \"" << name << "\": [";
@@ -2497,28 +2618,44 @@ namespace cusignal_demo::task2_features
     DemoRunResult run_once(const ScenarioConfig &config)
     {
         validate_config(config);
-        const ComplexSignal target_template = build_target_template(config);
-        const ComplexSignal interferer_signal = build_interferer_signal(config);
-        const ComplexArray rx_frames = simulate_frames(
-            config,
-            target_template,
-            interferer_signal,
-            true,
-            true);
-        const RealSignal truth_track = compute_truth_track(config, target_template);
+        auto [task_inputs, task_input_cpu_ms] = measure_cpu_ms([&]() {
+            return build_task_inputs(config);
+        });
+        auto [cpu_inputs, cpu_parameter_cpu_ms] = measure_cpu_ms([&]() {
+            return build_cpu_pipeline_inputs(config);
+        });
+        auto gpu_inputs_measured = measure_gpu_ms([&]() {
+            return build_gpu_pipeline_inputs(config, task_inputs);
+        });
+        GpuPipelineInputs gpu_inputs = std::move(gpu_inputs_measured.first);
 
-        const auto [cpu, cpu_timings] = run_cpu_pipeline(config, target_template, rx_frames, truth_track);
-        const auto [gpu_device, gpu_timings] = run_gpu_pipeline(config, target_template, rx_frames);
+        const auto [cpu, cpu_timings] = run_cpu_pipeline(
+            config,
+            task_inputs.target_template,
+            task_inputs.rx_frames,
+            task_inputs.truth_track,
+            cpu_inputs);
+        const auto [gpu_device, gpu_timings] = run_gpu_pipeline(config, gpu_inputs);
         const HostGpuArtifacts gpu = materialize_gpu_artifacts(gpu_device);
 
         if (cpu_timings.size() != gpu_timings.size())
         {
             throw std::runtime_error("cpu/gpu timing stage count mismatch");
         }
-        std::vector<StageTiming> stage_timings = cpu_timings;
-        for (std::size_t index = 0; index < stage_timings.size(); ++index)
+        std::vector<StageTiming> stage_timings;
+        stage_timings.reserve(cpu_timings.size() + 1);
+        stage_timings.push_back({
+            "input_construction",
+            task_input_cpu_ms + cpu_parameter_cpu_ms,
+            gpu_inputs_measured.second,
+            gpu_inputs_measured.kernel_ms,
+        });
+        for (std::size_t index = 0; index < cpu_timings.size(); ++index)
         {
-            stage_timings[index].gpu_ms = gpu_timings[index].gpu_ms;
+            StageTiming timing = cpu_timings[index];
+            timing.gpu_ms = gpu_timings[index].gpu_ms;
+            timing.gpu_kernel_ms = gpu_timings[index].gpu_kernel_ms;
+            stage_timings.push_back(std::move(timing));
         }
 
         float cpu_total_ms = 0.0;
@@ -2672,7 +2809,6 @@ namespace cusignal_demo::task2_features
                   << " skip_timing_validation=" << bool_json(options.skip_timing_validation) << '\n';
         std::cout << "reports       : "
                   << (report_root() / "latest_summary.md").lexically_relative(repo_root()).string() << '\n';
-        std::cout << "visualization : python3 demo/task2_features/visualize_task2.py\n";
         return 0;
     }
 }

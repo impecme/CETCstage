@@ -1,0 +1,18 @@
+{
+  "delivery_manifest": "DELIVERY_FILES.txt",
+  "delivery_manifest_scope": "entries outside the generated output tree",
+  "delivery_manifest_sha256": "021a7a1fc1b09ef831a0d67eb508e44013c606bbc2d22b3567e48376fb082e06",
+  "generated_at": "2026-07-19T12:17:52+00:00",
+  "git_commit": "b1b796665c74b8b498455ba39b3d8316696c37f5",
+  "gpu_names": [
+    "ZQ500-Q QUAD-0"
+  ],
+  "input_evidence_file_count": 331,
+  "input_evidence_fingerprint": "2d6c67dfc16902c44ff8aadd71aa1a528840b4d096a8bb1564d22f53d1afdfc2",
+  "reported_git_commits": [],
+  "run_id": "current-20260719-165100",
+  "schema_version": "cetc_run_provenance_v1",
+  "source_content_fingerprint": "4944706f2b9ceb831999fcf9b81ffb511e9b94d370605e63dda49123dbd0c29d",
+  "source_file_count": 694,
+  "tracked_worktree_dirty": true
+}

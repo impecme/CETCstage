@@ -1,0 +1,15 @@
+case_id,backend,metric_kind,samples,warmup,repeat,mean_ms,median_ms,p95_ms,min_ms,max_ms,std_ms,max_abs_error,max_rel_error,rmse,l2_error,exact_match
+width4_points17,gpu_vs_cpu,error,17,,,,,,,,,2.9802322387695312e-08,1.5406988040922442e-07,2.1073423894790722e-08,8.688795105626923e-08,false
+width4_points17,cpu_vs_ref,error,17,,,,,,,,,2.9802322387695312e-08,1.6934389179823484e-07,1.142866956627131e-08,4.7121609725309099e-08,false
+width4_points17,gpu_vs_ref,error,17,,,,,,,,,2.9802322387695312e-08,1.3342531701709959e-07,1.9123820749200604e-08,7.8849531348623714e-08,false
+width4_points17_float16_compat,gpu_vs_cpu,error,17,,,,,,,,,0,0,0,0,true
+width4_points17_float16_compat,cpu_vs_ref,error,17,,,,,,,,,0,0,0,0,true
+width4_points17_float16_compat,gpu_vs_ref,error,17,,,,,,,,,0,0,0,0,true
+width10_point1,gpu_vs_cpu,error,1,,,,,,,,,0,0,0,0,true
+width10_point1,cpu_vs_ref,error,1,,,,,,,,,0,0,0,0,true
+width10_point1,gpu_vs_ref,error,1,,,,,,,,,0,0,0,0,true
+invalid_a,gpu_vs_cpu,error,0,,,,,,,,,0,0,0,0,true
+perf_large,gpu_vs_cpu,error,16777216,,,,,,,,,2.9802322387695312e-08,2.5414618676222744e-07,2.9359983194643391e-11,1.2025849116525933e-07,false
+perf_large,cpu,perf,16777216,5,30,376.62716674804688,375.13327026367188,391.32940673828125,364.33770751953125,393.70108032226562,6.9409918785095215,,,,,
+perf_large,gpu_e2e,perf,16777216,5,30,15.31430721282959,15.32987117767334,15.386113166809082,15.193978309631348,15.389612197875977,0.050361525267362595,,,,,
+perf_large,gpu_kernel,perf,16777216,5,30,15.223663330078125,15.226435661315918,15.287174224853516,15.122879981994629,15.289937973022461,0.046814955770969391,,,,,

@@ -1,0 +1,29 @@
+{
+  "schema_version": "zx_compat_fixture_manifest_v1",
+  "fixture_set": "zhongkexin_cuda_11_7_20260621",
+  "files": {
+    "driver": {
+      "filename": "CUDA 11.7 driver api.xlsx",
+      "size_bytes": 41892,
+      "sha256": "112d1e5fb7f38530e4f4f27a7e64f4597fb503d5dee4d8e2b249c1bd6c71fcb5"
+    },
+    "runtime": {
+      "filename": "CUDA 11.7 runtime API.xlsx",
+      "size_bytes": 24510,
+      "sha256": "069dbb6419c49c3c2a0c63a694a6b5960e8e01eb7336481c9102f77c9b1a10ab"
+    },
+    "libraries": {
+      "filename": "科学计算库实现列表.xlsx",
+      "size_bytes": 26784,
+      "sha256": "0017a3719a59943d856a7d1a27127946df8f904a3a743386cde13f7554f5eb06"
+    }
+  },
+  "derived_expectations": {
+    "source_row_count": 900,
+    "api_row_count": 816,
+    "unique_api_count": 830,
+    "forbidden_api_count": 315,
+    "unique_api_sha256": "ccb9839afb0c7a8de0c11f07b894a688566ace3ec0f79383af2439b816ca2435",
+    "forbidden_api_sha256": "c697b238061de8074fef2ffc2f02155432d8095fe8973e9e10daab51510d4ea3"
+  }
+}

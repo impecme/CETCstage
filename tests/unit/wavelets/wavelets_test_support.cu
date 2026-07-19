@@ -218,12 +218,12 @@ namespace
 
     fs::path report_root(const std::string &op)
     {
-        return repo_root() / "data" / "reports" / "unit" / "wavelets" / op;
+        return repo_root() / "data" / ".reports_staging" / "unit" / "wavelets" / op;
     }
 
     fs::path module_report_root()
     {
-        return repo_root() / "data" / "reports" / "unit" / "wavelets";
+        return repo_root() / "data" / ".reports_staging" / "unit" / "wavelets";
     }
 
     const JsonObject &as_object(const JsonValue &value)
@@ -1346,7 +1346,7 @@ namespace
         {
             std::cout << "gpu_perf_ms   : not_run (accuracy-only; use perf/full case set for timing)\n";
         }
-        std::cout << "reports       : data/reports/unit/wavelets/" << op << "/latest_summary.md\n";
+        std::cout << "reports       : data/.reports_staging/unit/wavelets/" << op << "/latest_summary.md\n";
     }
 
     CaseReport evaluate_accuracy_case(

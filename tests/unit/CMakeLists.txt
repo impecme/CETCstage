@@ -1,3 +1,16 @@
+function(cusignal_add_operator_test target source support_target)
+    add_executable(${target} "${source}")
+    target_link_libraries(${target}
+        PRIVATE
+            ${support_target}
+            cusignal_cpu
+            cusignal_zx_gpu
+    )
+    target_include_directories(${target} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+    target_compile_features(${target} PRIVATE cxx_std_17)
+    add_test(NAME ${target} COMMAND ${target})
+endfunction()
+
 add_subdirectory(core_types)
 add_subdirectory(waveforms)
 add_subdirectory(windows)

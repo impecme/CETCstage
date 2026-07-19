@@ -34,7 +34,7 @@ if(NOT DEFINED CMAKE_RANLIB)
         set(CMAKE_RANLIB "${CUSIGNAL_ZHONGKEXIN_RANLIB_FALLBACK}" CACHE FILEPATH "Ranlib tool for Zhongkexin" FORCE)
     endif()
 endif()
-project(cusignal_cpp_v2_1 LANGUAGES CXX)
+project(cusignal_zx LANGUAGES CXX)
 
 if(CMAKE_AR)
     set(CMAKE_CXX_ARCHIVE_CREATE "\"${CMAKE_AR}\" rcs <TARGET> <LINK_FLAGS> <OBJECTS>")
@@ -60,7 +60,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# 默认采用 Release，便于后续继续扩展性能测试时保持一个稳定起点。
+# 最终交付默认采用 Release，与冻结验证口径一致。
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
 endif()
@@ -106,7 +106,7 @@ find_library(
 if(NOT FFTW3_INCLUDE_DIR OR NOT FFTW3_LIBRARY)
     message(FATAL_ERROR
         "FFTW was not found under ${CUSIGNAL_FFTW_ROOT}. "
-        "Run scripts/build/install_fftw.sh first.")
+        "Run scripts/build.sh first.")
 endif()
 
 find_package(Threads REQUIRED)
@@ -301,7 +301,6 @@ add_subdirectory(demo/task2_features)
 include(CTest)
 
 if(BUILD_TESTING)
-    add_subdirectory(tests/smoke)
     add_subdirectory(tests/unit)
     add_subdirectory(tests/platform)
 endif()

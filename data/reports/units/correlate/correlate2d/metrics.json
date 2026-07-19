@@ -1,0 +1,80 @@
+{
+  "module": "correlate",
+  "operator": "correlate2d",
+  "generated_at": "2026-07-19 09:26:47",
+  "git_commit": "",
+  "gpu_name": "ZQ500-Q QUAD-0",
+  "compile_config": {
+    "cxx_standard": 201703,
+    "runtime_version": 11070
+  },
+  "summary": {
+    "pass": true,
+    "accuracy_cases": 6,
+    "perf_cases": 1,
+    "max_abs_error": 0,
+    "max_rel_error": 0,
+    "mixed_error": 0,
+    "rmse": 0,
+    "gpu_e2e_speedup": 3.09331,
+    "gpu_kernel_speedup": 13.5226,
+    "cpu_perf": {
+      "warmup": 5,
+      "repeat": 30,
+      "mean_ms": 0.794986,
+      "median_ms": 0.786639,
+      "p95_ms": 0.919101,
+      "min_ms": 0.762869,
+      "max_ms": 0.938961,
+      "std_ms": 0.0363801
+    },
+    "gpu_e2e_perf": {
+      "warmup": 5,
+      "repeat": 30,
+      "mean_ms": 0.254315,
+      "median_ms": 0.254303,
+      "p95_ms": 0.277593,
+      "min_ms": 0.215173,
+      "max_ms": 0.282714,
+      "std_ms": 0.0159056
+    },
+    "gpu_kernel_perf": {
+      "warmup": 5,
+      "repeat": 30,
+      "mean_ms": 0.0581171,
+      "median_ms": 0.058172,
+      "p95_ms": 0.058512,
+      "min_ms": 0.05666,
+      "max_ms": 0.058706,
+      "std_ms": 0.000362459
+    },
+    "device_storage_cache": {
+      "cache_enabled": true,
+      "allocation_calls": 17,
+      "allocation_bytes": 33200,
+      "allocation_mib": 0.031662,
+      "cache_hits": 39,
+      "cache_misses": 17,
+      "recycled_blocks": 52,
+      "recycled_bytes": 590140,
+      "recycled_mib": 0.562801,
+      "evicted_blocks": 0,
+      "evicted_bytes": 0,
+      "evicted_mib": 0,
+      "freed_blocks": 0,
+      "freed_bytes": 0,
+      "freed_mib": 0,
+      "cached_blocks": 13,
+      "cached_bytes": 16556,
+      "cached_mib": 0.015789,
+      "peak_cached_bytes": 16556,
+      "peak_cached_mib": 0.015789,
+      "max_cached_blocks": 8,
+      "max_cached_bytes": 536870912,
+      "max_cached_mib": 512,
+      "max_single_cached_bytes": 268435456,
+      "max_single_cached_mib": 256
+    }
+  },
+  "cases": []
+}

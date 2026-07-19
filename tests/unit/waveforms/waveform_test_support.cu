@@ -237,12 +237,12 @@ namespace
 
     fs::path report_root(const std::string &op)
     {
-        return repo_root() / "data" / "reports" / "unit" / "waveforms" / op;
+        return repo_root() / "data" / ".reports_staging" / "unit" / "waveforms" / op;
     }
 
     fs::path module_report_root()
     {
-        return repo_root() / "data" / "reports" / "unit" / "waveforms";
+        return repo_root() / "data" / ".reports_staging" / "unit" / "waveforms";
     }
 
     std::string read_text_file(const fs::path &path)
@@ -1488,7 +1488,7 @@ namespace
         {
             std::cout << "gpu_perf_ms   : not_run (accuracy-only; use perf/full case set for timing)\n";
         }
-        std::cout << "reports       : data/reports/unit/waveforms/" << op << "/latest_summary.md\n";
+        std::cout << "reports       : data/.reports_staging/unit/waveforms/" << op << "/latest_summary.md\n";
     }
 
     std::vector<ChirpCase> load_chirp_cases(const fs::path &manifest_path, const std::string &category)

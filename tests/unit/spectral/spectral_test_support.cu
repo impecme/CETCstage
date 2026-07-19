@@ -286,12 +286,12 @@ namespace
 
     fs::path report_root(const std::string &op)
     {
-        return repo_root() / "data" / "reports" / "unit" / "spectral" / op;
+        return repo_root() / "data" / ".reports_staging" / "unit" / "spectral" / op;
     }
 
     fs::path module_report_root()
     {
-        return repo_root() / "data" / "reports" / "unit" / "spectral";
+        return repo_root() / "data" / ".reports_staging" / "unit" / "spectral";
     }
 
     const JsonObject &as_object(const JsonValue &value)
@@ -3360,7 +3360,7 @@ namespace
         {
             std::cout << "gpu_perf_ms   : not_run (accuracy-only; use perf/full case set for timing)\n";
         }
-        std::cout << "reports       : data/reports/unit/spectral/" << op << "/latest_summary.md\n";
+        std::cout << "reports       : data/.reports_staging/unit/spectral/" << op << "/latest_summary.md\n";
     }
 
     CaseReport make_failed_case_report(const SpectralCase &test_case, const std::string &message)

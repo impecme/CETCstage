@@ -1,0 +1,334 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+HOST_PARENT="$(cd "${PROJECT_ROOT}/.." && pwd)"
+
+CONTAINER="${CETC_CONTAINER:-gpu_04}"
+CONTAINER_ROOT="${CETC_CONTAINER_ROOT:-/CETC}"
+OUTPUT=""
+ARTIFACT_PATHS=()
+EXTRA_REPORT_PATHS=()
+INCLUDE_GENERATED=0
+USE_DEFAULT_REPORTS=1
+ALLOW_MISSING=0
+PROMOTE_REPORTS=0
+DRY_RUN=0
+
+usage() {
+  cat <<'USAGE'
+Usage: scripts/pull_results.sh [options]
+
+Copy published validation reports from the ZQ500 container into a unique
+directory outside the repository. The host repository is changed only with
+--promote-reports.
+
+Options:
+  --container NAME       Docker container name (default: gpu_04)
+  --container-root PATH  Project path in the container (default: /CETC)
+  --output PATH          Host output directory
+                         (default: ../CETC_garbage/container_pull_<timestamp>)
+  --artifact PATH        Also retrieve an absolute container file or directory;
+                         may be repeated
+  --log PATH             Alias for --artifact PATH
+  --report-path PATH     Also retrieve a report directory relative to the project;
+                         may be repeated
+  --no-default-reports   Do not request data/reports
+  --include-generated    Also retrieve data/generated/demo
+  --promote-reports      Verify the pulled report bundle and atomically publish it
+                         to this host repository; prior host reports are moved to
+                         ../CETC_garbage/promoted_report_backups/
+  --allow-missing        Return success when requested paths are missing; missing
+                         paths are still recorded in TRANSFER_STATUS.txt
+  --dry-run              Print the transfer plan without using Docker
+  -h, --help             Show this help
+
+Run this script on the server host, not inside the ZQ500 container.
+USAGE
+}
+
+die() {
+  echo "[container-pull] error: $*" >&2
+  exit 2
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --container)
+      [[ $# -ge 2 ]] || die "--container requires a value"
+      CONTAINER="$2"
+      shift 2
+      ;;
+    --container-root)
+      [[ $# -ge 2 ]] || die "--container-root requires a value"
+      CONTAINER_ROOT="$2"
+      shift 2
+      ;;
+    --output)
+      [[ $# -ge 2 ]] || die "--output requires a value"
+      OUTPUT="$2"
+      shift 2
+      ;;
+    --artifact|--log)
+      [[ $# -ge 2 ]] || die "$1 requires a value"
+      ARTIFACT_PATHS+=("$2")
+      shift 2
+      ;;
+    --report-path)
+      [[ $# -ge 2 ]] || die "--report-path requires a value"
+      EXTRA_REPORT_PATHS+=("$2")
+      shift 2
+      ;;
+    --no-default-reports)
+      USE_DEFAULT_REPORTS=0
+      shift
+      ;;
+    --include-generated)
+      INCLUDE_GENERATED=1
+      shift
+      ;;
+    --allow-missing)
+      ALLOW_MISSING=1
+      shift
+      ;;
+    --promote-reports)
+      PROMOTE_REPORTS=1
+      shift
+      ;;
+    --dry-run)
+      DRY_RUN=1
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      die "unknown argument: $1"
+      ;;
+  esac
+done
+
+[[ -n "${CONTAINER}" ]] || die "container name must not be empty"
+[[ "${CONTAINER}" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]*$ ]] || die "invalid container name"
+[[ "${CONTAINER_ROOT}" = /* && "${CONTAINER_ROOT}" != / ]] || \
+  die "container root must be an absolute path other than /"
+CONTAINER_ROOT="${CONTAINER_ROOT%/}"
+[[ ! "${CONTAINER_ROOT}" =~ (^|/)\.\.?(/|$) ]] || \
+  die "container root must not contain dot segments"
+
+normalized_artifacts=()
+for artifact_path in "${ARTIFACT_PATHS[@]}"; do
+  artifact_path="${artifact_path%/}"
+  [[ "${artifact_path}" = /* && "${artifact_path}" != / ]] || \
+    die "artifact path must be an absolute path other than /"
+  [[ ! "${artifact_path}" =~ (^|/)\.\.?(/|$) ]] || \
+    die "artifact path must not contain dot segments"
+  [[ "${artifact_path}" != *$'\n'* ]] || die "artifact path must not contain newlines"
+  normalized_artifacts+=("${artifact_path}")
+done
+ARTIFACT_PATHS=("${normalized_artifacts[@]}")
+
+OUTPUT="${OUTPUT:-${HOST_PARENT}/CETC_garbage/container_pull_$(date +%Y%m%d_%H%M%S)}"
+OUTPUT="$(realpath -m "${OUTPUT}")"
+PROJECT_ROOT_REAL="$(realpath -m "${PROJECT_ROOT}")"
+case "${OUTPUT}" in
+  "${PROJECT_ROOT_REAL}"|"${PROJECT_ROOT_REAL}"/*)
+    die "output must be outside the repository"
+    ;;
+esac
+[[ ! -e "${OUTPUT}" ]] || die "output already exists: ${OUTPUT}"
+
+relative_paths=()
+if [[ "${USE_DEFAULT_REPORTS}" -eq 1 ]]; then
+  relative_paths+=(
+    data/reports
+  )
+fi
+if [[ "${INCLUDE_GENERATED}" -eq 1 ]]; then
+  relative_paths+=(data/generated/demo)
+fi
+relative_paths+=("${EXTRA_REPORT_PATHS[@]}")
+
+normalized_relative_paths=()
+for relative_path in "${relative_paths[@]}"; do
+  relative_path="${relative_path%/}"
+  [[ -n "${relative_path}" && "${relative_path}" != /* ]] || \
+    die "report path must be non-empty and relative: ${relative_path}"
+  [[ ! "${relative_path}" =~ (^|/)\.\.?(/|$) ]] || \
+    die "report path must not contain dot segments: ${relative_path}"
+  [[ "${relative_path}" =~ ^[A-Za-z0-9._/-]+$ ]] || \
+    die "report path contains unsupported characters: ${relative_path}"
+  normalized_relative_paths+=("${relative_path}")
+done
+relative_paths=("${normalized_relative_paths[@]}")
+
+[[ "${#relative_paths[@]}" -gt 0 || "${#ARTIFACT_PATHS[@]}" -gt 0 ]] || \
+  die "no report or artifact paths were requested"
+
+if [[ "${PROMOTE_REPORTS}" -eq 1 ]]; then
+  found_reports=0
+  for relative_path in "${relative_paths[@]}"; do
+    if [[ "${relative_path}" == "data/reports" ]]; then
+      found_reports=1
+      break
+    fi
+  done
+  [[ "${found_reports}" -eq 1 ]] || \
+    die "--promote-reports requires data/reports; omit --no-default-reports or add --report-path data/reports"
+fi
+
+echo "[container-pull] source ${CONTAINER}:${CONTAINER_ROOT}"
+echo "[container-pull] output ${OUTPUT}"
+for relative_path in "${relative_paths[@]}"; do
+  echo "[container-pull] include ${CONTAINER_ROOT}/${relative_path}"
+done
+for artifact_path in "${ARTIFACT_PATHS[@]}"; do
+  echo "[container-pull] include ${artifact_path}"
+done
+
+if [[ "${DRY_RUN}" -eq 1 ]]; then
+  echo "[container-pull] dry-run PASS"
+  exit 0
+fi
+
+command -v docker >/dev/null 2>&1 || die "docker is required on the server host"
+command -v tar >/dev/null 2>&1 || die "tar is required on the server host"
+[[ -S /var/run/docker.sock ]] || die "Docker socket is unavailable; run this script on the server host"
+
+docker_command=(docker)
+if [[ "${EUID}" -ne 0 ]]; then
+  command -v sudo >/dev/null 2>&1 || die "sudo is required for Docker access"
+  docker_command=(sudo docker)
+fi
+
+OUTPUT_PARENT="$(dirname "${OUTPUT}")"
+mkdir -p "${OUTPUT_PARENT}"
+STAGE="$(mktemp -d "${OUTPUT_PARENT}/.container-pull.XXXXXX")"
+cleanup() {
+  if [[ -n "${STAGE:-}" && -d "${STAGE}" ]]; then
+    rm -rf -- "${STAGE}"
+  fi
+  if [[ -n "${PROMOTE_STAGE:-}" && -d "${PROMOTE_STAGE}" ]]; then
+    rm -rf -- "${PROMOTE_STAGE}"
+  fi
+}
+trap cleanup EXIT
+
+missing_paths=()
+copied_paths=()
+
+for relative_path in "${relative_paths[@]}"; do
+  host_path="${STAGE}/${relative_path}"
+  mkdir -p "${host_path}"
+  if "${docker_command[@]}" cp \
+      "${CONTAINER}:${CONTAINER_ROOT}/${relative_path}/." - \
+      | tar --extract --file=- --directory="${host_path}" \
+          --no-same-owner --no-same-permissions; then
+    copied_paths+=("${CONTAINER_ROOT}/${relative_path}")
+  else
+    rm -rf -- "${host_path}"
+    missing_paths+=("${CONTAINER_ROOT}/${relative_path}")
+    echo "[container-pull] warning: unavailable ${CONTAINER_ROOT}/${relative_path}" >&2
+  fi
+done
+
+for artifact_path in "${ARTIFACT_PATHS[@]}"; do
+  artifact_parent="${STAGE}/artifacts/$(dirname "${artifact_path#/}")"
+  artifact_host_path="${STAGE}/artifacts/${artifact_path#/}"
+  mkdir -p "${artifact_parent}"
+  if "${docker_command[@]}" cp "${CONTAINER}:${artifact_path}" - \
+      | tar --extract --file=- --directory="${artifact_parent}" \
+          --no-same-owner --no-same-permissions; then
+    copied_paths+=("${artifact_path}")
+  else
+    rm -rf -- "${artifact_host_path}"
+    missing_paths+=("${artifact_path}")
+    echo "[container-pull] warning: unavailable ${artifact_path}" >&2
+  fi
+done
+
+container_file_count="$(find "${STAGE}" -type f | wc -l)"
+container_byte_count="$(find "${STAGE}" -type f -printf '%s\n' | awk '{total += $1} END {print total + 0}')"
+
+{
+  if [[ "${#missing_paths[@]}" -eq 0 ]]; then
+    echo 'status=complete'
+  else
+    echo 'status=partial'
+  fi
+  printf 'container=%s\n' "${CONTAINER}"
+  printf 'container_root=%s\n' "${CONTAINER_ROOT}"
+  printf 'copied_path_count=%s\n' "${#copied_paths[@]}"
+  printf 'missing_path_count=%s\n' "${#missing_paths[@]}"
+  for copied_path in "${copied_paths[@]}"; do
+    printf 'copied=%s\n' "${copied_path}"
+  done
+  for missing_path in "${missing_paths[@]}"; do
+    printf 'missing=%s\n' "${missing_path}"
+  done
+} >"${STAGE}/TRANSFER_STATUS.txt"
+
+(
+  cd "${STAGE}"
+  find . -type f ! -name FILES.sha256 -print0 \
+    | sort -z \
+    | xargs -0 -r sha256sum
+) >"${STAGE}/FILES.sha256"
+
+(
+  cd "${STAGE}"
+  sha256sum --quiet -c FILES.sha256
+)
+
+mv "${STAGE}" "${OUTPUT}"
+STAGE=""
+
+echo "[container-pull] copied ${container_file_count} container files (${container_byte_count} bytes)"
+echo "[container-pull] SHA256 manifest: ${OUTPUT}/FILES.sha256"
+if [[ "${#missing_paths[@]}" -gt 0 && "${ALLOW_MISSING}" -eq 0 ]]; then
+  echo "[container-pull] partial result preserved at ${OUTPUT}" >&2
+  exit 1
+fi
+
+if [[ "${PROMOTE_REPORTS}" -eq 1 ]]; then
+  [[ "${#missing_paths[@]}" -eq 0 ]] || \
+    die "cannot promote a partial transfer; raw result remains at ${OUTPUT}"
+  PULLED_REPORTS="${OUTPUT}/data/reports"
+  [[ -d "${PULLED_REPORTS}" && ! -L "${PULLED_REPORTS}" ]] || \
+    die "pulled report directory is missing or unsafe: ${PULLED_REPORTS}"
+  "${PROJECT_ROOT}/scripts/finalize_reports.py" \
+    --repo-root "${PROJECT_ROOT}" \
+    --output "${PULLED_REPORTS}" \
+    --verify
+
+  REPORTS_ROOT="${PROJECT_ROOT}/data/reports"
+  PROMOTE_STAGE="$(mktemp -d "${HOST_PARENT}/.reports-promote.XXXXXX")"
+  cp -a "${PULLED_REPORTS}/." "${PROMOTE_STAGE}/"
+  "${PROJECT_ROOT}/scripts/finalize_reports.py" \
+    --repo-root "${PROJECT_ROOT}" \
+    --output "${PROMOTE_STAGE}" \
+    --verify
+
+  BACKUP=""
+  if [[ -e "${REPORTS_ROOT}" ]]; then
+    [[ -d "${REPORTS_ROOT}" && ! -L "${REPORTS_ROOT}" ]] || \
+      die "existing host report directory is unsafe: ${REPORTS_ROOT}"
+    BACKUP_ROOT="${HOST_PARENT}/CETC_garbage/promoted_report_backups"
+    mkdir -p "${BACKUP_ROOT}"
+    BACKUP="${BACKUP_ROOT}/reports_$(date +%Y%m%d_%H%M%S).$$"
+    mv "${REPORTS_ROOT}" "${BACKUP}"
+  fi
+  if ! mv "${PROMOTE_STAGE}" "${REPORTS_ROOT}"; then
+    if [[ -n "${BACKUP}" && -d "${BACKUP}" && ! -e "${REPORTS_ROOT}" ]]; then
+      mv "${BACKUP}" "${REPORTS_ROOT}"
+    fi
+    die "failed to publish host reports"
+  fi
+  PROMOTE_STAGE=""
+  echo "[container-pull] published verified reports: ${REPORTS_ROOT}"
+  if [[ -n "${BACKUP}" ]]; then
+    echo "[container-pull] previous host reports moved to: ${BACKUP}"
+  fi
+fi

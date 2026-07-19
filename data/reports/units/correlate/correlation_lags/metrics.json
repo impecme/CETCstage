@@ -1,0 +1,80 @@
+{
+  "module": "correlate",
+  "operator": "correlation_lags",
+  "generated_at": "2026-07-19 09:26:47",
+  "git_commit": "",
+  "gpu_name": "ZQ500-Q QUAD-0",
+  "compile_config": {
+    "cxx_standard": 201703,
+    "runtime_version": 11070
+  },
+  "summary": {
+    "pass": true,
+    "accuracy_cases": 3,
+    "perf_cases": 1,
+    "max_abs_error": 0,
+    "max_rel_error": 0,
+    "mixed_error": 0,
+    "rmse": 0,
+    "gpu_e2e_speedup": 0.00649958,
+    "gpu_kernel_speedup": 0.0291647,
+    "cpu_perf": {
+      "warmup": 5,
+      "repeat": 30,
+      "mean_ms": 0.000756333,
+      "median_ms": 0.00075,
+      "p95_ms": 0.0008,
+      "min_ms": 0.00074,
+      "max_ms": 0.00093,
+      "std_ms": 3.4398e-05
+    },
+    "gpu_e2e_perf": {
+      "warmup": 5,
+      "repeat": 30,
+      "mean_ms": 0.121035,
+      "median_ms": 0.115392,
+      "p95_ms": 0.161281,
+      "min_ms": 0.111782,
+      "max_ms": 0.223152,
+      "std_ms": 0.0209111
+    },
+    "gpu_kernel_perf": {
+      "warmup": 5,
+      "repeat": 30,
+      "mean_ms": 0.0257582,
+      "median_ms": 0.025716,
+      "p95_ms": 0.026068,
+      "min_ms": 0.025476,
+      "max_ms": 0.026122,
+      "std_ms": 0.00016876
+    },
+    "device_storage_cache": {
+      "cache_enabled": true,
+      "allocation_calls": 2,
+      "allocation_bytes": 20508,
+      "allocation_mib": 0.019558,
+      "cache_hits": 37,
+      "cache_misses": 2,
+      "recycled_blocks": 39,
+      "recycled_bytes": 737364,
+      "recycled_mib": 0.703205,
+      "evicted_blocks": 0,
+      "evicted_bytes": 0,
+      "evicted_mib": 0,
+      "freed_blocks": 0,
+      "freed_bytes": 0,
+      "freed_mib": 0,
+      "cached_blocks": 2,
+      "cached_bytes": 20508,
+      "cached_mib": 0.019558,
+      "peak_cached_bytes": 20508,
+      "peak_cached_mib": 0.019558,
+      "max_cached_blocks": 8,
+      "max_cached_bytes": 536870912,
+      "max_cached_mib": 512,
+      "max_single_cached_bytes": 268435456,
+      "max_single_cached_mib": 256
+    }
+  },
+  "cases": []
+}

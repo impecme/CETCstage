@@ -165,12 +165,12 @@ namespace
 
     fs::path report_root(const std::string &op)
     {
-        return repo_root() / "data" / "reports" / "unit" / "windows" / op;
+        return repo_root() / "data" / ".reports_staging" / "unit" / "windows" / op;
     }
 
     fs::path module_report_root()
     {
-        return repo_root() / "data" / "reports" / "unit" / "windows";
+        return repo_root() / "data" / ".reports_staging" / "unit" / "windows";
     }
 
     std::string read_text_file(const fs::path &path)
@@ -234,16 +234,6 @@ namespace
         localtime_r(&now, &local_tm);
         char buffer[32];
         std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &local_tm);
-        return buffer;
-    }
-
-    std::string timestamp_for_path()
-    {
-        std::time_t now = std::time(nullptr);
-        std::tm local_tm{};
-        localtime_r(&now, &local_tm);
-        char buffer[32];
-        std::strftime(buffer, sizeof(buffer), "%Y%m%d_%H%M%S", &local_tm);
         return buffer;
     }
 
@@ -1457,7 +1447,7 @@ namespace
         {
             std::cout << "gpu_perf_ms   : not_run (accuracy-only; use perf/full case set for timing)\n";
         }
-        std::cout << "reports       : data/reports/unit/windows/" << op << "/latest_summary.md\n";
+        std::cout << "reports       : data/.reports_staging/unit/windows/" << op << "/latest_summary.md\n";
     }
 
     CaseReport evaluate_accuracy_case(

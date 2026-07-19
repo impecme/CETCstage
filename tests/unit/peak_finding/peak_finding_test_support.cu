@@ -114,7 +114,7 @@ namespace
 
     fs::path report_root(const std::string &op)
     {
-        return repo_root() / "data" / "reports" / "unit" / "peak_finding" / op;
+        return repo_root() / "data" / ".reports_staging" / "unit" / "peak_finding" / op;
     }
 
     std::string read_text_file(const fs::path &path)

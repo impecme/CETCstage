@@ -2,5 +2,5 @@
 
 int main(int argc, char **argv)
 {
-    return run_general_hamming_tests(argc, argv);
+    return run_windows_target_tests(argc, argv);
 }

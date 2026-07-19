@@ -1,0 +1,1505 @@
+{
+  "summary": {
+    "status": "passed",
+    "operator_count": 81,
+    "dtype_count": 6,
+    "core_type_roundtrip_dtypes": [
+      "complex64",
+      "float16",
+      "float32",
+      "int16",
+      "int32",
+      "int8"
+    ],
+    "operator_dtype_missing_edges": 0,
+    "dtype_summary": {
+      "complex64": {
+        "core_type_roundtrip_tested": true,
+        "declared_operator_count": 21,
+        "concrete_operator_test_count": 21,
+        "missing_operator_test_count": 0
+      },
+      "float16": {
+        "core_type_roundtrip_tested": true,
+        "declared_operator_count": 69,
+        "concrete_operator_test_count": 69,
+        "missing_operator_test_count": 0
+      },
+      "float32": {
+        "core_type_roundtrip_tested": true,
+        "declared_operator_count": 78,
+        "concrete_operator_test_count": 78,
+        "missing_operator_test_count": 0
+      },
+      "int16": {
+        "core_type_roundtrip_tested": true,
+        "declared_operator_count": 5,
+        "concrete_operator_test_count": 5,
+        "missing_operator_test_count": 0
+      },
+      "int32": {
+        "core_type_roundtrip_tested": true,
+        "declared_operator_count": 7,
+        "concrete_operator_test_count": 7,
+        "missing_operator_test_count": 0
+      },
+      "int8": {
+        "core_type_roundtrip_tested": true,
+        "declared_operator_count": 5,
+        "concrete_operator_test_count": 5,
+        "missing_operator_test_count": 0
+      }
+    }
+  },
+  "operators": [
+    {
+      "operator": "waveforms/chirp",
+      "policy": "floating_generator_real_or_complex64",
+      "compatibility_types": [
+        "complex64",
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "complex64",
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "complex64",
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "real mode supports FP32/FP16-compatible output; complex mode remains complex64"
+    },
+    {
+      "operator": "waveforms/gausspulse",
+      "policy": "floating_generator_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "dtype selects FP32 output or FP16-compatible output generated through FP32 math"
+    },
+    {
+      "operator": "waveforms/sawtooth",
+      "policy": "floating_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "accept compatible FP16 inputs/outputs with FP32 intermediate accumulation"
+    },
+    {
+      "operator": "waveforms/square",
+      "policy": "floating_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "accept compatible FP16 inputs/outputs with FP32 intermediate accumulation"
+    },
+    {
+      "operator": "waveforms/unit_impulse",
+      "policy": "float32_generator_real",
+      "compatibility_types": [
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "current public API returns RealSignal/ZxGpuRealSignal and only accepts dtype=float32"
+    },
+    {
+      "operator": "bsplines/cubic",
+      "policy": "floating_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "accept compatible FP16 inputs/outputs with FP32 intermediate accumulation"
+    },
+    {
+      "operator": "bsplines/quadratic",
+      "policy": "floating_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "accept compatible FP16 inputs/outputs with FP32 intermediate accumulation"
+    },
+    {
+      "operator": "bsplines/gauss_spline",
+      "policy": "floating_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "accept compatible FP16 inputs/outputs with FP32 intermediate accumulation"
+    },
+    {
+      "operator": "windows/get_window",
+      "policy": "floating_generator_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "dtype selects FP32 output or FP16-compatible output generated through FP32 math"
+    },
+    {
+      "operator": "windows/barthann",
+      "policy": "floating_generator_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "dtype selects FP32 output or FP16-compatible output generated through FP32 math"
+    },
+    {
+      "operator": "windows/bartlett",
+      "policy": "floating_generator_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "dtype selects FP32 output or FP16-compatible output generated through FP32 math"
+    },
+    {
+      "operator": "windows/blackman",
+      "policy": "floating_generator_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "dtype selects FP32 output or FP16-compatible output generated through FP32 math"
+    },
+    {
+      "operator": "windows/blackmanharris",
+      "policy": "floating_generator_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "dtype selects FP32 output or FP16-compatible output generated through FP32 math"
+    },
+    {
+      "operator": "windows/bohman",
+      "policy": "floating_generator_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "dtype selects FP32 output or FP16-compatible output generated through FP32 math"
+    },
+    {
+      "operator": "windows/boxcar",
+      "policy": "floating_generator_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "dtype selects FP32 output or FP16-compatible output generated through FP32 math"
+    },
+    {
+      "operator": "windows/chebwin",
+      "policy": "floating_generator_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "dtype selects FP32 output or FP16-compatible output generated through FP32 math"
+    },
+    {
+      "operator": "windows/cosine",
+      "policy": "floating_generator_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "dtype selects FP32 output or FP16-compatible output generated through FP32 math"
+    },
+    {
+      "operator": "windows/exponential",
+      "policy": "floating_generator_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "dtype selects FP32 output or FP16-compatible output generated through FP32 math"
+    },
+    {
+      "operator": "windows/flattop",
+      "policy": "floating_generator_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "dtype selects FP32 output or FP16-compatible output generated through FP32 math"
+    },
+    {
+      "operator": "windows/gaussian",
+      "policy": "floating_generator_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "dtype selects FP32 output or FP16-compatible output generated through FP32 math"
+    },
+    {
+      "operator": "windows/general_cosine",
+      "policy": "floating_generator_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "dtype selects FP32 output or FP16-compatible output generated through FP32 math"
+    },
+    {
+      "operator": "windows/general_gaussian",
+      "policy": "floating_generator_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "dtype selects FP32 output or FP16-compatible output generated through FP32 math"
+    },
+    {
+      "operator": "windows/general_hamming",
+      "policy": "floating_generator_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "dtype selects FP32 output or FP16-compatible output generated through FP32 math"
+    },
+    {
+      "operator": "windows/hamming",
+      "policy": "floating_generator_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "dtype selects FP32 output or FP16-compatible output generated through FP32 math"
+    },
+    {
+      "operator": "windows/hann",
+      "policy": "floating_generator_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "dtype selects FP32 output or FP16-compatible output generated through FP32 math"
+    },
+    {
+      "operator": "windows/kaiser",
+      "policy": "floating_generator_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "dtype selects FP32 output or FP16-compatible output generated through FP32 math"
+    },
+    {
+      "operator": "windows/nuttall",
+      "policy": "floating_generator_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "dtype selects FP32 output or FP16-compatible output generated through FP32 math"
+    },
+    {
+      "operator": "windows/parzen",
+      "policy": "floating_generator_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "dtype selects FP32 output or FP16-compatible output generated through FP32 math"
+    },
+    {
+      "operator": "windows/taylor",
+      "policy": "floating_generator_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "dtype selects FP32 output or FP16-compatible output generated through FP32 math"
+    },
+    {
+      "operator": "windows/triang",
+      "policy": "floating_generator_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "dtype selects FP32 output or FP16-compatible output generated through FP32 math"
+    },
+    {
+      "operator": "windows/tukey",
+      "policy": "floating_generator_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "dtype selects FP32 output or FP16-compatible output generated through FP32 math"
+    },
+    {
+      "operator": "filter_design/kaiser_beta",
+      "policy": "floating_generator_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "dtype selects FP32 output or FP16-compatible output generated through FP32 math"
+    },
+    {
+      "operator": "filter_design/kaiser_atten",
+      "policy": "floating_generator_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "dtype selects FP32 output or FP16-compatible output generated through FP32 math"
+    },
+    {
+      "operator": "filter_design/cmplx_sort",
+      "policy": "sort_real_or_complex",
+      "compatibility_types": [
+        "complex64",
+        "float16",
+        "float32",
+        "int32"
+      ],
+      "current_types": [
+        "complex64",
+        "float32",
+        "int32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "complex64",
+        "float16",
+        "float32",
+        "int32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "FP16-compatible values sort through FP32 magnitude; complex values remain complex64 and indices are int32"
+    },
+    {
+      "operator": "filter_design/firwin",
+      "policy": "floating_generator_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "dtype selects FP32 output or FP16-compatible output generated through FP32 math"
+    },
+    {
+      "operator": "filter_design/firwin2",
+      "policy": "floating_generator_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "dtype selects FP32 output or FP16-compatible output generated through FP32 math"
+    },
+    {
+      "operator": "filtering/wiener",
+      "policy": "floating_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "accept compatible FP16 inputs/outputs with FP32 intermediate accumulation"
+    },
+    {
+      "operator": "filtering/firfilter",
+      "policy": "floating_real_or_complex64",
+      "compatibility_types": [
+        "complex64",
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "complex64",
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "complex64",
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "real input preserves floating dtype through FP32-compatible accumulation; complex64 input remains complex64"
+    },
+    {
+      "operator": "filtering/lfilter",
+      "policy": "floating_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "accept compatible FP16 inputs/outputs with FP32 intermediate accumulation"
+    },
+    {
+      "operator": "filtering/firfilter_zi",
+      "policy": "floating_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "accept compatible FP16 inputs/outputs with FP32 intermediate accumulation"
+    },
+    {
+      "operator": "filtering/lfilter_zi",
+      "policy": "floating_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "accept compatible FP16 inputs/outputs with FP32 intermediate accumulation"
+    },
+    {
+      "operator": "filtering/firfilter2",
+      "policy": "floating_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "accept compatible FP16 inputs/outputs with FP32 intermediate accumulation"
+    },
+    {
+      "operator": "filtering/filtfilt",
+      "policy": "floating_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "accept compatible FP16 inputs/outputs with FP32 intermediate accumulation"
+    },
+    {
+      "operator": "filtering/sosfilt",
+      "policy": "floating_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "accept compatible FP16 inputs/outputs with FP32 intermediate accumulation"
+    },
+    {
+      "operator": "filtering/hilbert",
+      "policy": "floating_real_to_complex64",
+      "compatibility_types": [
+        "complex64",
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "complex64",
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "complex64",
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "FP16-compatible real input is widened to FP32 before complex64 output"
+    },
+    {
+      "operator": "filtering/hilbert2",
+      "policy": "floating_real_to_complex64",
+      "compatibility_types": [
+        "complex64",
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "complex64",
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "complex64",
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "FP16-compatible real input is widened to FP32 before complex64 output"
+    },
+    {
+      "operator": "filtering/detrend",
+      "policy": "floating_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "accept compatible FP16 inputs/outputs with FP32 intermediate accumulation"
+    },
+    {
+      "operator": "filtering/freq_shift",
+      "policy": "complex64_pipeline",
+      "compatibility_types": [
+        "complex64",
+        "float32"
+      ],
+      "current_types": [
+        "complex64",
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "complex64",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "native complex64 pipeline with FP32 real diagnostics"
+    },
+    {
+      "operator": "filtering/channelize_poly",
+      "policy": "complex64_pipeline",
+      "compatibility_types": [
+        "complex64",
+        "float32"
+      ],
+      "current_types": [
+        "complex64",
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "complex64",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "native complex64 pipeline with FP32 real diagnostics"
+    },
+    {
+      "operator": "filtering/decimate",
+      "policy": "floating_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "accept compatible FP16 inputs/outputs with FP32 intermediate accumulation"
+    },
+    {
+      "operator": "filtering/resample",
+      "policy": "floating_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "accept compatible FP16 inputs/outputs with FP32 intermediate accumulation"
+    },
+    {
+      "operator": "filtering/resample_poly",
+      "policy": "floating_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "accept compatible FP16 inputs/outputs with FP32 intermediate accumulation"
+    },
+    {
+      "operator": "filtering/upfirdn",
+      "policy": "floating_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "accept compatible FP16 inputs/outputs with FP32 intermediate accumulation"
+    },
+    {
+      "operator": "radartools/pulse_compression",
+      "policy": "complex64_pipeline",
+      "compatibility_types": [
+        "complex64",
+        "float32"
+      ],
+      "current_types": [
+        "complex64",
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "complex64",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "native complex64 pipeline with FP32 real diagnostics"
+    },
+    {
+      "operator": "radartools/pulse_doppler",
+      "policy": "complex64_pipeline",
+      "compatibility_types": [
+        "complex64",
+        "float32"
+      ],
+      "current_types": [
+        "complex64",
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "complex64",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "native complex64 pipeline with FP32 real diagnostics"
+    },
+    {
+      "operator": "radartools/ambgfun",
+      "policy": "complex64_pipeline",
+      "compatibility_types": [
+        "complex64",
+        "float32"
+      ],
+      "current_types": [
+        "complex64",
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "complex64",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "native complex64 pipeline with FP32 real diagnostics"
+    },
+    {
+      "operator": "radartools/cfar_alpha",
+      "policy": "floating_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "accept compatible FP16 inputs/outputs with FP32 intermediate accumulation"
+    },
+    {
+      "operator": "radartools/ca_cfar",
+      "policy": "floating_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "accept compatible FP16 inputs/outputs with FP32 intermediate accumulation"
+    },
+    {
+      "operator": "radartools/mvdr",
+      "policy": "complex64_pipeline",
+      "compatibility_types": [
+        "complex64",
+        "float32"
+      ],
+      "current_types": [
+        "complex64",
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "complex64",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "native complex64 pipeline with FP32 real diagnostics"
+    },
+    {
+      "operator": "spectral/lombscargle",
+      "policy": "floating_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "accept compatible FP16 inputs/outputs with FP32 intermediate accumulation"
+    },
+    {
+      "operator": "spectral/periodogram",
+      "policy": "floating_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "accept compatible FP16 inputs/outputs with FP32 intermediate accumulation"
+    },
+    {
+      "operator": "spectral/welch",
+      "policy": "floating_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "accept compatible FP16 inputs/outputs with FP32 intermediate accumulation"
+    },
+    {
+      "operator": "spectral/csd",
+      "policy": "floating_real_to_real_or_complex64",
+      "compatibility_types": [
+        "complex64",
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "complex64",
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "complex64",
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "real output preserves FP32/FP16-compatible dtype; complex output remains complex64"
+    },
+    {
+      "operator": "spectral/spectrogram",
+      "policy": "floating_real_to_real_or_complex64",
+      "compatibility_types": [
+        "complex64",
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "complex64",
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "complex64",
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "real output preserves FP32/FP16-compatible dtype; complex output remains complex64"
+    },
+    {
+      "operator": "spectral/stft",
+      "policy": "floating_real_to_complex64",
+      "compatibility_types": [
+        "complex64",
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "complex64",
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "complex64",
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "FP16-compatible real input is widened to FP32 before complex64 output"
+    },
+    {
+      "operator": "spectral/istft",
+      "policy": "complex64_to_real",
+      "compatibility_types": [
+        "complex64",
+        "float32"
+      ],
+      "current_types": [
+        "complex64",
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "complex64",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "native complex64 input to FP32 real output"
+    },
+    {
+      "operator": "spectral/coherence",
+      "policy": "floating_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "accept compatible FP16 inputs/outputs with FP32 intermediate accumulation"
+    },
+    {
+      "operator": "spectral/vectorstrength",
+      "policy": "floating_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "accept compatible FP16 inputs/outputs with FP32 intermediate accumulation"
+    },
+    {
+      "operator": "wavelets/qmf",
+      "policy": "floating_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "accept compatible FP16 inputs/outputs with FP32 intermediate accumulation"
+    },
+    {
+      "operator": "wavelets/morlet",
+      "policy": "floating_generator_complex64",
+      "compatibility_types": [
+        "complex64"
+      ],
+      "current_types": [
+        "complex64"
+      ],
+      "concrete_operator_test_dtypes": [
+        "complex64",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "native complex64 only"
+    },
+    {
+      "operator": "wavelets/ricker",
+      "policy": "floating_generator_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "dtype selects FP32 output or FP16-compatible output generated through FP32 math"
+    },
+    {
+      "operator": "wavelets/morlet2",
+      "policy": "floating_generator_complex64",
+      "compatibility_types": [
+        "complex64"
+      ],
+      "current_types": [
+        "complex64"
+      ],
+      "concrete_operator_test_dtypes": [
+        "complex64",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "native complex64 only"
+    },
+    {
+      "operator": "wavelets/cwt",
+      "policy": "floating_real_to_complex64",
+      "compatibility_types": [
+        "complex64",
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "complex64",
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "complex64",
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "FP16-compatible real input is widened to FP32 before complex64 output"
+    },
+    {
+      "operator": "correlate/correlate",
+      "policy": "numeric_correlate",
+      "compatibility_types": [
+        "complex64",
+        "float16",
+        "float32",
+        "int16",
+        "int32",
+        "int8"
+      ],
+      "current_types": [
+        "complex64",
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "complex64",
+        "float16",
+        "float32",
+        "int16",
+        "int32",
+        "int8"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "numeric inputs preserve dtype; FP16 widens for accumulation and integers use widened accumulation before output conversion"
+    },
+    {
+      "operator": "correlate/correlate2d",
+      "policy": "numeric_correlate",
+      "compatibility_types": [
+        "complex64",
+        "float16",
+        "float32",
+        "int16",
+        "int32",
+        "int8"
+      ],
+      "current_types": [
+        "complex64",
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "complex64",
+        "float16",
+        "float32",
+        "int16",
+        "int32",
+        "int8"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "numeric inputs preserve dtype; FP16 widens for accumulation and integers use widened accumulation before output conversion"
+    },
+    {
+      "operator": "correlate/correlation_lags",
+      "policy": "index_metadata",
+      "compatibility_types": [
+        "int32"
+      ],
+      "current_types": [
+        "int32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float32",
+        "int32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "native int32 metadata path"
+    },
+    {
+      "operator": "demod/fm_demod",
+      "policy": "complex64_to_real",
+      "compatibility_types": [
+        "complex64",
+        "float32"
+      ],
+      "current_types": [
+        "complex64",
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "complex64",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "native complex64 input to FP32 real output"
+    },
+    {
+      "operator": "estimation/kalman_filter",
+      "policy": "floating_real",
+      "compatibility_types": [
+        "float16",
+        "float32"
+      ],
+      "current_types": [
+        "float32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "accept compatible FP16 inputs/outputs with FP32 intermediate accumulation"
+    },
+    {
+      "operator": "peak_finding/argrelextrema",
+      "policy": "numeric_to_indices",
+      "compatibility_types": [
+        "float16",
+        "float32",
+        "int16",
+        "int32",
+        "int8"
+      ],
+      "current_types": [
+        "float32",
+        "int32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32",
+        "int16",
+        "int32",
+        "int8"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "all supported real/integer inputs compare in their value domain and return int32 indices"
+    },
+    {
+      "operator": "peak_finding/argrelmin",
+      "policy": "numeric_to_indices",
+      "compatibility_types": [
+        "float16",
+        "float32",
+        "int16",
+        "int32",
+        "int8"
+      ],
+      "current_types": [
+        "float32",
+        "int32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32",
+        "int16",
+        "int32",
+        "int8"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "all supported real/integer inputs compare in their value domain and return int32 indices"
+    },
+    {
+      "operator": "peak_finding/argrelmax",
+      "policy": "numeric_to_indices",
+      "compatibility_types": [
+        "float16",
+        "float32",
+        "int16",
+        "int32",
+        "int8"
+      ],
+      "current_types": [
+        "float32",
+        "int32"
+      ],
+      "concrete_operator_test_dtypes": [
+        "float16",
+        "float32",
+        "int16",
+        "int32",
+        "int8"
+      ],
+      "missing_operator_test_dtypes": [],
+      "compatibility_mode": "all supported real/integer inputs compare in their value domain and return int32 indices"
+    }
+  ]
+}

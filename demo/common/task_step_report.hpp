@@ -28,6 +28,16 @@ namespace cusignal_demo::report
         std::string name;
         float cpu_ms = 0.0f;
         float gpu_ms = 0.0f;
+        // CUDA events measure work queued between the two events on the GPU stream.
+        float gpu_kernel_ms = std::numeric_limits<float>::quiet_NaN();
+    };
+
+    template <typename Value>
+    struct GpuMeasurement
+    {
+        Value first;
+        float second = 0.0f;
+        float kernel_ms = std::numeric_limits<float>::quiet_NaN();
     };
 
     struct StepMetric

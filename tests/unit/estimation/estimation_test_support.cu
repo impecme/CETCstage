@@ -130,7 +130,7 @@ namespace
 
     fs::path report_root()
     {
-        return repo_root() / "data" / "reports" / "unit" / "estimation" / "kalman_filter";
+        return repo_root() / "data" / ".reports_staging" / "unit" / "estimation" / "kalman_filter";
     }
 
     std::string read_text_file(const fs::path &path)

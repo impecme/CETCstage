@@ -13,20 +13,14 @@ target_compile_definitions(waveforms_test_support
 )
 cusignal_configure_zx_gpu_source_target(waveforms_test_support)
 
-function(add_waveforms_test target source)
-    add_executable(${target} ${source})
-    target_link_libraries(${target}
-        PRIVATE
-            waveforms_test_support
-            cusignal_cpu
-            cusignal_zx_gpu
+function(add_waveforms_test op)
+    cusignal_add_operator_test(
+        waveforms_test_${op}
+        "${CMAKE_CURRENT_SOURCE_DIR}/test_${op}.cpp"
+        waveforms_test_support
     )
-    target_compile_features(${target} PRIVATE cxx_std_17)
-    add_test(NAME ${target} COMMAND ${target})
 endfunction()
 
-add_waveforms_test(waveforms_test_chirp test_chirp.cpp)
-add_waveforms_test(waveforms_test_gausspulse test_gausspulse.cpp)
-add_waveforms_test(waveforms_test_sawtooth test_sawtooth.cpp)
-add_waveforms_test(waveforms_test_square test_square.cpp)
-add_waveforms_test(waveforms_test_unit_impulse test_unit_impulse.cpp)
+foreach(op chirp gausspulse sawtooth square unit_impulse)
+    add_waveforms_test(${op})
+endforeach()

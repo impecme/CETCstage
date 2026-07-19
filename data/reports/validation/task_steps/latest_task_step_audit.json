@@ -1,0 +1,328 @@
+{
+  "summary": {
+    "status": "passed",
+    "task_count": 2,
+    "step_count": 16,
+    "calculation_step_count": 14,
+    "public_calculation_step_count": 6,
+    "public_operator_link_count": 14,
+    "migration_step_count": 8,
+    "timing_gap_count": 0,
+    "accuracy_gap_count": 0,
+    "implementation_counts": {
+      "mixed": 8,
+      "orchestration": 2,
+      "public": 6
+    },
+    "failure_count": 0,
+    "failures": []
+  },
+  "steps": [
+    {
+      "task": "task1_radar",
+      "step": "signal_generation",
+      "category": "input_construction",
+      "cpu_symbols": [
+        "build_template",
+        "simulate_rx_matrix"
+      ],
+      "gpu_symbols": [
+        "run_gpu_pipeline"
+      ],
+      "public_operators": [
+        "waveforms/chirp"
+      ],
+      "implementation": "orchestration",
+      "timing": "missing",
+      "accuracy": "business_only",
+      "migration_target": "demo input construction is allowed"
+    },
+    {
+      "task": "task1_radar",
+      "step": "pulse_compression",
+      "category": "calculation",
+      "cpu_symbols": [
+        "cusignal::cpu::radartools::pulse_compression"
+      ],
+      "gpu_symbols": [
+        "cusignal::zx_gpu_backend::radartools::pulse_compression"
+      ],
+      "public_operators": [
+        "radartools/pulse_compression"
+      ],
+      "implementation": "public",
+      "timing": "present",
+      "accuracy": "present",
+      "migration_target": "none"
+    },
+    {
+      "task": "task1_radar",
+      "step": "pulse_doppler_fftshift",
+      "category": "calculation",
+      "cpu_symbols": [
+        "cusignal::cpu::radartools::pulse_doppler",
+        "cusignal::cpu::radartools::fftshift_rows"
+      ],
+      "gpu_symbols": [
+        "cusignal::zx_gpu_backend::radartools::pulse_doppler_shifted"
+      ],
+      "public_operators": [
+        "radartools/pulse_doppler_shifted"
+      ],
+      "implementation": "public",
+      "timing": "present",
+      "accuracy": "present",
+      "migration_target": "none"
+    },
+    {
+      "task": "task1_radar",
+      "step": "power_map",
+      "category": "calculation",
+      "cpu_symbols": [
+        "cusignal::cpu::radartools::power_map"
+      ],
+      "gpu_symbols": [
+        "cusignal::zx_gpu_backend::radartools::power_map"
+      ],
+      "public_operators": [
+        "radartools/power_map"
+      ],
+      "implementation": "public",
+      "timing": "present",
+      "accuracy": "present",
+      "migration_target": "none"
+    },
+    {
+      "task": "task1_radar",
+      "step": "ca_cfar",
+      "category": "calculation",
+      "cpu_symbols": [
+        "cusignal::cpu::radartools::ca_cfar"
+      ],
+      "gpu_symbols": [
+        "cusignal::zx_gpu_backend::radartools::ca_cfar"
+      ],
+      "public_operators": [
+        "radartools/ca_cfar"
+      ],
+      "implementation": "public",
+      "timing": "present",
+      "accuracy": "present",
+      "migration_target": "none"
+    },
+    {
+      "task": "task1_radar",
+      "step": "ambgfun",
+      "category": "calculation",
+      "cpu_symbols": [
+        "cusignal::cpu::radartools::ambgfun"
+      ],
+      "gpu_symbols": [
+        "cusignal::zx_gpu_backend::radartools::ambgfun"
+      ],
+      "public_operators": [
+        "radartools/ambgfun"
+      ],
+      "implementation": "public",
+      "timing": "present",
+      "accuracy": "present",
+      "migration_target": "none"
+    },
+    {
+      "task": "task1_radar",
+      "step": "final_detection",
+      "category": "calculation",
+      "cpu_symbols": [
+        "cusignal::cpu::radartools::detect_peak"
+      ],
+      "gpu_symbols": [
+        "cusignal::zx_gpu_backend::radartools::detect_peak"
+      ],
+      "public_operators": [
+        "radartools/detect_peak"
+      ],
+      "implementation": "public",
+      "timing": "present",
+      "accuracy": "present",
+      "migration_target": "none"
+    },
+    {
+      "task": "task2_features",
+      "step": "signal_generation",
+      "category": "input_construction",
+      "cpu_symbols": [
+        "build_target_template",
+        "simulate_frames"
+      ],
+      "gpu_symbols": [
+        "ZxGpuComplexArray::from_host"
+      ],
+      "public_operators": [
+        "waveforms/chirp",
+        "waveforms/gausspulse",
+        "waveforms/sawtooth",
+        "waveforms/square"
+      ],
+      "implementation": "orchestration",
+      "timing": "missing",
+      "accuracy": "business_only",
+      "migration_target": "demo input construction is allowed"
+    },
+    {
+      "task": "task2_features",
+      "step": "filter",
+      "category": "calculation",
+      "cpu_symbols": [
+        "filter_complex_frames_cpu",
+        "cusignal::cpu::filtering::firfilter"
+      ],
+      "gpu_symbols": [
+        "cusignal::zx_gpu_backend::filtering::firfilter",
+        "extract_real_part_zx_gpu"
+      ],
+      "public_operators": [
+        "filter_design/firwin",
+        "filtering/firfilter"
+      ],
+      "implementation": "mixed",
+      "timing": "present",
+      "accuracy": "present",
+      "migration_target": "helper is acceptable because public firfilter performs the core filtering; only revisit if Task2 filter timing requires a fused public API"
+    },
+    {
+      "task": "task2_features",
+      "step": "demod",
+      "category": "calculation",
+      "cpu_symbols": [
+        "cusignal::cpu::demod::fm_demod"
+      ],
+      "gpu_symbols": [
+        "batched_demod_score_zx_gpu"
+      ],
+      "public_operators": [
+        "demod/fm_demod"
+      ],
+      "implementation": "mixed",
+      "timing": "present",
+      "accuracy": "present",
+      "migration_target": "helper is acceptable because public fm_demod defines the core demodulation semantics; batched score keeps Task2 timing compact"
+    },
+    {
+      "task": "task2_features",
+      "step": "correlate",
+      "category": "calculation",
+      "cpu_symbols": [
+        "cusignal::cpu::correlate::correlate",
+        "normalize_nonnegative_cpu"
+      ],
+      "gpu_symbols": [
+        "cusignal::zx_gpu_backend::correlate::correlate",
+        "complex_abs_zx_gpu",
+        "normalize_nonnegative_zx_gpu"
+      ],
+      "public_operators": [
+        "correlate/correlate"
+      ],
+      "implementation": "mixed",
+      "timing": "present",
+      "accuracy": "present",
+      "migration_target": "move magnitude and normalization post-processing to public operators"
+    },
+    {
+      "task": "task2_features",
+      "step": "spectrogram",
+      "category": "calculation",
+      "cpu_symbols": [
+        "cusignal::cpu::spectral::spectrogram",
+        "spectrogram_band_score_cpu"
+      ],
+      "gpu_symbols": [
+        "cusignal::zx_gpu_backend::spectral::spectrogram",
+        "spectrogram_band_score_zx_gpu"
+      ],
+      "public_operators": [
+        "spectral/spectrogram"
+      ],
+      "implementation": "mixed",
+      "timing": "present",
+      "accuracy": "present",
+      "migration_target": "move band scoring and sample-axis projection to a public spectral helper"
+    },
+    {
+      "task": "task2_features",
+      "step": "cwt",
+      "category": "calculation",
+      "cpu_symbols": [
+        "cusignal::cpu::wavelets::cwt",
+        "cwt_max_score_cpu"
+      ],
+      "gpu_symbols": [
+        "cusignal::zx_gpu_backend::wavelets::cwt",
+        "cwt_max_score_zx_gpu"
+      ],
+      "public_operators": [
+        "wavelets/cwt"
+      ],
+      "implementation": "mixed",
+      "timing": "present",
+      "accuracy": "present",
+      "migration_target": "move scale reduction and normalization to a public wavelets helper"
+    },
+    {
+      "task": "task2_features",
+      "step": "feature_fusion_peak",
+      "category": "calculation",
+      "cpu_symbols": [
+        "smooth_with_weights_cpu",
+        "select_peak_cpu"
+      ],
+      "gpu_symbols": [
+        "fuse_feature_scores_zx_gpu"
+      ],
+      "public_operators": [
+        "bsplines/cubic",
+        "peak_finding/argrelmax"
+      ],
+      "implementation": "mixed",
+      "timing": "present",
+      "accuracy": "present",
+      "migration_target": "add public weighted fusion, smoothing, and candidate peak-selection operators"
+    },
+    {
+      "task": "task2_features",
+      "step": "measurement_conversion",
+      "category": "calculation",
+      "cpu_symbols": [
+        "artifacts.measurement_values"
+      ],
+      "gpu_symbols": [
+        "copy_measurement_track_zx_gpu"
+      ],
+      "public_operators": [
+        "estimation/kalman_filter"
+      ],
+      "implementation": "mixed",
+      "timing": "present",
+      "accuracy": "present",
+      "migration_target": "helper is acceptable because it prepares the public Kalman measurement vector and is now timed/validated independently"
+    },
+    {
+      "task": "task2_features",
+      "step": "kalman",
+      "category": "calculation",
+      "cpu_symbols": [
+        "cusignal::cpu::estimation::KalmanFilter"
+      ],
+      "gpu_symbols": [
+        "kalman_track_from_peaks_zx_gpu"
+      ],
+      "public_operators": [
+        "estimation/kalman_filter"
+      ],
+      "implementation": "mixed",
+      "timing": "present",
+      "accuracy": "present",
+      "migration_target": "helper is acceptable because it implements the same Kalman state equations as the public CPU operator and reports CPU/GPU track error"
+    }
+  ]
+}

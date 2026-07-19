@@ -13,12 +13,8 @@ target_compile_definitions(estimation_test_support
 )
 cusignal_configure_zx_gpu_source_target(estimation_test_support)
 
-add_executable(estimation_test_kalman_filter test_kalman_filter.cpp)
-target_link_libraries(estimation_test_kalman_filter
-    PRIVATE
-        estimation_test_support
-        cusignal_cpu
-        cusignal_zx_gpu
+cusignal_add_operator_test(
+    estimation_test_kalman_filter
+    "${CMAKE_CURRENT_SOURCE_DIR}/test_kalman_filter.cpp"
+    estimation_test_support
 )
-target_compile_features(estimation_test_kalman_filter PRIVATE cxx_std_17)
-add_test(NAME estimation_test_kalman_filter COMMAND estimation_test_kalman_filter)

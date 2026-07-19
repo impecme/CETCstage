@@ -103,21 +103,6 @@ namespace cusignal_test::report
         return stream.str();
     }
 
-    inline std::string timestamp_for_path()
-    {
-        const auto now = std::chrono::system_clock::now();
-        const std::time_t time = std::chrono::system_clock::to_time_t(now);
-        std::tm tm {};
-#if defined(_WIN32)
-        localtime_s(&tm, &time);
-#else
-        localtime_r(&time, &tm);
-#endif
-        std::ostringstream stream;
-        stream << std::put_time(&tm, "%Y%m%d_%H%M%S");
-        return stream.str();
-    }
-
     inline std::string json_escape(const std::string &value)
     {
         std::ostringstream stream;
@@ -713,10 +698,6 @@ namespace cusignal_test::report
         const std::vector<CaseT> &cases,
         const WritePolicy &policy)
     {
-        const fs::path history_root =
-            operator_report_root / "history" / timestamp_for_path();
-        fs::create_directories(history_root);
-
         const std::string summary_markdown =
             build_summary_markdown(module, op, summary, cases);
         const std::string metrics_json =
@@ -734,10 +715,6 @@ namespace cusignal_test::report
         write_text_file(operator_report_root / "latest_summary.md", summary_markdown);
         write_text_file(operator_report_root / "latest_metrics.json", metrics_json);
         write_text_file(operator_report_root / "latest_cases.csv", cases_csv);
-
-        write_text_file(history_root / "summary.md", summary_markdown);
-        write_text_file(history_root / "metrics.json", metrics_json);
-        write_text_file(history_root / "cases.csv", cases_csv);
     }
 
     inline std::string build_timing_stats_json_from_object(
@@ -804,10 +781,6 @@ namespace cusignal_test::report
         for (const auto &entry : fs::directory_iterator(module_root))
         {
             if (!entry.is_directory())
-            {
-                continue;
-            }
-            if (entry.path().filename() == "history")
             {
                 continue;
             }

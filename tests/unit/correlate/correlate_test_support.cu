@@ -140,7 +140,7 @@ namespace
 
     fs::path report_root(const std::string &op)
     {
-        return repo_root() / "data" / "reports" / "unit" / "correlate" / op;
+        return repo_root() / "data" / ".reports_staging" / "unit" / "correlate" / op;
     }
 
     RealArray make_real_array(const Shape &shape, const std::vector<float> &values)
