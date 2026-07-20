@@ -148,6 +148,26 @@ check_sdk() {
     die "missing ZQ500 solver library"
 }
 
+invalidate_relocated_cmake_cache() {
+  local cache_path="${BUILD_PATH}/CMakeCache.txt"
+  [[ -f "${cache_path}" ]] || return
+
+  local cached_build_dir
+  local cached_source_dir
+  cached_build_dir="$(sed -n 's|^CMAKE_CACHEFILE_DIR:INTERNAL=||p' "${cache_path}" | head -n 1)"
+  cached_source_dir="$(sed -n 's|^CMAKE_HOME_DIRECTORY:INTERNAL=||p' "${cache_path}" | head -n 1)"
+
+  if [[ "${cached_build_dir}" == "${BUILD_PATH}" && "${cached_source_dir}" == "${PROJECT_ROOT}" ]]; then
+    return
+  fi
+
+  echo "[build] clearing relocated CMake cache: ${cache_path}"
+  echo "[build] cached source: ${cached_source_dir:-<missing>}"
+  echo "[build] current source: ${PROJECT_ROOT}"
+  rm -f -- "${cache_path}"
+  rm -rf -- "${BUILD_PATH}/CMakeFiles"
+}
+
 install_fftw() {
   if [[ -f "${FFTW_INSTALL}/include/fftw3.h" && -f "${FFTW_INSTALL}/lib/libfftw3.a" ]]; then
     echo "[build] FFTW ${FFTW_VERSION}: ready"
@@ -187,6 +207,8 @@ if [[ "${CHECK_DEPS}" -eq 1 ]]; then
   check_sdk
   install_fftw
 fi
+
+invalidate_relocated_cmake_cache
 
 cmake_args=(
   -S "${PROJECT_ROOT}"

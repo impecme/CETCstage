@@ -509,6 +509,7 @@ include/cusignal/windows/windows.hpp
 scripts/build.sh
 scripts/clean.sh
 scripts/demo.sh
+scripts/explore_task_acceleration.sh
 scripts/finalize_reports.py
 scripts/pull_results.sh
 scripts/sync_to_container.sh

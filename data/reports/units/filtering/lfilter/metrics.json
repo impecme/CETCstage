@@ -1,7 +1,7 @@
 {
   "module": "filtering",
   "operator": "lfilter",
-  "generated_at": "2026-07-19 08:59:35",
+  "generated_at": "2026-07-19 16:40:38",
   "git_commit": "",
   "gpu_name": "ZQ500-Q QUAD-0",
   "compile_config": {
@@ -16,36 +16,36 @@
     "max_rel_error": 8.0132e-05,
     "mixed_error": 1.38702e-06,
     "rmse": 5.07245e-08,
-    "gpu_e2e_speedup": 0.564552,
-    "gpu_kernel_speedup": 1.76081,
+    "gpu_e2e_speedup": 0.503959,
+    "gpu_kernel_speedup": 1.45725,
     "cpu_perf": {
       "warmup": 5,
       "repeat": 30,
-      "mean_ms": 0.212851,
-      "median_ms": 0.212851,
-      "p95_ms": 0.212851,
-      "min_ms": 0.212851,
-      "max_ms": 0.212851,
+      "mean_ms": 0.212856,
+      "median_ms": 0.212856,
+      "p95_ms": 0.212856,
+      "min_ms": 0.212856,
+      "max_ms": 0.212856,
       "std_ms": 0
     },
     "gpu_e2e_perf": {
       "warmup": 5,
       "repeat": 30,
-      "mean_ms": 0.377027,
-      "median_ms": 0.377027,
-      "p95_ms": 0.377027,
-      "min_ms": 0.377027,
-      "max_ms": 0.377027,
+      "mean_ms": 0.422368,
+      "median_ms": 0.422368,
+      "p95_ms": 0.422368,
+      "min_ms": 0.422368,
+      "max_ms": 0.422368,
       "std_ms": 0
     },
     "gpu_kernel_perf": {
       "warmup": 5,
       "repeat": 30,
-      "mean_ms": 0.120883,
-      "median_ms": 0.120883,
-      "p95_ms": 0.120883,
-      "min_ms": 0.120883,
-      "max_ms": 0.120883,
+      "mean_ms": 0.146067,
+      "median_ms": 0.146067,
+      "p95_ms": 0.146067,
+      "min_ms": 0.146067,
+      "max_ms": 0.146067,
       "std_ms": 0
     },
     "device_storage_cache": {
@@ -164,39 +164,34 @@
       "cpu_perf": {
         "warmup": 5,
         "repeat": 30,
-        "mean_ms": 0.213661,
-        "median_ms": 0.212851,
-        "p95_ms": 0.223151,
-        "min_ms": 0.212521,
-        "max_ms": 0.226571,
-        "std_ms": 0.00303073
+        "mean_ms": 0.213189,
+        "median_ms": 0.212856,
+        "p95_ms": 0.213681,
+        "min_ms": 0.212681,
+        "max_ms": 0.220612,
+        "std_ms": 0.00139612
       },
       "gpu_e2e_perf": {
         "warmup": 5,
         "repeat": 30,
-        "mean_ms": 0.380782,
-        "median_ms": 0.377027,
-        "p95_ms": 0.396302,
-        "min_ms": 0.366912,
-        "max_ms": 0.454943,
-        "std_ms": 0.0154396
+        "mean_ms": 0.419803,
+        "median_ms": 0.422368,
+        "p95_ms": 0.473162,
+        "min_ms": 0.353302,
+        "max_ms": 0.476673,
+        "std_ms": 0.0410425
       },
       "gpu_kernel_perf": {
         "warmup": 5,
         "repeat": 30,
-        "mean_ms": 0.120888,
-        "median_ms": 0.120883,
-        "p95_ms": 0.121718,
-        "min_ms": 0.119826,
-        "max_ms": 0.12193,
-        "std_ms": 0.000493159
+        "mean_ms": 0.146028,
+        "median_ms": 0.146067,
+        "p95_ms": 0.154312,
+        "min_ms": 0.12602,
+        "max_ms": 0.168368,
+        "std_ms": 0.00832938
       },
       "artifacts": [
-        {"role": "input_x", "path": "/CETC.incoming.20260719165041.63146.2450/data/generated/unit/filtering/lfilter/input/x.csv", "sha256": "56a80c86143da5d69fb5089023aad683d246f4d407df0ceafb31d8c48feeb8f8"},
-        {"role": "input_b", "path": "/CETC.incoming.20260719165041.63146.2450/data/generated/unit/filtering/lfilter/input/b.csv", "sha256": "30234548a2775f05654337aae0a6b5fd4d0d03451fca289014d65e2fade6488c"},
-        {"role": "input_a", "path": "/CETC.incoming.20260719165041.63146.2450/data/generated/unit/filtering/lfilter/input/a.csv", "sha256": "e60ab03a7d3c74eee97eb1582b57bec0c5233b523711d4da460181d911cab0b1"},
-        {"role": "cpu_signal", "path": "/CETC.incoming.20260719165041.63146.2450/data/generated/unit/filtering/lfilter/output_samples/perf_1d__cpu__signal.csv", "sha256": "b815d4fa7a1eec93b1a00318e8cb5d7331129888cf2b2b58b038f42048bc2174"},
-        {"role": "gpu_signal", "path": "/CETC.incoming.20260719165041.63146.2450/data/generated/unit/filtering/lfilter/output_samples/perf_1d__gpu__signal.csv", "sha256": "afd9e6bfc983eada458502789e03920cb9aaf7d0584dfd84ffa84629f0ed46cd"}
       ]
     }
   ]

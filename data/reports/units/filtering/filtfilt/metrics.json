@@ -1,7 +1,7 @@
 {
   "module": "filtering",
   "operator": "filtfilt",
-  "generated_at": "2026-07-19 08:59:40",
+  "generated_at": "2026-07-19 16:40:42",
   "git_commit": "",
   "gpu_name": "ZQ500-Q QUAD-0",
   "compile_config": {
@@ -16,36 +16,36 @@
     "max_rel_error": 4.85496e-05,
     "mixed_error": 7.49257e-07,
     "rmse": 6.52378e-08,
-    "gpu_e2e_speedup": 0.852842,
-    "gpu_kernel_speedup": 1.40016,
+    "gpu_e2e_speedup": 0.881817,
+    "gpu_kernel_speedup": 1.43577,
     "cpu_perf": {
       "warmup": 5,
       "repeat": 30,
-      "mean_ms": 0.564768,
-      "median_ms": 0.564768,
-      "p95_ms": 0.564768,
-      "min_ms": 0.564768,
-      "max_ms": 0.564768,
+      "mean_ms": 0.577594,
+      "median_ms": 0.577594,
+      "p95_ms": 0.577594,
+      "min_ms": 0.577594,
+      "max_ms": 0.577594,
       "std_ms": 0
     },
     "gpu_e2e_perf": {
       "warmup": 5,
       "repeat": 30,
-      "mean_ms": 0.662219,
-      "median_ms": 0.662219,
-      "p95_ms": 0.662219,
-      "min_ms": 0.662219,
-      "max_ms": 0.662219,
+      "mean_ms": 0.655004,
+      "median_ms": 0.655004,
+      "p95_ms": 0.655004,
+      "min_ms": 0.655004,
+      "max_ms": 0.655004,
       "std_ms": 0
     },
     "gpu_kernel_perf": {
       "warmup": 5,
       "repeat": 30,
-      "mean_ms": 0.40336,
-      "median_ms": 0.40336,
-      "p95_ms": 0.40336,
-      "min_ms": 0.40336,
-      "max_ms": 0.40336,
+      "mean_ms": 0.402289,
+      "median_ms": 0.402289,
+      "p95_ms": 0.402289,
+      "min_ms": 0.402289,
+      "max_ms": 0.402289,
       "std_ms": 0
     },
     "device_storage_cache": {
@@ -164,39 +164,34 @@
       "cpu_perf": {
         "warmup": 5,
         "repeat": 30,
-        "mean_ms": 0.561118,
-        "median_ms": 0.564768,
-        "p95_ms": 0.574923,
-        "min_ms": 0.547423,
-        "max_ms": 0.576223,
-        "std_ms": 0.0108839
+        "mean_ms": 0.572352,
+        "median_ms": 0.577594,
+        "p95_ms": 0.590423,
+        "min_ms": 0.555093,
+        "max_ms": 0.598404,
+        "std_ms": 0.0128786
       },
       "gpu_e2e_perf": {
         "warmup": 5,
         "repeat": 30,
-        "mean_ms": 0.664055,
-        "median_ms": 0.662219,
-        "p95_ms": 0.680824,
-        "min_ms": 0.634444,
-        "max_ms": 0.686154,
-        "std_ms": 0.0106682
+        "mean_ms": 0.673515,
+        "median_ms": 0.655004,
+        "p95_ms": 0.749774,
+        "min_ms": 0.641993,
+        "max_ms": 1.00674,
+        "std_ms": 0.0657236
       },
       "gpu_kernel_perf": {
         "warmup": 5,
         "repeat": 30,
-        "mean_ms": 0.404657,
-        "median_ms": 0.40336,
-        "p95_ms": 0.41881,
-        "min_ms": 0.398648,
-        "max_ms": 0.421178,
-        "std_ms": 0.0053801
+        "mean_ms": 0.449326,
+        "median_ms": 0.402289,
+        "p95_ms": 0.449674,
+        "min_ms": 0.393932,
+        "max_ms": 1.65113,
+        "std_ms": 0.223752
       },
       "artifacts": [
-        {"role": "input_x", "path": "/CETC.incoming.20260719165041.63146.2450/data/generated/unit/filtering/filtfilt/input/x.csv", "sha256": "f7345a65e27db76392399d34cf52b7a996991c53cdf480ea8d362b9a3128c7fd"},
-        {"role": "input_b", "path": "/CETC.incoming.20260719165041.63146.2450/data/generated/unit/filtering/filtfilt/input/b.csv", "sha256": "30234548a2775f05654337aae0a6b5fd4d0d03451fca289014d65e2fade6488c"},
-        {"role": "input_a", "path": "/CETC.incoming.20260719165041.63146.2450/data/generated/unit/filtering/filtfilt/input/a.csv", "sha256": "e60ab03a7d3c74eee97eb1582b57bec0c5233b523711d4da460181d911cab0b1"},
-        {"role": "cpu_signal", "path": "/CETC.incoming.20260719165041.63146.2450/data/generated/unit/filtering/filtfilt/output_samples/perf_iir_pad__cpu__signal.csv", "sha256": "8cb2a37d1660a6c5b4fd8d287ee53964b71f6d54d8b58976e4888b03b561db01"},
-        {"role": "gpu_signal", "path": "/CETC.incoming.20260719165041.63146.2450/data/generated/unit/filtering/filtfilt/output_samples/perf_iir_pad__gpu__signal.csv", "sha256": "cf67d9ba58483a34844c1476c288a2a5e9ee8fa893f0685b5f6464000de42eba"}
       ]
     }
   ]

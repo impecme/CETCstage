@@ -72,15 +72,16 @@
     "rmse": 0.641295
   },
   "timings": {
-    "filter": {"cpu_ms": 7.43982, "gpu_ms": 1.36422},
-    "demod": {"cpu_ms": 3.83336, "gpu_ms": 0.156292},
-    "correlate": {"cpu_ms": 936.123, "gpu_ms": 0.751589},
-    "spectrogram": {"cpu_ms": 21.5469, "gpu_ms": 1.69173},
-    "cwt": {"cpu_ms": 1150.82, "gpu_ms": 3.98495},
-    "feature_fusion": {"cpu_ms": 0.587204, "gpu_ms": 0.257873},
-    "measurement_conversion": {"cpu_ms": 0.0001, "gpu_ms": 0},
-    "kalman": {"cpu_ms": 0.083811, "gpu_ms": 0.092321},
-    "total": {"cpu_ms": 2120.43, "gpu_ms": 8.29897}
+    "input_construction": {"cpu_ms": 2229.29, "gpu_ms": 1.44478, "gpu_kernel_ms": 1.42578},
+    "filter": {"cpu_ms": 7.50141, "gpu_ms": 0.863772, "gpu_kernel_ms": 0.841414},
+    "demod": {"cpu_ms": 3.73022, "gpu_ms": 0.161125, "gpu_kernel_ms": 0.125856},
+    "correlate": {"cpu_ms": 965.607, "gpu_ms": 0.744597, "gpu_kernel_ms": 0.683136},
+    "spectrogram": {"cpu_ms": 20.6957, "gpu_ms": 1.68184, "gpu_kernel_ms": 1.61533},
+    "cwt": {"cpu_ms": 1137.36, "gpu_ms": 3.92511, "gpu_kernel_ms": 3.85975},
+    "feature_fusion": {"cpu_ms": 0.552817, "gpu_ms": 0.241212, "gpu_kernel_ms": 0.215504},
+    "measurement_conversion": {"cpu_ms": 0.00012, "gpu_ms": 0, "gpu_kernel_ms": 0},
+    "kalman": {"cpu_ms": 0.100267, "gpu_ms": 0.098737, "gpu_kernel_ms": 0.065552},
+    "total": {"cpu_ms": 4364.84, "gpu_ms": 9.16118, "gpu_kernel_ms": 8.83232}
   },
   "truth_track": [602, 605, 608, 611, 614, 617, 620, 623, 626, 629, 632, 635, 638, 641, 644, 647, 650, 653, 656, 659, 662, 665, 668, 671, 674, 677, 680, 683, 686, 689, 692, 695, 698, 701, 704, 707, 710, 713, 716, 719, 722, 725, 728, 731, 734, 737, 740, 743, 746, 749, 752, 755, 758, 761, 764, 767, 770, 773, 776, 779, 782, 785, 788, 791],
   "cpu_peak_track": [602, 605, 607, 610, 613, 617, 619, 622, 626, 629, 631, 636, 637, 642, 644, 646, 651, 654, 656, 659, 663, 666, 668, 670, 674, 679, 679, 682, 684, 689, 691, 696, 697, 701, 704, 707, 710, 715, 716, 719, 722, 725, 729, 731, 735, 737, 741, 743, 746, 749, 753, 755, 758, 760, 765, 769, 769, 774, 776, 779, 782, 785, 789, 791],
@@ -97,7 +98,7 @@
       {"name": "cpu_gpu_track_match", "pass": true, "value": 1, "limit": 1, "detail": "CPU/GPU peak tracks must match within task tolerance"},
       {"name": "gpu_matches_truth_within_tolerance", "pass": true, "value": 1, "limit": 1, "detail": "GPU Kalman track must match truth within RMSE tolerance"},
       {"name": "kalman_rmse", "pass": true, "value": 0.641295, "limit": 2, "detail": "Kalman RMSE is the business-level track error gate"},
-      {"name": "gpu_total_ms", "pass": true, "value": 8.29897, "limit": 200, "detail": "GPU total time must stay within baseline multiplier and hard limit"},
+      {"name": "gpu_total_ms", "pass": true, "value": 9.16118, "limit": 200, "detail": "GPU total time must stay within baseline multiplier and hard limit"},
       {"name": "filtered_mixed_error", "pass": true, "value": 5.42052e-06, "limit": 0.0001, "detail": "filtered CPU/GPU mixed error"},
       {"name": "demod_mixed_error", "pass": true, "value": 0.000345469, "limit": 0.0005, "detail": "demod score CPU/GPU mixed error"},
       {"name": "correlate_mixed_error", "pass": true, "value": 7.69967e-06, "limit": 0.0001, "detail": "correlate CPU/GPU mixed error"},
@@ -108,36 +109,36 @@
       {"name": "kalman_cpu_gpu_rmse", "pass": true, "value": 7.62939e-06, "limit": 2, "detail": "Kalman CPU/GPU track RMSE"},
       {"name": "invalid_input_checks", "pass": true, "value": 1, "limit": 1, "detail": "invalid configuration matrix must raise std::invalid_argument with field names"},
       {"name": "repeat_business_consistency", "pass": true, "value": 1, "limit": 1, "detail": "all repeat iterations must pass business and numeric checks"},
-      {"name": "gpu_total_stability", "pass": true, "value": 0.00673869, "limit": 0.35, "detail": "GPU total time relative jitter across repeats"},
+      {"name": "gpu_total_stability", "pass": true, "value": 0.0313678, "limit": 0.35, "detail": "GPU total time relative jitter across repeats"},
       {"name": "gpu_free_memory_drift_mib", "pass": true, "value": 16, "limit": 32, "detail": "final GPU free memory must not drop materially after repeats"},
-      {"name": "rss_current_drift_mib", "pass": true, "value": 0.878906, "limit": 64, "detail": "process current RSS must not grow materially after repeats"}
+      {"name": "rss_current_drift_mib", "pass": true, "value": 1.08203, "limit": 64, "detail": "process current RSS must not grow materially after repeats"}
     ]
   },
   "resource_usage": {
     "before":     {
-      "rss_current_mib": 144.203,
-      "rss_peak_mib": 144.203,
+      "rss_current_mib": 144.086,
+      "rss_peak_mib": 144.086,
       "gpu_free_mib": 16090.8,
       "gpu_total_mib": 16384,
       "gpu_device": 0,
       "gpu_device_name": "ZQ500-Q QUAD-0"
     },
     "after":     {
-      "rss_current_mib": 514.285,
-      "rss_peak_mib": 514.359,
+      "rss_current_mib": 515.359,
+      "rss_peak_mib": 515.359,
       "gpu_free_mib": 16026.8,
       "gpu_total_mib": 16384,
       "gpu_device": 0,
       "gpu_device_name": "ZQ500-Q QUAD-0"
     },
     "gpu_free_delta_mib": -64,
-    "rss_current_delta_mib": 370.082
+    "rss_current_delta_mib": 371.273
   },
   "repeat_runs": [
-    {"index": 1, "pass": true, "business_numeric_pass": true, "cpu_total_ms": 2067.82, "gpu_total_ms": 15.2097, "gpu_free_mib": 16042.8, "rss_current_mib": 513.406},
-    {"index": 2, "pass": true, "business_numeric_pass": true, "cpu_total_ms": 2075.4, "gpu_total_ms": 8.26126, "gpu_free_mib": 16026.8, "rss_current_mib": 514.266},
-    {"index": 3, "pass": true, "business_numeric_pass": true, "cpu_total_ms": 2074.19, "gpu_total_ms": 8.19093, "gpu_free_mib": 16026.8, "rss_current_mib": 514.305},
-    {"index": 4, "pass": true, "business_numeric_pass": true, "cpu_total_ms": 2065.99, "gpu_total_ms": 8.23174, "gpu_free_mib": 16026.8, "rss_current_mib": 514.359},
-    {"index": 5, "pass": true, "business_numeric_pass": true, "cpu_total_ms": 2120.43, "gpu_total_ms": 8.29897, "gpu_free_mib": 16026.8, "rss_current_mib": 514.285}
+    {"index": 1, "pass": true, "business_numeric_pass": true, "cpu_total_ms": 4329.5, "gpu_total_ms": 20.2314, "gpu_free_mib": 16042.8, "rss_current_mib": 514.277},
+    {"index": 2, "pass": true, "business_numeric_pass": true, "cpu_total_ms": 4396, "gpu_total_ms": 9.41249, "gpu_free_mib": 16026.8, "rss_current_mib": 515.23},
+    {"index": 3, "pass": true, "business_numeric_pass": true, "cpu_total_ms": 4331.06, "gpu_total_ms": 9.739, "gpu_free_mib": 16026.8, "rss_current_mib": 515.23},
+    {"index": 4, "pass": true, "business_numeric_pass": true, "cpu_total_ms": 4448.24, "gpu_total_ms": 9.5032, "gpu_free_mib": 16026.8, "rss_current_mib": 515.359},
+    {"index": 5, "pass": true, "business_numeric_pass": true, "cpu_total_ms": 4364.84, "gpu_total_ms": 9.16118, "gpu_free_mib": 16026.8, "rss_current_mib": 515.359}
   ]
 }

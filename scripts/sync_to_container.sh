@@ -181,24 +181,18 @@ if [[ "${EUID}" -ne 0 ]]; then
 fi
 
 if [[ "${DESTINATION_READY}" -eq 0 ]]; then
-  if "${docker_command[@]}" exec "${CONTAINER}" test -e "${DESTINATION}"; then
-    die "container destination already exists: ${CONTAINER}:${DESTINATION}"
-  fi
-  if ! "${docker_command[@]}" exec "${CONTAINER}" mkdir "${DESTINATION}"; then
-    cat >&2 <<EOF
-[container-sync] unable to create the container directory non-interactively.
+  cat <<EOF
+[container-sync] The account cannot create directories with non-interactive docker exec.
 [container-sync] Create this exact unique directory through the permitted shell:
   sudo docker exec -it ${CONTAINER} bash
   mkdir ${DESTINATION}
   exit
-[container-sync] Then rerun:
+[container-sync] Then copy the verified stage with:
   scripts/sync_to_container.sh --container ${CONTAINER} --destination ${DESTINATION} --destination-ready
 EOF
-    exit 3
-  fi
-else
-  echo "[container-sync] using user-prepared destination ${CONTAINER}:${DESTINATION}"
+  exit 3
 fi
+echo "[container-sync] copying into user-prepared destination ${CONTAINER}:${DESTINATION}"
 "${docker_command[@]}" cp "${STAGE}/." "${CONTAINER}:${DESTINATION}/"
 
 READBACK="${STAGE_PARENT}/readback"

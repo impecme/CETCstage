@@ -1,6 +1,6 @@
 {
   "calculation_step_count": 14,
-  "generated_at": "2026-07-19T12:17:52+00:00",
+  "generated_at": "2026-07-20T03:48:10+00:00",
   "operator_count": 81,
   "operators": {
     "expected": 81,
@@ -22,15 +22,15 @@
   },
   "provenance": {
     "input_evidence_file_count": 331,
-    "input_evidence_fingerprint": "2d6c67dfc16902c44ff8aadd71aa1a528840b4d096a8bb1564d22f53d1afdfc2",
-    "run_id": "current-20260719-165100",
-    "source_content_fingerprint": "4944706f2b9ceb831999fcf9b81ffb511e9b94d370605e63dda49123dbd0c29d",
-    "source_file_count": 694
+    "input_evidence_fingerprint": "abc130181d78b003f960cc5307c6a8d1718c645137259c4d60f581d674f7f770",
+    "run_id": "current-20260720-task-optimized-l6",
+    "source_content_fingerprint": "b3374633779c22b94c6b657b08baa3650a69239149329816fa90d4c2263c774e",
+    "source_file_count": 695
   },
   "report_schema_version": "cetc_final_reports_v1",
-  "run_id": "current-20260719-165100",
+  "run_id": "current-20260720-task-optimized-l6",
   "schema_version": "cetc_final_reports_v1",
-  "source_fingerprint": "4944706f2b9ceb831999fcf9b81ffb511e9b94d370605e63dda49123dbd0c29d",
+  "source_fingerprint": "b3374633779c22b94c6b657b08baa3650a69239149329816fa90d4c2263c774e",
   "status": "passed",
   "task_count": 2,
   "task_scale_report_count": 12,
@@ -51,45 +51,45 @@
     "results": {
       "task1_radar": {
         "final": {
-          "scale_level": 3,
-          "stage_row_count": 7,
+          "scale_level": 6,
+          "stage_row_count": 8,
           "step_count": 6,
           "validation_check_count": 12
         },
         "scales": {
           "L1": {
             "scale_level": 1,
-            "stage_row_count": 7,
+            "stage_row_count": 8,
             "step_count": 6,
             "validation_check_count": 12
           },
           "L2": {
             "scale_level": 2,
-            "stage_row_count": 7,
+            "stage_row_count": 8,
             "step_count": 6,
             "validation_check_count": 12
           },
           "L3": {
             "scale_level": 3,
-            "stage_row_count": 7,
+            "stage_row_count": 8,
             "step_count": 6,
             "validation_check_count": 12
           },
           "L4": {
             "scale_level": 4,
-            "stage_row_count": 7,
+            "stage_row_count": 8,
             "step_count": 6,
             "validation_check_count": 12
           },
           "L5": {
             "scale_level": 5,
-            "stage_row_count": 7,
+            "stage_row_count": 8,
             "step_count": 6,
             "validation_check_count": 12
           },
           "L6": {
             "scale_level": 6,
-            "stage_row_count": 7,
+            "stage_row_count": 8,
             "step_count": 6,
             "validation_check_count": 12
           }
@@ -97,45 +97,45 @@
       },
       "task2_features": {
         "final": {
-          "scale_level": 3,
-          "stage_row_count": 9,
+          "scale_level": 6,
+          "stage_row_count": 10,
           "step_count": 8,
           "validation_check_count": 17
         },
         "scales": {
           "L1": {
             "scale_level": 1,
-            "stage_row_count": 9,
+            "stage_row_count": 10,
             "step_count": 8,
             "validation_check_count": 17
           },
           "L2": {
             "scale_level": 2,
-            "stage_row_count": 9,
+            "stage_row_count": 10,
             "step_count": 8,
             "validation_check_count": 17
           },
           "L3": {
             "scale_level": 3,
-            "stage_row_count": 9,
+            "stage_row_count": 10,
             "step_count": 8,
             "validation_check_count": 17
           },
           "L4": {
             "scale_level": 4,
-            "stage_row_count": 9,
+            "stage_row_count": 10,
             "step_count": 8,
             "validation_check_count": 17
           },
           "L5": {
             "scale_level": 5,
-            "stage_row_count": 9,
+            "stage_row_count": 10,
             "step_count": 8,
             "validation_check_count": 17
           },
           "L6": {
             "scale_level": 6,
-            "stage_row_count": 9,
+            "stage_row_count": 10,
             "step_count": 8,
             "validation_check_count": 17
           }

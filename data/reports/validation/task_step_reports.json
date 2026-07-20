@@ -3,17 +3,17 @@
   "task_count": 2,
   "step_count": 14,
   "error_available_count": 14,
-  "kernel_available_count": 0,
+  "kernel_available_count": 14,
   "tasks": {
     "task1_radar": {
       "step_count": 6,
       "error_available_count": 6,
-      "kernel_available_count": 0
+      "kernel_available_count": 6
     },
     "task2_features": {
       "step_count": 8,
       "error_available_count": 8,
-      "kernel_available_count": 0
+      "kernel_available_count": 8
     }
   },
   "failure_count": 0,

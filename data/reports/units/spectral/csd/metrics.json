@@ -1,7 +1,7 @@
 {
   "module": "spectral",
   "operator": "csd",
-  "generated_at": "2026-07-19 09:08:24",
+  "generated_at": "2026-07-19 16:49:07",
   "git_commit": "",
   "gpu_name": "ZQ500-Q QUAD-0",
   "compile_config": {
@@ -16,26 +16,26 @@
     "max_rel_error": 0.333182,
     "mixed_error": 1.81576e-07,
     "rmse": 5.89024e-10,
-    "gpu_e2e_speedup": 9.91213,
-    "gpu_kernel_speedup": 9.95072,
+    "gpu_e2e_speedup": 9.90234,
+    "gpu_kernel_speedup": 9.94417,
     "cpu_perf": {
       "warmup": 5,
       "repeat": 30,
-      "mean_ms": 187.21,
-      "median_ms": 187.21,
-      "p95_ms": 187.21,
-      "min_ms": 187.21,
-      "max_ms": 187.21,
+      "mean_ms": 187.086,
+      "median_ms": 187.086,
+      "p95_ms": 187.086,
+      "min_ms": 187.086,
+      "max_ms": 187.086,
       "std_ms": 0
     },
     "gpu_e2e_perf": {
       "warmup": 5,
       "repeat": 30,
-      "mean_ms": 18.887,
-      "median_ms": 18.887,
-      "p95_ms": 18.887,
-      "min_ms": 18.887,
-      "max_ms": 18.887,
+      "mean_ms": 18.8931,
+      "median_ms": 18.8931,
+      "p95_ms": 18.8931,
+      "min_ms": 18.8931,
+      "max_ms": 18.8931,
       "std_ms": 0
     },
     "gpu_kernel_perf": {
@@ -164,41 +164,34 @@
       "cpu_perf": {
         "warmup": 5,
         "repeat": 30,
-        "mean_ms": 188.595,
-        "median_ms": 187.21,
-        "p95_ms": 197.676,
-        "min_ms": 183.365,
-        "max_ms": 198.497,
-        "std_ms": 5.01869
+        "mean_ms": 188.089,
+        "median_ms": 187.086,
+        "p95_ms": 192.681,
+        "min_ms": 186.304,
+        "max_ms": 193.631,
+        "std_ms": 2.0643
       },
       "gpu_e2e_perf": {
         "warmup": 5,
         "repeat": 30,
-        "mean_ms": 18.8832,
-        "median_ms": 18.887,
-        "p95_ms": 18.9144,
-        "min_ms": 18.8478,
-        "max_ms": 18.9218,
-        "std_ms": 0.0211263
+        "mean_ms": 18.8921,
+        "median_ms": 18.8931,
+        "p95_ms": 18.9364,
+        "min_ms": 18.8437,
+        "max_ms": 18.9908,
+        "std_ms": 0.0324315
       },
       "gpu_kernel_perf": {
         "warmup": 5,
         "repeat": 30,
-        "mean_ms": 18.8121,
+        "mean_ms": 18.8139,
         "median_ms": 18.8137,
-        "p95_ms": 18.824,
-        "min_ms": 18.7963,
-        "max_ms": 18.8241,
-        "std_ms": 0.00714989
+        "p95_ms": 18.832,
+        "min_ms": 18.7876,
+        "max_ms": 18.8338,
+        "std_ms": 0.00980792
       },
       "artifacts": [
-        {"role": "case_spec", "path": "/CETC.incoming.20260719165041.63146.2450/data/generated/unit/spectral/csd/input/perf_mean_hann__spec.json", "sha256": "f19215e0147c574ceb6fb862ce36dd3915675f132d7f4929b92a0ac4cf2478ad"},
-        {"role": "x_input", "path": "/CETC.incoming.20260719165041.63146.2450/data/generated/unit/spectral/csd/input/perf_mean_hann__x.csv", "sha256": "4ead031ec0819c17a20d3f8b91b93e033019ba0769cb659a37c5d7cc501bf920"},
-        {"role": "y_input", "path": "/CETC.incoming.20260719165041.63146.2450/data/generated/unit/spectral/csd/input/perf_mean_hann__y.csv", "sha256": "5ead17e4a1ec9f6a9a7e1031a49f3ccfbb7bb72c37ea7b7d5204ef78e892fd74"},
-        {"role": "cpu_frequencies", "path": "/CETC.incoming.20260719165041.63146.2450/data/generated/unit/spectral/csd/output_samples/perf_mean_hann__cpu__frequencies.csv", "sha256": "e479550ee404d8a92116a14e8ddecb3f40d1802659dfcb637739e35fd96021d0"},
-        {"role": "cpu_values", "path": "/CETC.incoming.20260719165041.63146.2450/data/generated/unit/spectral/csd/output_samples/perf_mean_hann__cpu__values.csv", "sha256": "4a799ea00826fe0d5576afbf1a625c49f4f00f77c09beb8678ef2aba1ce48a76"},
-        {"role": "gpu_frequencies", "path": "/CETC.incoming.20260719165041.63146.2450/data/generated/unit/spectral/csd/output_samples/perf_mean_hann__gpu__frequencies.csv", "sha256": "e479550ee404d8a92116a14e8ddecb3f40d1802659dfcb637739e35fd96021d0"},
-        {"role": "gpu_values", "path": "/CETC.incoming.20260719165041.63146.2450/data/generated/unit/spectral/csd/output_samples/perf_mean_hann__gpu__values.csv", "sha256": "0e247ae26ccf908801a20daf3666744eb81dde25f19e288165014f01e66e993e"}
       ]
     }
   ]

@@ -34,14 +34,13 @@ sudo docker start gpu_04
 sudo docker exec -it gpu_04 bash
 ```
 
-看到容器的 `root@supervisor-X7850H0` 提示符后执行：
+看到容器的 `root@supervisor-X7850H0` 提示符后，最终版命令可以从任意容器目录直接
+执行。`/CETC/scripts/` 下的入口自行定位仓库并初始化 SDK：
 
 ```bash
-cd /CETC
-source /zq500/sdk/env.sh ""
+/CETC/scripts/validate.sh --build-dir build-zx
 ```
 
-空参数用于兼容部分会读取 `$1` 的 SDK 环境脚本，不会隐藏项目构建或测试错误。
 需要确认设备时运行 `dlsmi`。退出当前容器 shell：
 
 ```bash
@@ -69,17 +68,19 @@ scripts/sync_to_container.sh --container gpu_04
 ```
 
 脚本只复制根 `DELIVERY_FILES.txt` 中已审核、排序且无重复的普通文件，并校验
-staging 与回读 SHA256。它不会复制 `.git`、IDE/PPT/复赛资料、build/cache、日志、
-图件或运行样本，也不会覆盖 `/CETC`。成功后会打印唯一的
-`/CETC.incoming.<timestamp>.<pid>.<random>` 目录。
+staging 与回读 SHA256。当前账户不能执行非交互 `docker exec`，所以第一次运行只
+生成唯一的 `/CETC.incoming.<timestamp>.<pid>.<random>` 路径并打印交互建目录指令。
+按提示使用 `sudo docker exec -it gpu_04 bash` 建好目录后，再用脚本打印的
+`--destination ... --destination-ready` 命令调用获准的 `docker cp` 完成传输。
+脚本不会复制 `.git`、IDE/PPT/复赛资料、build/cache、日志、图件或运行样本，也不会
+覆盖 `/CETC`。
 
-进入容器并使用脚本实际打印的 incoming 路径验证：
+进入容器后，可在任意目录使用脚本实际打印的 incoming 路径验证：
 
 ```bash
 sudo docker exec -it gpu_04 bash
-cd /CETC.incoming.20260717220000.12345.6789
-source /zq500/sdk/env.sh ""
-scripts/validate.sh --build-dir build-zx
+/CETC.incoming.20260717220000.12345.6789/scripts/validate.sh \
+  --build-dir build-zx
 ```
 
 上面的时间戳只是格式示例，不能原样照抄。验证与结果取回完成后，确需切换正式
@@ -106,29 +107,30 @@ fi
 
 ## 4. 构建
 
-以下命令在 ZQ500 容器的项目根目录执行：
+以下命令可在 ZQ500 容器的任意目录执行。相对 `build-zx` 始终表示
+`/CETC/build-zx`。
 
 ```bash
-scripts/build.sh --build-dir build-zx
+/CETC/scripts/build.sh --build-dir build-zx
 ```
 
 构建入口固定 `CUSIGNAL_PLATFORM=ZHONGKEXIN`，使用 `dlcc`、C++17 和
 `-x cuda --cuda-gpu-arch=dlgput64`。只构建指定目标时可重复传入 `--target`：
 
 ```bash
-scripts/build.sh --build-dir build-zx --target cusignal_zx_gpu
-scripts/build.sh --build-dir build-zx \
+/CETC/scripts/build.sh --build-dir build-zx --target cusignal_zx_gpu
+/CETC/scripts/build.sh --build-dir build-zx \
   --target task1_radar_demo --target task2_features_demo
 ```
 
-完整参数使用 `scripts/build.sh --help` 查看。
+完整参数使用 `/CETC/scripts/build.sh --help` 查看。
 
 ## 5. 最终验证与演示
 
 最终统一入口：
 
 ```bash
-scripts/validate.sh --build-dir build-zx
+/CETC/scripts/validate.sh --build-dir build-zx
 ```
 
 该入口从干净的运行期目录开始，执行构建、静态契约审计、81 个算子 full case、
@@ -152,29 +154,29 @@ sudo docker cp \
 ```
 
 ```bash
-scripts/validate.sh --build-dir build-zx --fixtures /tmp
+/CETC/scripts/validate.sh --build-dir build-zx --fixtures /tmp
 ```
 
 分项检查和演示：
 
 ```bash
-scripts/test_operators.sh --list
-scripts/test_operators.sh --build-dir build-zx --module spectral
-scripts/test_operators.sh --build-dir build-zx \
+/CETC/scripts/test_operators.sh --list
+/CETC/scripts/test_operators.sh --build-dir build-zx --module spectral
+/CETC/scripts/test_operators.sh --build-dir build-zx \
   --module radartools --operator ambgfun
-scripts/demo.sh --build-dir build-zx --no-build --repeat 5
+/CETC/scripts/demo.sh --build-dir build-zx --no-build --repeat 5
 ```
 
 运行过程中会写入 `data/.reports_staging/unit/`、`data/.reports_staging/demo/` 和
 `data/.reports_staging/runtime/`，随后由 finalizer 只抽取必要的当前数据发布到
 `data/reports/`。任何门禁失败都会停止，且不会发布或替换既有报告。V5.5、
-V6、V7 已关闭，本仓库不提供性能候选生成、选择或绘图入口。
+V6、V7 已关闭。
 
 需要保留完整控制台日志时，在容器 `/tmp` 写入并保留真实退出码：
 
 ```bash
 set -o pipefail
-scripts/validate.sh --build-dir build-zx \
+/CETC/scripts/validate.sh --build-dir build-zx \
   2>&1 | tee /tmp/cetc_delivery_validation_latest.log
 ```
 

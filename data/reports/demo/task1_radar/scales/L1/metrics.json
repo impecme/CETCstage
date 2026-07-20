@@ -57,13 +57,14 @@
     "power": 7723.35
   },
   "timings": {
-    "pulse_compression": {"cpu_ms": 0.975872, "gpu_ms": 0.237663},
-    "pulse_doppler": {"cpu_ms": 0.361884, "gpu_ms": 0.270383},
-    "power_map": {"cpu_ms": 0.00144, "gpu_ms": 0.065551},
-    "ca_cfar": {"cpu_ms": 0.00724, "gpu_ms": 0.261573},
-    "ambgfun": {"cpu_ms": 0.439586, "gpu_ms": 0.251183},
-    "final_detection": {"cpu_ms": 0.00352, "gpu_ms": 0.096861},
-    "total": {"cpu_ms": 1.78954, "gpu_ms": 1.18321}
+    "input_construction": {"cpu_ms": 1.24237, "gpu_ms": 0.147181, "gpu_kernel_ms": 0.108506},
+    "pulse_compression": {"cpu_ms": 0.991805, "gpu_ms": 0.653624, "gpu_kernel_ms": 0.612558},
+    "pulse_doppler": {"cpu_ms": 0.350502, "gpu_ms": 0.330212, "gpu_kernel_ms": 0.29093},
+    "power_map": {"cpu_ms": 0.00139, "gpu_ms": 0.105601, "gpu_kernel_ms": 0.06702},
+    "ca_cfar": {"cpu_ms": 0.00722, "gpu_ms": 0.308431, "gpu_kernel_ms": 0.268602},
+    "ambgfun": {"cpu_ms": 0.445443, "gpu_ms": 0.307422, "gpu_kernel_ms": 0.267142},
+    "final_detection": {"cpu_ms": 0.00258, "gpu_ms": 0.127381, "gpu_kernel_ms": 0.088382},
+    "total": {"cpu_ms": 3.04131, "gpu_ms": 1.97985, "gpu_kernel_ms": 1.70314}
   },
   "pulse_compression_error": {
     "mixed_error": 9.39597e-06,
@@ -98,43 +99,43 @@
     "checks": [
       {"name": "cpu_gpu_detection_match", "pass": true, "value": 1, "limit": 1, "detail": "CPU/GPU detection bins must match"},
       {"name": "gpu_matches_expected_detection", "pass": true, "value": 1, "limit": 1, "detail": "GPU detection must match injected target bin"},
-      {"name": "gpu_total_ms", "pass": true, "value": 1.18321, "limit": 10, "detail": "GPU total time must stay within baseline multiplier and hard limit"},
+      {"name": "gpu_total_ms", "pass": true, "value": 1.97985, "limit": 10, "detail": "GPU total time must stay within baseline multiplier and hard limit"},
       {"name": "pulse_compression_mixed_error", "pass": true, "value": 9.39597e-06, "limit": 0.0001, "detail": "pulse compression CPU/GPU mixed error"},
       {"name": "pulse_doppler_mixed_error", "pass": true, "value": 7.8845e-06, "limit": 0.0001, "detail": "pulse doppler CPU/GPU mixed error"},
       {"name": "cfar_threshold_mixed_error", "pass": true, "value": 0.000262618, "limit": 0.005, "detail": "CFAR threshold mixed error uses task-level intermediate tolerance"},
       {"name": "ambgfun_surface_mixed_error", "pass": true, "value": 8.32307e-06, "limit": 0.0001, "detail": "ambiguity surface CPU/GPU mixed error"},
       {"name": "invalid_input_checks", "pass": true, "value": 1, "limit": 1, "detail": "invalid configuration matrix must raise std::invalid_argument with field names"},
       {"name": "repeat_business_consistency", "pass": true, "value": 1, "limit": 1, "detail": "all repeat iterations must pass business and numeric checks"},
-      {"name": "gpu_total_stability", "pass": true, "value": 0.0314353, "limit": 0.35, "detail": "GPU total time relative jitter across repeats"},
+      {"name": "gpu_total_stability", "pass": true, "value": 0.00742664, "limit": 0.35, "detail": "GPU total time relative jitter across repeats"},
       {"name": "gpu_free_memory_drift_mib", "pass": true, "value": 0, "limit": 32, "detail": "final GPU free memory must not drop materially after repeats"},
       {"name": "rss_current_drift_mib", "pass": true, "value": 0, "limit": 64, "detail": "process current RSS must not grow materially after repeats"}
     ]
   },
   "resource_usage": {
     "before":     {
-      "rss_current_mib": 143.77,
-      "rss_peak_mib": 143.77,
-      "gpu_free_mib": 16090.8,
+      "rss_current_mib": 144.133,
+      "rss_peak_mib": 144.133,
+      "gpu_free_mib": 14938.6,
       "gpu_total_mib": 16384,
       "gpu_device": 0,
       "gpu_device_name": "ZQ500-Q QUAD-0"
     },
     "after":     {
-      "rss_current_mib": 502.855,
-      "rss_peak_mib": 503.719,
-      "gpu_free_mib": 15978.8,
+      "rss_current_mib": 503.211,
+      "rss_peak_mib": 504.078,
+      "gpu_free_mib": 14826.6,
       "gpu_total_mib": 16384,
       "gpu_device": 0,
       "gpu_device_name": "ZQ500-Q QUAD-0"
     },
     "gpu_free_delta_mib": -112,
-    "rss_current_delta_mib": 359.086
+    "rss_current_delta_mib": 359.078
   },
   "repeat_runs": [
-    {"index": 1, "pass": true, "business_numeric_pass": true, "cpu_total_ms": 1.82524, "gpu_total_ms": 1.51429, "gpu_free_mib": 15978.8, "rss_current_mib": 502.855},
-    {"index": 2, "pass": true, "business_numeric_pass": true, "cpu_total_ms": 1.81141, "gpu_total_ms": 1.15219, "gpu_free_mib": 15978.8, "rss_current_mib": 502.855},
-    {"index": 3, "pass": true, "business_numeric_pass": true, "cpu_total_ms": 1.78431, "gpu_total_ms": 1.19596, "gpu_free_mib": 15978.8, "rss_current_mib": 502.855},
-    {"index": 4, "pass": true, "business_numeric_pass": true, "cpu_total_ms": 1.78096, "gpu_total_ms": 1.20326, "gpu_free_mib": 15978.8, "rss_current_mib": 502.855},
-    {"index": 5, "pass": true, "business_numeric_pass": true, "cpu_total_ms": 1.78954, "gpu_total_ms": 1.18321, "gpu_free_mib": 15978.8, "rss_current_mib": 502.855}
+    {"index": 1, "pass": true, "business_numeric_pass": true, "cpu_total_ms": 3.15124, "gpu_total_ms": 7.87298, "gpu_free_mib": 14826.6, "rss_current_mib": 503.211},
+    {"index": 2, "pass": true, "business_numeric_pass": true, "cpu_total_ms": 3.02604, "gpu_total_ms": 2.00376, "gpu_free_mib": 14826.6, "rss_current_mib": 503.211},
+    {"index": 3, "pass": true, "business_numeric_pass": true, "cpu_total_ms": 3.03446, "gpu_total_ms": 1.99021, "gpu_free_mib": 14826.6, "rss_current_mib": 503.211},
+    {"index": 4, "pass": true, "business_numeric_pass": true, "cpu_total_ms": 3.03454, "gpu_total_ms": 1.98777, "gpu_free_mib": 14826.6, "rss_current_mib": 503.211},
+    {"index": 5, "pass": true, "business_numeric_pass": true, "cpu_total_ms": 3.04131, "gpu_total_ms": 1.97985, "gpu_free_mib": 14826.6, "rss_current_mib": 503.211}
   ]
 }

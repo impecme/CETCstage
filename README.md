@@ -42,44 +42,118 @@ CETC/
 
 ## 容器
 
-本队容器是 `gpu_04`。在服务器宿主机执行：
+本队对应容器为 `gpu_04`。Docker 命令在服务器宿主机执行；进入容器后才运行构建、
+测试和 demo 命令。当前账户可使用交互式 shell，但不具备通用非交互
+`sudo docker exec gpu_04 <command>` 权限。
+
+### 直接运行容器中的终版代码
+
+在宿主机复制执行以下命令进入容器：
 
 ```bash
 sudo docker start gpu_04
 sudo docker exec -it gpu_04 bash
 ```
 
-进入容器后：
+容器内的最终运行入口均使用绝对路径。无论当前位于 `/`、`/tmp` 或其他目录，均可直接
+执行下列命令；脚本会自行定位 `/CETC`、加载 SDK，并把相对 `build-zx` 定位为
+`/CETC/build-zx`：
 
 ```bash
-cd /CETC
-source /zq500/sdk/env.sh ""
+/CETC/scripts/validate.sh --build-dir build-zx
+```
+
+`exit` 只退出当前容器 shell，不会停止 `gpu_04`。
+
+### 同步宿主机的新源码
+
+只有在宿主机源码发生修改、需要创建一份新的待验证代码时才执行本节。同步脚本通过
+`docker cp` 传输交付清单中的文件，目标必须是新的空
+`/CETC.incoming.<timestamp>.<pid>.<random>` 目录；不要覆盖正在使用的 `/CETC`。
+
+先在宿主机审核并生成唯一的目标路径：
+
+```bash
+cd /home/usr_04/CETC
+scripts/sync_to_container.sh --dry-run
+scripts/sync_to_container.sh --container gpu_04
+```
+
+第二条命令会打印实际 incoming 路径。将命令输出中的完整路径替换到以下命令，在容器中
+创建该目录后退出：
+
+```bash
+sudo docker exec -it gpu_04 bash
+mkdir /CETC.incoming.<脚本打印的实际目录名>
+exit
+```
+
+再回到宿主机，执行脚本打印的续传命令完成复制及 SHA256 回读校验：
+
+```bash
+cd /home/usr_04/CETC
+scripts/sync_to_container.sh \
+  --container gpu_04 \
+  --destination /CETC.incoming.<脚本打印的实际目录名> \
+  --destination-ready
+```
+
+验证新副本时，容器内任意目录都可直接运行以下命令：
+
+```bash
+sudo docker exec -it gpu_04 bash
+/CETC.incoming.<脚本打印的实际目录名>/scripts/validate.sh \
+  --build-dir build-zx \
+  --run-id current-YYYYMMDD-HHMMSS
+```
+
+完整验证成功后，报告位于该目录的 `data/reports/`。将它们取回并原子发布到宿主机仓库，
+在宿主机执行：
+
+```bash
+cd /home/usr_04/CETC
+scripts/pull_results.sh \
+  --container gpu_04 \
+  --container-root /CETC.incoming.<脚本打印的实际目录名> \
+  --promote-reports
 ```
 
 ## 构建与运行
 
-先在容器中构建：
+以下命令均可在容器任意目录执行。
+
+先构建：
 
 ```bash
-scripts/build.sh --build-dir build-zx
+/CETC/scripts/build.sh --build-dir build-zx
 ```
 
-构建并运行两个任务 demo，使用默认 L3 数据规模：
+构建并运行两个任务 demo，使用默认 L6 高并行数据规模：
 
 ```bash
-scripts/demo.sh --build-dir build-zx --build --repeat 5
+/CETC/scripts/demo.sh --build-dir build-zx --build --repeat 5
 ```
+
+在不修改源码的前提下探索任务输入形状、比较实际加速比，并把中间日志保留在容器
+`/tmp`，可运行：
+
+```bash
+/CETC/scripts/explore_task_acceleration.sh --build-dir build-zx --task both --repeat 3
+```
+
+探索脚本只保留通过 CPU/GPU 数值验证的候选，并按端到端加速比输出排序；它不会将探索
+结果发布为最终报告。确定候选后，应以 `repeat=5` 单独复测，再运行正式 demo 生成报告。
 
 构建并运行全部算子，使用每个算子 manifest 中定义的默认 full case：
 
 ```bash
-scripts/test_operators.sh --build-dir build-zx --case-set full
+/CETC/scripts/test_operators.sh --build-dir build-zx --case-set full
 ```
 
 构建并运行指定算子，使用该算子 manifest 中定义的默认 full case：
 
 ```bash
-scripts/test_operators.sh \
+/CETC/scripts/test_operators.sh \
   --build-dir build-zx \
   --module filtering \
   --operator wiener \
@@ -89,14 +163,14 @@ scripts/test_operators.sh \
 查看可运行的模块和算子：
 
 ```bash
-scripts/test_operators.sh --list
+/CETC/scripts/test_operators.sh --list
 ```
 
 执行完整验证，包括构建、81 个算子、Task1/Task2 的 L1-L6、接口/dtype/任务步骤审计
 及报告发布：
 
 ```bash
-scripts/validate.sh --build-dir build-zx
+/CETC/scripts/validate.sh --build-dir build-zx
 ```
 
 完整验证成功后，当前报告发布到 `data/reports/`：

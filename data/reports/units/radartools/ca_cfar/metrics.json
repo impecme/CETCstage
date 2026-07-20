@@ -1,7 +1,7 @@
 {
   "module": "radartools",
   "operator": "ca_cfar",
-  "generated_at": "2026-07-19 09:06:32",
+  "generated_at": "2026-07-19 16:47:21",
   "git_commit": "",
   "gpu_name": "ZQ500-Q QUAD-0",
   "compile_config": {
@@ -16,36 +16,36 @@
     "max_rel_error": 0.00320005,
     "mixed_error": 0,
     "rmse": 0.00116818,
-    "gpu_e2e_speedup": 7.3055,
-    "gpu_kernel_speedup": 9.48935,
+    "gpu_e2e_speedup": 7.85204,
+    "gpu_kernel_speedup": 9.73243,
     "cpu_perf": {
       "warmup": 5,
       "repeat": 30,
-      "mean_ms": 9.10666,
-      "median_ms": 9.10666,
-      "p95_ms": 9.10666,
-      "min_ms": 9.10666,
-      "max_ms": 9.10666,
+      "mean_ms": 9.28336,
+      "median_ms": 9.28336,
+      "p95_ms": 9.28336,
+      "min_ms": 9.28336,
+      "max_ms": 9.28336,
       "std_ms": 0
     },
     "gpu_e2e_perf": {
       "warmup": 5,
       "repeat": 30,
-      "mean_ms": 1.24655,
-      "median_ms": 1.24655,
-      "p95_ms": 1.24655,
-      "min_ms": 1.24655,
-      "max_ms": 1.24655,
+      "mean_ms": 1.18229,
+      "median_ms": 1.18229,
+      "p95_ms": 1.18229,
+      "min_ms": 1.18229,
+      "max_ms": 1.18229,
       "std_ms": 0
     },
     "gpu_kernel_perf": {
       "warmup": 5,
       "repeat": 30,
-      "mean_ms": 0.959672,
-      "median_ms": 0.959672,
-      "p95_ms": 0.959672,
-      "min_ms": 0.959672,
-      "max_ms": 0.959672,
+      "mean_ms": 0.953858,
+      "median_ms": 0.953858,
+      "p95_ms": 0.953858,
+      "min_ms": 0.953858,
+      "max_ms": 0.953858,
       "std_ms": 0
     },
     "device_storage_cache": {
@@ -199,40 +199,34 @@
       "cpu_perf": {
         "warmup": 5,
         "repeat": 30,
-        "mean_ms": 9.10879,
-        "median_ms": 9.10666,
-        "p95_ms": 9.42335,
-        "min_ms": 8.93007,
-        "max_ms": 9.45598,
-        "std_ms": 0.150475
+        "mean_ms": 9.27603,
+        "median_ms": 9.28336,
+        "p95_ms": 9.39981,
+        "min_ms": 9.11232,
+        "max_ms": 9.40414,
+        "std_ms": 0.0813071
       },
       "gpu_e2e_perf": {
         "warmup": 5,
         "repeat": 30,
-        "mean_ms": 1.2327,
-        "median_ms": 1.24655,
-        "p95_ms": 1.29296,
-        "min_ms": 1.18322,
-        "max_ms": 1.297,
-        "std_ms": 0.0378127
+        "mean_ms": 1.18834,
+        "median_ms": 1.18229,
+        "p95_ms": 1.2446,
+        "min_ms": 1.1667,
+        "max_ms": 1.25364,
+        "std_ms": 0.0234315
       },
       "gpu_kernel_perf": {
         "warmup": 5,
         "repeat": 30,
-        "mean_ms": 0.962031,
-        "median_ms": 0.959672,
-        "p95_ms": 0.975206,
-        "min_ms": 0.949646,
-        "max_ms": 0.979154,
-        "std_ms": 0.00780523
+        "mean_ms": 0.954742,
+        "median_ms": 0.953858,
+        "p95_ms": 0.95942,
+        "min_ms": 0.95165,
+        "max_ms": 0.96018,
+        "std_ms": 0.00236985
       },
       "artifacts": [
-        {"role": "case_spec", "path": "/CETC.incoming.20260719165041.63146.2450/data/generated/unit/radartools/ca_cfar/input/perf_2d__spec.json", "sha256": "6b51a5a3f9ef6206e7ae25e68a70910e4dc26ddb646a91f0a03bc583f628d791"},
-        {"role": "x_input", "path": "/CETC.incoming.20260719165041.63146.2450/data/generated/unit/radartools/ca_cfar/input/perf_2d__x.csv", "sha256": "c2076caec9b1fcca35912bc023d502299de01a1a0c6146f31d79be353cf8c8ca"},
-        {"role": "cpu_threshold", "path": "/CETC.incoming.20260719165041.63146.2450/data/generated/unit/radartools/ca_cfar/output_samples/perf_2d__cpu__threshold.csv", "sha256": "8b096024e75cf4a3c7975ce62d016212b7e07d363bc8a28d092b38a312b7d9b0"},
-        {"role": "cpu_detections", "path": "/CETC.incoming.20260719165041.63146.2450/data/generated/unit/radartools/ca_cfar/output_samples/perf_2d__cpu__detections.csv", "sha256": "8b096024e75cf4a3c7975ce62d016212b7e07d363bc8a28d092b38a312b7d9b0"},
-        {"role": "gpu_threshold", "path": "/CETC.incoming.20260719165041.63146.2450/data/generated/unit/radartools/ca_cfar/output_samples/perf_2d__gpu__threshold.csv", "sha256": "8b096024e75cf4a3c7975ce62d016212b7e07d363bc8a28d092b38a312b7d9b0"},
-        {"role": "gpu_detections", "path": "/CETC.incoming.20260719165041.63146.2450/data/generated/unit/radartools/ca_cfar/output_samples/perf_2d__gpu__detections.csv", "sha256": "8b096024e75cf4a3c7975ce62d016212b7e07d363bc8a28d092b38a312b7d9b0"}
       ]
     }
   ]

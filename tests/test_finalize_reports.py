@@ -229,6 +229,10 @@ class FinalizeReportsTest(unittest.TestCase):
         ).read_text(encoding="utf-8").splitlines()[0]
         self.assertIn("GPU_kernel最小运行时间_ms", table_header)
         self.assertIn("GPU_kernel最大运行时间_ms", table_header)
+        self.assertNotIn(
+            b"\r\n",
+            (self.output / "units/benchmarks/summary.csv").read_bytes(),
+        )
         verified = self.run_finalizer("--verify")
         self.assertEqual(verified.returncode, 0, verified.stderr)
 
@@ -248,6 +252,33 @@ class FinalizeReportsTest(unittest.TestCase):
         completed = self.run_finalizer()
         self.assertNotEqual(completed.returncode, 0)
         self.assertIn("validation.pass must be true", completed.stderr)
+        self.assertFalse(self.output.exists())
+
+    def test_cold_start_timing_outlier_does_not_reject_business_valid_task(self) -> None:
+        path = self.reports / "demo/task1_radar/latest_metrics.json"
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        payload["repeat_runs"] = [
+            {"index": 1, "pass": False, "business_numeric_pass": True},
+            {"index": 2, "pass": True, "business_numeric_pass": True},
+        ]
+        write_json(path, payload)
+
+        completed = self.run_finalizer()
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+
+    def test_repeat_business_failure_is_rejected(self) -> None:
+        path = self.reports / "demo/task1_radar/latest_metrics.json"
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        payload["repeat_runs"] = [
+            {"index": 1, "pass": True, "business_numeric_pass": False},
+        ]
+        write_json(path, payload)
+
+        completed = self.run_finalizer()
+
+        self.assertNotEqual(completed.returncode, 0)
+        self.assertIn("failed business or numeric validation", completed.stderr)
         self.assertFalse(self.output.exists())
 
     def test_failure_does_not_modify_existing_final(self) -> None:

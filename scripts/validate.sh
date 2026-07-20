@@ -76,6 +76,17 @@ while [[ $# -gt 0 ]]; do
 done
 
 cd "${PROJECT_ROOT}"
+
+# The SDK environment is required by platform probe binaries below.  Do this in
+# the validation process itself so direct invocation does not rely on a caller
+# having already sourced the SDK environment.
+if [[ -f /zq500/sdk/env.sh ]]; then
+  set +u
+  # shellcheck source=/dev/null
+  source /zq500/sdk/env.sh ""
+  set -u
+fi
+
 PUBLISHED_REPORT_ROOT="$(realpath -m data/reports)"
 REPORT_ROOT="$(realpath -m "${REPORT_ROOT}")"
 case "${REPORT_ROOT}" in

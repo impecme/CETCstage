@@ -89,7 +89,12 @@ namespace cusignal_demo::task1_radar
     struct DemoOptions
     {
         int repeat = 1;
-        int scale_level = 3;
+        int scale_level = 6;
+        std::optional<int> num_pulses;
+        std::optional<int> samples_per_pulse;
+        std::optional<int> template_length;
+        std::optional<int> pulse_compression_nfft;
+        std::optional<int> pulse_doppler_nfft;
         bool invalid_input_checks = false;
         bool skip_timing_validation = false;
     };
@@ -180,17 +185,30 @@ namespace cusignal_demo::task1_radar
             config.pulse_doppler_nfft = 128;
             break;
         case 6:
-            config.num_pulses = 192;
-            config.samples_per_pulse = 1536;
-            config.template_length = 384;
-            config.pulse_compression_nfft = 2048;
-            config.pulse_doppler_nfft = 256;
+            config.num_pulses = 128;
+            config.samples_per_pulse = 4096;
+            config.template_length = 1024;
+            config.pulse_compression_nfft = 4096;
+            config.pulse_doppler_nfft = 128;
             break;
         default:
             break;
         }
         config.delay_samples = std::max(1, config.samples_per_pulse * 3 / 16);
         return config;
+    }
+
+    void apply_scenario_overrides(ScenarioConfig &config, const DemoOptions &options)
+    {
+        if (options.num_pulses) config.num_pulses = *options.num_pulses;
+        if (options.samples_per_pulse)
+        {
+            config.samples_per_pulse = *options.samples_per_pulse;
+            config.delay_samples = std::max(1, config.samples_per_pulse * 3 / 16);
+        }
+        if (options.template_length) config.template_length = *options.template_length;
+        if (options.pulse_compression_nfft) config.pulse_compression_nfft = *options.pulse_compression_nfft;
+        if (options.pulse_doppler_nfft) config.pulse_doppler_nfft = *options.pulse_doppler_nfft;
     }
 
     ValidationThresholds thresholds_for_scale_level(int scale_level)
@@ -466,6 +484,25 @@ namespace cusignal_demo::task1_radar
                     throw std::invalid_argument("--scale-level must be in [1, 6]");
                 }
             }
+            else if (arg == "--num-pulses" || arg == "--samples-per-pulse" ||
+                     arg == "--template-length" || arg == "--pulse-compression-nfft" ||
+                     arg == "--pulse-doppler-nfft")
+            {
+                if (index + 1 >= argc)
+                {
+                    throw std::invalid_argument(arg + " requires a positive integer");
+                }
+                const int value = std::atoi(argv[++index]);
+                if (value <= 0)
+                {
+                    throw std::invalid_argument(arg + " must be a positive integer");
+                }
+                if (arg == "--num-pulses") options.num_pulses = value;
+                else if (arg == "--samples-per-pulse") options.samples_per_pulse = value;
+                else if (arg == "--template-length") options.template_length = value;
+                else if (arg == "--pulse-compression-nfft") options.pulse_compression_nfft = value;
+                else options.pulse_doppler_nfft = value;
+            }
             else if (arg == "--invalid-input-checks")
             {
                 options.invalid_input_checks = true;
@@ -477,7 +514,9 @@ namespace cusignal_demo::task1_radar
             else if (arg == "--help" || arg == "-h")
             {
                 std::cout << "usage: task1_radar_demo [--repeat N] [--scale-level 1..6] [--invalid-input-checks] "
-                             "[--skip-timing-validation]\n";
+                             "[--skip-timing-validation] [--num-pulses N] [--samples-per-pulse N] "
+                             "[--template-length N] [--pulse-compression-nfft N] "
+                             "[--pulse-doppler-nfft N]\n";
                 std::exit(0);
             }
             else
@@ -598,7 +637,10 @@ namespace cusignal_demo::task1_radar
         return stream.str();
     }
 
-    std::string resource_usage_json(const ResourceSnapshot &before, const ResourceSnapshot &after, int indent = 2)
+    std::string resource_usage_json(
+        const ResourceSnapshot &before,
+        const ResourceSnapshot &after,
+        int indent = 2)
     {
         const std::string pad(static_cast<std::size_t>(indent), ' ');
         const std::string child(static_cast<std::size_t>(indent + 2), ' ');
@@ -1696,9 +1738,11 @@ namespace cusignal_demo::task1_radar
     DemoRunResult run_once(const ScenarioConfig &config)
     {
         validate_config(config);
-        auto [inputs, input_cpu_ms] = measure_cpu_ms([&]() {
+        auto inputs_measured = measure_cpu_ms([&]() {
             return build_task_inputs(config);
         });
+        TaskInputs inputs = std::move(inputs_measured.first);
+        const float input_cpu_ms = inputs_measured.second;
         CpuArtifacts cpu = run_cpu_pipeline_from_input(config, inputs.tx_template, inputs.rx_matrix);
         const ComplexArray noiseless_rx = simulate_rx_matrix(config, cpu.tx_template, false);
         const CpuArtifacts noiseless = run_cpu_pipeline_from_input(config, cpu.tx_template, noiseless_rx);
@@ -1863,7 +1907,8 @@ namespace cusignal_demo::task1_radar
 
     int run(const DemoOptions &options)
     {
-        const ScenarioConfig config = scenario_for_scale_level(options.scale_level);
+        ScenarioConfig config = scenario_for_scale_level(options.scale_level);
+        apply_scenario_overrides(config, options);
         validate_config(config);
         const ValidationThresholds thresholds = thresholds_for_scale_level(config.scale_level);
         const bool invalid_checks_passed = options.invalid_input_checks ? run_invalid_input_checks() : true;
@@ -1962,6 +2007,32 @@ namespace cusignal_demo::task1_radar
                   << " scale_level=L" << config.scale_level
                   << " invalid_input_checks=" << bool_json(options.invalid_input_checks)
                   << " skip_timing_validation=" << bool_json(options.skip_timing_validation) << '\n';
+        const auto timing_for = [&](const std::string &name) -> const StageTiming & {
+            const auto iter = std::find_if(
+                final_run.stage_timings.begin(), final_run.stage_timings.end(),
+                [&](const StageTiming &timing) { return timing.name == name; });
+            if (iter == final_run.stage_timings.end())
+            {
+                throw std::runtime_error("missing stage timing: " + name);
+            }
+            return *iter;
+        };
+        const float speedup = final_run.gpu_total_ms > 0.0f
+            ? final_run.cpu_total_ms / final_run.gpu_total_ms
+            : 0.0f;
+        std::cout << std::fixed << std::setprecision(3)
+                  << "[task1_radar] key_metrics shape=" << config.num_pulses << 'x'
+                  << config.samples_per_pulse
+                  << " template_length=" << config.template_length
+                  << " cpu_total_ms=" << final_run.cpu_total_ms
+                  << " gpu_total_ms=" << final_run.gpu_total_ms
+                  << " gpu_kernel_total_ms=" << gpu_kernel_total_ms(final_run.stage_timings)
+                  << " speedup=" << speedup << "x\n"
+                  << "[task1_radar] hotspot_gpu_ms pulse_compression="
+                  << timing_for("pulse_compression").gpu_ms
+                  << " pulse_doppler=" << timing_for("pulse_doppler").gpu_ms
+                  << " ca_cfar=" << timing_for("ca_cfar").gpu_ms
+                  << " ambgfun=" << timing_for("ambgfun").gpu_ms << '\n';
         std::cout << "reports       : "
                   << (report_root() / "latest_summary.md").lexically_relative(repo_root()).string() << '\n';
         return 0;

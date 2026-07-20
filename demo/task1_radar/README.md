@@ -29,20 +29,20 @@
 
 ## Fixed Scenario
 
-- single-target baseline, equivalent to scale `L3`
+- single-target high-parallelism scenario, equivalent to scale `L6`
 - `fs=1e6`
-- `num_pulses=64`
-- `samples_per_pulse=256`
-- `template_length=64`
+- `num_pulses=128`
+- `samples_per_pulse=4096`
+- `template_length=1024`
 - `prf=2000`
-- `delay_samples=48`
+- `delay_samples=768`
 - `doppler_hz=125`
 - `snr_db=20`
 - random seed `20260414`
 
 ## Scale Levels
 
-The demo accepts `--scale-level 1..6`. If omitted, it uses the fixed `L3`
+The demo accepts `--scale-level 1..6`. If omitted, it uses the fixed `L6`
 scenario. `scale_value` is
 `num_pulses * samples_per_pulse`, and `rx_shape` is
 `num_pulses x samples_per_pulse`.
@@ -54,4 +54,4 @@ scenario. `scale_value` is
 | L3 | 64 | 256 | 64 x 256 | 64 | 48 | 256 | 64 | 16384 |
 | L4 | 96 | 512 | 96 x 512 | 128 | 96 | 512 | 128 | 49152 |
 | L5 | 128 | 1024 | 128 x 1024 | 256 | 192 | 1024 | 128 | 131072 |
-| L6 | 192 | 1536 | 192 x 1536 | 384 | 288 | 2048 | 256 | 294912 |
+| L6 | 128 | 4096 | 128 x 4096 | 1024 | 768 | 4096 | 128 | 524288 |

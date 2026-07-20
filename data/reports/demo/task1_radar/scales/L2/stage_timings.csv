@@ -1,8 +1,9 @@
-stage,cpu_ms,gpu_ms
-pulse_compression,0.974792,0.248983
-pulse_doppler,1.715750,0.370314
-power_map,0.005160,0.077841
-ca_cfar,0.032990,0.264193
-ambgfun,2.003914,0.310314
-final_detection,0.012100,0.090381
-total,4.744706,1.362026
+stage,cpu_ms,gpu_ms,gpu_kernel_ms
+input_construction,3.677120,0.202281,0.166740
+pulse_compression,0.959195,0.615353,0.577020
+pulse_doppler,1.760840,0.413092,0.379412
+power_map,0.005200,0.106420,0.071588
+ca_cfar,0.033000,0.296952,0.258970
+ambgfun,2.016811,0.417772,0.380394
+final_detection,0.009500,0.122051,0.086418
+total,8.461665,2.173921,1.920542

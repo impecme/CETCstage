@@ -29,15 +29,15 @@
 
 ## Fixed Scenario
 
-Equivalent to scale `L3`.
+Equivalent to scale `L6`.
 
 - `fs = 1e6`
-- `num_frames = 48`
-- `samples_per_frame = 1024`
-- `template_length = 256`
-- `target_start_sample_0 = 220`
+- `num_frames = 128`
+- `samples_per_frame = 3072`
+- `template_length = 1024`
+- `target_start_sample_0 = 660`
 - `target_step_per_frame = 3`
-- `interferer_start_sample = 640`
+- `interferer_start_sample = 1920`
 - `target_amplitude = 1.0`
 - `interferer_amplitude = 0.45`
 - `snr_db = 12`
@@ -45,7 +45,7 @@ Equivalent to scale `L3`.
 
 ## Scale Levels
 
-The demo accepts `--scale-level 1..6`. If omitted, it uses the fixed `L3`
+The demo accepts `--scale-level 1..6`. If omitted, it uses the fixed `L6`
 scenario. `scale_value` is
 `num_frames * samples_per_frame`, and `rx_shape` is
 `num_frames x samples_per_frame`.
@@ -57,4 +57,4 @@ scenario. `scale_value` is
 | L3 | 48 | 1024 | 48 x 1024 | 256 | 220 | 640 | 256 | 24 | 129 | 128 / 96 / 256 | 49152 |
 | L4 | 64 | 1536 | 64 x 1536 | 384 | 330 | 960 | 384 | 32 | 161 | 192 / 144 / 256 | 98304 |
 | L5 | 80 | 2048 | 80 x 2048 | 512 | 440 | 1280 | 512 | 40 | 193 | 256 / 192 / 512 | 163840 |
-| L6 | 96 | 3072 | 96 x 3072 | 768 | 660 | 1920 | 768 | 48 | 257 | 384 / 288 / 512 | 294912 |
+| L6 | 128 | 3072 | 128 x 3072 | 1024 | 660 | 1920 | 1024 | 64 | 257 | 384 / 288 / 512 | 393216 |

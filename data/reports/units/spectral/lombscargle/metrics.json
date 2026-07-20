@@ -1,7 +1,7 @@
 {
   "module": "spectral",
   "operator": "lombscargle",
-  "generated_at": "2026-07-19 09:07:56",
+  "generated_at": "2026-07-19 16:48:41",
   "git_commit": "",
   "gpu_name": "ZQ500-Q QUAD-0",
   "compile_config": {
@@ -16,36 +16,36 @@
     "max_rel_error": 0.00108798,
     "mixed_error": 1.29552e-05,
     "rmse": 8.16533e-07,
-    "gpu_e2e_speedup": 184.795,
-    "gpu_kernel_speedup": 190.654,
+    "gpu_e2e_speedup": 186.489,
+    "gpu_kernel_speedup": 190.435,
     "cpu_perf": {
       "warmup": 5,
       "repeat": 30,
-      "mean_ms": 2154.3,
-      "median_ms": 2154.3,
-      "p95_ms": 2154.3,
-      "min_ms": 2154.3,
-      "max_ms": 2154.3,
+      "mean_ms": 2151.74,
+      "median_ms": 2151.74,
+      "p95_ms": 2151.74,
+      "min_ms": 2151.74,
+      "max_ms": 2151.74,
       "std_ms": 0
     },
     "gpu_e2e_perf": {
       "warmup": 5,
       "repeat": 30,
-      "mean_ms": 11.6578,
-      "median_ms": 11.6578,
-      "p95_ms": 11.6578,
-      "min_ms": 11.6578,
-      "max_ms": 11.6578,
+      "mean_ms": 11.5381,
+      "median_ms": 11.5381,
+      "p95_ms": 11.5381,
+      "min_ms": 11.5381,
+      "max_ms": 11.5381,
       "std_ms": 0
     },
     "gpu_kernel_perf": {
       "warmup": 5,
       "repeat": 30,
-      "mean_ms": 11.2995,
-      "median_ms": 11.2995,
-      "p95_ms": 11.2995,
-      "min_ms": 11.2995,
-      "max_ms": 11.2995,
+      "mean_ms": 11.2991,
+      "median_ms": 11.2991,
+      "p95_ms": 11.2991,
+      "min_ms": 11.2991,
+      "max_ms": 11.2991,
       "std_ms": 0
     },
     "device_storage_cache": {
@@ -164,40 +164,34 @@
       "cpu_perf": {
         "warmup": 5,
         "repeat": 30,
-        "mean_ms": 2163.62,
-        "median_ms": 2154.3,
-        "p95_ms": 2208.18,
-        "min_ms": 2149.4,
-        "max_ms": 2233.74,
-        "std_ms": 20.6098
+        "mean_ms": 2152.08,
+        "median_ms": 2151.74,
+        "p95_ms": 2157.29,
+        "min_ms": 2148.56,
+        "max_ms": 2157.71,
+        "std_ms": 2.3381
       },
       "gpu_e2e_perf": {
         "warmup": 5,
         "repeat": 30,
-        "mean_ms": 11.66,
-        "median_ms": 11.6578,
-        "p95_ms": 11.7442,
-        "min_ms": 11.5871,
-        "max_ms": 11.8281,
-        "std_ms": 0.0427891
+        "mean_ms": 11.5362,
+        "median_ms": 11.5381,
+        "p95_ms": 11.5677,
+        "min_ms": 11.5019,
+        "max_ms": 11.5742,
+        "std_ms": 0.0212394
       },
       "gpu_kernel_perf": {
         "warmup": 5,
         "repeat": 30,
-        "mean_ms": 11.3094,
-        "median_ms": 11.2995,
-        "p95_ms": 11.3591,
-        "min_ms": 11.2917,
-        "max_ms": 11.3763,
-        "std_ms": 0.0229305
+        "mean_ms": 11.2999,
+        "median_ms": 11.2991,
+        "p95_ms": 11.3094,
+        "min_ms": 11.2936,
+        "max_ms": 11.3173,
+        "std_ms": 0.00495621
       },
       "artifacts": [
-        {"role": "case_spec", "path": "/CETC.incoming.20260719165041.63146.2450/data/generated/unit/spectral/lombscargle/input/perf_large__spec.json", "sha256": "f313f5de8f2dd307ad06079c4bf3249f439abdbc812706d440ec1cdac0b72a3e"},
-        {"role": "x_input", "path": "/CETC.incoming.20260719165041.63146.2450/data/generated/unit/spectral/lombscargle/input/perf_large__x.csv", "sha256": "2de7537dd98600067e7d297e02e0364bb10cc20a60ac37379ae55d137dc39f4a"},
-        {"role": "y_input", "path": "/CETC.incoming.20260719165041.63146.2450/data/generated/unit/spectral/lombscargle/input/perf_large__y.csv", "sha256": "44a2faff924fa19de8294374d5d22272850759cc4ff9c1eadfb66ab295737fa9"},
-        {"role": "freqs_input", "path": "/CETC.incoming.20260719165041.63146.2450/data/generated/unit/spectral/lombscargle/input/perf_large__freqs.csv", "sha256": "0740f03c0a553467036d36c4ded3ea1794606acd606c1d68b3766c2fcfb10dde"},
-        {"role": "cpu_signal", "path": "/CETC.incoming.20260719165041.63146.2450/data/generated/unit/spectral/lombscargle/output_samples/perf_large__cpu__signal.csv", "sha256": "62c64a7ae471be35c58fb7f74b35692213f7a6f5b9f4b33392777385742626ce"},
-        {"role": "gpu_signal", "path": "/CETC.incoming.20260719165041.63146.2450/data/generated/unit/spectral/lombscargle/output_samples/perf_large__gpu__signal.csv", "sha256": "4cb4ce8bade41df0c9072435a66d357e350e2b2def34be783c9714a008938795"}
       ]
     }
   ]

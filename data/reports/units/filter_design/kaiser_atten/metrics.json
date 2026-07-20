@@ -1,7 +1,7 @@
 {
   "module": "filter_design",
   "operator": "kaiser_atten",
-  "generated_at": "2026-07-19 08:58:57",
+  "generated_at": "2026-07-19 16:40:02",
   "git_commit": "",
   "gpu_name": "ZQ500-Q QUAD-0",
   "compile_config": {
@@ -16,7 +16,7 @@
     "max_rel_error": 0,
     "mixed_error": 0,
     "rmse": 0,
-    "gpu_e2e_speedup": 0.000935016,
+    "gpu_e2e_speedup": 0.000959118,
     "gpu_kernel_speedup": 0,
     "cpu_perf": {
       "warmup": 5,
@@ -31,11 +31,11 @@
     "gpu_e2e_perf": {
       "warmup": 5,
       "repeat": 30,
-      "mean_ms": 0.04278,
-      "median_ms": 0.04278,
-      "p95_ms": 0.04278,
-      "min_ms": 0.04278,
-      "max_ms": 0.04278,
+      "mean_ms": 0.041705,
+      "median_ms": 0.041705,
+      "p95_ms": 0.041705,
+      "min_ms": 0.041705,
+      "max_ms": 0.041705,
       "std_ms": 0
     },
     "gpu_kernel_perf": {
@@ -199,22 +199,22 @@
       "cpu_perf": {
         "warmup": 5,
         "repeat": 30,
-        "mean_ms": 4.86667e-05,
+        "mean_ms": 4.9e-05,
         "median_ms": 4e-05,
         "p95_ms": 0.00013,
         "min_ms": 4e-05,
-        "max_ms": 0.00015,
-        "std_ms": 2.48641e-05
+        "max_ms": 0.00018,
+        "std_ms": 2.92518e-05
       },
       "gpu_e2e_perf": {
         "warmup": 5,
         "repeat": 30,
-        "mean_ms": 0.0427726,
-        "median_ms": 0.04278,
-        "p95_ms": 0.046001,
-        "min_ms": 0.04079,
-        "max_ms": 0.04646,
-        "std_ms": 0.00159281
+        "mean_ms": 0.0416989,
+        "median_ms": 0.041705,
+        "p95_ms": 0.04329,
+        "min_ms": 0.04043,
+        "max_ms": 0.04442,
+        "std_ms": 0.000926786
       },
       "gpu_kernel_perf": {
         "warmup": 5,
@@ -227,8 +227,6 @@
         "std_ms": 0
       },
       "artifacts": [
-        {"role": "cpu_signal", "path": "/CETC.incoming.20260719165041.63146.2450/data/generated/unit/filter_design/kaiser_atten/output_samples/perf_ntaps_127_width_004__cpu__signal.csv", "sha256": "2a274d46ef49e3417ddc4bf4d17fd522fc05c5093fcc7d0ac1cd2ec4f474f2b3"},
-        {"role": "gpu_signal", "path": "/CETC.incoming.20260719165041.63146.2450/data/generated/unit/filter_design/kaiser_atten/output_samples/perf_ntaps_127_width_004__gpu__signal.csv", "sha256": "2a274d46ef49e3417ddc4bf4d17fd522fc05c5093fcc7d0ac1cd2ec4f474f2b3"}
       ]
     }
   ]
