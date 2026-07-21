@@ -16,8 +16,8 @@ P01 封面、P02 团队、P20 致谢由团队自行制作。本文件生成 P03�
 
 - P05～P08、P10、P12～P13、P17～P19 可以用 GPT 生图模型生成整页。
 - P09、P11、P14、P15、P16 必须由真实 JSON 生成图表和页面，禁止让生图模型编造曲线、柱状图、速度数字或运行截图。
-- P05～P07 与 P15 使用 `RUN 2026-07-20 SNAPSHOT` 或 `HISTORICAL A/B`；二者不能相除、相乘或合并归因。
-- 机制级数字必须显式标注归因口径：只有“仅开/关某机制”的同配置 A/B 才能写“严格独立 A/B”。当前 setup cache `1.70×` 符合这一口径；Wiener Tile/Halo `61.27×`、IIR `1267.88×`、Periodogram R2C+fusion `108.98×` 只能标“代表路径整体 A/B”，不得宣称为单一机制或全库最高收益。`RUN SNAPSHOT` 是成品算子 CPU/GPU 性能，也不得归因给单一机制。
+- P05～P07 与 P15 使用 `RUN 2026-07-20 SNAPSHOT` 或 `HISTORICAL BEFORE/AFTER`；二者不能相除、相乘或合并归因。
+- 机制级数字必须显式标注归因口径：只有“仅开/关某机制”的同配置独立消融，才可以写“严格独立消融”。当前 setup cache `1.70×` 符合这一口径；Wiener Tile/Halo `61.27×`、IIR `1267.88×`、Periodogram R2C+fusion `108.98×` 只能标“代表路径整体前后对比”，不得宣称为单一机制或全库最高收益。`RUN SNAPSHOT` 是成品算子 CPU/GPU 性能，也不得归因给单一机制。
 
 ### 正式 L1–L6 实测状态（2026-07-21，覆盖下文旧占位描述）
 
@@ -48,7 +48,7 @@ P01 封面、P02 团队、P20 致谢由团队自行制作。本文件生成 P03�
 
 左侧 42% 标题“底层公共算子库优化”，蓝色六边形“3 通用机制”。竖排三张浅蓝卡：① `访存与资源复用`，微图为重叠邻域窗口汇入 shared Tile，以及 `capacity / prepared / content` 三个可复用对象回环；短注“减少重复读取、分配和准备”。② `并行结构重构`，微图为红色串行依赖链转换为青绿色分层 scan/reduction 树；短注“把依赖改写为可结合、可分块结构”。③ `Shape-aware 分派与算子内 Fusion`，微图为 `shape / dtype / order` 方块分流到 `direct / tiled / FFT / scan` 并汇向紧凑输出；短注“选对路径、减少中间读写和 launch”。左下单独给一条代表案例带：“Wiener Tile/Halo · IIR Affine Scan · Periodogram R2C”；只填一个公共库真实数字“典型公开算子 Wiener：183.62×”。严禁在左栏画 Device-resident、H2D/D2H 链路或任务流水，它们属于右栏的多算子应用构建。
 
-右侧 53% 标题“应用级算法构建”，上方两个蓝色六边形“2 构建”“5 路径”。左半两张浅青任务卡：Task1 卡片画“脉冲小矩阵 → 距离-多普勒热图 → 检测准星”，短注“公开算子驻留组合 → 检测”，大号橙色 `33.09×`；Task2 卡片画“三帧小矩阵 → 四条 score 条带 → 轨迹折线”，短注“算子库 + private helper → score/轨迹”，大号橙色 `1048.78×`。两数字下方都必须小字标“L6 中位数 · 2026-07-21”，不得伪装为单 kernel 或历史 A/B 数字。右半竖排五条橙色路径：`设备驻留/批处理`、`准备与内容缓存`、`融合/直接写回`、`并行 Scan/归约`、`score-only/紧凑输出`。底部深蓝带：“3 类通用机制 + 2 条应用构建 + 5 类组合路径”。页脚：“Task 速度为正式 L1–L6 的 L6 CPU/GPU total 中位数直接加速比。”
+右侧 53% 标题“应用级算法构建”，上方两个蓝色六边形“2 构建”“5 路径”。左半两张浅青任务卡：Task1 卡片画“脉冲小矩阵 → 距离-多普勒热图 → 检测准星”，短注“公开算子驻留组合 → 检测”，大号橙色 `33.09×`；Task2 卡片画“三帧小矩阵 → 四条 score 条带 → 轨迹折线”，短注“算子库 + private helper → score/轨迹”，大号橙色 `1048.78×`。两数字下方都必须小字标“L6 中位数 · 2026-07-21”，不得伪装为单 kernel 或历史前后对比数字。右半竖排五条橙色路径：`设备驻留/批处理`、`准备与内容缓存`、`融合/直接写回`、`并行 Scan/归约`、`score-only/紧凑输出`。底部深蓝带：“3 类通用机制 + 2 条应用构建 + 5 类组合路径”。页脚：“Task 速度为正式 L1–L6 的 L6 CPU/GPU total 中位数直接加速比。”
 ```
 
 ---
@@ -59,7 +59,7 @@ P01 封面、P02 团队、P20 致谢由团队自行制作。本文件生成 P03�
 **页结论**：`同一输入、同一准备资源和相邻输出的重复访问，应在单算子内转化为“加载/准备一次，多次复用”。`
 
 ```text
-生成完整三段式技术页，标题：“通用机制①：访存与资源复用——Wiener Tile/Halo 代表”。左侧“单算子复用对象”：画 `capacity`、`prepared plan/table`、`邻域输入` 三张浅蓝卡，每张卡均为“命中 → 直接执行 / 未命中 → 创建后复用”的小回环；只表达单算子资源生命周期，禁止画 Task1、Task2 或跨算子 Device-resident 链。中间“Wiener 落地”：同一张灰色 global memory 网格上，三个半透明红色邻域窗口重叠，重构为青绿 `16×16 output tile` 与橙色 `(16+2r)×(16+2c) Halo`，蓝色 shared-memory 外框；线程协作加载后，一个 Tile 扇出供多个相邻输出复用。右侧“效果与归因”必须分层：深蓝卡“严格独立 A/B · setup cache 0.659052 → 0.387250 ms · 1.70×（E2E -41.24%）”；中蓝卡“代表路径整体 A/B · Wiener Tile/Halo 214.44 → 3.50 ms · 61.27×”；浅蓝卡“RUN SNAPSHOT · Wiener 646.387 / 3.52033 ms · 183.615×”，旁标“mixed error 9.75527e-7”；红框写“没有仅开/关 Tile 的独立 A/B；不能把 61.27× 机械外推到所有邻域算子”。底部红色细注：“Wiener 仅 2D、奇数窗口、每维 ≤31；缓存仅对有效 key 命中复用，不是 Unified Memory 或 zero-copy。”不画芯片、人物、无意义方块或任务链。
+生成完整三段式技术页，标题：“通用机制①：访存与资源复用——Wiener Tile/Halo 代表”。左侧“单算子复用对象”：画 `capacity`、`prepared plan/table`、`邻域输入` 三张浅蓝卡，每张卡均为“命中 → 直接执行 / 未命中 → 创建后复用”的小回环；只表达单算子资源生命周期，禁止画 Task1、Task2 或跨算子 Device-resident 链。中间“Wiener 落地”：同一张灰色 global memory 网格上，三个半透明红色邻域窗口重叠，重构为青绿 `16×16 output tile` 与橙色 `(16+2r)×(16+2c) Halo`，蓝色 shared-memory 外框；线程协作加载后，一个 Tile 扇出供多个相邻输出复用。右侧“效果与归因”必须分层：深蓝卡“严格独立消融 · setup cache 0.659052 → 0.387250 ms · 1.70×（E2E -41.24%）”；中蓝卡“代表路径整体前后对比 · Wiener Tile/Halo 214.44 → 3.50 ms · 61.27×”；浅蓝卡“RUN SNAPSHOT · Wiener 646.387 / 3.52033 ms · 183.615×”，旁标“mixed error 9.75527e-7”；红框写“没有仅开/关 Tile 的独立消融；不能把 61.27× 机械外推到所有邻域算子”。底部红色细注：“Wiener 仅 2D、奇数窗口、每维 ≤31；缓存仅对有效 key 命中复用，不是 Unified Memory 或 zero-copy。”不画芯片、人物、无意义方块或任务链。
 ```
 
 ---
@@ -70,7 +70,7 @@ P01 封面、P02 团队、P20 致谢由团队自行制作。本文件生成 P03�
 **页结论**：`GPU 不能直接消除依赖；必须先把递推、归约等结构改写为可分块、可结合、可分层的并行结构。`
 
 ```text
-生成完整技术页，标题：“通用机制②：并行结构重构——IIR Affine Scan 代表”。顶部先画通用关系“串行依赖 → 结构变换 → 分层并行”。左侧画 12 个灰红状态节点首尾相接的唯一长链，顶部公式“sₙ = Aₙsₙ₋₁ + vₙ”，红色标记“临界路径长”。中间画同样 12 个橙色 affine 小块，两两组合、再分层组合，最终形成四层青绿色 scan 树；树下三组 Tile 内节点并行应用初始状态，标“tile scan → transform scan → initial state → parallel apply”。右侧数据与边界并列：深蓝卡“HISTORICAL A/B lfilter 455.17 → 0.359 ms · 1267.88×*”；浅蓝卡“RUN SNAPSHOT：event 1.457×，E2E 0.504×”；红色结论“并行结构已解决，短序列固定成本仍可反转 E2E”。页脚：“* 特定灾难性旧路径；fast path 只覆盖低阶、无 state、单连续长线；这是单算子内依赖变换，不画多算子流水。”
+生成完整技术页，标题：“通用机制②：并行结构重构——IIR Affine Scan 代表”。顶部先画通用关系“串行依赖 → 结构变换 → 分层并行”。左侧画 12 个灰红状态节点首尾相接的唯一长链，顶部公式“sₙ = Aₙsₙ₋₁ + vₙ”，红色标记“临界路径长”。中间画同样 12 个橙色 affine 小块，两两组合、再分层组合，最终形成四层青绿色 scan 树；树下三组 Tile 内节点并行应用初始状态，标“tile scan → transform scan → initial state → parallel apply”。右侧数据与边界并列：深蓝卡“历史前后对比 lfilter 455.17 → 0.359 ms · 1267.88×*”；浅蓝卡“RUN SNAPSHOT：event 1.457×，E2E 0.504×”；红色结论“并行结构已解决，短序列固定成本仍可反转 E2E”。页脚：“* 特定灾难性旧路径；fast path 只覆盖低阶、无 state、单连续长线；这是单算子内依赖变换，不画多算子流水。”
 ```
 
 ---
@@ -81,18 +81,18 @@ P01 封面、P02 团队、P20 致谢由团队自行制作。本文件生成 P03�
 **页结论**：`按 shape、类型与约束选对单算子路径，再融合可合并前后处理，才能同时减少无效计算、读写与 launch。`
 
 ```text
-生成完整上下对齐的技术页，标题：“通用机制③：Shape-aware 分派与算子内 Fusion——Periodogram 代表”。页面顶部画一个明确的单算子“分派门”：`shape / dtype / order / window` 进入网关，四条路线分别标 `direct`、`tiled`、`FFT/R2C`、`scan`，只选择一条路径；禁止画任务链。下方选中 `FFT/R2C` 分支并展示 Periodogram：上方灰红旧路径严格为“输入波形→detrend→window→独立 C2C FFT→完整双边频谱→power 中间量→PSD”，window、full spectrum、power 后各放一块大灰色缓冲和红色写回箭头；下方青绿新路径严格为“prepared/cache→fused detrend+window→独立 R2C FFT→宽度约一半的单边谱→fused power/crop/scale PSD”。FFT 节点保持独立，不能画成 FFT 与 PSD 同一个 kernel。右侧竖排三张证据卡：`HISTORICAL A/B R2C+fusion 72.91→0.669 ms · 108.98×`；`HISTORICAL A/B setup cache 0.659052→0.387250 ms · 1.70×`；`RUN SNAPSHOT 1.41709/0.366592 ms · 3.866×`。底部红色细注：“CSD/spectrogram 部分 R2C 因数值问题回退 C2C；不是自动调优器，回退以正确性约束为准。”
+生成完整上下对齐的技术页，标题：“通用机制③：Shape-aware 分派与算子内 Fusion——Periodogram 代表”。页面顶部画一个明确的单算子“分派门”：`shape / dtype / order / window` 进入网关，四条路线分别标 `direct`、`tiled`、`FFT/R2C`、`scan`，只选择一条路径；禁止画任务链。下方选中 `FFT/R2C` 分支并展示 Periodogram：上方灰红旧路径严格为“输入波形→detrend→window→独立 C2C FFT→完整双边频谱→power 中间量→PSD”，window、full spectrum、power 后各放一块大灰色缓冲和红色写回箭头；下方青绿新路径严格为“prepared/cache→fused detrend+window→独立 R2C FFT→宽度约一半的单边谱→fused power/crop/scale PSD”。FFT 节点保持独立，不能画成 FFT 与 PSD 同一个 kernel。右侧竖排三张证据卡：`历史前后对比 R2C+fusion 72.91→0.669 ms · 108.98×`；`严格独立消融 setup cache 0.659052→0.387250 ms · 1.70×`；`RUN SNAPSHOT 1.41709/0.366592 ms · 3.866×`。底部红色细注：“CSD/spectrogram 部分 R2C 因数值问题回退 C2C；不是自动调优器，回退以正确性约束为准。”
 ```
 
 ---
 
-## P08｜Task1：Device-Resident 雷达检测链
+## P08｜Task1：五类路径组合公开算子雷达检测链
 
 **栏目**：核心技术。  
-**页结论**：`六个公开算子在 Device 内连续组合，只在入口上传、在验证边界回传。`
+**页结论**：`六个公开算子在 Device 内连续组合，五类应用路径分别落在真实节点。`
 
 ```text
-生成完整 Task1 流程页，标题：“Task1：公开算子构建 Device-Resident 雷达检测链”。中央是一条青绿色 Device-resident 带，左侧单次 H2D 入口，右侧紧凑 D2H/validation 出口。主链六步用有语义图形和清晰标签横向排列：`pulse compression`（匹配滤波窄峰）→`pulse Doppler + shift`（距离-多普勒网格）→`power map`（功率热图）→`CA-CFAR`（阈值与检测 mask）→`final detection`（检测准星）；从模板输入单独分出 `ambgfun` 模糊函数曲面旁路，再与主链在最终证据处并列。主链上仅用五个橙色编号标记实际技术：① template/prepared cache；② scale fusion；③ transpose+shift fusion；④ row-prefix CFAR；⑤ two-stage peak + compact D2H。右下角小注：“6 public steps 均调用算子库 GPU 实现；逐步同步计时，不是 multi-stream pipeline。”所有箭头表达真实依赖：ambgfun 不连接 CFAR，peak 只接 power/detections 的真实汇合处；不得画 CPU shortcut。
+生成完整 Task1 应用技术页，标题：“Task1：按 5 条路径组合公开算子雷达检测链”。顶部结论：“六步公开算子在 Device 内连续组合；每条应用路径都对应到一个真实节点，不是泛化标签。”中央左侧约 68% 画一条青绿色 Device-resident 主链：左侧单次 H2D 入口，右侧紧凑 D2H/validation 出口。主链严格为 `pulse compression`（匹配滤波窄峰）→`pulse Doppler + shift`（距离-多普勒网格）→`power map`（功率热图）→`CA-CFAR`（阈值与 detection mask）→`final detection`（检测准星）；模板旁路 `ambgfun` 模糊函数曲面与主链证据区并列，绝不连接 CFAR。中央主链外必须有一条连续 Device-resident 包围带。右侧约 28% 画标题“本任务实际采用的 5 条路径”的竖向路径面板，每张卡用细连接线明确指向主链落点：①“Device-resident：入口一次 H2D，链尾 materialize”连接整个包围带；②“prepared/cache：template FFT 复用”连接 pulse compression；③“fusion/direct write：scale + transpose/shift”连接 Doppler/shift 与 power map；④“parallel scan/reduction：row-prefix CFAR + two-stage peak”连接 CFAR 和 final detection；⑤“compact output：仅 detection list 回传”连接最终输出。不要把 ① 写成公共单算子机制，它是任务级多算子链路优化。底部一条窄证据带，标题必须写“历史优化前后对比（版本候选，非当前正式 L6；不同 run，不能累加）”，四张微卡依次写：`template cache · L6 stage -7.43% / total -2.14%`；`transpose+shift · L6 stage -11.57% / total -2.03%`；`row-prefix CFAR · L6 stage -28.68% / total -4.79%`；`two-stage peak · L6 stage -43.95% / total -4.12%`。Device-resident 旁用灰字“无独立关闭消融，仅结构事实”。右上蓝色小卡：“任务总效果见 P09 · FINAL L6 33.09×”，明确不能归因给任一路径。页脚：“6 public steps 均调用算子库 GPU 实现；逐步同步计时，不是 multi-stream pipeline。”不得画 CPU shortcut、伪造单独路径总加速或把历史前后对比相加。
 ```
 
 ---
@@ -107,13 +107,13 @@ P01 封面、P02 团队、P20 致谢由团队自行制作。本文件生成 P03�
 
 ---
 
-## P10｜Task2：Batched Score-Only Pipeline
+## P10｜Task2：五类路径构建 Batched Score-Only Pipeline
 
 **栏目**：核心技术。  
-**页结论**：`任务只保留最终所需的 score，把完整中间张量压缩成批量四路 score 与轨迹。`
+**页结论**：`五类应用路径把全量中间张量压缩为批量四路 score、peak 与轨迹。`
 
 ```text
-生成完整 Task2 技术页，标题：“Task2：Batched Score-Only 压缩多域特征流程”。左半灰色 CPU reference：`输入 → 相关 → 谱图 → CWT → 融合/track`，强调完整中间量物化与回传。右半青绿色 ZQ500 GPU：`批输入 → 滤波/解调 → 相关 → 谱图 → CWT → 融合/track`，强调只保留任务所需 score 与状态轨迹。底部给出统一测评约束三块：`冻结：B=8 / score-only`、`改变：帧数`、`P11：统一 L1-L6 实测`。页脚：“mixed：公开算子库 + private helper 协同调用；helper 不是第三后端；不展示旧 final-input 性能数字。”
+生成完整 Task2 应用技术页，标题：“Task2：按 5 条路径构建 Batched Score-Only 流程”。顶部结论：“不物化完整相关、谱图和 CWT 张量；批量直接产出四路 score、peak 与轨迹。”上方灰色 CPU reference 仅作对照：`逐帧 → full correlate / full spectrogram / full CWT → host postprocess`，画出大二维/三维中间张量。下方青绿色 GPU 主链约占页面 67%：`一次 H2D → B=8 Device batch → filter/demod score、correlate score、spectrogram band-score、CWT max-score → weighted/smooth private helper → independent row peak → Kalman state/track → compact materialize`。用形状差异明确表示“全量张量 → 四路一维 score → 每帧一个 peak/track”。右侧约 29% 画标题“本任务实际采用的 5 条路径”的竖向路径面板，每张卡使用细连接线精确指向 GPU 主链：①“Device-resident / batch：一次 H2D，B=8，不逐帧 .get()”连接入口与 Device batch；②“prepared / AOT：correlate、spectrogram 固定 shape 预编译/预准备”连接两条 score 分支；③“direct write / task fusion：各分支直接写 task score；peak 仍独立 kernel”连接 score 分支到 weighted/smooth；④“parallel reduction：band-score、CWT max-score、row peak”连接谱图、小波和 peak，严禁写 prefix scan；⑤“score-only / compact output：仅四路 score、peak、Kalman state/track”连接最终输出。清楚标 `mixed = public operator library + private helper`，helper 不是第三后端。底部一条窄证据带，标题必须写“历史优化前后对比（版本候选，非当前正式 L6；不同 run，不能累加）”，仅两张实证微卡：`AOT correlate · L6 hotspot -61.66% / total -9.77%`；`AOT spectrogram · L6 hotspot -43.37% / total -7.78%`。其余路径统一灰色小注“结构已采用，待独立归因”；禁止用 Task2 `1048.78×` 倒推任何一路径收益。右上蓝色小卡：“任务总效果见 P11 · FINAL L6 1048.78×”。底部测评约束三块：`冻结：B=8 / score-only`、`改变：帧数`、`P11：统一 L1-L6 实测`。页脚：“radix-2 pad 最大 4096；weighted+smooth 与 peak 是独立 kernel；Kalman 跨帧仍串行。”
 ```
 
 ---
@@ -182,10 +182,10 @@ P01 封面、P02 团队、P20 致谢由团队自行制作。本文件生成 P03�
 ## P17｜性能优势、边界与改进方向
 
 **栏目**：技术指标。  
-**页结论**：`先用统一协议建立可比基线，再对分块、阈值和热点做独立 A/B。`
+**页结论**：`先用统一协议建立可比基线，再对分块、阈值和热点做独立消融。`
 
 ```text
-生成完整三列技术页，标题：“性能优势、边界与改进方向”。左列青绿“已实现的结构优势”：`Tile/Halo：邻域复用`、`Affine Scan：递归转并行`、`R2C+Fusion：减少写回`、`Device-resident：减少回传`。中列灰色“统一复测先解决的问题”：`L6 对齐 final-input`、`L1-L5 仅变输入规模`、`speedup 自动计算`、`误差与性能同一 run`。右列橙色“后续参数优化方向”：`Block/Halo：独立 A/B`、`CFAR 参数：独立 A/B`、`batch/shape：独立 A/B`、`按新 L6 Top3 优先`。底部深蓝结论条写：“不把规模变化与参数调优混在同一曲线；先可比测量，再逐项优化。”不填未复测任务性能数字。
+生成完整三列技术页，标题：“性能优势、边界与改进方向”。左列青绿“已实现的结构优势”：`Tile/Halo：邻域复用`、`Affine Scan：递归转并行`、`R2C+Fusion：减少写回`、`Device-resident：减少回传`。中列灰色“统一复测先解决的问题”：`L6 对齐 final-input`、`L1-L5 仅变输入规模`、`speedup 自动计算`、`误差与性能同一 run`。右列橙色“后续参数优化方向”：`Block/Halo：独立消融`、`CFAR 参数：独立消融`、`batch/shape：独立消融`、`按新 L6 Top3 优先`。底部深蓝结论条写：“不把规模变化与参数调优混在同一曲线；先可比测量，再逐项优化。”不填未复测任务性能数字。
 ```
 
 ---

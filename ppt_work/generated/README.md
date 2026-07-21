@@ -9,9 +9,9 @@
 | P05 | `P05_访存资源复用_Wiener代表_v02.png` | GPT 生图；严格独立 cache A/B 与 Wiener 代表路径整体 A/B 分开标注 |
 | P06 | `P06_并行结构重构_IIR代表_v02.png` | GPT 生图；明确 prefix scan 无单独开关 A/B，1267.88× 是代表路径整体 A/B |
 | P07 | `P07_分派Fusion_Periodogram代表_v02.png` | GPT 生图；严格独立 cache A/B 与 R2C+fusion 代表路径整体 A/B 分开标注 |
-| P08 | `P08_Task1_Device_Resident_整页_v01.png` | GPT 生图 |
+| P08 | `P08_Task1_五路径公开算子链_v02.png` | GPT 生图；Task1 五类路径逐一连接到公开算子链真实节点，并单列不可累加的历史路径 A/B |
 | P09 | `P09_Task1_L1-L6_实测_v08.png` | 真实正式 L1–L6 曲线、L6 中位数与检测门禁 |
-| P10 | `P10_Task2_Score_Only_生图重构_v06.png` | GPT 生图重构；逐帧全量张量与 batched score-only 的结构对比 |
+| P10 | `P10_Task2_五路径ScoreOnly_v07.png` | GPT 生图；Task2 五类路径逐一连接到批量 score-only 主链，AOT A/B 与未独立归因路径分开标注 |
 | P11 | `P11_Task2_L1-L6_实测_v08.png` | 真实正式 L1–L6 曲线、L6 中位数与轨迹门禁 |
 | P12 | `P12_代码架构_整页_v01.png` | GPT 生图 |
 | P13 | `P13_81算子与公共机制_整页_v01.png` | GPT 生图 |

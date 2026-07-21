@@ -41,7 +41,7 @@
 | 去年可参考概念 | 本项目准确表述 | 原因 |
 |---|---|---|
 | 多算子间自动数据转换优化 | **C++17 `std::variant` Host/Device 双态 + Device 返回值驻留 + 链尾显式 `.get()`** | 当前代码确实解决了任务链重复往返，但不是 Unified Memory、零拷贝或隐式自动迁移 |
-| GPU 参数优化框架 | **shape-aware 多路径策略分派 + A/B 门控** | 当前没有参数搜索器、在线 autotuner 或策略数据库 |
+| GPU 参数优化框架 | **shape-aware 多路径策略分派 + 正确性/性能门禁** | 当前没有参数搜索器、在线 autotuner 或策略数据库 |
 | 统一缓冲区池 | **RAII 共享所有权 + core capacity cache + 模块 prepared cache + 精确 Host 内容缓存** | 四者分别解决生命周期、分配、重复准备和重复上传，不是一个池管理全部 raw buffer |
 | 融合内核 | **算子内 fusion + Task2 score-only 特化** | 公共算子融合与任务私有融合必须分层说明 |
 | 应用算法优化 | **Task1 public pipeline + Task2 mixed specialized pipeline** | 两个任务的工程边界不同 |
@@ -70,7 +70,7 @@
 |---|---:|---|
 | P04 结束 | 0:58 | 赛题页只讲交付、验收和三类瓶颈；路线页不逐项解释标签 |
 | P07 结束 | 2:58 | 三个公共技术页各只讲一个瓶颈、一个方法、一个效果 |
-| P11 结束 | 5:18 | 应用性能页不逐级读完 L1～L6，也不逐行读 A/B 表 |
+| P11 结束 | 5:18 | 应用性能页不逐级读完 L1～L6，也不逐行读历史优化表 |
 | P17 结束 | 7:46 | 全库性能与瓶颈页只保留最能解释差异的两个例子 |
 | P20 结束 | 8:33 | 剩余 1:27 用于临场机动 |
 
@@ -82,7 +82,7 @@
 
 - `CURRENT CODE`：当前源码/契约结构事实。
 - `RUN 2026-07-20 SNAPSHOT`：`current-20260720-task-optimized-l6` 已发布运行快照；当前源树与该快照存在 4 项 source drift，正式答辩前须复验冻结。
-- `HISTORICAL A/B`：V5/V6/V7 历史优化前后。
+- `HISTORICAL BEFORE/AFTER`：V5/V6/V7 历史优化前后；这是不同版本或开关下的对照，不是两条任务运行链路。
 - `DERIVED`：从结构化 JSON 的 repeat/case 重算。
 - `FINAL L1-L6 · 2026-07-21`：ZQ500-Q QUAD-0 上的正式测评；每点 7 次，首轮 warm-up 排除，CPU/GPU total 取其余 6 次中位数，speedup 直接计算为 CPU/GPU。
 
@@ -199,7 +199,7 @@ P03 V03 是已确认的视觉基线：右侧只保留承担流程语义的输入
 | 公共算子库 | 12 模块、81 公开算子；CPU/GPU 一致语义 | 双后端、共享类型/shape/axis 语义、契约测试 |
 | ZQ500 并行执行 | GPU 运行并证明性能收益 | 按访存、递归依赖、频谱冗余重构算法 |
 | 两条端到端任务 | 雷达处理与特征提取完整运行 | Task1 公开算子驻留组合；Task2 batched score-only 特化 |
-| 可交付验证 | 正确性、性能、报告可追溯 | unit/contracts/demo/reports 与 A/B 回退门 |
+| 可交付验证 | 正确性、性能、报告可追溯 | unit/contracts/demo/reports 与正确性/性能回退门 |
 
 **右侧示意内容**
 
@@ -271,7 +271,7 @@ correctness / performance / provenance
 先报“3、2、5”：前三项是单算子层可复用的优化类别，P05～P07 用代表算子解释每类机制如何落到内核；后两项才是多算子应用构建。Task1 证明全公开算子组合，Task2 证明算子库 + 私有 helper 的 mixed 组合。五类应用路径按任务特征自由组合。
 
 **证据角标**：Wiener 使用 `RUN 2026-07-20 SNAPSHOT · unit benchmark`；Task1/Task2 分别标注 `FINAL L1-L6 · 2026-07-21 · L6 median`。
-**边界**：P04 的两个 L6 数字可与 P09/P11 对照，但不得和历史 A/B、旧 `scales/` 或独立 `final/` 数字继续相除、相乘或合并归因。
+**边界**：P04 的两个 L6 数字可与 P09/P11 对照，但不得和历史优化前后对比、旧 `scales/` 或独立 `final/` 数字继续相除、相乘或合并归因。
 
 ---
 
@@ -281,7 +281,7 @@ correctness / performance / provenance
 2. **Task2**：展示为“公开算子库 + 私有 batched/score-only helper”的 mixed 流程。private helper 只承担任务级批处理、紧凑输出或融合；与库算子协同调用仍属于算子库任务构建，不能包装成独立第三后端。
 3. **GPU 覆盖不等同于每例都更快**：对 E2E 小于 CPU 的公共 case，P15 如实显示为固定成本/规模边界；不能因为 CPU 更快就把 GPU 路径替换为 CPU 并称为 GPU 实现。只有代码中显式声明的 shape/dtype/correctness fallback 才能使用，且必须在页面脚注说明。
 4. P05～P07 固定标为“通用机制 + 代表算子”：它们分别解释访存/资源复用、并行结构重构、shape-aware 分派与算子内 fusion 如何落在真实算子内核，不声称这三类机制或三个算子穷尽全部 81 个实现。
-5. **机制效果的归因口径**：只有存在“仅开/关某一机制”的同配置 A/B，才可写为“该机制 `X×`”。目前可严格独立归因的是 Periodogram setup cache `1.70×`（E2E 下降 `41.24%`）；Wiener Tile/Halo `61.27×`、IIR `1267.88×`、Periodogram R2C+fusion `108.98×` 都只能写为“代表路径整体 A/B”，不得拆分或宣称为该通用机制在全库的最高收益。当前 CPU/GPU E2E 则是成品算子性能，不属于任一机制的独立收益。
+5. **机制效果的归因口径**：只有存在“仅开/关某一机制”的同配置独立消融，才可写为“该机制 `X×`”。目前可严格独立归因的是 Periodogram setup cache `1.70×`（E2E 下降 `41.24%`）；Wiener Tile/Halo `61.27×`、IIR `1267.88×`、Periodogram R2C+fusion `108.98×` 都只能写为“代表路径整体前后对比”，不得拆分或宣称为该通用机制在全库的最高收益。当前 CPU/GPU E2E 则是成品算子性能，不属于任一机制的独立收益。
 
 ---
 
@@ -297,12 +297,12 @@ correctness / performance / provenance
 
 - 左：三类单算子复用对象：`capacity`（复用可容纳的 Device allocation）、`prepared`（复用 plan/window/table）、`邻域输入`（相邻输出共享输入）。只画“命中 → 直接执行 / 未命中 → 创建后回收”，不画多算子链。
 - 中：代表算子 Wiener：三个相邻窗口重复读取同一 global 区域，重构为 `16×16 output tile` 与 `(16+2r)×(16+2c)` shared Tile；线程协作加载 Tile/Halo 后，多输出复用同一块数据。
-- 右：按归因强度分三类：`严格独立 A/B` 的 Periodogram setup cache；`代表路径整体 A/B` 的 Wiener Tile/Halo；`RUN SNAPSHOT` 的成品 Wiener CPU/GPU E2E。三者不得相除、相乘或混写成一个机制的收益。
+- 右：按归因强度分三类：`严格独立消融` 的 Periodogram setup cache；`代表路径整体前后对比` 的 Wiener Tile/Halo；`RUN SNAPSHOT` 的成品 Wiener CPU/GPU E2E。三者不得相除、相乘或混写成一个机制的收益。
 
 **效果**
 
-- `[严格独立 A/B · setup cache]` `0.659052→0.387250 ms = 1.70x`，E2E 下降 `41.24%`；只证明命名窗口、scale 和频率轴的重复准备复用。
-- `[代表路径整体 A/B · Wiener Tile/Halo]` `214.44→3.50 ms = 61.27x`；记录的主变更是 `16×16 shared-memory tiled stencil`，但当前没有“仅开/关 Tile”的独立 A/B，因此不得外推为所有邻域算子的机制上限。
+- `[严格独立消融 · setup cache]` `0.659052→0.387250 ms = 1.70x`，E2E 下降 `41.24%`；只证明命名窗口、scale 和频率轴的重复准备复用。
+- `[代表路径整体前后对比 · Wiener Tile/Halo]` `214.44→3.50 ms = 61.27x`；记录的主变更是 `16×16 shared-memory tiled stencil`，但当前没有“仅开/关 Tile”的独立消融，因此不得外推为所有邻域算子的机制上限。
 - `[RUN CURRENT REPORT · 成品算子]` 1,048,576 点：CPU/GPU E2E `646.387/3.52033 ms = 183.615x`；mixed error `9.75527e-7`。该值不归因给单一机制。
 
 **讲解**
@@ -335,7 +335,7 @@ correctness / performance / provenance
 
 **效果**
 
-- `[代表路径整体 A/B]` lfilter 特定灾难性旧路径 `455.17→0.359 ms = 1267.88x`。该路径同时包含 `BA→单节 SOS` 快路径与 prefix scan 的复用；当前没有“仅开/关 Scan”的独立 A/B，不能把总收益全部归因给 Scan。
+- `[代表路径整体前后对比]` lfilter 特定灾难性旧路径 `455.17→0.359 ms = 1267.88x`。该路径同时包含 `BA→单节 SOS` 快路径与 prefix scan 的复用；当前没有“仅开/关 Scan”的独立消融，不能把总收益全部归因给 Scan。
 - `[RUN CURRENT REPORT · 成品算子]` 当前较短 lfilter case：GPU event 工作 `1.457x`，但 E2E `0.504x`，说明固定开销足以反转结论。
 
 **讲解**
@@ -366,8 +366,8 @@ correctness / performance / provenance
 
 **效果**
 
-- `[代表路径整体 A/B · R2C+fusion]` `72.91→0.669 ms = 108.98x`；没有 R2C-only 或 Fusion-only 的独立 A/B，不得分摊给二者之一。
-- `[严格独立 A/B · setup cache]` `0.659052→0.387250 ms = 1.70x`，E2E 下降 `41.24%`，kernel 基本不变。
+- `[代表路径整体前后对比 · R2C+fusion]` `72.91→0.669 ms = 108.98x`；没有 R2C-only 或 Fusion-only 的独立消融，不得分摊给二者之一。
+- `[严格独立消融 · setup cache]` `0.659052→0.387250 ms = 1.70x`，E2E 下降 `41.24%`，kernel 基本不变。
 - `[RUN CURRENT REPORT · 成品算子]` Periodogram CPU/GPU E2E `1.41709/0.366592 ms = 3.866x`，不归因给单一机制。
 
 **讲解**
@@ -379,13 +379,13 @@ correctness / performance / provenance
 
 ---
 
-### P08 应用算法一：六个公开算子构建 Device-Resident 雷达检测链（35 秒）
+### P08 应用算法一：Task1 按五类路径组合公开算子链（40 秒）
 
 **核心结论**
 
 > Task1 不依赖任务私有 GPU kernel，而是把六个公开算子组合成入口上传、链内驻留、边界统一回传的雷达检测算法。
 
-**主视觉**
+**主视觉：主链与采用路径一一对应**
 
 ```text
 template + pulses → entry H2D
@@ -395,21 +395,21 @@ template + pulses → entry H2D
   → output/validation materialize
 ```
 
-在同一流程上放五个编号技术标记：
+页面右侧必须以“**本任务实际采用的 5 条路径**”列出下列五项，并从每条路径用细连接线指向主链的真实落点；不只在流程上漂浮编号。
 
-1. template FFT/prepared cache。
-2. frequency scale fusion。
-3. transpose + fftshift fusion。
-4. 256-thread row prefix CFAR。
-5. two-stage peak + compact D2H。
+1. `Device-resident`：入口仅一次 H2D，六步公开算子 Device 输出直接成为下游输入，验证边界统一 materialize。
+2. `prepared/cache reuse`：pulse compression 复用内容完全相同模板的归一化 template FFT。
+3. `fusion/direct write`：frequency scale 与 `transpose + fftshift` 在相邻步骤内直接写目标布局。
+4. `parallel scan/reduction`：CA-CFAR 用 256-thread row-prefix/integral image；final detection 用两阶段 peak reduction。
+5. `compact output`：只将最终 detection list `(r, v, snr, ...)` 回传，不回传全功率图和 dense mask。
 
-用一条青绿色 Device-resident 包围带覆盖入口 H2D 到最终 materialize；ambgfun 必须是模板旁路，peak 同时接收 power 与 detections。
+用一条青绿色 Device-resident 包围带覆盖入口 H2D 到最终 materialize；ambgfun 必须是模板旁路，peak 同时接收 power 与 detections。底部放“**历史优化前后对比（版本候选，非当前正式 L6；不同 run，不能累加）**”证据带：template cache L6 stage `-7.43%` / total `-2.14%`；transpose+shift L6 stage `-11.57%` / total `-2.03%`；row-prefix CA-CFAR L6 stage `-28.68%` / total `-4.79%`；two-stage peak L6 stage `-43.95%` / total `-4.12%`。Device-resident 没有同配置的独立关闭消融，只作结构事实展示。另设蓝色角标：`任务总效果见 P09：FINAL L6 33.09×`，不得把它归因给任一路径。
 
 **讲解**
 
-只沿数据流讲五项优化“落在哪个节点、删除什么工作”，不在本页报所有百分比；下一页统一展示效果。
+先沿主链证明六步调用的是公开 API，不是 task-private bypass；随后从右侧按“驻留、缓存、融合、scan/reduction、紧凑输出”逐条指回真实落点。底部“历史优化前后对比”只说明版本候选曾在独立 run 中降低对应 stage/total，不代表当前运行仍切换该旧路径，不能相加成 `33.09×`；该端到端总效果由 P09 的正式统一测评给出。
 
-**证据**：`task1_radar_demo.cpp:1221`、`:1236`～`:1287`、`:1759`～`:1790`；`types.hpp:923`～`:948`；任务契约。
+**证据**：`task1_radar_demo.cpp:1221`、`:1236`～`:1287`、`:1759`～`:1790`；`types.hpp:923`～`:948`；任务契约；路径级历史优化前后对比见 `docs/PROJECT_LEDGER_notsub.md` 的 `V6-0045`、`V6-0046`、`V6-0048`、`V6-0049`。
 **边界**：当前步骤逐次同步计时，不是 multi-stream pipeline；input construction 不属于六个正式计算步骤。
 **赛题一致性**：页面中的每个正式步骤必须标为对应公开算子库 GPU 实现；即使某些极小 public case 的 GPU E2E 慢于 CPU，也不能把 Task1 的 GPU 链画成 CPU shortcut。
 
@@ -437,13 +437,13 @@ template + pulses → entry H2D
 
 ---
 
-### P10 应用算法二：Batched Score-Only Pipeline 构建多域特征融合与跟踪（35 秒）
+### P10 应用算法二：Task2 按五类路径构建 Batched Score-Only 流程（40 秒）
 
 **核心结论**
 
 > Task2 不再逐帧物化完整相关、谱图和小波张量，而是批量直接生成四路 score，再完成融合、峰值选择和状态跟踪。
 
-**主视觉**
+**主视觉：主链与采用路径一一对应**
 
 上方灰色 CPU reference：`for frame → full correlate / spectrogram / CWT → host postprocess`，每步产生大型二维/三维中间量。
 
@@ -458,14 +458,22 @@ entry H2D per input → batch/residency
 → weighted + smooth → independent peak → Kalman state chain → materialize
 ```
 
-五项核心技术：batch+residency、runtime radix-2 correlate、band-score、CWT max-score、fusion+peak+Kalman。用数据轮廓表现“三维张量 → 一维 score → 每帧一个 peak”。
+右侧必须用“**本任务实际采用的 5 条路径**”面板，并以细连接线逐项对应到下方 GPU 主链，不能只列五个泛化图标：
+
+1. `Device-resident / batch`：输入一次 H2D 后按 `B=8` Device batch 进入主链；任务中间对象不逐帧 `.get()`。
+2. `prepared / AOT`：已知 shape 的 correlate、spectrogram 使用预编译 radix-2 / 预准备执行路径；是任务级 helper，与公共库协同而非第三后端。
+3. `direct write / task fusion`：filter/demod、相关、谱图和小波直接产出各路 task score；加权/平滑属于 private feature helper，peak 仍是独立 kernel，不能画成万能融合 kernel。
+4. `parallel reduction`：band-score、CWT max-score 与 row peak 在频带、尺度或行内提前归约；此处不宣称使用 prefix scan。
+5. `score-only / compact output`：不物化全相关/谱图/CWT 张量，只保留四路 score、peak 和 Kalman state/track。
+
+用数据轮廓表现“三维张量 → 一维 score → 每帧一个 peak”。底部放“**历史优化前后对比（版本候选，非当前正式 L6；不同 run，不能累加）**”证据带：Task2 AOT correlate L6 hotspot `-61.66%` / total `-9.77%`；AOT spectrogram L6 hotspot `-43.37%` / total `-7.78%`。其余路径没有独立关闭消融时标“结构已采用，待独立归因”，不得凭 Task2 总加速倒推。另设蓝色角标：`任务总效果见 P11：FINAL L6 1048.78×`，不是任一路径的单独收益。
 
 **讲解**
 
-重点解释应用语义允许“只保留 score”，这是任务特化能够显著压缩工作量的根本原因，而不是把八个公开算子简单串起来。
+重点解释应用语义允许“只保留 score”，这是任务特化能够显著压缩工作量的根本原因。随后按右侧五条路径指回主链；明确 AOT 两项有历史优化前后对比，驻留、score-only 等只有结构证据，不能把 `1048.78×` 平摊到它们。
 
-**证据**：`task2_features_demo.cpp:1660`～`:1671`、`:1894`～`:2106`；`task2_features_zx_gpu.cu:2830`、`:3051`、`:3206`、`:3398`、`:3457`。
-**边界**：这是 mixed task-specialized pipeline；radix-2 pad 最大 4096；weighted+smooth 与 peak 是独立 kernel；Kalman 跨帧仍串行。
+**证据**：`task2_features_demo.cpp:1660`～`:1671`、`:1894`～`:2106`；`task2_features_zx_gpu.cu:2830`、`:3051`、`:3206`、`:3398`、`:3457`；AOT 路径历史优化前后对比见 `docs/PERFORMANCE.md:208`～`:209`。
+**边界**：这是 mixed task-specialized pipeline；radix-2 pad 最大 4096；weighted+smooth 与 peak 是独立 kernel；Kalman 跨帧仍串行。Task2 total 同时包含 CPU 逐帧/输入准备与 GPU batch/特化的工作流差异，不能称为纯公共算子或单 kernel 加速比。
 **赛题一致性**：private helper 是与公开算子库协同的任务级 GPU 支路，不是绕过库的第三后端；图中必须同时保留 library-operator 和 helper 的边界。
 
 ---
@@ -485,7 +493,7 @@ entry H2D per input → batch/residency
 
 **讲解**
 
-P10 已证明 score-only 如何删去中间量；本页用新统一曲线证明这种结构在可比规模下的端到端效果。局部 A/B 的保留或回退仍要同时满足正确性和 E2E，但不与规模曲线混算。
+P10 已证明 score-only 如何删去中间量；本页用新统一曲线证明这种结构在可比规模下的端到端效果。局部优化开关的保留或回退仍要同时满足正确性和 E2E，但不与规模曲线混算。
 
 **实测数据源**：`data/reports/demo/task2_features/scales/L1…L6/metrics.json`、`ppt_work/data_tables/task_scaling.csv`。
 **对比边界**：仅比较 CPU reference 与 ZQ500 GPU；不宣称“相比传统 GPU”。
@@ -529,7 +537,7 @@ contracts / unit / demo / reports
 
 **核心结论**
 
-> 12 个模块、81 个注册算子不是 81 套孤立实现；数据驻留、资源复用、shape-aware 分派和 A/B 门禁构成共同执行基础。
+> 12 个模块、81 个注册算子不是 81 套孤立实现；数据驻留、资源复用、shape-aware 分派和正确性/性能门禁构成共同执行基础。
 
 **主视觉**
 
@@ -617,7 +625,7 @@ contracts / unit / demo / reports
 
 **核心结论**
 
-> 不把规模变化与参数调优混在同一曲线：先用统一协议建立可比基线，再对参数和热点做独立 A/B。
+> 不把规模变化与参数调优混在同一曲线：先用统一协议建立可比基线，再对参数和热点做独立消融。
 
 **主视觉**
 
@@ -625,13 +633,13 @@ contracts / unit / demo / reports
 
 | 已实现的结构优势 | 统一复测先解决的问题 | 后续参数优化方向 |
 |---|---|---|
-| Tile/Halo 邻域复用；Affine Scan 递归转并行；R2C+Fusion 减少写回；Device-resident 减少回传 | L6 对齐原 final-input；L1～L5 仅变输入规模；speedup 自动计算；误差与性能同一 run | Block/Halo 尺寸独立 A/B；CFAR `guard/reference/pfa` 独立 A/B；batch/shape 独立 A/B；按新 L6 Top3 优先 |
+| Tile/Halo 邻域复用；Affine Scan 递归转并行；R2C+Fusion 减少写回；Device-resident 减少回传 | L6 对齐原 final-input；L1～L5 仅变输入规模；speedup 自动计算；误差与性能同一 run | Block/Halo 尺寸独立消融；CFAR `guard/reference/pfa` 独立消融；batch/shape 独立消融；按新 L6 Top3 优先 |
 
 **讲解**
 
 先说“当前结构已经解决什么”，再说“为什么这次必须统一协议”，最后说明分块、阈值、batch/shape 是**下一步的独立实验变量**，不是本轮 L1～L6 曲线的暗变量。
 
-**边界**：仍不把不存在的 profiler 计数、传统 GPU 基线或尚未完成的参数 A/B 写成结果。
+**边界**：仍不把不存在的 profiler 计数、传统 GPU 基线或尚未完成的参数消融写成结果。
 
 ---
 
@@ -692,7 +700,7 @@ contracts / unit / demo / reports
   → Task2 流程与性能形成第二组应用证据       P10-P11
   → 回到代码架构、81 算子与公共执行基础      P12-P13
   → 用正确性、全库分布、Scaling 建立证据位     P14-P16
-  → 先统一测评，再对参数与热点做 A/B           P17
+  → 先统一测评，再对参数与热点做独立消融       P17
   → 亮点收束，说明 AI 使用边界，再致谢         P18-P20
 ```
 
@@ -704,7 +712,7 @@ contracts / unit / demo / reports
 - P09→P10：“Task1 证明公开算子可直接组合；Task2 则进一步利用任务只需要 score 的语义裁剪工作量。”
 - P11→P12：“两条应用的统一测评协议已经明确，下面快速说明这些能力如何落在真实代码和 81 算子体系中。”
 - P13→P14：“架构和覆盖只是交付范围，最终仍要回到正确性与结构化报告。”
-- P16→P17：“统一曲线和热点表会给出可比基线；下一步把规模变化与参数调优拆开做独立 A/B。”
+- P16→P17：“统一曲线和热点表会给出可比基线；下一步把规模变化与参数调优拆开做独立消融。”
 
 ## 7. 正式图表和素材生成规则
 
@@ -714,8 +722,8 @@ contracts / unit / demo / reports
 |---|---|---|
 | P03 | 赛题交付与三类难题图 | README、contracts、reports |
 | P04 | 两层技术路线图 | 当前源码通用机制 + Wiener 单位 benchmark + 两条任务的正式 L6 中位数 |
-| P05 | Wiener Tile/Halo + 历史/当前效果 | `filtering.cu`、历史 A/B、unit summary |
-| P06 | IIR hierarchical scan + 两层时间结果 | affine compose、历史 A/B、unit summary |
+| P05 | Wiener Tile/Halo + 历史/当前效果 | `filtering.cu`、历史优化前后对比、unit summary |
+| P06 | IIR hierarchical scan + 两层时间结果 | affine compose、历史优化前后对比、unit summary |
 | P07 | Periodogram before/after + 三类收益 | `spectral.cu` R2C/fusion/cache |
 | P08/P09 | Task1 pipeline、正式 L1-L6 速度/正确性数据位 | Task1 source、`task1_radar/scales/L1-L6` metrics |
 | P10/P11 | CPU逐帧 vs GPU score-only、正式 L1-L6 数据位 | Task2 source/helper、`task2_features/scales/L1-L6` metrics |
@@ -724,7 +732,7 @@ contracts / unit / demo / reports
 | P14 | 正式 L6 正确性组合图 | 两任务 `scales/L6/metrics.json` |
 | P15 | 78 detailed-case log speedup 点图 | benchmark `performance_cases[source=case_detail]`；8 aggregate 另注 |
 | P16 | 两任务正式 L1-L6 scaling + 新 L6 Top3 | `scales/L1-L6` metrics |
-| P17 | 正式测评与参数 A/B 改进方向 | `scale_retest_plan.md`、`evidence.md` |
+| P17 | 正式测评与参数独立消融改进方向 | `scale_retest_plan.md`、`evidence.md` |
 | P18 | 三项已实现核心亮点 | 当前源码与 `evidence.md` |
 | P19 | AI 使用说明 | 团队确认的实际使用记录 |
 
@@ -745,7 +753,7 @@ median of remaining 6 | L6 = original final-input configuration |
 speedup = CPU median total / GPU median total | application-total includes input preparation
 ```
 
-历史 A/B：
+历史优化前后对比：
 
 ```text
 Historical retained candidate | version/protocol as recorded in docs/PERFORMANCE.md or ledger |
@@ -773,7 +781,7 @@ not recomputed from the current report
 
 若 P16 结束时超过 7:20：
 
-- P17 只讲“规模固定参数、参数做独立 A/B”这一条原则。
+- P17 只讲“规模固定参数、参数做独立消融”这一条原则。
 - P18 只讲三个亮点中的前两项，不展开页面文字。
 - P19 不超过 10 秒；P20 不超过 8 秒。
 
@@ -784,12 +792,12 @@ not recomputed from the current report
 - [ ] 主讲页严格为 20 页，封面和结尾已包含，不额外追加目录、章节页或纯感谢页。
 - [ ] 正常语速完整演练不超过 8:33，至少两次演练低于 9:00。
 - [ ] P03 的赛题重述有官方赛题/README 依据，P02 只保留真实团队与 AI 使用事实。
-- [ ] P05～P07 每页同时有问题、原理、历史 A/B/当前单位 benchmark和边界。
+- [ ] P05～P07 每页同时有问题、原理、历史优化前后对比/当前单位 benchmark和边界。
 - [ ] P08/P10 是应用流程与核心技术；P09/P11 是对应性能与正确性，页组关系清楚。
 - [ ] P09/P11 明确说明仓库没有传统 GPU 基线，不出现 NVIDIA/其他 GPU 虚构对比。
 - [ ] P13 明确区分设备驻留、RAII 所有权、capacity cache、prepared cache 和精确 Host 内容缓存。
 - [ ] 全稿不把 Unified Memory、零拷贝、自动迁移、在线 autotuner、已上线 Graph/multi-stream 表述为当前已有能力；若用于边界说明，必须明确“不是/尚未”。
-- [ ] P05～P07 的历史 A/B 与当前单位 benchmark 使用不同角标；P09/P11/P14/P16 只使用正式 L1-L6 run。
+- [ ] P05～P07 的历史优化前后对比与当前单位 benchmark 使用不同角标；P09/P11/P14/P16 只使用正式 L1-L6 run。
 - [x] P09、P11、P14、P16 已记录 ZQ500 `final_l1_l6_v1` 的规模、7 repeats/首轮 warm-up、CPU/GPU 中位数、P95、直接加速比和 raw metrics SHA-256；冻结答辩 commit 时仍须复验。
 - [ ] P15 主图只统计 78 个 `source=case_detail`，并明确 81/81 有性能入口、另有 8 aggregate。
 - [x] P16 仅使用正式 L1-L6 曲线和新 L6 Top3；未混入旧 task scale/final 数字。
