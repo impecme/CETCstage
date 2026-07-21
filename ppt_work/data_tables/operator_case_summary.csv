@@ -1,0 +1,2 @@
+公开算子总数,有性能记录算子数,详细 case 总数,>1× detailed case 数,≤1× detailed case 数,中位数加速比 (×),几何平均加速比 (×),口径
+81,81,78,69,9,17.463359,10.112829,78 条详细 case 来自 73 个算子；另 8 个算子只有 summary_aggregate 记录，完整 81 算子表见 operator_performance_81.csv

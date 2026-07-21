@@ -1,0 +1,13 @@
+任务,级别,统一协议状态,L6基准输入,本级输入规模,CPU total (ms),GPU total (ms),已计算加速比 CPU/GPU (×),关键正确性结果,原始 metrics 路径
+Task1,L1,固定 final-input 算法/分块/CFAR 阈值; 仅改变输入规模,"rx_matrix=128×4096",待确定,待重测,待重测,待导出,待复测,data/reports/demo/task1_radar/unified_scales/L1/metrics.json
+Task1,L2,固定 final-input 算法/分块/CFAR 阈值; 仅改变输入规模,"rx_matrix=128×4096",待确定,待重测,待重测,待导出,待复测,data/reports/demo/task1_radar/unified_scales/L2/metrics.json
+Task1,L3,固定 final-input 算法/分块/CFAR 阈值; 仅改变输入规模,"rx_matrix=128×4096",待确定,待重测,待重测,待导出,待复测,data/reports/demo/task1_radar/unified_scales/L3/metrics.json
+Task1,L4,固定 final-input 算法/分块/CFAR 阈值; 仅改变输入规模,"rx_matrix=128×4096",待确定,待重测,待重测,待导出,待复测,data/reports/demo/task1_radar/unified_scales/L4/metrics.json
+Task1,L5,固定 final-input 算法/分块/CFAR 阈值; 仅改变输入规模,"rx_matrix=128×4096",待确定,待重测,待重测,待导出,待复测,data/reports/demo/task1_radar/unified_scales/L5/metrics.json
+Task1,L6,原 final-input 配置作为统一验收点,"rx_matrix=128×4096",128×4096,待重测,待重测,待导出,待复测,data/reports/demo/task1_radar/unified_scales/L6/metrics.json
+Task2,L1,固定 final-input 算法/batch/门限; 仅改变输入规模,"rx_frames=128×3072",待确定,待重测,待重测,待导出,待复测,data/reports/demo/task2_features/unified_scales/L1/metrics.json
+Task2,L2,固定 final-input 算法/batch/门限; 仅改变输入规模,"rx_frames=128×3072",待确定,待重测,待重测,待导出,待复测,data/reports/demo/task2_features/unified_scales/L2/metrics.json
+Task2,L3,固定 final-input 算法/batch/门限; 仅改变输入规模,"rx_frames=128×3072",待确定,待重测,待重测,待导出,待复测,data/reports/demo/task2_features/unified_scales/L3/metrics.json
+Task2,L4,固定 final-input 算法/batch/门限; 仅改变输入规模,"rx_frames=128×3072",待确定,待重测,待重测,待导出,待复测,data/reports/demo/task2_features/unified_scales/L4/metrics.json
+Task2,L5,固定 final-input 算法/batch/门限; 仅改变输入规模,"rx_frames=128×3072",待确定,待重测,待重测,待导出,待复测,data/reports/demo/task2_features/unified_scales/L5/metrics.json
+Task2,L6,原 final-input 配置作为统一验收点,"rx_frames=128×3072",128×3072,待重测,待重测,待导出,待复测,data/reports/demo/task2_features/unified_scales/L6/metrics.json

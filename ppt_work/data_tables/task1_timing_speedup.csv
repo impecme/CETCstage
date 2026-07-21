@@ -1,0 +1,8 @@
+任务,配置,scale_value,主输入 shape,CPU total (ms),GPU total (ms),加速比 CPU/GPU (×),原始 metrics 路径
+Task1 雷达检测,L1,4096,32 · 128,3.041310,1.979850,1.536132,data/reports/demo/task1_radar/scales/L1/metrics.json
+Task1 雷达检测,L2,12288,48 · 256,8.461670,2.173920,3.892356,data/reports/demo/task1_radar/scales/L2/metrics.json
+Task1 雷达检测,L3,16384,64 · 256,9.987800,2.041350,4.892743,data/reports/demo/task1_radar/scales/L3/metrics.json
+Task1 雷达检测,L4,49152,96 · 512,29.215900,2.732160,10.693334,data/reports/demo/task1_radar/scales/L4/metrics.json
+Task1 雷达检测,L5,131072,128 · 1024,72.127300,3.495820,20.632441,data/reports/demo/task1_radar/scales/L5/metrics.json
+Task1 雷达检测,L6,294912,192 · 1536,158.097000,8.033480,19.679765,data/reports/demo/task1_radar/scales/L6/metrics.json
+Task1 雷达检测,final-input（独立验收配置）,524288,128 · 4096,387.942000,11.344400,34.196784,data/reports/demo/task1_radar/final/metrics.json
