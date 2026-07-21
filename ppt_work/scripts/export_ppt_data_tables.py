@@ -105,6 +105,64 @@ def all_operator_rows() -> list[list[object]]:
     return sorted(rows, key=lambda row: (row[0], row[1]))
 
 
+def unified_metrics(task: str, level: int) -> tuple[dict, Path]:
+    rel = Path("data/reports/demo/unified_scales") / task / f"L{level}" / "metrics.json"
+    return load(ROOT / rel), rel
+
+
+def unified_scale_rows() -> list[list[object]]:
+    rows = []
+    titles = {"task1_radar": "Task1 雷达检测", "task2_features": "Task2 特征融合与跟踪"}
+    for task in ("task1_radar", "task2_features"):
+        for level in range(1, 7):
+            metrics, rel = unified_metrics(task, level)
+            scenario = metrics["scenario"]
+            measure = metrics["measurement"]
+            dimensions = (scenario["num_pulses"], scenario["samples_per_pulse"]) if task == "task1_radar" else (scenario["num_frames"], scenario["samples_per_frame"])
+            rows.append([
+                titles[task], f"L{level}", "unified_l1_l6_v1",
+                f"{dimensions[0]} × {dimensions[1]}", scenario["scale_value"],
+                f"{measure['cpu_total']['median_ms']:.6f}",
+                f"{measure['gpu_total']['median_ms']:.6f}",
+                f"{measure['gpu_total']['p95_ms']:.6f}",
+                f"{measure['gpu_kernel_total']['profiled_final_run_ms']:.6f}",
+                f"{metrics['speedup']['cpu_over_gpu']:.6f}",
+                "PASS" if metrics["validation"]["pass"] else "FAIL",
+                str(rel),
+            ])
+    return rows
+
+
+def unified_correctness_rows() -> list[list[object]]:
+    task1, task1_rel = unified_metrics("task1_radar", 6)
+    task2, task2_rel = unified_metrics("task2_features", 6)
+    t1 = task1["correctness_summary"]
+    t2 = task2["correctness_summary"]
+    expected = t1["expected_detection"]
+    return [
+        ["Task1", "Expected/CPU/GPU 检测位置", f"range={expected['range_bin']}; Doppler={expected['doppler_bin']}; {expected['doppler_hz']} Hz", "三者一致", "PASS", str(task1_rel)],
+        ["Task1", "CFAR threshold mixed error", f"{t1['cfar_threshold_mixed_error']:.6f}", "< 0.5", "PASS", str(task1_rel)],
+        ["Task2", "CPU/GPU peak track", "一致", "一致", "PASS", str(task2_rel)],
+        ["Task2", "Kalman track RMSE", f"{t2['kalman_track_rmse']:.6f}", "< 2", "PASS", str(task2_rel)],
+        ["Task2", "feature-score mixed error", f"{t2['feature_score_mixed_error']:.5e}", "< 1e-4", "PASS", str(task2_rel)],
+    ]
+
+
+def unified_hotspot_rows() -> list[list[object]]:
+    rows = []
+    for task, title in (("task1_radar", "Task1"), ("task2_features", "Task2")):
+        metrics, rel = unified_metrics(task, 6)
+        raw_total = metrics["raw_final_timing_total"]["gpu_ms"]
+        stages = [
+            (name, timing["gpu_ms"])
+            for name, timing in metrics["timings"].items()
+            if name != "total" and timing["gpu_ms"] > 0
+        ]
+        for rank, (name, value) in enumerate(sorted(stages, key=lambda item: item[1], reverse=True)[:3], start=1):
+            rows.append([title, f"Top{rank}", name, f"{value:.6f}", f"{100 * value / raw_total:.2f}", str(rel)])
+    return rows
+
+
 def main() -> None:
     timing_header = ["任务", "配置", "scale_value", "主输入 shape", "CPU total (ms)", "GPU total (ms)", "加速比 CPU/GPU (×)", "原始 metrics 路径"]
     task1 = task_timing_table("task1_radar", "Task1 雷达检测")
@@ -157,6 +215,22 @@ def main() -> None:
         "operator_performance_81.csv",
         ["模块", "公开算子", "性能 case 数", "性能记录类型", "CPU median (ms)", "GPU E2E median (ms)", "加速比 CPU/GPU (×)", "性能记录通过", "原始汇总路径"],
         all_operators,
+    )
+
+    write_csv(
+        "unified_task_scaling.csv",
+        ["任务", "级别", "协议", "输入 shape", "输入元素数", "CPU 中位总时间 (ms)", "GPU 中位总时间 (ms)", "GPU P95 总时间 (ms)", "GPU kernel profile (ms)", "已计算加速比 CPU/GPU (×)", "验证", "原始 metrics 路径"],
+        unified_scale_rows(),
+    )
+    write_csv(
+        "unified_l6_correctness.csv",
+        ["任务", "验证项", "实际值", "门限", "结论", "原始 metrics 路径"],
+        unified_correctness_rows(),
+    )
+    write_csv(
+        "unified_l6_hotspots.csv",
+        ["任务", "排名", "GPU 阶段", "GPU event 时间 (ms)", "占 L6 raw GPU total (%)", "原始 metrics 路径"],
+        unified_hotspot_rows(),
     )
 
 

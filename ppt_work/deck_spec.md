@@ -4,7 +4,7 @@
 > 汇报上限：10 分钟。
 > 主讲目标：20 页、513 秒（8:33）。
 > 机动余量：87 秒，不分配给任何页面。
-> 当前状态：只规划内容、证据、视觉和讲解节奏；不制作 PPT，不生成或补造实验数据。
+> 当前状态：P03～P19 已生成技术页初稿；P09、P11、P14、P16 已由 ZQ500 真实统一规模报告重绘。性能图只使用结构化报告导出，不由生图模型补造。
 
 ## 1. 结构选择
 
@@ -84,6 +84,7 @@
 - `RUN 2026-07-20 SNAPSHOT`：`current-20260720-task-optimized-l6` 已发布运行快照；当前源树与该快照存在 4 项 source drift，正式答辩前须复验冻结。
 - `HISTORICAL A/B`：V5/V6/V7 历史优化前后。
 - `DERIVED`：从结构化 JSON 的 repeat/case 重算。
+- `UNIFIED L1-L6 · 2026-07-21`：ZQ500-Q QUAD-0 上的统一协议实测；每点 7 次，首轮 warm-up 排除，CPU/GPU total 取其余 6 次中位数，speedup 直接计算为 CPU/GPU。
 
 禁止把不同角标的数据放进同一个公式继续计算。例如历史 before 与当前 GPU 时间不能相除得到新的“总优化倍数”。
 
@@ -260,8 +261,8 @@ correctness / performance / provenance
 
 | 应用构建 | 统一测评状态 | 对应组合优化 |
 |---|---:|---|
-| Task1 雷达检测 | `34.20x` 已发布快照；正式页由新统一 L6 替换 | template cache、scale fusion、transpose+shift、row prefix、two-stage peak |
-| Task2 特征融合与跟踪 | `1071.70x` 已发布快照；正式页由新统一 L6 替换 | batch+residency、AOT correlate、band score、CWT max-score、fusion+peak+Kalman |
+| Task1 雷达检测 | 统一 L6 `33.09x` | template cache、scale fusion、transpose+shift、row prefix、two-stage peak |
+| Task2 特征融合与跟踪 | 统一 L6 `1048.78x` | batch+residency、AOT correlate、band score、CWT max-score、fusion+peak+Kalman |
 
 五类路径是跨应用归纳的技术方法，不暗示两条任务机械地各用同一组五项：`Device-resident/batch`、`prepared/cache reuse`、`fusion/direct write`、`parallel scan/reduction`、`score-only/compact output`。Task1 重点使用 cache、fusion、矩阵重排、row-prefix 与两级归约；Task2 重点使用 batch/residency、AOT preparation、四路 score 裁剪与融合跟踪。
 
@@ -269,8 +270,8 @@ correctness / performance / provenance
 
 先报“3、2、5”：三项通用机制支撑 81 个公开算子的执行；P05～P07 用三个有代表性的算子案例解释算法级重构；两条任务分别证明“全公开算子组合”和“算子库 + 私有 helper 的 mixed 组合”。五类方法按任务特征自由组合。
 
-**证据角标**：Wiener 使用 `RUN 2026-07-20 SNAPSHOT · unit benchmark`；两条任务数字明确标注 `已发布快照 · 统一复测后替换`。
-**边界**：P04 的两条任务数字不能拿去填 P09/P11/P14/P16；正式任务曲线只可使用同一固定参数协议的新结果。不同口径不能相乘、相除或合并归因。
+**证据角标**：Wiener 使用 `RUN 2026-07-20 SNAPSHOT · unit benchmark`；Task1/Task2 分别标注 `UNIFIED L1-L6 · 2026-07-21 · L6 median`。
+**边界**：P04 的两个 L6 数字可与 P09/P11 对照，但不得和历史 A/B、旧 `scales/` 或独立 `final/` 数字继续相除、相乘或合并归因。
 
 ---
 
@@ -412,24 +413,24 @@ template + pulses → entry H2D
 
 ---
 
-### P09 Task1 性能证据：统一 L1～L6 协议待复测（35 秒）
+### P09 Task1 性能证据：统一 L1～L6 ZQ500 实测（35 秒）
 
 **核心结论**
 
-> 原 final-input 不再单列；它被纳入新 L6，L1～L5 固定算法、分块与 CFAR 阈值，只改变输入规模。
+> 原 final-input 已纳入新 L6；Task1 在统一协议下保持 `25.53×～33.09×`，L6 中位数为 CPU `364.798 ms`、GPU `11.023 ms`。
 
 **主视觉**
 
-- 左侧：新 Task1 L1～L6 `speedup = CPU total / GPU total` 曲线槽位，L6 橙色标记为原 final-input 配置。
-- 中部：新 L6 的 CPU total、GPU total、已计算 speedup 三个填数槽位。
+- 左侧：实测 Task1 L1～L6 `speedup = CPU median total / GPU median total` 曲线，L6 橙色标记为原 final-input 配置。
+- 中部：新 L6 的 CPU/GPU 中位 total、已计算 `33.09×`；标注 7 次运行且首轮 warm-up 排除。
 - 右侧：固定/改变项对照：`固定窗口、CFAR 参数、公开算子链；改变任务输入规模`。
-- 下方：Expected/CPU/GPU 检测位置与 CFAR error/PASS 槽位。
+- 下方：Expected/CPU/GPU 检测位置一致，CFAR threshold mixed error `0.276398 < 0.5`，PASS。
 
 **讲解**
 
 这一页不展示旧 task scale 或独立 final-input 数字。答辩时先说明统一协议，再读新 L6 的时间、加速比和正确性；曲线只解释规模效应，不把参数调优混入其中。
 
-**复测数据源**：`data/reports/demo/task1_radar/unified_scales/L1…L6/metrics.json`。
+**实测数据源**：`data/reports/demo/unified_scales/task1_radar/L1…L6/metrics.json`、`ppt_work/data_tables/unified_task_scaling.csv`。
 **边界**：仓库没有独立 NVIDIA/其他传统 GPU 运行记录；仅比较 CPU reference 与 ZQ500 GPU。`application-total` 的输入准备口径仍须在新 run 中同时记录。
 
 ---
@@ -467,24 +468,24 @@ entry H2D per input → batch/residency
 
 ---
 
-### P11 Task2 性能证据：统一 L1～L6 协议待复测（35 秒）
+### P11 Task2 性能证据：统一 L1～L6 ZQ500 实测（35 秒）
 
 **核心结论**
 
-> 将原 final-input 设为新 L6；冻结 `B=8`、Device-resident、score-only 与误差门限，只改变帧数和每帧输入长度。
+> 将原 final-input 设为新 L6；冻结 filter/spectrogram/CWT/track 与 score-only 语义，仅改变帧数，端到端加速从 `415.96×` 提升至 `1048.78×`。
 
 **主视觉**
 
-- 左侧：新 Task2 L1～L6 加速比曲线槽位，L6 为原 final-input 配置。
-- 中部：新 L6 CPU/GPU total 和直接导出的 speedup 槽位。
+- 左侧：实测 Task2 L1～L6 加速比曲线，L6 为原 final-input 配置。
+- 中部：L6 CPU/GPU 中位 total：`28363.050 ms / 27.044 ms = 1048.78×`。
 - 右侧：统一协议，固定 batch、score-only、feature/track 门限；只改变输入规模。
-- 下方：CPU/GPU 轨迹一致性、track RMSE 与 feature-score error/PASS 槽位。
+- 下方：CPU/GPU 轨迹一致；track RMSE `0.477855 < 2`，feature-score mixed error `9.83703e-5 < 1e-4`，PASS。
 
 **讲解**
 
 P10 已证明 score-only 如何删去中间量；本页用新统一曲线证明这种结构在可比规模下的端到端效果。局部 A/B 的保留或回退仍要同时满足正确性和 E2E，但不与规模曲线混算。
 
-**复测数据源**：`data/reports/demo/task2_features/unified_scales/L1…L6/metrics.json`。
+**实测数据源**：`data/reports/demo/unified_scales/task2_features/L1…L6/metrics.json`、`ppt_work/data_tables/unified_task_scaling.csv`。
 **对比边界**：仅比较 CPU reference 与 ZQ500 GPU；不宣称“相比传统 GPU”。
 
 ---
@@ -548,23 +549,23 @@ contracts / unit / demo / reports
 
 ---
 
-### P14 正确性与任务运行验证：新统一 L6 结果预留（24 秒）
+### P14 正确性与任务运行验证：新统一 L6 实测结果（24 秒）
 
 **核心结论**
 
-> 81 个公开算子的代码/契约覆盖可保留；两条任务的最终正确性必须以新统一 L6 的同一 run 为准。
+> 81 个公开算子有性能记录；两条任务的 12 个统一规模点均通过，L6 正确性、性能与统计口径来自同一运行报告。
 
 **主视觉**
 
 - 左侧保留代码与契约覆盖：`81/81 公开算子`、`2/2 端到端任务`、`14/14 正式计算步骤`。
-- 右上预留 Task1 新 L6：Expected/CPU/GPU 检测位置、CFAR error、PASS/FAIL。
-- 右下预留 Task2 新 L6：CPU/GPU 轨迹一致性、RMSE/feature error、PASS/FAIL。
+- 右上展示 Task1 L6：Expected/CPU/GPU 检测位置、CFAR error、PASS。
+- 右下展示 Task2 L6：CPU/GPU 轨迹一致性、RMSE/feature error、PASS。
 
 **讲解**
 
 不沿用旧 final-input 误差。新 L6 的性能、误差和 run id 必须同源，任何一项未过门限都不能填成 PASS。
 
-**复测数据源**：两个 `unified_scales/L6/metrics.json`；覆盖事实来自 `tests/contracts/` 与 `data/reports/units/benchmarks/summary.json`。
+**实测数据源**：`data/reports/demo/unified_scales/*/L6/metrics.json`、`ppt_work/data_tables/unified_l6_correctness.csv`；覆盖事实来自 `tests/contracts/` 与 `data/reports/units/benchmarks/summary.json`。
 
 ---
 
@@ -589,23 +590,23 @@ contracts / unit / demo / reports
 
 ---
 
-### P16 端到端 Scaling 与热点：统一 L1～L6 数据预留（30 秒）
+### P16 端到端 Scaling 与热点：统一 L1～L6 实测（30 秒）
 
 **核心结论**
 
-> 统一曲线只衡量输入规模效应；新 L6 的 GPU 时间 Top3 直接决定下一轮优化优先级。
+> Task1 曲线受固定开销影响而在 `25.53×～33.09×` 间波动；Task2 随 batch 规模释放并行度，L6 Top3 已给出下一轮优化优先级。
 
 **主视觉**
 
-- 上方两张独立坐标小图：Task1 / Task2 新 L1～L6 speedup 曲线槽位；统一使用 `speedup = CPU total / GPU total`。
-- 下方两张 Top3 表：每项填入 `步骤名 / GPU ms / 占 total GPU 时间比例`。
+- 上方两张独立坐标小图：Task1 / Task2 实测 L1～L6 speedup 曲线；统一使用 `speedup = CPU median total / GPU median total`。
+- 下方两张 Top3 表：`ambgfun / input_construction / pulse_doppler` 与 `cwt / input_construction / spectrogram`，使用 L6 final-run GPU event 时间占比。
 - 页脚明确：L6 是原 final-input 配置，L1～L5 只改变输入规模；不混入旧 scales/final 数据。
 
 **讲解**
 
 规模曲线回答“并行度何时释放”；热点回答“下一步先优化哪里”。新数据出来后只讲趋势、L6 和各任务 Top1，不逐点读曲线。
 
-**复测数据源**：两个任务 `unified_scales/L1…L6/metrics.json`。
+**实测数据源**：`data/reports/demo/unified_scales/*/L1…L6/metrics.json`、`ppt_work/data_tables/unified_l6_hotspots.csv`。
 **边界**：GPU event 仅表示 stream work，不解释成单 kernel profiler 时间；在没有同协议 DRAM bytes/FLOPS 时不画 Roofline。
 
 ---
@@ -710,7 +711,7 @@ contracts / unit / demo / reports
 | 页面 | 图件 | 数据来源 |
 |---|---|---|
 | P03 | 赛题交付与三类难题图 | README、contracts、reports |
-| P04 | 两层技术路线图 | 当前源码通用机制 + Wiener 单位 benchmark；两项临时 task snapshot 待新 L6 替换 |
+| P04 | 两层技术路线图 | 当前源码通用机制 + Wiener 单位 benchmark + 两条任务的统一 L6 中位数 |
 | P05 | Wiener Tile/Halo + 历史/当前效果 | `filtering.cu`、历史 A/B、unit summary |
 | P06 | IIR hierarchical scan + 两层时间结果 | affine compose、历史 A/B、unit summary |
 | P07 | Periodogram before/after + 三类收益 | `spectral.cu` R2C/fusion/cache |
@@ -734,12 +735,12 @@ ZQ500-Q QUAD-0 | RUN 2026-07-20 SNAPSHOT | GPU warmup=5, repeat=30,
 median | E2E includes host-side API path | source: data/reports/units/benchmarks/summary.json
 ```
 
-统一 Task scaling（复测后使用）：
+统一 Task scaling（已完成）：
 
 ```text
-unified-scales run_id | L6 = original final-input configuration |
-L1-L5 keep algorithm/block/threshold fixed and change input scale only |
-speedup = CPU total / GPU total | application-total input preparation scope recorded
+ZQ500-Q QUAD-0 | UNIFIED L1-L6 · 2026-07-21 | 7 runs, first warm-up excluded,
+median of remaining 6 | L6 = original final-input configuration |
+speedup = CPU median total / GPU median total | application-total includes input preparation
 ```
 
 历史 A/B：
@@ -787,9 +788,9 @@ not recomputed from the current report
 - [ ] P13 明确区分设备驻留、RAII 所有权、capacity cache、prepared cache 和精确 Host 内容缓存。
 - [ ] 全稿不把 Unified Memory、零拷贝、自动迁移、在线 autotuner、已上线 Graph/multi-stream 表述为当前已有能力；若用于边界说明，必须明确“不是/尚未”。
 - [ ] P05～P07 的历史 A/B 与当前单位 benchmark 使用不同角标；P09/P11/P14/P16 只使用新统一 L1-L6 run。
-- [ ] 完成统一复测后，P09、P11、P14、P16 同时记录新 run id、Git commit/clean 状态、规模、warmup/repeat 与统计量。
+- [x] P09、P11、P14、P16 已记录 ZQ500 `unified_l1_l6_v1` 的规模、7 repeats/首轮 warm-up、CPU/GPU 中位数、P95、直接加速比和 raw metrics SHA-256；冻结答辩 commit 时仍须复验。
 - [ ] P15 主图只统计 78 个 `source=case_detail`，并明确 81/81 有性能入口、另有 8 aggregate。
-- [ ] P16 只使用新统一 L1-L6 曲线和新 L6 Top3；不得混入旧 `scales/` 或独立 `final/` 数字。
+- [x] P16 仅使用新统一 L1-L6 曲线和新 L6 Top3；未混入旧 `scales/` 或独立 `final/` 数字。
 - [ ] task `gpu_kernel_ms` 只标为 GPU event stream work，不解释成单 kernel/profiler 时间。
 - [ ] 团队分工和 AI 使用由成员确认，不从 Git/旧删除文档推断。
 - [ ] 每个数据图有版本、设备、规模、warmup/repeat、统计量和证据路径。

@@ -1,0 +1,7 @@
+任务,排名,GPU 阶段,GPU event 时间 (ms),占 L6 raw GPU total (%),原始 metrics 路径
+Task1,Top1,ambgfun,3.208110,29.84,data/reports/demo/unified_scales/task1_radar/L6/metrics.json
+Task1,Top2,input_construction,3.163750,29.43,data/reports/demo/unified_scales/task1_radar/L6/metrics.json
+Task1,Top3,pulse_doppler,1.512060,14.06,data/reports/demo/unified_scales/task1_radar/L6/metrics.json
+Task2,Top1,cwt,12.512700,47.82,data/reports/demo/unified_scales/task2_features/L6/metrics.json
+Task2,Top2,input_construction,4.077840,15.58,data/reports/demo/unified_scales/task2_features/L6/metrics.json
+Task2,Top3,spectrogram,3.773450,14.42,data/reports/demo/unified_scales/task2_features/L6/metrics.json

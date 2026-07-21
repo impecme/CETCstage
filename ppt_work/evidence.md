@@ -861,6 +861,28 @@ PPT 不得增加“传统 GPU”柱、NVIDIA/CUDA 设备名或推测性倍数，
 
 ---
 
+## 9.7 2026-07-21 统一 L1～L6 实测补充（正式性能页依据）
+
+为消除旧 `scales/` 同时改变算法参数与输入规模、以及独立 `final-input` 未纳入曲线的口径问题，已在 ZQ500-Q QUAD-0 上按 `unified_l1_l6_v1` 重测两条任务。每个规模启动 7 次，首轮仅 warm-up；CPU/GPU `total` 取其余 6 次中位数，`speedup` 在报告中直接计算为 `CPU median total / GPU median total`。所有 12 个点的验证均 PASS。
+
+| 任务 | L1～L6 输入 | 固定项 | L6 CPU / GPU median total | L6 direct speedup | 正确性 |
+|---|---|---|---:|---:|---|
+| Task1 雷达检测 | `16×1536 → 128×4096` | 窗口、CFAR 参数与公开算子链 | `364.798 / 11.023 ms` | `33.09×` | Expected/CPU/GPU detection 均为 range 768、doppler 72；CFAR threshold mixed error `0.276398 < 0.5` |
+| Task2 特征融合/跟踪 | `8×3072 → 128×3072` | filter、spectrogram、CWT、track、B=8、score-only | `28363.050 / 27.044 ms` | `1048.78×` | CPU/GPU peak track 一致；RMSE `0.477855 < 2`；feature-score mixed error `9.83703e-05 < 1e-4` |
+
+完整曲线结论：Task1 为 `25.53×～33.09×`，可见固定开销影响；Task2 为 `415.96×～1048.78×`，随帧数增加释放批量并行度。L6 就是原 final-input；L1～L5 只改变输入规模，不再改变分块、阈值或算法语义。
+
+L6 的 raw final GPU event（仅代表 stream work，不是单 kernel profiler）Top3 为：Task1 `ambgfun 3.208110 ms (29.84%)`、`input_construction 3.163750 ms (29.43%)`、`pulse_doppler 1.512064 ms (14.06%)`；Task2 `cwt 12.512743 ms (47.82%)`、`input_construction 4.077844 ms (15.58%)`、`spectrogram 3.773453 ms (14.42%)`。这些热点是后续独立 A/B 的优先级，不应与规模曲线混为同一个优化效果。
+
+正式证据文件：
+
+- `data/reports/demo/unified_scales/unified_scale_summary.md` 与 `unified_scale_summary.csv`：12 点汇总、统计方法和路径。
+- `data/reports/demo/unified_scales/task1_radar/L1…L6/metrics.json`、`task2_features/L1…L6/metrics.json`：每次运行、参数、total、验证和原始结果。
+- `ppt_work/data_tables/unified_task_scaling.csv`、`unified_l6_correctness.csv`、`unified_l6_hotspots.csv`：P09/P11/P14/P16 可直接使用的制图表。
+- `ppt_work/generated/P09_Task1_统一L1-L6_实测_v07.png`、`P11_Task2_统一L1-L6_实测_v07.png`、`P14_统一L6正确性_实测_v07.png`、`P16_统一L1-L6规模与热点_实测_v07.png`：真实数据渲染的页面成品。
+
+---
+
 ## 审计后的 PPT 主线建议
 
 根据最终叙事选择，采用您去年“两层技术路线”的升级版：
