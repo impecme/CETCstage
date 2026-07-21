@@ -18,23 +18,25 @@ from xml.etree import ElementTree as ET
 
 
 SLIDES = (
-    "P03_赛题重述_整页_v03_技术链路.png",
-    "P04_技术路线_单算子三机制_v09.png",
-    "P05_访存资源复用_Wiener代表_v02.png",
-    "P06_并行结构重构_IIR代表_v02.png",
-    "P07_分派Fusion_Periodogram代表_v02.png",
-    "P08_Task1_五路径公开算子链_v02.png",
-    "P09_Task1_L1-L6_实测_v08.png",
-    "P10_Task2_五路径ScoreOnly_v07.png",
-    "P11_Task2_L1-L6_实测_v08.png",
-    "P12_代码架构_整页_v01.png",
-    "P13_81算子与公共机制_整页_v01.png",
-    "P14_L6正确性_实测_v08.png",
-    "P15_算子库性能总览_整页_v02.png",
-    "P16_L1-L6规模与热点_实测_v08.png",
-    "P17_统一测评与改进方向_生图重构_v06.png",
+    "P03_赛题重述_整页_v04_交付链路.png",
+    "P04_代码架构_三层加目录树预留_v03.png",
+    "P05_技术路线_单算子三机制_v09.png",
+    "P06_访存资源复用_Wiener代表_v03_性能收束.png",
+    "P07_并行结构重构_IIR代表_v03_性能收束.png",
+    "P08_分派Fusion_Periodogram代表_v03_性能收束.png",
+    # P09-P11 are reserved for three same-protocol operator-performance pages.
+    # Do not build the reordered deck until all three real data pages exist.
+    "P09_任务包含算子性能_待分层数据_v01.png",
+    "P10_赛题附录算子性能_待分层数据_v01.png",
+    "P11_原生基础算子性能_待分层数据_v01.png",
+    "P12_Task1_五路径公开算子链_v03_术语收束.png",
+    "P13_Task1_L1-L6_实测_v08.png",
+    "P14_Task2_五路径ScoreOnly_v08_术语收束.png",
+    "P15_Task2_L1-L6_实测_v08.png",
+    "P16_L6正确性_实测_v08.png",
+    "P17_性能优缺点与改进方向_待数据整合_v01.png",
     "P18_核心亮点_生图重构_v06.png",
-    "P19_AI工具使用说明_生图重构_v06.png",
+    "P19_AI工具使用说明_v08_比例与人工原创.png",
 )
 
 P = "http://schemas.openxmlformats.org/presentationml/2006/main"
@@ -127,12 +129,17 @@ def ensure_png_content_type(content_types: bytes) -> bytes:
 
 
 def main() -> int:
+    root = Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser()
-    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=root / "信号处理算子库_技术页_终版.pptx",
+        help="Final deck path; defaults to the single overwrite-in-place final PPTX.",
+    )
     args = parser.parse_args()
 
-    root = Path(__file__).resolve().parents[1]
-    image_dir = root / "generated"
+    image_dir = root / "final_images"
     images = [image_dir / image for image in SLIDES]
     missing = [str(image) for image in images if not image.is_file()]
     if missing:
