@@ -34,7 +34,7 @@ SLIDES = (
     "P16_统一L1-L6规模与热点待复测_整页_v03.png",
     "P17_统一测评与改进方向_生图重构_v06.png",
     "P18_核心亮点_生图重构_v06.png",
-    "P19_AI工具使用说明_整页_v02.png",
+    "P19_AI工具使用说明_生图重构_v06.png",
 )
 
 P = "http://schemas.openxmlformats.org/presentationml/2006/main"

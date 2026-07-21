@@ -224,7 +224,7 @@ P04_技术路线_生图重构_v06.png
 P10_Task2_Score_Only_生图重构_v06.png
 P17_统一测评与改进方向_生图重构_v06.png
 P18_核心亮点_生图重构_v06.png
-P19_AI工具使用说明_整页_v02.png
+P19_AI工具使用说明_生图重构_v06.png
 ```
 
 P15 保存可追溯的 `PNG + SVG + 数据导出 CSV/JSON 摘要`。P09、P11、P14、P16 在统一复测前只保留占位图与 `unified_l1_l6_retest_template.csv`；生成新曲线前逐页检查中文、箭头方向、CPU/GPU 映射、数字、证据角标与安全边距。
