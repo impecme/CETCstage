@@ -195,7 +195,7 @@ def page_p09() -> None:
     scale_sequence(d, (44, 275, 1004, 664), "Task1", "规模递增时，GPU 并行度如何释放？", "待复测后填入真实加速曲线；L6 为原 final-input 配置")
     result_gate(d, (1034, 275, 1628, 664), "Task1", ("窗口 / CFAR 参数", "公开算子处理链", "误差门限"))
     target_gate(d, (44, 700, 1628, 867), "Task1 新 L6 正确性门", "Expected / CPU / GPU 位置 + CFAR error：待填")
-    txt(d, (50, 911), "数据槽位：task1_radar/unified_scales/L1…L6/metrics.json；不回填旧 final-input 或旧 scales 数字。", 14, MUTED)
+    txt(d, (50, 911), "数据槽位：task1_radar/scales/L1…L6/metrics.json；不回填旧 final-input 或旧 scales 数字。", 14, MUTED)
     save(im, "P09_Task1_统一L1-L6_视觉升级_v04.png")
 
 
@@ -254,7 +254,7 @@ def page_p11() -> None:
     scale_sequence(d, (44, 275, 1004, 664), "Task2", "输入帧与长度递增时，score-only 的端到端收益如何变化？", "待复测后填入真实加速曲线；L6 为原 final-input 配置")
     result_gate(d, (1034, 275, 1628, 664), "Task2", ("B=8 / score-only", "feature 与 track 门限", "同一 filter / CWT / track 路径"))
     track_gate(d, (44, 700, 1628, 867))
-    txt(d, (50, 911), "数据槽位：task2_features/unified_scales/L1…L6/metrics.json；无独立传统 GPU 基线。", 14, MUTED)
+    txt(d, (50, 911), "数据槽位：task2_features/scales/L1…L6/metrics.json；无独立传统 GPU 基线。", 14, MUTED)
     save(im, "P11_Task2_统一L1-L6_视觉升级_v04.png")
 
 
@@ -284,7 +284,7 @@ def page_p14() -> None:
 
     target_gate(d, (718, 275, 1628, 537), "② Task1 新 L6", "检测位置 + CFAR error：待填 PASS")
     track_gate(d, (718, 564, 1628, 866))
-    txt(d, (50, 911), "P14 不沿用旧 final-input 误差；新结果来自两个 unified_scales/L6/metrics.json。", 14, MUTED)
+    txt(d, (50, 911), "P14 不沿用旧 final-input 误差；新结果来自两个任务的正式 scales/L6/metrics.json。", 14, MUTED)
     save(im, "P14_统一L6正确性_视觉升级_v04.png")
 
 
@@ -333,7 +333,7 @@ def page_p16() -> None:
     blank_curve(d, (854, 275, 1628, 558), "Task2", BLUE)
     hotspot_ladder(d, (44, 596, 810, 866), "Task1", TEAL)
     hotspot_ladder(d, (854, 596, 1628, 866), "Task2", BLUE)
-    txt(d, (50, 911), "只使用新 unified_scales/L1…L6 数据；GPU event 为 stream work，不解释为单 kernel profiler 时间。", 14, MUTED)
+    txt(d, (50, 911), "只使用正式 scales/L1…L6 数据；GPU event 为 stream work，不解释为单 kernel profiler 时间。", 14, MUTED)
     save(im, "P16_统一L1-L6规模与热点_视觉升级_v04.png")
 
 

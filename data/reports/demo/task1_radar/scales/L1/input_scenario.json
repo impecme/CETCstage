@@ -1,12 +1,13 @@
 {
   "scale_level": 1,
-  "scale_value": 4096,
+  "unified_scale_protocol": true,
+  "scale_value": 24576,
   "fs": 1e+06,
-  "num_pulses": 32,
-  "samples_per_pulse": 128,
-  "template_length": 32,
+  "num_pulses": 16,
+  "samples_per_pulse": 1536,
+  "template_length": 1024,
   "prf": 2000,
-  "delay_samples": 24,
+  "delay_samples": 288,
   "doppler_hz": 125,
   "target_amplitude": 1,
   "snr_db": 20,
@@ -16,10 +17,10 @@
   "pulse_compression_normalize": true,
   "pulse_compression_window": "",
   "pulse_doppler_window": "hann",
-  "pulse_compression_nfft": 128,
-  "pulse_doppler_nfft": 32,
+  "pulse_compression_nfft": 4096,
+  "pulse_doppler_nfft": 128,
   "cfar_guard_cells": [2, 2],
   "cfar_reference_cells": [8, 8],
   "cfar_pfa": 0.001,
-  "rx_shape": [32, 128]
+  "rx_shape": [16, 1536]
 }

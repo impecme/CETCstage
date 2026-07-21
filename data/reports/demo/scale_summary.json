@@ -1,0 +1,152 @@
+{
+  "protocol": "final_l1_l6_v1",
+  "description": "L6 acceptance configuration frozen; only input dimensions vary by level.",
+  "warmup_policy": "first repeat is excluded; CPU/GPU totals use median of later repeats",
+  "speedup_formula": "median_cpu_total_ms / median_gpu_total_ms",
+  "rows": [
+    {
+      "task": "task1_radar",
+      "level": 1,
+      "input_shape": "16 x 1536",
+      "input_elements": 24576,
+      "cpu_median_ms": 189.0555,
+      "gpu_median_ms": 7.40554,
+      "gpu_p95_ms": 7.961094999999999,
+      "gpu_kernel_profiled_final_ms": 6.6927,
+      "speedup_cpu_over_gpu": 25.528928342835226,
+      "validation_pass": true
+    },
+    {
+      "task": "task1_radar",
+      "level": 2,
+      "input_shape": "32 x 1536",
+      "input_elements": 49152,
+      "cpu_median_ms": 192.046,
+      "gpu_median_ms": 7.17438,
+      "gpu_p95_ms": 7.26131,
+      "gpu_kernel_profiled_final_ms": 7.02531,
+      "speedup_cpu_over_gpu": 26.768306111468863,
+      "validation_pass": true
+    },
+    {
+      "task": "task1_radar",
+      "level": 3,
+      "input_shape": "48 x 2048",
+      "input_elements": 98304,
+      "cpu_median_ms": 210.50549999999998,
+      "gpu_median_ms": 7.50619,
+      "gpu_p95_ms": 7.71372,
+      "gpu_kernel_profiled_final_ms": 7.12416,
+      "speedup_cpu_over_gpu": 28.04425414224793,
+      "validation_pass": true
+    },
+    {
+      "task": "task1_radar",
+      "level": 4,
+      "input_shape": "64 x 2048",
+      "input_elements": 131072,
+      "cpu_median_ms": 229.2375,
+      "gpu_median_ms": 7.77654,
+      "gpu_p95_ms": 8.013335,
+      "gpu_kernel_profiled_final_ms": 7.64167,
+      "speedup_cpu_over_gpu": 29.47808408366703,
+      "validation_pass": true
+    },
+    {
+      "task": "task1_radar",
+      "level": 5,
+      "input_shape": "96 x 3072",
+      "input_elements": 294912,
+      "cpu_median_ms": 282.899,
+      "gpu_median_ms": 10.215250000000001,
+      "gpu_p95_ms": 10.982875,
+      "gpu_kernel_profiled_final_ms": 9.58139,
+      "speedup_cpu_over_gpu": 27.69379114559115,
+      "validation_pass": true
+    },
+    {
+      "task": "task1_radar",
+      "level": 6,
+      "input_shape": "128 x 4096",
+      "input_elements": 524288,
+      "cpu_median_ms": 364.798,
+      "gpu_median_ms": 11.0229,
+      "gpu_p95_ms": 13.8473,
+      "gpu_kernel_profiled_final_ms": 10.4911,
+      "speedup_cpu_over_gpu": 33.09455769352893,
+      "validation_pass": true
+    },
+    {
+      "task": "task2_features",
+      "level": 1,
+      "input_shape": "8 x 3072",
+      "input_elements": 24576,
+      "cpu_median_ms": 1816.92,
+      "gpu_median_ms": 4.367985,
+      "gpu_p95_ms": 4.670895,
+      "gpu_kernel_profiled_final_ms": 3.64398,
+      "speedup_cpu_over_gpu": 415.96296690579294,
+      "validation_pass": true
+    },
+    {
+      "task": "task2_features",
+      "level": 2,
+      "input_shape": "16 x 3072",
+      "input_elements": 49152,
+      "cpu_median_ms": 3525.4849999999997,
+      "gpu_median_ms": 6.52467,
+      "gpu_p95_ms": 7.514745,
+      "gpu_kernel_profiled_final_ms": 6.16664,
+      "speedup_cpu_over_gpu": 540.3315416718392,
+      "validation_pass": true
+    },
+    {
+      "task": "task2_features",
+      "level": 3,
+      "input_shape": "32 x 3072",
+      "input_elements": 98304,
+      "cpu_median_ms": 7046.38,
+      "gpu_median_ms": 10.17335,
+      "gpu_p95_ms": 10.449200000000001,
+      "gpu_kernel_profiled_final_ms": 9.67914,
+      "speedup_cpu_over_gpu": 692.6312374979727,
+      "validation_pass": true
+    },
+    {
+      "task": "task2_features",
+      "level": 4,
+      "input_shape": "64 x 3072",
+      "input_elements": 196608,
+      "cpu_median_ms": 14121.75,
+      "gpu_median_ms": 13.821,
+      "gpu_p95_ms": 14.227225,
+      "gpu_kernel_profiled_final_ms": 13.6507,
+      "speedup_cpu_over_gpu": 1021.7603646624701,
+      "validation_pass": true
+    },
+    {
+      "task": "task2_features",
+      "level": 5,
+      "input_shape": "96 x 3072",
+      "input_elements": 294912,
+      "cpu_median_ms": 21827.8,
+      "gpu_median_ms": 21.190649999999998,
+      "gpu_p95_ms": 21.4023,
+      "gpu_kernel_profiled_final_ms": 20.3182,
+      "speedup_cpu_over_gpu": 1030.0675061878705,
+      "validation_pass": true
+    },
+    {
+      "task": "task2_features",
+      "level": 6,
+      "input_shape": "128 x 3072",
+      "input_elements": 393216,
+      "cpu_median_ms": 28363.050000000003,
+      "gpu_median_ms": 27.0439,
+      "gpu_p95_ms": 27.471075,
+      "gpu_kernel_profiled_final_ms": 25.8312,
+      "speedup_cpu_over_gpu": 1048.7780978335227,
+      "validation_pass": true
+    }
+  ]
+}

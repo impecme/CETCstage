@@ -259,7 +259,7 @@ def page_p09() -> None:
                  "L6 = 原 final-input 的配置；待复测后写入真实 speedup", TEAL)
     result_slot(d, (1042, 274, 1628, 646), "Task1", ("窗口 / CFAR 参数冻结", "公开算子链冻结", "误差门限冻结"))
     radar_gate(d, (44, 670, 1628, 871), "Task1 · 新 L6 正确性门")
-    txt(d, (50, 912), "数据槽位：task1_radar/unified_scales/L1…L6/metrics.json；不回填旧 scales 或旧 final-input 性能数字。", 14, MUTED)
+    txt(d, (50, 912), "数据槽位：task1_radar/scales/L1…L6/metrics.json；不回填旧 scales 或旧 final-input 性能数字。", 14, MUTED)
     save(im, "P09_Task1_统一L1-L6_视觉重构_v05.png")
 
 
@@ -327,7 +327,7 @@ def page_p11() -> None:
                  "L6 = 原 final-input 的配置；待复测后写入真实 speedup", BLUE)
     result_slot(d, (1042, 274, 1628, 646), "Task2", ("B=8 / score-only 冻结", "filter / CWT / track 路径冻结", "feature 与 track 门限冻结"))
     task2_track_gate(d, (44, 670, 1628, 871), "Task2 · 新 L6 轨迹与特征门")
-    txt(d, (50, 912), "数据槽位：task2_features/unified_scales/L1…L6/metrics.json；无独立传统 GPU 基线。", 14, MUTED)
+    txt(d, (50, 912), "数据槽位：task2_features/scales/L1…L6/metrics.json；无独立传统 GPU 基线。", 14, MUTED)
     save(im, "P11_Task2_统一L1-L6_视觉重构_v05.png")
 
 
@@ -358,7 +358,7 @@ def page_p14() -> None:
     coverage_panel(d, (44, 274, 592, 870))
     radar_gate(d, (626, 274, 1628, 548), "② Task1 · 目标检测一致")
     task2_track_gate(d, (626, 578, 1628, 870), "③ Task2 · 特征与轨迹一致")
-    txt(d, (50, 912), "正式答辩不沿用旧 final-input 误差；新结果来自两个 unified_scales/L6/metrics.json。", 14, MUTED)
+    txt(d, (50, 912), "正式答辩不沿用旧 final-input 误差；新结果来自两个任务的正式 scales/L6/metrics.json。", 14, MUTED)
     save(im, "P14_统一L6正确性_视觉重构_v05.png")
 
 
@@ -406,7 +406,7 @@ def page_p16() -> None:
     empty_scale_canvas(d, (854, 276, 1628, 552), "Task2", BLUE)
     hotspot_steps(d, (44, 596, 810, 868), "Task1", TEAL)
     hotspot_steps(d, (854, 596, 1628, 868), "Task2", BLUE)
-    txt(d, (50, 912), "只使用新 unified_scales/L1…L6 数据；GPU event 代表 stream work，不能解释为单 kernel profiler 时间。", 14, MUTED)
+    txt(d, (50, 912), "只使用正式 scales/L1…L6 数据；GPU event 代表 stream work，不能解释为单 kernel profiler 时间。", 14, MUTED)
     save(im, "P16_统一L1-L6规模与热点_视觉重构_v05.png")
 
 

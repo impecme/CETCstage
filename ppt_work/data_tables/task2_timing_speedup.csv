@@ -1,8 +1,0 @@
-任务,配置,scale_value,主输入 shape,CPU total (ms),GPU total (ms),加速比 CPU/GPU (×),原始 metrics 路径
-Task2 特征融合与跟踪,L1,8192,16 · 512,254.293000,3.585090,70.930716,data/reports/demo/task2_features/scales/L1/metrics.json
-Task2 特征融合与跟踪,L2,24576,32 · 768,949.834000,7.163430,132.594860,data/reports/demo/task2_features/scales/L2/metrics.json
-Task2 特征融合与跟踪,L3,49152,48 · 1024,1862.050000,5.816240,320.146693,data/reports/demo/task2_features/scales/L3/metrics.json
-Task2 特征融合与跟踪,L4,98304,64 · 1536,4364.840000,9.161180,476.449540,data/reports/demo/task2_features/scales/L4/metrics.json
-Task2 特征融合与跟踪,L5,163840,80 · 2048,8268.240000,12.084200,684.219063,data/reports/demo/task2_features/scales/L5/metrics.json
-Task2 特征融合与跟踪,L6,294912,96 · 3072,18726.300000,20.942800,894.164104,data/reports/demo/task2_features/scales/L6/metrics.json
-Task2 特征融合与跟踪,final-input（独立验收配置）,393216,128 · 3072,29215.100000,27.260600,1071.696881,data/reports/demo/task2_features/final/metrics.json

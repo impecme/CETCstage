@@ -26,7 +26,7 @@ def load(path: Path) -> dict:
 def write_csv(name: str, header: list[str], rows: list[list[object]]) -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     with (OUT / name).open("w", newline="") as handle:
-        writer = csv.writer(handle)
+        writer = csv.writer(handle, lineterminator="\n")
         writer.writerow(header)
         writer.writerows(rows)
 
@@ -105,22 +105,22 @@ def all_operator_rows() -> list[list[object]]:
     return sorted(rows, key=lambda row: (row[0], row[1]))
 
 
-def unified_metrics(task: str, level: int) -> tuple[dict, Path]:
-    rel = Path("data/reports/demo/unified_scales") / task / f"L{level}" / "metrics.json"
+def formal_scale_metrics(task: str, level: int) -> tuple[dict, Path]:
+    rel = Path("data/reports/demo") / task / "scales" / f"L{level}" / "metrics.json"
     return load(ROOT / rel), rel
 
 
-def unified_scale_rows() -> list[list[object]]:
+def formal_scale_rows() -> list[list[object]]:
     rows = []
     titles = {"task1_radar": "Task1 雷达检测", "task2_features": "Task2 特征融合与跟踪"}
     for task in ("task1_radar", "task2_features"):
         for level in range(1, 7):
-            metrics, rel = unified_metrics(task, level)
+            metrics, rel = formal_scale_metrics(task, level)
             scenario = metrics["scenario"]
             measure = metrics["measurement"]
             dimensions = (scenario["num_pulses"], scenario["samples_per_pulse"]) if task == "task1_radar" else (scenario["num_frames"], scenario["samples_per_frame"])
             rows.append([
-                titles[task], f"L{level}", "unified_l1_l6_v1",
+                titles[task], f"L{level}", "final_l1_l6_v1",
                 f"{dimensions[0]} × {dimensions[1]}", scenario["scale_value"],
                 f"{measure['cpu_total']['median_ms']:.6f}",
                 f"{measure['gpu_total']['median_ms']:.6f}",
@@ -133,9 +133,9 @@ def unified_scale_rows() -> list[list[object]]:
     return rows
 
 
-def unified_correctness_rows() -> list[list[object]]:
-    task1, task1_rel = unified_metrics("task1_radar", 6)
-    task2, task2_rel = unified_metrics("task2_features", 6)
+def formal_correctness_rows() -> list[list[object]]:
+    task1, task1_rel = formal_scale_metrics("task1_radar", 6)
+    task2, task2_rel = formal_scale_metrics("task2_features", 6)
     t1 = task1["correctness_summary"]
     t2 = task2["correctness_summary"]
     expected = t1["expected_detection"]
@@ -148,10 +148,10 @@ def unified_correctness_rows() -> list[list[object]]:
     ]
 
 
-def unified_hotspot_rows() -> list[list[object]]:
+def formal_hotspot_rows() -> list[list[object]]:
     rows = []
     for task, title in (("task1_radar", "Task1"), ("task2_features", "Task2")):
-        metrics, rel = unified_metrics(task, 6)
+        metrics, rel = formal_scale_metrics(task, 6)
         raw_total = metrics["raw_final_timing_total"]["gpu_ms"]
         stages = [
             (name, timing["gpu_ms"])
@@ -164,41 +164,6 @@ def unified_hotspot_rows() -> list[list[object]]:
 
 
 def main() -> None:
-    timing_header = ["任务", "配置", "scale_value", "主输入 shape", "CPU total (ms)", "GPU total (ms)", "加速比 CPU/GPU (×)", "原始 metrics 路径"]
-    task1 = task_timing_table("task1_radar", "Task1 雷达检测")
-    task2 = task_timing_table("task2_features", "Task2 特征融合与跟踪")
-    write_csv("task1_timing_speedup.csv", timing_header, task1)
-    write_csv("task2_timing_speedup.csv", timing_header, task2)
-
-    t1_final = load(REPORTS / "demo" / "task1_radar" / "final" / "metrics.json")
-    t2_final = load(REPORTS / "demo" / "task2_features" / "final" / "metrics.json")
-    write_csv(
-        "correctness_metrics.csv",
-        ["任务", "验证项", "实际值", "门限", "结论", "原始 metrics 路径"],
-        [
-            ["Task1", "Expected/CPU/GPU 检测位置", "range=768; Doppler=72; 125 Hz", "三者一致", "PASS", "data/reports/demo/task1_radar/final/metrics.json"],
-            ["Task1", "CFAR mixed error", f"{t1_final['cfar_threshold_error']['mixed_error']:.6f}", "< 0.5", "PASS", "data/reports/demo/task1_radar/final/metrics.json"],
-            ["Task2", "CPU/GPU Kalman 轨迹", "逐点重合", "一致", "PASS", "data/reports/demo/task2_features/final/metrics.json"],
-            ["Task2", "track RMSE", f"{t2_final['kalman_track_error']['rmse']:.6f}", "< 2", "PASS", "data/reports/demo/task2_features/final/metrics.json"],
-            ["Task2", "feature-score mixed error", f"{t2_final['feature_score_error']['mixed_error']:.5e}", "< 1e-4", "PASS", "data/reports/demo/task2_features/final/metrics.json"],
-        ],
-    )
-
-    hotspots = []
-    for title, metrics_path in (("Task1", REPORTS / "demo" / "task1_radar" / "final" / "metrics.json"), ("Task2", REPORTS / "demo" / "task2_features" / "final" / "metrics.json")):
-        metrics = load(metrics_path)
-        total = metrics["timings"]["total"]["gpu_ms"]
-        parts = []
-        for name, timing in metrics["timings"].items():
-            if name == "total":
-                continue
-            value = timing["gpu_ms"]
-            if value > 0:
-                parts.append((name, value, 100 * value / total))
-        for name, value, share in sorted(parts, key=lambda row: row[2], reverse=True):
-            hotspots.append([title, name, f"{value:.6f}", f"{share:.2f}", str(metrics_path.relative_to(ROOT))])
-    write_csv("final_gpu_hotspots.csv", ["任务", "步骤", "GPU 时间 (ms)", "占 total GPU 时间 (%)", "原始 metrics 路径"], hotspots)
-
     operators = operator_rows()
     write_csv("operator_case_speedups.csv", ["模块", "算子", "case", "GPU E2E 加速比 (×)", "是否 > 1×", "原始汇总路径"], operators)
     fast = sum(float(row[3]) > 1 for row in operators)
@@ -218,19 +183,19 @@ def main() -> None:
     )
 
     write_csv(
-        "unified_task_scaling.csv",
+        "task_scaling.csv",
         ["任务", "级别", "协议", "输入 shape", "输入元素数", "CPU 中位总时间 (ms)", "GPU 中位总时间 (ms)", "GPU P95 总时间 (ms)", "GPU kernel profile (ms)", "已计算加速比 CPU/GPU (×)", "验证", "原始 metrics 路径"],
-        unified_scale_rows(),
+        formal_scale_rows(),
     )
     write_csv(
-        "unified_l6_correctness.csv",
+        "l6_correctness.csv",
         ["任务", "验证项", "实际值", "门限", "结论", "原始 metrics 路径"],
-        unified_correctness_rows(),
+        formal_correctness_rows(),
     )
     write_csv(
-        "unified_l6_hotspots.csv",
+        "l6_hotspots.csv",
         ["任务", "排名", "GPU 阶段", "GPU event 时间 (ms)", "占 L6 raw GPU total (%)", "原始 metrics 路径"],
-        unified_hotspot_rows(),
+        formal_hotspot_rows(),
     )
 
 

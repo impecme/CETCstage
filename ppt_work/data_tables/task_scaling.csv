@@ -1,0 +1,13 @@
+任务,级别,协议,输入 shape,输入元素数,CPU 中位总时间 (ms),GPU 中位总时间 (ms),GPU P95 总时间 (ms),GPU kernel profile (ms),已计算加速比 CPU/GPU (×),验证,原始 metrics 路径
+Task1 雷达检测,L1,final_l1_l6_v1,16 × 1536,24576,189.055500,7.405540,7.961095,6.692700,25.528928,PASS,data/reports/demo/task1_radar/scales/L1/metrics.json
+Task1 雷达检测,L2,final_l1_l6_v1,32 × 1536,49152,192.046000,7.174380,7.261310,7.025310,26.768306,PASS,data/reports/demo/task1_radar/scales/L2/metrics.json
+Task1 雷达检测,L3,final_l1_l6_v1,48 × 2048,98304,210.505500,7.506190,7.713720,7.124160,28.044254,PASS,data/reports/demo/task1_radar/scales/L3/metrics.json
+Task1 雷达检测,L4,final_l1_l6_v1,64 × 2048,131072,229.237500,7.776540,8.013335,7.641670,29.478084,PASS,data/reports/demo/task1_radar/scales/L4/metrics.json
+Task1 雷达检测,L5,final_l1_l6_v1,96 × 3072,294912,282.899000,10.215250,10.982875,9.581390,27.693791,PASS,data/reports/demo/task1_radar/scales/L5/metrics.json
+Task1 雷达检测,L6,final_l1_l6_v1,128 × 4096,524288,364.798000,11.022900,13.847300,10.491100,33.094558,PASS,data/reports/demo/task1_radar/scales/L6/metrics.json
+Task2 特征融合与跟踪,L1,final_l1_l6_v1,8 × 3072,24576,1816.920000,4.367985,4.670895,3.643980,415.962967,PASS,data/reports/demo/task2_features/scales/L1/metrics.json
+Task2 特征融合与跟踪,L2,final_l1_l6_v1,16 × 3072,49152,3525.485000,6.524670,7.514745,6.166640,540.331542,PASS,data/reports/demo/task2_features/scales/L2/metrics.json
+Task2 特征融合与跟踪,L3,final_l1_l6_v1,32 × 3072,98304,7046.380000,10.173350,10.449200,9.679140,692.631237,PASS,data/reports/demo/task2_features/scales/L3/metrics.json
+Task2 特征融合与跟踪,L4,final_l1_l6_v1,64 × 3072,196608,14121.750000,13.821000,14.227225,13.650700,1021.760365,PASS,data/reports/demo/task2_features/scales/L4/metrics.json
+Task2 特征融合与跟踪,L5,final_l1_l6_v1,96 × 3072,294912,21827.800000,21.190650,21.402300,20.318200,1030.067506,PASS,data/reports/demo/task2_features/scales/L5/metrics.json
+Task2 特征融合与跟踪,L6,final_l1_l6_v1,128 × 3072,393216,28363.050000,27.043900,27.471075,25.831200,1048.778098,PASS,data/reports/demo/task2_features/scales/L6/metrics.json

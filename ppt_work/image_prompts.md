@@ -17,11 +17,12 @@ P01 封面、P02 团队、P20 致谢由团队自行制作。本文件生成 P03�
 - P05～P08、P10、P12～P13、P17～P19 可以用 GPT 生图模型生成整页。
 - P09、P11、P14、P15、P16 必须由真实 JSON 生成图表和页面，禁止让生图模型编造曲线、柱状图、速度数字或运行截图。
 - P05～P07 与 P15 使用 `RUN 2026-07-20 SNAPSHOT` 或 `HISTORICAL A/B`；二者不能相除、相乘或合并归因。
+- 机制级数字必须显式标注归因口径：只有“仅开/关某机制”的同配置 A/B 才能写“严格独立 A/B”。当前 setup cache `1.70×` 符合这一口径；Wiener Tile/Halo `61.27×`、IIR `1267.88×`、Periodogram R2C+fusion `108.98×` 只能标“代表路径整体 A/B”，不得宣称为单一机制或全库最高收益。`RUN SNAPSHOT` 是成品算子 CPU/GPU 性能，也不得归因给单一机制。
 
-### 统一规模实测状态（2026-07-21，覆盖下文旧占位描述）
+### 正式 L1–L6 实测状态（2026-07-21，覆盖下文旧占位描述）
 
-- P09、P11、P14、P16 已由 `scripts/generate_unified_scale_pages.py` 从真实 JSON 输出为 `generated/*_实测_v07.png`，不再调用生图模型，也不得覆盖其中的曲线、数字和验证结论。
-- 数据角标统一为 `UNIFIED L1-L6 · 2026-07-21 · ZQ500-Q QUAD-0`：每点 7 次运行，首轮 warm-up 排除，CPU/GPU total 取其余 6 次中位数；`speedup = CPU median total / GPU median total` 已直接计算。
+- P09、P11、P14、P16 已由 `scripts/generate_unified_scale_pages.py` 从真实 JSON 输出为 `generated/*_实测_v08.png`，不再调用生图模型，也不得覆盖其中的曲线、数字和验证结论。
+- 数据角标统一为 `FINAL L1-L6 · 2026-07-21 · ZQ500-Q QUAD-0`：每点 7 次运行，首轮 warm-up 排除，CPU/GPU total 取其余 6 次中位数；`speedup = CPU median total / GPU median total` 已直接计算。
 - Task1 L6 为 `128×4096`：`364.798 / 11.023 ms = 33.09×`；Task2 L6 为 `128×3072`：`28363.050 / 27.044 ms = 1048.78×`。L6 即原 final-input；L1～L5 固定算法配置、只改变输入规模。
 - P15 仍是 2026-07-20 的全库性能快照，不能与新任务曲线混算。任何后续重测必须再次运行统一脚本并由数据渲染器重出图。
 
@@ -45,42 +46,42 @@ P01 封面、P02 团队、P20 致谢由团队自行制作。本文件生成 P03�
 ```text
 生成完整技术路线页。主标题：“3 + 2 + 5 技术路线”；标题下结论：“三类通用公共机制 + 两条应用算法构建 + 五类可组合优化路径”。页面主体采用参考页的“左公共库、右应用构建、底部结论带”结构；所有抽象机制必须配极简、可读的微流程图，不能只列术语。
 
-左侧 42% 标题“底层公共算子库优化”，蓝色六边形“3 通用机制”。竖排三张浅蓝卡：① `Device-resident 数据链`，右侧微图为灰色 H 方块 → 橙色 H2D 箭头 → 青绿 Device 方块，旁标 `.get()`；短注“入口 H2D · 链内驻留 · 链尾 .get()”。② `存储与准备缓存复用`，右侧微图为 `buf / plan / data` 三个小块和回环复用箭头；短注“容量 / plan / content 复用”。③ `Shape-aware 分派与 Fusion`，右侧微图为 `shape` 方块分流到 `T / F / S` 三条短路径并汇向紧凑输出；短注“shape 选路径 · 融合减少读写”。左下单独给一条代表案例带：“Wiener Tile/Halo · IIR Scan · Periodogram R2C”；只填一个公共库真实数字“典型公开算子 Wiener：183.62×”。
+左侧 42% 标题“底层公共算子库优化”，蓝色六边形“3 通用机制”。竖排三张浅蓝卡：① `访存与资源复用`，微图为重叠邻域窗口汇入 shared Tile，以及 `capacity / prepared / content` 三个可复用对象回环；短注“减少重复读取、分配和准备”。② `并行结构重构`，微图为红色串行依赖链转换为青绿色分层 scan/reduction 树；短注“把依赖改写为可结合、可分块结构”。③ `Shape-aware 分派与算子内 Fusion`，微图为 `shape / dtype / order` 方块分流到 `direct / tiled / FFT / scan` 并汇向紧凑输出；短注“选对路径、减少中间读写和 launch”。左下单独给一条代表案例带：“Wiener Tile/Halo · IIR Affine Scan · Periodogram R2C”；只填一个公共库真实数字“典型公开算子 Wiener：183.62×”。严禁在左栏画 Device-resident、H2D/D2H 链路或任务流水，它们属于右栏的多算子应用构建。
 
-右侧 53% 标题“应用级算法构建”，上方两个蓝色六边形“2 构建”“5 路径”。左半两张浅青任务卡：Task1 卡片画“脉冲小矩阵 → 距离-多普勒热图 → 检测准星”，短注“公开算子驻留组合 → 检测”，大号橙色 `33.09×`；Task2 卡片画“三帧小矩阵 → 四条 score 条带 → 轨迹折线”，短注“算子库 + private helper → score/轨迹”，大号橙色 `1048.78×`。两数字下方都必须小字标“统一 L6 中位数 · 2026-07-21”，不得伪装为单 kernel 或历史 A/B 数字。右半竖排五条橙色路径：`设备驻留/批处理`、`准备与内容缓存`、`融合/直接写回`、`并行 Scan/归约`、`score-only/紧凑输出`。底部深蓝带：“3 类通用机制 + 2 条应用构建 + 5 类组合路径”。页脚：“Task 速度为统一 L1–L6 的 L6 CPU/GPU total 中位数直接加速比。”
+右侧 53% 标题“应用级算法构建”，上方两个蓝色六边形“2 构建”“5 路径”。左半两张浅青任务卡：Task1 卡片画“脉冲小矩阵 → 距离-多普勒热图 → 检测准星”，短注“公开算子驻留组合 → 检测”，大号橙色 `33.09×`；Task2 卡片画“三帧小矩阵 → 四条 score 条带 → 轨迹折线”，短注“算子库 + private helper → score/轨迹”，大号橙色 `1048.78×`。两数字下方都必须小字标“L6 中位数 · 2026-07-21”，不得伪装为单 kernel 或历史 A/B 数字。右半竖排五条橙色路径：`设备驻留/批处理`、`准备与内容缓存`、`融合/直接写回`、`并行 Scan/归约`、`score-only/紧凑输出`。底部深蓝带：“3 类通用机制 + 2 条应用构建 + 5 类组合路径”。页脚：“Task 速度为正式 L1–L6 的 L6 CPU/GPU total 中位数直接加速比。”
 ```
 
 ---
 
-## P05｜Wiener：Shared Tile / Halo
+## P05｜通用机制①：访存与资源复用——以 Wiener Tile/Halo 为代表
 
 **栏目**：核心技术。  
-**页结论**：`共享内存分块把重叠窗口的重复全局读取转化为块内 Halo 数据复用。`
+**页结论**：`同一输入、同一准备资源和相邻输出的重复访问，应在单算子内转化为“加载/准备一次，多次复用”。`
 
 ```text
-生成完整三段式技术页，标题：“Wiener：Tile / Halo 将重复访存变为块内复用”。左侧“原始瓶颈”：同一张灰色 global memory 网格上，三个半透明红色邻域窗口重叠，重复读取箭头汇向相同格点，短注“相邻输出反复读取同一邻域”。中间“GPU 重构”：最大的主视觉为 16×16 输出 Tile；中心青绿输出块、完整一圈橙色 Halo、外层蓝色 shared-memory 边框；8×8 线程格通过少量合并箭头协作加载，随后一个共享块扇出到多个相邻输出。右侧“真实证据”：上方深蓝数据卡“HISTORICAL A/B 214.44 → 3.50 ms · 61.27×”；下方浅蓝数据卡“RUN 2026-07-20 SNAPSHOT 646.387 / 3.52033 ms · 183.615×”，旁标“mixed error 9.75527e-7”。最底一行红色细注：“适用：2D、奇数窗口、每维 ≤31；auto-noise 标量回传和 mean/variance 中间量仍存在。”不画芯片、人物或无意义方块。
+生成完整三段式技术页，标题：“通用机制①：访存与资源复用——Wiener Tile/Halo 代表”。左侧“单算子复用对象”：画 `capacity`、`prepared plan/table`、`邻域输入` 三张浅蓝卡，每张卡均为“命中 → 直接执行 / 未命中 → 创建后复用”的小回环；只表达单算子资源生命周期，禁止画 Task1、Task2 或跨算子 Device-resident 链。中间“Wiener 落地”：同一张灰色 global memory 网格上，三个半透明红色邻域窗口重叠，重构为青绿 `16×16 output tile` 与橙色 `(16+2r)×(16+2c) Halo`，蓝色 shared-memory 外框；线程协作加载后，一个 Tile 扇出供多个相邻输出复用。右侧“效果与归因”必须分层：深蓝卡“严格独立 A/B · setup cache 0.659052 → 0.387250 ms · 1.70×（E2E -41.24%）”；中蓝卡“代表路径整体 A/B · Wiener Tile/Halo 214.44 → 3.50 ms · 61.27×”；浅蓝卡“RUN SNAPSHOT · Wiener 646.387 / 3.52033 ms · 183.615×”，旁标“mixed error 9.75527e-7”；红框写“没有仅开/关 Tile 的独立 A/B；不能把 61.27× 机械外推到所有邻域算子”。底部红色细注：“Wiener 仅 2D、奇数窗口、每维 ≤31；缓存仅对有效 key 命中复用，不是 Unified Memory 或 zero-copy。”不画芯片、人物、无意义方块或任务链。
 ```
 
 ---
 
-## P06｜IIR：Affine Prefix Scan
+## P06｜通用机制②：并行结构重构——以 IIR Affine Prefix Scan 为代表
 
 **栏目**：核心技术。  
-**页结论**：`把状态更新改写为可结合的 affine transform，低阶 IIR 才能由串行链变为并行前缀扫描。`
+**页结论**：`GPU 不能直接消除依赖；必须先把递推、归约等结构改写为可分块、可结合、可分层的并行结构。`
 
 ```text
-生成完整技术页，标题：“IIR：Affine Prefix Scan 重构递归依赖”。左侧画 12 个灰红状态节点首尾相接的唯一长链，顶部公式“sₙ = Aₙsₙ₋₁ + vₙ”，红色标记“临界路径长”。中间画同样 12 个橙色 affine 小块，两两组合、再分层组合，最终形成四层青绿色 scan 树；树下三组 Tile 内节点并行应用初始状态，标“tile scan → transform scan → initial state → apply”。右侧数据与边界并列：深蓝卡“HISTORICAL A/B lfilter 455.17 → 0.359 ms · 1267.88×*”；浅蓝卡“RUN 2026-07-20 SNAPSHOT：event 1.457×，E2E 0.504×”；红色结论“并行结构已解决，短序列固定成本仍可反转 E2E”。页脚：“* 特定灾难性旧路径；fast path 只覆盖低阶、无 state、单连续长线。”
+生成完整技术页，标题：“通用机制②：并行结构重构——IIR Affine Scan 代表”。顶部先画通用关系“串行依赖 → 结构变换 → 分层并行”。左侧画 12 个灰红状态节点首尾相接的唯一长链，顶部公式“sₙ = Aₙsₙ₋₁ + vₙ”，红色标记“临界路径长”。中间画同样 12 个橙色 affine 小块，两两组合、再分层组合，最终形成四层青绿色 scan 树；树下三组 Tile 内节点并行应用初始状态，标“tile scan → transform scan → initial state → parallel apply”。右侧数据与边界并列：深蓝卡“HISTORICAL A/B lfilter 455.17 → 0.359 ms · 1267.88×*”；浅蓝卡“RUN SNAPSHOT：event 1.457×，E2E 0.504×”；红色结论“并行结构已解决，短序列固定成本仍可反转 E2E”。页脚：“* 特定灾难性旧路径；fast path 只覆盖低阶、无 state、单连续长线；这是单算子内依赖变换，不画多算子流水。”
 ```
 
 ---
 
-## P07｜Periodogram：R2C、Fusion、Cache
+## P07｜通用机制③：Shape-aware 分派与算子内 Fusion——以 Periodogram 为代表
 
 **栏目**：核心技术。  
-**页结论**：`R2C、融合与缓存分别减少无效频点、全局写回和重复准备，不能混成一个 kernel 效果。`
+**页结论**：`按 shape、类型与约束选对单算子路径，再融合可合并前后处理，才能同时减少无效计算、读写与 launch。`
 
 ```text
-生成完整上下对齐的频谱流水对比页，标题：“Periodogram：三类削减拆解频谱冗余”。上方灰红旧路径严格为：输入波形→detrend→window→独立 C2C FFT→完整双边频谱→power 中间量→PSD；window、full spectrum、power 后各放一块大灰色缓冲和红色写回箭头。下方青绿新路径严格为：prepared/cache→fused detrend+window→独立 R2C FFT→宽度约一半的单边谱→fused power/crop/scale PSD；FFT 节点保持独立，不能画成 FFT 与 PSD 同一个 kernel。右侧竖排三张证据卡：`HISTORICAL A/B R2C+fusion 72.91→0.669 ms · 108.98×`；`HISTORICAL A/B setup cache 0.659052→0.387250 ms · 1.70×`；`RUN 2026-07-20 SNAPSHOT 1.41709/0.366592 ms · 3.866×`。底部红色细注：“CSD/spectrogram 部分 R2C 因数值问题回退 C2C。”
+生成完整上下对齐的技术页，标题：“通用机制③：Shape-aware 分派与算子内 Fusion——Periodogram 代表”。页面顶部画一个明确的单算子“分派门”：`shape / dtype / order / window` 进入网关，四条路线分别标 `direct`、`tiled`、`FFT/R2C`、`scan`，只选择一条路径；禁止画任务链。下方选中 `FFT/R2C` 分支并展示 Periodogram：上方灰红旧路径严格为“输入波形→detrend→window→独立 C2C FFT→完整双边频谱→power 中间量→PSD”，window、full spectrum、power 后各放一块大灰色缓冲和红色写回箭头；下方青绿新路径严格为“prepared/cache→fused detrend+window→独立 R2C FFT→宽度约一半的单边谱→fused power/crop/scale PSD”。FFT 节点保持独立，不能画成 FFT 与 PSD 同一个 kernel。右侧竖排三张证据卡：`HISTORICAL A/B R2C+fusion 72.91→0.669 ms · 108.98×`；`HISTORICAL A/B setup cache 0.659052→0.387250 ms · 1.70×`；`RUN SNAPSHOT 1.41709/0.366592 ms · 3.866×`。底部红色细注：“CSD/spectrogram 部分 R2C 因数值问题回退 C2C；不是自动调优器，回退以正确性约束为准。”
 ```
 
 ---
@@ -96,10 +97,10 @@ P01 封面、P02 团队、P20 致谢由团队自行制作。本文件生成 P03�
 
 ---
 
-## P09｜Task1：统一 L1–L6 性能与正确性（已实测）
+## P09｜Task1：正式 L1–L6 性能与正确性（已实测）
 
-**现有成品**：`generated/P09_Task1_统一L1-L6_实测_v07.png`。由真实数据渲染器生成，不提供生图提示词。
-**数据源**：`data/reports/demo/unified_scales/task1_radar/L1…L6/metrics.json`。
+**现有成品**：`generated/P09_Task1_L1-L6_实测_v08.png`。由真实数据渲染器生成，不提供生图提示词。
+**数据源**：`data/reports/demo/task1_radar/scales/L1…L6/metrics.json`。
 **页结论**：`原 final-input 纳入 L6；固定窗口、CFAR 与公开算子链，仅改变输入规模，端到端加速为 25.53×～33.09×。`
 
 若后续代码变更需要重出图，运行统一测评和 `scripts/generate_unified_scale_pages.py`；禁止手改曲线或数字。
@@ -117,10 +118,10 @@ P01 封面、P02 团队、P20 致谢由团队自行制作。本文件生成 P03�
 
 ---
 
-## P11｜Task2：统一 L1–L6 性能与正确性（已实测）
+## P11｜Task2：正式 L1–L6 性能与正确性（已实测）
 
-**现有成品**：`generated/P11_Task2_统一L1-L6_实测_v07.png`。由真实数据渲染器生成，不提供生图提示词。
-**数据源**：`data/reports/demo/unified_scales/task2_features/L1…L6/metrics.json`。
+**现有成品**：`generated/P11_Task2_L1-L6_实测_v08.png`。由真实数据渲染器生成，不提供生图提示词。
+**数据源**：`data/reports/demo/task2_features/scales/L1…L6/metrics.json`。
 **页结论**：`原 final-input 纳入 L6；冻结 B=8、score-only 与门限，仅改变帧数，端到端加速为 415.96×～1048.78×。`
 
 若后续代码变更需要重出图，运行统一测评和 `scripts/generate_unified_scale_pages.py`；禁止手改曲线或数字。
@@ -149,9 +150,9 @@ P01 封面、P02 团队、P20 致谢由团队自行制作。本文件生成 P03�
 
 ---
 
-## P14｜正确性与任务运行验证：统一 L6 已实测
+## P14｜正确性与任务运行验证：正式 L6 已实测
 
-**现有成品**：`generated/P14_统一L6正确性_实测_v07.png`。真实数据渲染，不提供生图提示词。
+**现有成品**：`generated/P14_L6正确性_实测_v08.png`。真实数据渲染，不提供生图提示词。
 **页结论**：`12 个统一规模点均通过；L6 正确性、性能与统计口径来自同一份结构化运行报告。`
 
 后续重测只能由同一数据渲染器替换。不得把旧 `final/metrics.json` 的误差贴到本页。
@@ -169,9 +170,9 @@ P01 封面、P02 团队、P20 致谢由团队自行制作。本文件生成 P03�
 
 ---
 
-## P16｜统一 L1–L6 规模效应与热点（已实测）
+## P16｜正式 L1–L6 规模效应与热点（已实测）
 
-**现有成品**：`generated/P16_统一L1-L6规模与热点_实测_v07.png`。真实数据渲染，不提供生图提示词。
+**现有成品**：`generated/P16_L1-L6规模与热点_实测_v08.png`。真实数据渲染，不提供生图提示词。
 **页结论**：`Task1 受固定开销影响而波动；Task2 随 batch 规模释放并行度，L6 Top3 已给出下一轮优化优先级。`
 
 后续重测只能由同一数据渲染器替换。GPU event 只能表述为 stream work，不得写成单 kernel profiler 时间。

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Validate and publish the formal-PPT unified L1-L6 task measurements.
+"""Validate and publish the formal-PPT L1-L6 task measurements.
 
 The task binaries write a raw latest_metrics.json for each invocation.  This
-tool turns the six raw measurements per task into a separately named evidence
-set, computes statistics from repeat runs, and records the speedup directly so
-slides never need to re-calculate it by hand.
+tool turns the six raw measurements per task into the canonical task
+``scales/L1...L6`` reports, computes statistics from repeat runs, and records
+the speedup directly so slides never need to re-calculate it by hand.
 """
 
 from __future__ import annotations
@@ -81,7 +81,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--source-root", type=Path, required=True,
                         help="directory containing task1_radar/L1...L6 raw artifacts")
     parser.add_argument("--output-root", type=Path, required=True,
-                        help="data/reports/demo directory to receive unified_scales")
+                        help="data/reports/demo directory to receive canonical task scales")
     return parser.parse_args()
 
 
@@ -277,11 +277,11 @@ def main() -> int:
             task_rows[level] = (metrics, measurement, source_dir)
         collected[task] = task_rows
 
-    stage_root = Path(tempfile.mkdtemp(prefix=".unified_scales.", dir=output_root))
+    stage_root = Path(tempfile.mkdtemp(prefix=".formal_scales.", dir=output_root))
     try:
         report_rows: list[dict[str, Any]] = []
         for task, task_rows in collected.items():
-            task_stage = stage_root / task
+            task_stage = stage_root / task / "scales"
             task_stage.mkdir(parents=True)
             for level, (raw_metrics, measurement, source_dir) in task_rows.items():
                 level_stage = task_stage / f"L{level}"
@@ -301,7 +301,7 @@ def main() -> int:
                 }
                 published["correctness_summary"] = task_correctness_summary(task, raw_metrics)
                 published["provenance"] = {
-                    "protocol": "unified_l1_l6_v1",
+                    "protocol": "final_l1_l6_v1",
                     "raw_metrics_relative_path": f"{task}/L{level}/latest_metrics.json",
                     "raw_metrics_sha256": sha256(source_dir / "latest_metrics.json"),
                     "published_utc": datetime.now(timezone.utc).isoformat(),
@@ -324,21 +324,21 @@ def main() -> int:
                 })
 
         report_rows.sort(key=lambda row: (row["task"], row["level"]))
-        csv_path = stage_root / "unified_scale_summary.csv"
+        csv_path = stage_root / "scale_summary.csv"
         with csv_path.open("w", newline="", encoding="utf-8") as handle:
             writer = csv.DictWriter(handle, fieldnames=list(report_rows[0]))
             writer.writeheader()
             writer.writerows(report_rows)
-        (stage_root / "unified_scale_summary.json").write_text(
+        (stage_root / "scale_summary.json").write_text(
             json.dumps({
-                "protocol": "unified_l1_l6_v1",
+                "protocol": "final_l1_l6_v1",
                 "description": "L6 acceptance configuration frozen; only input dimensions vary by level.",
                 "warmup_policy": "first repeat is excluded; CPU/GPU totals use median of later repeats",
                 "speedup_formula": "median_cpu_total_ms / median_gpu_total_ms",
                 "rows": report_rows,
             }, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         lines = [
-            "# 统一 L1–L6 正式答辩测评汇总", "",
+            "# 正式 L1–L6 答辩测评汇总", "",
             "- 协议：固定 L6 算法/验证参数，仅改变输入尺寸。",
             "- 统计：首轮 warm-up 不计入，CPU/GPU 总时延取其余重复的中位数。",
             "- 加速比：`CPU 中位总时延 / GPU 中位总时延`，已直接写入 JSON 与 CSV。", "",
@@ -350,18 +350,30 @@ def main() -> int:
                 f"| {row['task']} | L{row['level']} | {row['input_shape']} | "
                 f"{row['cpu_median_ms']:.6f} | {row['gpu_median_ms']:.6f} | "
                 f"{row['gpu_p95_ms']:.6f} | {row['speedup_cpu_over_gpu']:.3f}x | PASS |")
-        (stage_root / "unified_scale_summary.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+        (stage_root / "scale_summary.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-        destination = output_root / "unified_scales"
-        backup: Path | None = None
-        if destination.exists():
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            backup = output_root / f"unified_scales.backup_{timestamp}"
-            destination.rename(backup)
-        stage_root.rename(destination)
-        print(f"published unified evidence: {destination}")
-        if backup is not None:
-            print(f"previous unified evidence preserved: {backup}")
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backups: list[Path] = []
+        for task in TASKS:
+            destination = output_root / task / "scales"
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            if destination.exists():
+                backup = destination.parent / f"scales.backup_{timestamp}"
+                destination.rename(backup)
+                backups.append(backup)
+            (stage_root / task / "scales").rename(destination)
+        for name in ("scale_summary.csv", "scale_summary.json", "scale_summary.md"):
+            destination = output_root / name
+            if destination.exists():
+                backup = output_root / f"{destination.stem}.backup_{timestamp}{destination.suffix}"
+                destination.rename(backup)
+                backups.append(backup)
+            (stage_root / name).rename(destination)
+        shutil.rmtree(stage_root, ignore_errors=True)
+        print(f"published formal task scales: {output_root / 'task1_radar' / 'scales'}")
+        print(f"published formal task scales: {output_root / 'task2_features' / 'scales'}")
+        for backup in backups:
+            print(f"previous report preserved: {backup}")
     except Exception:
         shutil.rmtree(stage_root, ignore_errors=True)
         raise

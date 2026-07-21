@@ -72,7 +72,7 @@ def page_p09() -> None:
     rr(d, (824, 688, 1628, 866), 12, PALE, BLUE, 2)
     txt(d, (864, 730), "填表输出", 22, NAVY, True)
     txt(d, (864, 772), "CPU total · GPU total · 已计算 speedup · 检测位置 · CFAR error", 19, TEXT, True)
-    txt(d, (864, 817), "写入：task1_radar/unified_scales/L1…L6/metrics.json", 16, MUTED, True)
+    txt(d, (864, 817), "写入：task1_radar/scales/L1…L6/metrics.json", 16, MUTED, True)
     txt(d, (50, 911), "本页不使用旧 final-input 或旧 L1–L6 数字；复测协议：ppt_work/unified_scale_retest_plan.md。", 14, MUTED)
     save(im, "P09_Task1_统一L1-L6待复测_整页_v03.png")
 
@@ -215,7 +215,7 @@ def page_p11() -> None:
     rr(d, (824, 688, 1628, 866), 12, PALE, BLUE, 2)
     txt(d, (864, 730), "填表输出", 22, NAVY, True)
     txt(d, (864, 772), "CPU total · GPU total · 已计算 speedup · track RMSE · feature-score error", 19, TEXT, True)
-    txt(d, (864, 817), "写入：task2_features/unified_scales/L1…L6/metrics.json", 16, MUTED, True)
+    txt(d, (864, 817), "写入：task2_features/scales/L1…L6/metrics.json", 16, MUTED, True)
     txt(d, (50, 911), "本页不使用旧 final-input 或旧 L1–L6 数字；复测协议：ppt_work/unified_scale_retest_plan.md。", 14, MUTED)
     save(im, "P11_Task2_统一L1-L6待复测_整页_v02.png")
 
@@ -236,7 +236,7 @@ def page_p14() -> None:
     pending_correctness(d, (602, 552, 1628, 810), "Task2")
     rr(d, (602, 830, 1628, 876), 9, "#FFF7ED", ORANGE, 1)
     txt(d, (1115, 853), "填入规则：新 metrics.json 中的实际值 < 门限，才显示 PASS。", 17, ORANGE, True, "ma")
-    txt(d, (50, 911), "不沿用旧 final-input 误差；新数据源将是 task1/task2 unified_scales/L6/metrics.json。", 14, MUTED)
+    txt(d, (50, 911), "不沿用旧 final-input 误差；新数据源是 task1/task2 的正式 scales/L6/metrics.json。", 14, MUTED)
     save(im, "P14_统一L6正确性待复测_整页_v03.png")
 
 

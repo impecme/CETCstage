@@ -21,7 +21,8 @@ Options:
   -h, --help            Show this help
 
 The first repeat is a warm-up.  The exporter uses the median of remaining
-repeats, validates every task run, and writes data/reports/demo/unified_scales.
+repeats, validates every task run, and writes the canonical task
+data/reports/demo/<task>/scales/L1...L6 reports.
 USAGE
 }
 
@@ -91,7 +92,7 @@ TASK2_EXE="${BUILD_PATH}/demo/task2_features/task2_features_demo"
 
 REPORT_ROOT="${REPO_ROOT}/data/.reports_staging/demo"
 GENERATED_ROOT="${REPO_ROOT}/data/generated/demo"
-RAW_ROOT="${REPORT_ROOT}/unified_scales_raw_$(date +%Y%m%d_%H%M%S)_$$"
+RAW_ROOT="${REPORT_ROOT}/formal_scales_raw_$(date +%Y%m%d_%H%M%S)_$$"
 mkdir -p "${RAW_ROOT}"
 
 capture_level() {
@@ -124,4 +125,4 @@ python3 "${SCRIPT_DIR}/export_unified_scale_reports.py" \
   --source-root "${RAW_ROOT}" \
   --output-root "${REPO_ROOT}/data/reports/demo"
 
-echo "[unified-scale] PASS: data/reports/demo/unified_scales/"
+echo "[unified-scale] PASS: data/reports/demo/task{1,2}_*/scales/L1...L6"

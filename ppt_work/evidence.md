@@ -39,8 +39,8 @@ PPT 中建议用角标区分：`[当前源码]`、`[RUN 2026-07-20 已发布快�
 
 ### 0.4 必须避免的过期表述
 
-- **答辩任务性能页的口径已更新**：旧 `scales/L1…L6` 与独立 `final-input` 是两套不同输入配置。正式 P09、P11、P14、P16 不再引用其任务速度、热点或误差数字；原 `final-input` 将作为新统一 L6，L1～L5 冻结算法、分块/批处理和阈值，只改变输入规模后重新运行。P04 仅可把 `34.20x/1071.70x` 作为标明“已发布快照·统一复测后替换”的技术地图临时标签，不能作为新曲线的点位或正式端到端效果。旧数值保留在本审计文档中，主要用于说明为什么不能混画。
-- 复测计划、路径和直接导出公式见 `ppt_work/unified_scale_retest_plan.md`：`speedup = CPU total / GPU total`。分块、Halo、CFAR 阈值与 batch/shape 的进一步搜索属于统一基线之后的独立 A/B，不属于本轮规模曲线。
+- **答辩任务性能页的口径已更新**：正式 `task*/scales/L1…L6` 使用同一算法配置；原 `final-input` 已作为 L6，L1～L5 冻结算法、分块/批处理和阈值，只改变输入规模。P04、P09、P11、P14、P16 使用正式 L6 或正式曲线；旧 2026-07-20 task scale/final 数据已移至仓库外审计备份，不作为正式端到端效果。旧数值仅保留在本审计文档中，用于说明为什么不能混画。
+- 测评计划、路径和直接导出公式见 `ppt_work/scale_retest_plan.md`：`speedup = CPU total / GPU total`。分块、Halo、CFAR 阈值与 batch/shape 的进一步搜索属于正式基线之后的独立 A/B，不属于本轮规模曲线。
 - 不再引用已经删除的 `data/reports/zhongkexin/*`、`docs/performance/*`、`scripts/test/benchmark_all_ops_scales.py`、`scripts/build/build_v1.sh` 等旧路径。
 - 不再引用旧运行 `current-20260719-165100`、旧指纹 `4944706f...`、73/81“无性能入口”或“14 个 task kernel 字段为空”等已经被当前报告替代的结论。
 - 不把历史 V6 的 `486/486`、旧 71/81 L6、旧全库中位加速或 V7 的 Task 时间写成“当前代码结果”。它们只能作为 `docs/PERFORMANCE.md` 中明确标版本的历史事实。
@@ -595,16 +595,18 @@ GPU 主检测链和 ambgfun 旁路都保持设备态；在输出/验证边界，
 - Task1 final-input CFAR threshold mixed error `0.276398 < 0.5`，最终检测位置正确；Task2 feature-score mixed error `9.83703e-5 < 1e-4`。最大相对误差在参考值近零时会失真，PPT 应优先画 mixed error/RMSE 与容限，不画巨大 max-rel 作为主图。
 - dtype 覆盖六类 edge 缺口为 0，但 native direct 与 converted compatibility 必须区分；FP64、complex128 等明确不支持。
 
-### 5.7 可使用的历史优化前后证据
+### 5.7 可使用的历史优化前后证据与机制归因口径
+
+机制页不能把“某个优化路径的总 A/B”直接改写成“其中任一机制单独带来 X 倍”。只有设置了同配置的机制开关、且只改变该机制的 A/B，才能作严格独立归因；当前可直接用于此口径的是 Periodogram setup cache。其他记录应按“代表路径整体 A/B”使用：它们证明该路径有效，但不能提供各机制的全库最高加速比，也不能拆分总收益。
 
 | 技术 | 历史 before → after | 正确表述 |
 |---|---:|---|
-| Wiener 16x16 shared tile | 214.44 → 3.50 ms | 历史 GPU 版本耗时约降低 61 倍 |
-| lfilter affine scan | 455.17 → 0.359 ms | 特定历史旧路径到保留路径 |
+| Wiener 16x16 shared tile | 214.44 → 3.50 ms | **代表路径整体 A/B**，记录的主变更为 Tile；没有仅开/关 Tile 的独立 A/B，不能外推为所有邻域算子收益 |
+| lfilter affine scan | 455.17 → 0.359 ms | **代表路径整体 A/B**；同时包含 BA→单节 SOS 快路径与 prefix scan，不能全部归因给 Scan |
 | filtfilt 双向 scan | 909.94 → 0.679 ms | 特定历史旧路径到保留路径 |
-| periodogram R2C + fusion | 72.91 → 0.669 ms | 历史 GPU 版本约降低 109 倍 |
+| periodogram R2C + fusion | 72.91 → 0.669 ms | **代表路径整体 A/B**；没有 R2C-only / Fusion-only A/B，不能拆分 109 倍 |
 | coherence shared FFT/fusion | 5.27 → 0.751 ms | 历史 GPU 版本约降低 7 倍 |
-| periodogram setup cache | 0.659052 → 0.387250 ms | 同进程 A/B，E2E 降 41.24%，kernel 基本不变 |
+| periodogram setup cache | 0.659052 → 0.387250 ms | **严格独立 A/B**：同进程 cache bypass/candidate，E2E 降 41.24%，kernel 基本不变，`1.70×` |
 | Task2 AOT correlate L6 | 4.45944 → 1.70953 ms | hotspot 降 61.66%，E2E 降 9.77% |
 | Task2 AOT spectrogram L6 | 5.08862 → 2.88187 ms | hotspot 降 43.37%，E2E 降 7.78% |
 
@@ -861,9 +863,9 @@ PPT 不得增加“传统 GPU”柱、NVIDIA/CUDA 设备名或推测性倍数，
 
 ---
 
-## 9.7 2026-07-21 统一 L1～L6 实测补充（正式性能页依据）
+## 9.7 2026-07-21 正式 L1～L6 实测补充（正式性能页依据）
 
-为消除旧 `scales/` 同时改变算法参数与输入规模、以及独立 `final-input` 未纳入曲线的口径问题，已在 ZQ500-Q QUAD-0 上按 `unified_l1_l6_v1` 重测两条任务。每个规模启动 7 次，首轮仅 warm-up；CPU/GPU `total` 取其余 6 次中位数，`speedup` 在报告中直接计算为 `CPU median total / GPU median total`。所有 12 个点的验证均 PASS。
+为消除旧规模曲线同时改变算法参数与输入规模、以及独立 `final-input` 未纳入曲线的口径问题，已在 ZQ500-Q QUAD-0 上按 `final_l1_l6_v1` 重测两条任务。每个规模启动 7 次，首轮仅 warm-up；CPU/GPU `total` 取其余 6 次中位数，`speedup` 在报告中直接计算为 `CPU median total / GPU median total`。所有 12 个点的验证均 PASS。
 
 | 任务 | L1～L6 输入 | 固定项 | L6 CPU / GPU median total | L6 direct speedup | 正确性 |
 |---|---|---|---:|---:|---|
@@ -876,10 +878,10 @@ L6 的 raw final GPU event（仅代表 stream work，不是单 kernel profiler�
 
 正式证据文件：
 
-- `data/reports/demo/unified_scales/unified_scale_summary.md` 与 `unified_scale_summary.csv`：12 点汇总、统计方法和路径。
-- `data/reports/demo/unified_scales/task1_radar/L1…L6/metrics.json`、`task2_features/L1…L6/metrics.json`：每次运行、参数、total、验证和原始结果。
-- `ppt_work/data_tables/unified_task_scaling.csv`、`unified_l6_correctness.csv`、`unified_l6_hotspots.csv`：P09/P11/P14/P16 可直接使用的制图表。
-- `ppt_work/generated/P09_Task1_统一L1-L6_实测_v07.png`、`P11_Task2_统一L1-L6_实测_v07.png`、`P14_统一L6正确性_实测_v07.png`、`P16_统一L1-L6规模与热点_实测_v07.png`：真实数据渲染的页面成品。
+- `data/reports/demo/scale_summary.md` 与 `scale_summary.csv`：12 点汇总、统计方法和路径。
+- `data/reports/demo/task1_radar/scales/L1…L6/metrics.json`、`task2_features/scales/L1…L6/metrics.json`：每次运行、参数、total、验证和原始结果。
+- `ppt_work/data_tables/task_scaling.csv`、`l6_correctness.csv`、`l6_hotspots.csv`：P09/P11/P14/P16 可直接使用的制图表。
+- `ppt_work/generated/P09_Task1_L1-L6_实测_v08.png`、`P11_Task2_L1-L6_实测_v08.png`、`P14_L6正确性_实测_v08.png`、`P16_L1-L6规模与热点_实测_v08.png`：真实数据渲染的页面成品。
 
 ---
 

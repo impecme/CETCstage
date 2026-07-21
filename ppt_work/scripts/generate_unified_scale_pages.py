@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render P09/P11/P14/P16 from the formal unified L1-L6 evidence set."""
+"""Render P09/P11/P14/P16 from the formal L1-L6 task reports."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def metrics(task: str, level: int) -> dict:
-    return json.loads((ROOT / "data" / "reports" / "demo" / "unified_scales" / task / f"L{level}" / "metrics.json").read_text())
+    return json.loads((ROOT / "data" / "reports" / "demo" / task / "scales" / f"L{level}" / "metrics.json").read_text())
 
 
 def panel(d, box, title, color=NAVY, size=20):
@@ -58,7 +58,7 @@ def plot_speedup(d, box, task: str, title: str):
 def l6_card(d, box, task: str):
     data = metrics(task, 6)
     measure = data["measurement"]
-    panel(d, box, "统一 L6 · 预热后中位数", TEAL, 18)
+    panel(d, box, "正式 L6 · 预热后中位数", TEAL, 18)
     items = (("CPU", measure["cpu_total"]["median_ms"], CPU), ("ZQ500 GPU", measure["gpu_total"]["median_ms"], TEAL))
     for index, (label, value, color) in enumerate(items):
         y = box[1] + 100 + index * 82
@@ -70,7 +70,7 @@ def l6_card(d, box, task: str):
 
 
 def protocol_card(d, box, task: str):
-    panel(d, box, "统一测评协议", ORANGE, 18)
+    panel(d, box, "正式 L1–L6 协议", ORANGE, 18)
     rows = (("L6：原 final-input 验收配置",), ("固定：算法参数与正确性门限",), ("固定：GPU 处理链与输出语义",), ("改变：仅输入尺寸",))
     if task == "task1_radar":
         rows = (("L6：128 × 4096",), ("固定：template/FFT/Hann/CFAR",), ("固定：公开算子驻留链",), ("改变：脉冲数、每脉冲采样",))
@@ -81,7 +81,7 @@ def protocol_card(d, box, task: str):
 
 
 def page_performance(task: str, page: str):
-    title = "Task1：统一 L1–L6 下端到端加速保持 25×以上" if task == "task1_radar" else "Task2：批量 score-only 随规模扩展至 1048.78×"
+    title = "Task1：正式 L1–L6 下端到端加速保持 25×以上" if task == "task1_radar" else "Task2：批量 score-only 随规模扩展至 1048.78×"
     conclusion = "冻结 L6 模板、FFT、Hann 与 CFAR；L1–L6 仅改变任务输入尺寸。" if task == "task1_radar" else "冻结 L6 filter/spectrogram/CWT/track 与 score-only 语义；仅改变帧数。"
     im, d = base("技术指标", title, conclusion)
     plot_speedup(d, (44, 265, 810, 652), task, f"{task_label(task)} · L1–L6 加速比")
@@ -99,16 +99,16 @@ def page_performance(task: str, page: str):
         txt(d, (80, 730), "L6 正确性门禁 · PASS", 23, TEAL, True)
         txt(d, (80, 777), "CPU/GPU peak track 一致；GPU Kalman track 满足 truth 门限", 21, TEXT, True)
         txt(d, (80, 826), f"Kalman RMSE = {check['kalman_track_rmse']:.6f} < 2；feature-score mixed error = {check['feature_score_mixed_error']:.5e} < 1e-4", 17, NAVY, True)
-    txt(d, (50, 912), f"真实运行：ZQ500-Q QUAD-0 · unified_l1_l6_v1 · 7 repeats / first warm-up excluded · data/reports/demo/unified_scales/{task}/", 13, MUTED)
+    txt(d, (50, 912), f"真实运行：ZQ500-Q QUAD-0 · final_l1_l6_v1 · 7 repeats / first warm-up excluded · data/reports/demo/{task}/scales/", 13, MUTED)
     save(im, page)
 
 
 def page_p14():
     t1, t2 = metrics("task1_radar", 6), metrics("task2_features", 6)
-    im, d = base("技术指标", "统一 L6 正确性闭环：两条任务、12 个规模点均通过验证", "正确性、性能、统计口径来自同一套统一 L1–L6 运行报告，而非旧 final-input 快照。")
+    im, d = base("技术指标", "正式 L6 正确性闭环：两条任务、12 个规模点均通过验证", "正确性、性能、统计口径来自同一套正式 L1–L6 运行报告，而非旧 final-input 快照。")
     left = (44, 265, 540, 850)
     panel(d, left, "覆盖与运行门禁", NAVY, 21)
-    for index, (number, label, color) in enumerate((("81/81", "公开算子有性能记录", TEAL), ("2/2", "端到端任务", BLUE), ("12/12", "统一 L1–L6 运行", ORANGE), ("14/14", "正式计算步骤", NAVY))):
+    for index, (number, label, color) in enumerate((("81/81", "公开算子有性能记录", TEAL), ("2/2", "端到端任务", BLUE), ("12/12", "正式 L1–L6 运行", ORANGE), ("14/14", "正式计算步骤", NAVY))):
         y = 345 + index * 102
         badge(d, (80, y, 504, y + 70), f"{number}  {label}", color, "#ECF9F6" if color == TEAL else LIGHT, 21)
     top = (574, 265, 1628, 526)
@@ -126,8 +126,8 @@ def page_p14():
     badge(d, (622, 704, 1082, 768), f"Kalman RMSE {c2['kalman_track_rmse']:.6f} < 2", NAVY, LIGHT, 18)
     badge(d, (1110, 704, 1578, 768), f"feature {c2['feature_score_mixed_error']:.5e} < 1e-4", NAVY, LIGHT, 16)
     badge(d, (622, 788, 1578, 829), "两条任务全部 validation PASS；任何失败运行均不会被导出", TEAL, "#ECF9F6", 17)
-    txt(d, (50, 912), "数据：unified_l1_l6_v1；L6 为原 final-input 配置，L1–L5 固定算法参数，仅输入尺寸递增。", 13, MUTED)
-    save(im, "P14_统一L6正确性_实测_v07.png")
+    txt(d, (50, 912), "数据：final_l1_l6_v1；L6 为原 final-input 配置，L1–L5 固定算法参数，仅输入尺寸递增。", 13, MUTED)
+    save(im, "P14_L6正确性_实测_v08.png")
 
 
 def top3(task: str):
@@ -150,11 +150,11 @@ def page_p16():
             txt(d, (box[0] + 505, y + 19), f"{ms:.2f}ms | {share:.1f}%", 13, TEAL, True, "la")
         txt(d, ((box[0] + box[2]) // 2, box[3] - 23), "占比基于 L6 final-run GPU total；不与中位总时延混算", 11, MUTED, True, "ma")
     txt(d, (50, 912), "Task1 L6=128×4096，Task2 L6=128×3072；无 DRAM bytes/FLOPS 同协议数据，故不绘制 Roofline。", 13, MUTED)
-    save(im, "P16_统一L1-L6规模与热点_实测_v07.png")
+    save(im, "P16_L1-L6规模与热点_实测_v08.png")
 
 
 if __name__ == "__main__":
-    page_performance("task1_radar", "P09_Task1_统一L1-L6_实测_v07.png")
-    page_performance("task2_features", "P11_Task2_统一L1-L6_实测_v07.png")
+    page_performance("task1_radar", "P09_Task1_L1-L6_实测_v08.png")
+    page_performance("task2_features", "P11_Task2_L1-L6_实测_v08.png")
     page_p14()
     page_p16()

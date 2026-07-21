@@ -1,6 +1,0 @@
-任务,验证项,实际值,门限,结论,原始 metrics 路径
-Task1,Expected/CPU/GPU 检测位置,range=768; Doppler=72; 125 Hz,三者一致,PASS,data/reports/demo/task1_radar/final/metrics.json
-Task1,CFAR mixed error,0.276398,< 0.5,PASS,data/reports/demo/task1_radar/final/metrics.json
-Task2,CPU/GPU Kalman 轨迹,逐点重合,一致,PASS,data/reports/demo/task2_features/final/metrics.json
-Task2,track RMSE,0.477855,< 2,PASS,data/reports/demo/task2_features/final/metrics.json
-Task2,feature-score mixed error,9.83703e-05,< 1e-4,PASS,data/reports/demo/task2_features/final/metrics.json

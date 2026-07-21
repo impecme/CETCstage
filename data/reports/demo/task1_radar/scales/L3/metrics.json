@@ -1,94 +1,152 @@
 {
-  "version": "V3.1",
+  "version": "V3.3",
   "scenario": {
     "scale_level": 3,
-    "scale_value": 16384,
-    "fs": 1e+06,
-    "num_pulses": 64,
-    "samples_per_pulse": 256,
-    "rx_shape": [64, 256],
-    "template_length": 64,
+    "unified_scale_protocol": true,
+    "scale_value": 98304,
+    "fs": 1000000.0,
+    "num_pulses": 48,
+    "samples_per_pulse": 2048,
+    "rx_shape": [
+      48,
+      2048
+    ],
+    "template_length": 1024,
     "prf": 2000,
-    "delay_samples": 48,
+    "delay_samples": 384,
     "doppler_hz": 125,
     "target_amplitude": 1,
     "snr_db": 20,
     "seed": 20260414,
-    "pulse_compression_nfft": 256,
-    "pulse_doppler_nfft": 64,
+    "pulse_compression_nfft": 4096,
+    "pulse_doppler_nfft": 128,
     "pulse_compression_normalize": true,
     "pulse_compression_window": "",
     "pulse_doppler_window": "hann",
-    "cfar_guard_cells": [2, 2],
-    "cfar_reference_cells": [8, 8],
+    "cfar_guard_cells": [
+      2,
+      2
+    ],
+    "cfar_reference_cells": [
+      8,
+      8
+    ],
     "cfar_pfa": 0.001
   },
   "shapes": {
-    "rx_matrix": [64, 256],
-    "pulse_compression": [64, 256],
-    "range_doppler": [64, 256],
-    "cfar": [64, 256],
-    "ambgfun_surface": [127, 128]
+    "rx_matrix": [
+      48,
+      2048
+    ],
+    "pulse_compression": [
+      48,
+      4096
+    ],
+    "range_doppler": [
+      128,
+      4096
+    ],
+    "cfar": [
+      128,
+      4096
+    ],
+    "ambgfun_surface": [
+      2047,
+      2048
+    ]
   },
   "injected_target": {
-    "delay_samples": 48,
+    "delay_samples": 384,
     "doppler_hz": 125,
     "target_amplitude": 1
   },
   "expected_detection": {
     "found": true,
-    "range_bin": 48,
-    "doppler_bin": 36,
+    "range_bin": 384,
+    "doppler_bin": 72,
     "doppler_hz": 125,
-    "power": 63504
+    "power": 565504
   },
   "cpu_detection": {
     "found": true,
-    "range_bin": 48,
-    "doppler_bin": 36,
+    "range_bin": 384,
+    "doppler_bin": 72,
     "doppler_hz": 125,
-    "power": 63662.3
+    "power": 565676
   },
   "gpu_detection": {
     "found": true,
-    "range_bin": 48,
-    "doppler_bin": 36,
+    "range_bin": 384,
+    "doppler_bin": 72,
     "doppler_hz": 125,
-    "power": 63662.4
+    "power": 565676
   },
   "timings": {
-    "input_construction": {"cpu_ms": 4.89046, "gpu_ms": 0.172241, "gpu_kernel_ms": 0.132654},
-    "pulse_compression": {"cpu_ms": 1.27591, "gpu_ms": 0.619334, "gpu_kernel_ms": 0.579366},
-    "pulse_doppler": {"cpu_ms": 1.7525, "gpu_ms": 0.368812, "gpu_kernel_ms": 0.333032},
-    "power_map": {"cpu_ms": 0.00522, "gpu_ms": 0.10962, "gpu_kernel_ms": 0.07194},
-    "ca_cfar": {"cpu_ms": 0.03297, "gpu_ms": 0.297022, "gpu_kernel_ms": 0.26041},
-    "ambgfun": {"cpu_ms": 2.02151, "gpu_ms": 0.352212, "gpu_kernel_ms": 0.314788},
-    "final_detection": {"cpu_ms": 0.00924, "gpu_ms": 0.122111, "gpu_kernel_ms": 0.086546},
-    "total": {"cpu_ms": 9.9878, "gpu_ms": 2.04135, "gpu_kernel_ms": 1.77874}
+    "input_construction": {
+      "cpu_ms": 29.7525,
+      "gpu_ms": 0.581861,
+      "gpu_kernel_ms": 0.548
+    },
+    "pulse_compression": {
+      "cpu_ms": 7.56518,
+      "gpu_ms": 0.936331,
+      "gpu_kernel_ms": 0.90042
+    },
+    "pulse_doppler": {
+      "cpu_ms": 67.9154,
+      "gpu_ms": 1.24096,
+      "gpu_kernel_ms": 1.204
+    },
+    "power_map": {
+      "cpu_ms": 0.163551,
+      "gpu_ms": 0.19172,
+      "gpu_kernel_ms": 0.158208
+    },
+    "ca_cfar": {
+      "cpu_ms": 1.34643,
+      "gpu_ms": 1.17692,
+      "gpu_kernel_ms": 1.14246
+    },
+    "ambgfun": {
+      "cpu_ms": 102.937,
+      "gpu_ms": 3.03894,
+      "gpu_kernel_ms": 3.00297
+    },
+    "final_detection": {
+      "cpu_ms": 0.952922,
+      "gpu_ms": 0.202,
+      "gpu_kernel_ms": 0.168104
+    },
+    "total": {
+      "cpu_ms": 210.50549999999998,
+      "gpu_ms": 7.50619,
+      "gpu_kernel_ms": 7.12416,
+      "aggregation": "median of repeat_runs[1:] after one warm-up iteration"
+    }
   },
   "pulse_compression_error": {
-    "mixed_error": 1.08723e-05,
-    "max_abs": 2.56785e-06,
-    "max_rel": 0.000559811,
-    "rmse": 3.85876e-07
+    "mixed_error": 6.23748e-06,
+    "max_abs": 6.94285e-06,
+    "max_rel": 647.103,
+    "rmse": 4.39867e-07
   },
   "pulse_doppler_error": {
-    "mixed_error": 2.70385e-05,
-    "max_abs": 5.09288e-05,
-    "max_rel": 0.000568968,
-    "rmse": 2.01767e-06
+    "mixed_error": 8.09962e-05,
+    "max_abs": 0.000152588,
+    "max_rel": 1198.75,
+    "rmse": 2.00089e-06
   },
   "cfar_threshold_error": {
-    "mixed_error": 0.00248718,
-    "max_abs": 0.00292969,
-    "max_rel": 0.00169415,
-    "rmse": 0.000431494
+    "mixed_error": 0.102474,
+    "max_abs": 0.102474,
+    "max_rel": 20929700000.0,
+    "rmse": 0.00746571
   },
   "ambgfun_surface_error": {
-    "mixed_error": 8.17305e-06,
-    "max_abs": 1.49012e-07,
-    "max_rel": 13.8886,
-    "rmse": 1.16467e-08
+    "mixed_error": 3.65006e-06,
+    "max_abs": 1.78814e-07,
+    "max_rel": 19.3537,
+    "rmse": 3.91315e-09
   },
   "consistency": {
     "cpu_gpu_detection_match": true,
@@ -97,45 +155,250 @@
   "validation": {
     "pass": true,
     "checks": [
-      {"name": "cpu_gpu_detection_match", "pass": true, "value": 1, "limit": 1, "detail": "CPU/GPU detection bins must match"},
-      {"name": "gpu_matches_expected_detection", "pass": true, "value": 1, "limit": 1, "detail": "GPU detection must match injected target bin"},
-      {"name": "gpu_total_ms", "pass": true, "value": 2.04135, "limit": 5, "detail": "GPU total time must stay within baseline multiplier and hard limit"},
-      {"name": "pulse_compression_mixed_error", "pass": true, "value": 1.08723e-05, "limit": 0.0001, "detail": "pulse compression CPU/GPU mixed error"},
-      {"name": "pulse_doppler_mixed_error", "pass": true, "value": 2.70385e-05, "limit": 0.0001, "detail": "pulse doppler CPU/GPU mixed error"},
-      {"name": "cfar_threshold_mixed_error", "pass": true, "value": 0.00248718, "limit": 0.005, "detail": "CFAR threshold mixed error uses task-level intermediate tolerance"},
-      {"name": "ambgfun_surface_mixed_error", "pass": true, "value": 8.17305e-06, "limit": 0.0001, "detail": "ambiguity surface CPU/GPU mixed error"},
-      {"name": "invalid_input_checks", "pass": true, "value": 1, "limit": 1, "detail": "invalid configuration matrix must raise std::invalid_argument with field names"},
-      {"name": "repeat_business_consistency", "pass": true, "value": 1, "limit": 1, "detail": "all repeat iterations must pass business and numeric checks"},
-      {"name": "gpu_total_stability", "pass": true, "value": 0.0356138, "limit": 0.35, "detail": "GPU total time relative jitter across repeats"},
-      {"name": "gpu_free_memory_drift_mib", "pass": true, "value": 0, "limit": 32, "detail": "final GPU free memory must not drop materially after repeats"},
-      {"name": "rss_current_drift_mib", "pass": true, "value": 0, "limit": 64, "detail": "process current RSS must not grow materially after repeats"}
+      {
+        "name": "cpu_gpu_detection_match",
+        "pass": true,
+        "value": 1,
+        "limit": 1,
+        "detail": "CPU/GPU detection bins must match"
+      },
+      {
+        "name": "gpu_matches_expected_detection",
+        "pass": true,
+        "value": 1,
+        "limit": 1,
+        "detail": "GPU detection must match injected target bin"
+      },
+      {
+        "name": "gpu_total_ms",
+        "pass": true,
+        "value": 7.36874,
+        "limit": 75,
+        "detail": "GPU total time must stay within baseline multiplier and hard limit"
+      },
+      {
+        "name": "pulse_compression_mixed_error",
+        "pass": true,
+        "value": 6.23748e-06,
+        "limit": 0.0001,
+        "detail": "pulse compression CPU/GPU mixed error"
+      },
+      {
+        "name": "pulse_doppler_mixed_error",
+        "pass": true,
+        "value": 8.09962e-05,
+        "limit": 0.0005,
+        "detail": "pulse doppler CPU/GPU mixed error"
+      },
+      {
+        "name": "cfar_threshold_mixed_error",
+        "pass": true,
+        "value": 0.102474,
+        "limit": 0.5,
+        "detail": "CFAR threshold mixed error uses task-level intermediate tolerance"
+      },
+      {
+        "name": "ambgfun_surface_mixed_error",
+        "pass": true,
+        "value": 3.65006e-06,
+        "limit": 0.0001,
+        "detail": "ambiguity surface CPU/GPU mixed error"
+      },
+      {
+        "name": "invalid_input_checks",
+        "pass": true,
+        "value": 1,
+        "limit": 1,
+        "detail": "invalid configuration matrix must raise std::invalid_argument with field names"
+      },
+      {
+        "name": "repeat_business_consistency",
+        "pass": true,
+        "value": 1,
+        "limit": 1,
+        "detail": "all repeat iterations must pass business and numeric checks"
+      },
+      {
+        "name": "gpu_total_stability",
+        "pass": true,
+        "value": 0.0326277,
+        "limit": 0.35,
+        "detail": "GPU total time relative jitter across repeats"
+      },
+      {
+        "name": "gpu_free_memory_drift_mib",
+        "pass": true,
+        "value": 0,
+        "limit": 32,
+        "detail": "final GPU free memory must not drop materially after repeats"
+      },
+      {
+        "name": "rss_current_drift_mib",
+        "pass": true,
+        "value": -1.13672,
+        "limit": 64,
+        "detail": "process current RSS must not grow materially after repeats"
+      }
     ]
   },
   "resource_usage": {
-    "before":     {
-      "rss_current_mib": 143.754,
-      "rss_peak_mib": 143.754,
-      "gpu_free_mib": 14938.6,
+    "before": {
+      "rss_current_mib": 144.176,
+      "rss_peak_mib": 144.176,
+      "gpu_free_mib": 16090.8,
       "gpu_total_mib": 16384,
       "gpu_device": 0,
       "gpu_device_name": "ZQ500-Q QUAD-0"
     },
-    "after":     {
-      "rss_current_mib": 503.961,
-      "rss_peak_mib": 504.824,
-      "gpu_free_mib": 14826.6,
+    "after": {
+      "rss_current_mib": 637.32,
+      "rss_peak_mib": 639.211,
+      "gpu_free_mib": 15898.8,
       "gpu_total_mib": 16384,
       "gpu_device": 0,
       "gpu_device_name": "ZQ500-Q QUAD-0"
     },
-    "gpu_free_delta_mib": -112,
-    "rss_current_delta_mib": 360.207
+    "gpu_free_delta_mib": -192,
+    "rss_current_delta_mib": 493.145
   },
   "repeat_runs": [
-    {"index": 1, "pass": false, "business_numeric_pass": true, "cpu_total_ms": 10.2607, "gpu_total_ms": 8.09055, "gpu_free_mib": 14826.6, "rss_current_mib": 503.961},
-    {"index": 2, "pass": true, "business_numeric_pass": true, "cpu_total_ms": 10.0484, "gpu_total_ms": 2.11054, "gpu_free_mib": 14826.6, "rss_current_mib": 503.961},
-    {"index": 3, "pass": true, "business_numeric_pass": true, "cpu_total_ms": 9.99946, "gpu_total_ms": 2.15853, "gpu_free_mib": 14826.6, "rss_current_mib": 503.961},
-    {"index": 4, "pass": true, "business_numeric_pass": true, "cpu_total_ms": 10.0159, "gpu_total_ms": 2.12293, "gpu_free_mib": 14826.6, "rss_current_mib": 503.961},
-    {"index": 5, "pass": true, "business_numeric_pass": true, "cpu_total_ms": 9.9878, "gpu_total_ms": 2.04135, "gpu_free_mib": 14826.6, "rss_current_mib": 503.961}
-  ]
+    {
+      "index": 1,
+      "pass": true,
+      "business_numeric_pass": true,
+      "cpu_total_ms": 223.101,
+      "gpu_total_ms": 13.1871,
+      "gpu_free_mib": 15898.8,
+      "rss_current_mib": 638.457
+    },
+    {
+      "index": 2,
+      "pass": true,
+      "business_numeric_pass": true,
+      "cpu_total_ms": 215.609,
+      "gpu_total_ms": 7.7511,
+      "gpu_free_mib": 15898.8,
+      "rss_current_mib": 637.184
+    },
+    {
+      "index": 3,
+      "pass": true,
+      "business_numeric_pass": true,
+      "cpu_total_ms": 209.742,
+      "gpu_total_ms": 7.5269,
+      "gpu_free_mib": 15898.8,
+      "rss_current_mib": 637.172
+    },
+    {
+      "index": 4,
+      "pass": true,
+      "business_numeric_pass": true,
+      "cpu_total_ms": 210.161,
+      "gpu_total_ms": 7.48548,
+      "gpu_free_mib": 15898.8,
+      "rss_current_mib": 637.172
+    },
+    {
+      "index": 5,
+      "pass": true,
+      "business_numeric_pass": true,
+      "cpu_total_ms": 215.814,
+      "gpu_total_ms": 7.60158,
+      "gpu_free_mib": 15898.8,
+      "rss_current_mib": 637.184
+    },
+    {
+      "index": 6,
+      "pass": true,
+      "business_numeric_pass": true,
+      "cpu_total_ms": 210.378,
+      "gpu_total_ms": 7.35935,
+      "gpu_free_mib": 15898.8,
+      "rss_current_mib": 637.172
+    },
+    {
+      "index": 7,
+      "pass": true,
+      "business_numeric_pass": true,
+      "cpu_total_ms": 210.633,
+      "gpu_total_ms": 7.36874,
+      "gpu_free_mib": 15898.8,
+      "rss_current_mib": 637.32
+    }
+  ],
+  "raw_final_timing_total": {
+    "cpu_ms": 210.633,
+    "gpu_ms": 7.36874,
+    "gpu_kernel_ms": 7.12416
+  },
+  "measurement": {
+    "repeat_count": 7,
+    "warmup_excluded": 1,
+    "measured_repeat_count": 6,
+    "aggregation": "median of repeat_runs[1:] after one warm-up iteration",
+    "cpu_total": {
+      "median_ms": 210.50549999999998,
+      "p95_ms": 215.76274999999998,
+      "samples_ms": [
+        215.609,
+        209.742,
+        210.161,
+        215.814,
+        210.378,
+        210.633
+      ]
+    },
+    "gpu_total": {
+      "median_ms": 7.50619,
+      "p95_ms": 7.71372,
+      "samples_ms": [
+        7.7511,
+        7.5269,
+        7.48548,
+        7.60158,
+        7.35935,
+        7.36874
+      ]
+    },
+    "gpu_kernel_total": {
+      "profiled_final_run_ms": 7.12416,
+      "source": "sum of final-run stage gpu_kernel_ms; task binary does not emit per-repeat kernel samples"
+    },
+    "speedup_cpu_over_gpu": 28.04425414224793
+  },
+  "speedup": {
+    "cpu_over_gpu": 28.04425414224793,
+    "formula": "median_cpu_total_ms / median_gpu_total_ms"
+  },
+  "correctness_summary": {
+    "expected_detection": {
+      "found": true,
+      "range_bin": 384,
+      "doppler_bin": 72,
+      "doppler_hz": 125,
+      "power": 565504
+    },
+    "cpu_detection": {
+      "found": true,
+      "range_bin": 384,
+      "doppler_bin": 72,
+      "doppler_hz": 125,
+      "power": 565676
+    },
+    "gpu_detection": {
+      "found": true,
+      "range_bin": 384,
+      "doppler_bin": 72,
+      "doppler_hz": 125,
+      "power": 565676
+    },
+    "pulse_doppler_mixed_error": 8.09962e-05,
+    "cfar_threshold_mixed_error": 0.102474
+  },
+  "provenance": {
+    "protocol": "final_l1_l6_v1",
+    "raw_metrics_relative_path": "task1_radar/L3/latest_metrics.json",
+    "raw_metrics_sha256": "599bffcc7b7bf1b026f0c393a90ac8001fc73a4f77ac0c87ba91035b3e0f2967",
+    "published_utc": "2026-07-21T05:43:57.973804+00:00"
+  }
 }
