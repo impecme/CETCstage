@@ -1,0 +1,5 @@
+substage,cpu_ms,gpu_ms,counted_in_pipeline
+direct_band_score,0.000000,3.568732,true
+row_normalize,0.000000,0.204721,true
+validation_representative_spectrogram,0.000000,0.427172,false
+pipeline_total,0.000000,3.773453,true

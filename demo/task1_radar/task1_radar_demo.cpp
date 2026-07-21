@@ -45,6 +45,7 @@ namespace cusignal_demo::task1_radar
     struct ScenarioConfig
     {
         int scale_level = 3;                     // 任务级规模档位，默认 L3 保持历史场景。
+        bool unified_scale_protocol = false;     // 统一 L1-L6 协议：冻结算法参数，仅改变输入规模。
         float fs = 1.0e6f;                       // 采样率，单位 Hz，决定快时间采样间隔。
         int num_pulses = 64;                     // 脉冲数，也就是慢时间维长度；增大可提升多普勒分辨率。
         int samples_per_pulse = 256;             // 每个脉冲的快时间采样点数；增大可提升距离向规模。
@@ -95,6 +96,7 @@ namespace cusignal_demo::task1_radar
         std::optional<int> template_length;
         std::optional<int> pulse_compression_nfft;
         std::optional<int> pulse_doppler_nfft;
+        bool unified_scale_protocol = false;
         bool invalid_input_checks = false;
         bool skip_timing_validation = false;
     };
@@ -193,6 +195,33 @@ namespace cusignal_demo::task1_radar
             break;
         default:
             break;
+        }
+        config.delay_samples = std::max(1, config.samples_per_pulse * 3 / 16);
+        return config;
+    }
+
+    // Formal-PPT scale protocol: all algorithmic parameters are inherited from
+    // the L6 acceptance case; only the task input shape changes across levels.
+    ScenarioConfig unified_scenario_for_scale_level(int scale_level)
+    {
+        if (scale_level < 1 || scale_level > 6)
+        {
+            throw std::invalid_argument("scale_level must be in [1, 6]");
+        }
+        ScenarioConfig config = scenario_for_scale_level(6);
+        config.scale_level = scale_level;
+        config.unified_scale_protocol = true;
+        switch (scale_level)
+        {
+        // 1536 is the smallest retained-input length that can hold the fixed
+        // 1024-sample L6 template plus this task's deterministic delay.
+        case 1: config.num_pulses = 16;  config.samples_per_pulse = 1536; break;
+        case 2: config.num_pulses = 32;  config.samples_per_pulse = 1536; break;
+        case 3: config.num_pulses = 48;  config.samples_per_pulse = 2048; break;
+        case 4: config.num_pulses = 64;  config.samples_per_pulse = 2048; break;
+        case 5: config.num_pulses = 96;  config.samples_per_pulse = 3072; break;
+        case 6: break;
+        default: break;
         }
         config.delay_samples = std::max(1, config.samples_per_pulse * 3 / 16);
         return config;
@@ -507,13 +536,17 @@ namespace cusignal_demo::task1_radar
             {
                 options.invalid_input_checks = true;
             }
+            else if (arg == "--unified-scale-protocol")
+            {
+                options.unified_scale_protocol = true;
+            }
             else if (arg == "--skip-timing-validation")
             {
                 options.skip_timing_validation = true;
             }
             else if (arg == "--help" || arg == "-h")
             {
-                std::cout << "usage: task1_radar_demo [--repeat N] [--scale-level 1..6] [--invalid-input-checks] "
+                std::cout << "usage: task1_radar_demo [--repeat N] [--scale-level 1..6] [--unified-scale-protocol] [--invalid-input-checks] "
                              "[--skip-timing-validation] [--num-pulses N] [--samples-per-pulse N] "
                              "[--template-length N] [--pulse-compression-nfft N] "
                              "[--pulse-doppler-nfft N]\n";
@@ -1365,6 +1398,7 @@ namespace cusignal_demo::task1_radar
         std::ostringstream scenario;
         scenario << "{\n";
         scenario << "  \"scale_level\": " << config.scale_level << ",\n";
+        scenario << "  \"unified_scale_protocol\": " << bool_json(config.unified_scale_protocol) << ",\n";
         scenario << "  \"scale_value\": " << scale_value(config) << ",\n";
         scenario << "  \"fs\": " << config.fs << ",\n";
         scenario << "  \"num_pulses\": " << config.num_pulses << ",\n";
@@ -1647,9 +1681,10 @@ namespace cusignal_demo::task1_radar
     {
         std::ostringstream stream;
         stream << "{\n";
-        stream << "  \"version\": \"V3.1\",\n";
+        stream << "  \"version\": \"V3.3\",\n";
         stream << "  \"scenario\": {\n";
         stream << "    \"scale_level\": " << config.scale_level << ",\n";
+        stream << "    \"unified_scale_protocol\": " << bool_json(config.unified_scale_protocol) << ",\n";
         stream << "    \"scale_value\": " << scale_value(config) << ",\n";
         stream << "    \"fs\": " << config.fs << ",\n";
         stream << "    \"num_pulses\": " << config.num_pulses << ",\n";
@@ -1907,10 +1942,15 @@ namespace cusignal_demo::task1_radar
 
     int run(const DemoOptions &options)
     {
-        ScenarioConfig config = scenario_for_scale_level(options.scale_level);
+        ScenarioConfig config = options.unified_scale_protocol
+            ? unified_scenario_for_scale_level(options.scale_level)
+            : scenario_for_scale_level(options.scale_level);
         apply_scenario_overrides(config, options);
         validate_config(config);
-        const ValidationThresholds thresholds = thresholds_for_scale_level(config.scale_level);
+        // Unified levels share L6's correctness and timing gate so the curve
+        // cannot silently relax validation as the input size changes.
+        const ValidationThresholds thresholds = thresholds_for_scale_level(
+            config.unified_scale_protocol ? 6 : config.scale_level);
         const bool invalid_checks_passed = options.invalid_input_checks ? run_invalid_input_checks() : true;
         const ResourceSnapshot resource_before = capture_resource_snapshot();
 

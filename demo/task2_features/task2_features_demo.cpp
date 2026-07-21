@@ -60,6 +60,7 @@ namespace cusignal_demo::task2_features
     struct ScenarioConfig
     {
         int scale_level = 3;             // 任务级规模档位，默认 L3 保持历史场景。
+        bool unified_scale_protocol = false; // 统一 L1-L6 协议：冻结算法参数，仅改变输入规模。
         float fs = 1.0e6f;               // 采样率，单位 Hz，决定每帧快时间采样间隔。
         int num_frames = 48;             // 帧数，也就是批处理时间步数；增大可放大整体任务规模。
         int samples_per_frame = 1024;    // 每帧采样点数；增大可放大滤波、解调、谱分析输入长度。
@@ -110,6 +111,7 @@ namespace cusignal_demo::task2_features
         std::optional<int> spectrogram_nperseg;
         std::optional<int> spectrogram_noverlap;
         std::optional<int> spectrogram_nfft;
+        bool unified_scale_protocol = false;
         bool invalid_input_checks = false;
         bool skip_timing_validation = false;
     };
@@ -220,6 +222,36 @@ namespace cusignal_demo::task2_features
             break;
         default:
             break;
+        }
+        config.target_start_sample_0 = std::max(1, config.samples_per_frame * 55 / 256);
+        config.interferer_start_sample = config.samples_per_frame * 5 / 8;
+        config.interferer_length = config.template_length;
+        config.representative_frame_index = config.num_frames / 2;
+        return config;
+    }
+
+    // Formal-PPT scale protocol: retain the L6 feature-extraction/tracking
+    // path (including the B=8-friendly frame multiples) and vary only frame
+    // count.  Keeping 3072 samples/frame preserves the same template and
+    // spectrogram configuration at every level.
+    ScenarioConfig unified_scenario_for_scale_level(int scale_level)
+    {
+        if (scale_level < 1 || scale_level > 6)
+        {
+            throw std::invalid_argument("scale_level must be in [1, 6]");
+        }
+        ScenarioConfig config = scenario_for_scale_level(6);
+        config.scale_level = scale_level;
+        config.unified_scale_protocol = true;
+        switch (scale_level)
+        {
+        case 1: config.num_frames = 8; break;
+        case 2: config.num_frames = 16; break;
+        case 3: config.num_frames = 32; break;
+        case 4: config.num_frames = 64; break;
+        case 5: config.num_frames = 96; break;
+        case 6: break;
+        default: break;
         }
         config.target_start_sample_0 = std::max(1, config.samples_per_frame * 55 / 256);
         config.interferer_start_sample = config.samples_per_frame * 5 / 8;
@@ -587,13 +619,17 @@ namespace cusignal_demo::task2_features
             {
                 options.invalid_input_checks = true;
             }
+            else if (arg == "--unified-scale-protocol")
+            {
+                options.unified_scale_protocol = true;
+            }
             else if (arg == "--skip-timing-validation")
             {
                 options.skip_timing_validation = true;
             }
             else if (arg == "--help" || arg == "-h")
             {
-                std::cout << "usage: task2_features_demo [--repeat N] [--scale-level 1..6] [--invalid-input-checks] "
+                std::cout << "usage: task2_features_demo [--repeat N] [--scale-level 1..6] [--unified-scale-protocol] [--invalid-input-checks] "
                              "[--skip-timing-validation] [--num-frames N] [--samples-per-frame N] "
                              "[--template-length N] [--filter-numtaps N] [--spectrogram-nperseg N] "
                              "[--spectrogram-noverlap N] [--spectrogram-nfft N]\n";
@@ -2244,8 +2280,9 @@ namespace cusignal_demo::task2_features
 
         std::ostringstream scenario;
         scenario << "{\n";
-        scenario << "  \"version\": \"V3.2\",\n";
+        scenario << "  \"version\": \"V3.3\",\n";
         scenario << "  \"scale_level\": " << config.scale_level << ",\n";
+        scenario << "  \"unified_scale_protocol\": " << bool_json(config.unified_scale_protocol) << ",\n";
         scenario << "  \"scale_value\": " << scale_value(config) << ",\n";
         scenario << "  \"fs\": " << config.fs << ",\n";
         scenario << "  \"num_frames\": " << config.num_frames << ",\n";
@@ -2588,9 +2625,10 @@ namespace cusignal_demo::task2_features
     {
         std::ostringstream stream;
         stream << "{\n";
-        stream << "  \"version\": \"V3.2\",\n";
+        stream << "  \"version\": \"V3.3\",\n";
         stream << "  \"scenario\": {\n";
         stream << "    \"scale_level\": " << config.scale_level << ",\n";
+        stream << "    \"unified_scale_protocol\": " << bool_json(config.unified_scale_protocol) << ",\n";
         stream << "    \"scale_value\": " << scale_value(config) << ",\n";
         stream << "    \"fs\": " << config.fs << ",\n";
         stream << "    \"num_frames\": " << config.num_frames << ",\n";
@@ -2768,10 +2806,15 @@ namespace cusignal_demo::task2_features
 
     int run(const DemoOptions &options)
     {
-        ScenarioConfig config = scenario_for_scale_level(options.scale_level);
+        ScenarioConfig config = options.unified_scale_protocol
+            ? unified_scenario_for_scale_level(options.scale_level)
+            : scenario_for_scale_level(options.scale_level);
         apply_scenario_overrides(config, options);
         validate_config(config);
-        const ValidationThresholds thresholds = thresholds_for_scale_level(config.scale_level);
+        // Unified levels share L6's correctness and timing gate so the curve
+        // cannot silently relax validation as the input size changes.
+        const ValidationThresholds thresholds = thresholds_for_scale_level(
+            config.unified_scale_protocol ? 6 : config.scale_level);
         const bool invalid_checks_passed = options.invalid_input_checks ? run_invalid_input_checks() : true;
         const ResourceSnapshot resource_before = capture_resource_snapshot();
 

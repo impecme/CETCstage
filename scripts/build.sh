@@ -150,7 +150,9 @@ check_sdk() {
 
 invalidate_relocated_cmake_cache() {
   local cache_path="${BUILD_PATH}/CMakeCache.txt"
-  [[ -f "${cache_path}" ]] || return
+  # No build directory/cache is the normal first-build case.  Returning the
+  # failed [[ -f ]] status under `set -e` used to abort before CMake ran.
+  [[ -f "${cache_path}" ]] || return 0
 
   local cached_build_dir
   local cached_source_dir

@@ -1,0 +1,5 @@
+substage,gpu_ms,counted_in_pipeline
+representative_filter,0.236690,false
+representative_correlate,2.768455,false
+representative_spectrogram,0.376731,false
+representative_cwt,0.651722,false
