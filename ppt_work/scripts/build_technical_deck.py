@@ -18,24 +18,22 @@ from xml.etree import ElementTree as ET
 
 
 SLIDES = (
-    "P03_赛题重述_整页_v05_双后端闭环.png",
-    "P04_代码架构_三层加目录树预留_v03.png",
-    "P05_技术路线_单算子三机制_v09.png",
-    "P06_访存资源复用_Wiener代表_v05_三项性能.png",
-    "P07_并行结构重构_IIR代表_v04_三项性能.png",
-    "P08_分派Fusion_Periodogram代表_v04_三项性能.png",
-    # P09-P11 are reserved for three same-protocol operator-performance pages.
-    # Do not build the reordered deck until all three real data pages exist.
-    "P09_任务包含算子性能_待分层数据_v01.png",
-    "P10_赛题附录算子性能_待分层数据_v01.png",
-    "P11_原生基础算子性能_待分层数据_v01.png",
-    "P12_Task1_五路径公开算子链_v03_术语收束.png",
-    "P13_Task1_L1-L6_实测_v08.png",
-    "P14_Task2_五路径ScoreOnly_v08_术语收束.png",
-    "P15_Task2_L1-L6_实测_v08.png",
-    "P16_L6正确性_实测_v08.png",
-    "P17_性能优缺点与改进方向_待数据整合_v01.png",
-    "P18_核心亮点_生图重构_v06.png",
+    "P03_赛题重述_整页_v06_双后端闭环.png",
+    "P04_代码架构_三层目录树预留_v04.png",
+    "P05_技术路线_三加二加五_v11_统一数据.png",
+    "P06_访存资源复用_Wiener代表_v07_真实数据.png",
+    "P07_并行归约重构_LombScargle代表_v08_真实数据.png",
+    "P08_形状感知分派_ChannelizePoly代表_v08_真实数据.png",
+    "P09_任务直接依赖算子性能_v02.png",
+    "P10_赛题附录算子性能_v02.png",
+    "P11_原生基础算子性能_v02.png",
+    "P12_任务一_五类路径公开算子链_v05_中文重构.png",
+    "P13_Task1_L1-L6_实测_v11_报告看板.png",
+    "P14_任务二_五类路径评分流程_v12_初版保留主内容.png",
+    "P15_Task2_L1-L6_实测_v11_报告看板.png",
+    "P16_正确性验证_实测_v09_中文重构.png",
+    "P17_性能特征与优化方向_v02_真实数据.png",
+    "P18_核心亮点_三类结构重构策略_v08.png",
     "P19_AI工具使用说明_v08_比例与人工原创.png",
 )
 

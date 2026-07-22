@@ -863,25 +863,25 @@ PPT 不得增加“传统 GPU”柱、NVIDIA/CUDA 设备名或推测性倍数，
 
 ---
 
-## 9.7 2026-07-21 正式 L1～L6 实测补充（正式性能页依据）
+## 9.7 当前正式 L1～L6 实测补充（正式性能页依据）
 
 为消除旧规模曲线同时改变算法参数与输入规模、以及独立 `final-input` 未纳入曲线的口径问题，已在 ZQ500-Q QUAD-0 上按 `final_l1_l6_v1` 重测两条任务。每个规模启动 7 次，首轮仅 warm-up；CPU/GPU `total` 取其余 6 次中位数，`speedup` 在报告中直接计算为 `CPU median total / GPU median total`。所有 12 个点的验证均 PASS。
 
 | 任务 | L1～L6 输入 | 固定项 | L6 CPU / GPU median total | L6 direct speedup | 正确性 |
 |---|---|---|---:|---:|---|
-| Task1 雷达检测 | `16×1536 → 128×4096` | 窗口、CFAR 参数与公开算子链 | `364.798 / 11.023 ms` | `33.09×` | Expected/CPU/GPU detection 均为 range 768、doppler 72；CFAR threshold mixed error `0.276398 < 0.5` |
-| Task2 特征融合/跟踪 | `8×3072 → 128×3072` | filter、spectrogram、CWT、track、B=8、score-only | `28363.050 / 27.044 ms` | `1048.78×` | CPU/GPU peak track 一致；RMSE `0.477855 < 2`；feature-score mixed error `9.83703e-05 < 1e-4` |
+| Task1 雷达检测 | `16×1536 → 128×4096` | 窗口、CFAR 参数与公开算子链 | `376.037 / 11.561 ms` | `32.53×` | Expected/CPU/GPU detection 均为 range 768、doppler 72；CFAR threshold mixed error `0.276398 < 0.5` |
+| Task2 特征融合/跟踪 | `8×3072 → 128×3072` | filter、spectrogram、CWT、track、B=8、仅评分 | `28595.400 / 27.148 ms` | `1053.33×` | CPU/GPU peak track 一致；RMSE `0.477855 < 2`；feature-score mixed error `9.83703e-05 < 1e-4` |
 
-完整曲线结论：Task1 为 `25.53×～33.09×`，可见固定开销影响；Task2 为 `415.96×～1048.78×`，随帧数增加释放批量并行度。L6 就是原 final-input；L1～L5 只改变输入规模，不再改变分块、阈值或算法语义。
+完整曲线结论：Task1 为 `26.47×～32.53×`，可见固定开销影响；Task2 为 `343.12×～1053.33×`，随帧数增加释放批量并行度。L1～L6 使用统一任务规模序列；PPT 不再出现旧规模名称。
 
-L6 的 raw final GPU event（仅代表 stream work，不是单 kernel profiler）Top3 为：Task1 `ambgfun 3.208110 ms (29.84%)`、`input_construction 3.163750 ms (29.43%)`、`pulse_doppler 1.512064 ms (14.06%)`；Task2 `cwt 12.512743 ms (47.82%)`、`input_construction 4.077844 ms (15.58%)`、`spectrogram 3.773453 ms (14.42%)`。这些热点是后续独立 A/B 的优先级，不应与规模曲线混为同一个优化效果。
+L6 的 raw final GPU event（仅代表 stream work，不是单 kernel profiler）Top3 为：Task1 `input_construction 3.265840 ms (28.48%)`、`ambgfun 3.229640 ms (28.16%)`、`pulse_doppler 1.673300 ms (14.59%)`；Task2 `cwt 12.586100 ms (48.20%)`、`input_construction 4.008310 ms (15.35%)`、`spectrogram 3.763360 ms (14.41%)`。这些热点是后续单项参数对照的优先级，不应与规模曲线混为同一个优化效果。
 
 正式证据文件：
 
 - `data/reports/demo/scale_summary.md` 与 `scale_summary.csv`：12 点汇总、统计方法和路径。
 - `data/reports/demo/task1_radar/scales/L1…L6/metrics.json`、`task2_features/scales/L1…L6/metrics.json`：每次运行、参数、total、验证和原始结果。
-- `ppt_work/data_tables/task_scaling.csv`、`l6_correctness.csv`、`l6_hotspots.csv`：P09/P11/P14/P16 可直接使用的制图表。
-- `ppt_work/generated/P09_Task1_L1-L6_实测_v08.png`、`P11_Task2_L1-L6_实测_v08.png`、`P14_L6正确性_实测_v08.png`、`P16_L1-L6规模与热点_实测_v08.png`：真实数据渲染的页面成品。
+- `ppt_work/data_tables/task_scaling.csv`、`l6_correctness.csv`、`l6_hotspots.csv`：任务曲线、正确性与热点的制图表。
+- `ppt_work/final_images/P13_Task1_L1-L6_实测_v11_报告看板.png`、`P15_Task2_L1-L6_实测_v11_报告看板.png`、`P16_正确性验证_实测_v09_中文重构.png`、`P17_性能特征与优化方向_v02_真实数据.png`：当前真实数据渲染页面。
 
 ---
 

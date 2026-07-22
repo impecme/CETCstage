@@ -66,6 +66,11 @@ def l6(task: str) -> dict:
     return task_metrics(task, 6)
 
 
+def formal_levels(task: str) -> list[dict]:
+    """Return the six published L1–L6 records in display order."""
+    return [task_metrics(task, level) for level in range(1, 7)]
+
+
 def operator_summary() -> dict:
     return load(REPORTS / "units" / "benchmarks" / "summary.json")
 
@@ -366,38 +371,73 @@ def curve(d: ImageDraw.ImageDraw, box: tuple[int, int, int, int], values: list[f
         d.ellipse((x - 7, y - 7, x + 7, y + 7), fill=ORANGE if i == 5 else color, outline=WHITE, width=2)
 
 
+def formal_report_panel(d: ImageDraw.ImageDraw, box: tuple[int, int, int, int], task: str) -> None:
+    """A report-style table rendered from all six current metrics files."""
+    x1, y1, x2, y2 = box
+    rr(d, box, 12, "#142334", NAVY, 2)
+    rr(d, (x1, y1, x2, y1 + 52), 12, NAVY)
+    d.rectangle((x1, y1 + 26, x2, y1 + 52), fill=NAVY)
+    txt(d, ((x1 + x2) // 2, y1 + 26), "正式 L1–L6 运行记录", 19, WHITE, True, "mm")
+    txt(d, (x1 + 30, y1 + 86), "规模", 14, "#9CCFE7", True, "lm")
+    txt(d, (x1 + 170, y1 + 86), "CPU / ms", 14, "#9CCFE7", True, "lm")
+    txt(d, (x1 + 325, y1 + 86), "GPU / ms", 14, "#9CCFE7", True, "lm")
+    txt(d, (x1 + 485, y1 + 86), "CPU/GPU", 14, "#9CCFE7", True, "lm")
+    line(d, (x1 + 25, y1 + 106, x2 - 25, y1 + 106), "#35516A", 1)
+    for index, record in enumerate(formal_levels(task), start=1):
+        y = y1 + 138 + (index - 1) * 51
+        if index % 2:
+            rr(d, (x1 + 20, y - 19, x2 - 20, y + 20), 4, "#1A2D41")
+        measure = record["measurement"]
+        shape = record["scenario"]["rx_shape"]
+        speed = record["speedup"]["cpu_over_gpu"]
+        txt(d, (x1 + 30, y), f"L{index}  {shape[0]}×{shape[1]}", 14, WHITE, True, "lm")
+        txt(d, (x1 + 170, y), f"{measure['cpu_total']['median_ms']:.3f}", 14, "#D6E0E8", True, "lm")
+        txt(d, (x1 + 325, y), f"{measure['gpu_total']['median_ms']:.3f}", 14, "#55D9D2", True, "lm")
+        txt(d, (x1 + 485, y), f"{speed:.2f}×", 14, "#FFAE55" if index == 6 else "#55D9D2", True, "lm")
+        d.ellipse((x2 - 38, y - 7, x2 - 24, y + 7), fill="#42D392")
+    txt(d, (x1 + 28, y2 - 30), "●  六个正式规模均已完成运行", 14, "#7EE4A6", True, "lm")
+
+
+def l6_impact_band(d: ImageDraw.ImageDraw, task: str) -> None:
+    data = l6(task)
+    measure = data["measurement"]
+    cpu = measure["cpu_total"]["median_ms"]
+    gpu = measure["gpu_total"]["median_ms"]
+    speed = data["speedup"]["cpu_over_gpu"]
+    rr(d, (44, 748, 1628, 840), 12, "#F4F8FC", BLUE, 2)
+    rr(d, (64, 764, 280, 824), 9, NAVY)
+    txt(d, (172, 794), "最大规模 L6", 21, WHITE, True, "mm")
+    txt(d, (332, 774), "CPU", 16, MUTED, True, "lm")
+    txt(d, (332, 802), f"{cpu:.3f} ms", 25, CPU, True, "lm")
+    arrow(d, 592, 793, 704, 793, BLUE, 4)
+    txt(d, (752, 774), "ZQ500 GPU", 16, MUTED, True, "lm")
+    txt(d, (752, 802), f"{gpu:.3f} ms", 25, TEAL, True, "lm")
+    arrow(d, 1045, 793, 1155, 793, ORANGE, 4)
+    txt(d, (1215, 774), "CPU/GPU 加速比", 16, MUTED, True, "lm")
+    txt(d, (1215, 804), f"{speed:.2f}×", 32, ORANGE, True, "lm")
+
+
 def task_performance_page(page: str, task: str, title: str, conclusion: str) -> None:
     data = l6(task)
     measure = data["measurement"]
     cpu = measure["cpu_total"]["median_ms"]
     gpu = measure["gpu_total"]["median_ms"]
     speed = data["speedup"]["cpu_over_gpu"]
-    shape = data["scenario"]["rx_shape"]
     all_speeds = speedups(task)
     if task == "task1_radar":
         title = f"任务一端到端性能：L1–L6 最高 {max(all_speeds):.2f}×"
-        conclusion = f"六个正式规模均完成运行，L6 CPU/GPU 加速比为 {speed:.2f}×。"
+        conclusion = "六个正式规模的端到端时间与 CPU/GPU 加速比由同一报告记录。"
     else:
         title = f"任务二端到端性能：L1–L6 最高 {max(all_speeds):.2f}×"
-        conclusion = f"批量评分路径在六个正式规模完成运行，L6 CPU/GPU 加速比为 {speed:.2f}×。"
+        conclusion = "批量评分路径在六个正式规模的端到端时间与加速比由同一报告记录。"
     im, d = base("技术指标", title, conclusion)
     ceiling = 35 if task == "task1_radar" else 1100
     floor = 25 if task == "task1_radar" else 300
-    curve(d, (44, 265, 785, 840), all_speeds, "L1–L6 CPU/GPU 加速比", ceiling, TEAL,
+    curve(d, (44, 265, 920, 720), all_speeds, "L1–L6 CPU/GPU 加速比走势", ceiling, TEAL,
           1 if task == "task1_radar" else 0, floor)
-    panel(d, (810, 265, 1170, 840), "L6 端到端时间", TEAL, 18)
-    max_ms = cpu
-    for label_name, value, color, y in (("CPU", cpu, CPU, 371), ("ZQ500 GPU", gpu, TEAL, 476)):
-        txt(d, (850, y - 22), label_name, 18, TEXT, True)
-        rr(d, (850, y, 850 + max(15, int(258 * value / max_ms)), y + 30), 8, color)
-        txt(d, (850, y + 52), f"{value:.2f} ms", 19, color, True)
-    txt(d, (990, 590), f"输入：{shape[0]} × {shape[1]}", 16, TEXT, True, "ma")
-    # These cards are intentionally concise: the page already identifies L6
-    # in its chart and time panel, so card footnotes only create visual noise.
-    metric_card(d, (1198, 265, 1628, 430), "CPU/GPU 加速比", f"{speed:.2f}×", BLUE)
-    metric_card(d, (1198, 450, 1628, 615), "最终 GPU 耗时", f"{gpu:.2f} ms", TEAL)
-    metric_card(d, (1198, 635, 1628, 800), "GPU 优化前后提速", "X×", ORANGE)
-    summary_band(d, "总结：L1–L6 规模曲线与 L6 端到端耗时共同刻画任务的 GPU 加速表现。")
+    formal_report_panel(d, (950, 265, 1628, 720), task)
+    l6_impact_band(d, task)
+    summary_band(d, "总结：L1–L6 规模曲线、全部运行记录与 L6 端到端对照共同刻画任务加速表现。")
     save(im, page)
 
 
@@ -536,23 +576,49 @@ def bars(d: ImageDraw.ImageDraw, box: tuple[int, int, int, int], title: str,
 
 def page_p16() -> None:
     t1, t2 = l6("task1_radar"), l6("task2_features")
-    im, d = base("技术指标", "正确性验证：81 个算子、2 条任务、12 个规模点全部通过", "公开算子、端到端任务、计算步骤和关键数值由同一套正式报告汇总。")
-    panel(d, (44, 265, 520, 840), "覆盖与运行结果", NAVY, 20)
-    for index, (number, text, color) in enumerate((("81/81", "公开算子性能记录", TEAL), ("2/2", "端到端任务", BLUE),
+    im, d = base("技术指标", "验证与覆盖：81 个算子、2 条任务、12 个规模点", "类型契约审计、任务步骤审计与端到端关键数值由正式报告汇总。")
+    panel(d, (44, 265, 472, 840), "审计覆盖", NAVY, 20)
+    for index, (number, text, color) in enumerate((("81/81", "公开算子类型契约", TEAL), ("2/2", "端到端任务", BLUE),
                                                        ("12/12", "正式规模运行", ORANGE), ("14/14", "正式计算步骤", NAVY))):
         y = 340 + index * 107
-        rr(d, (82, y, 480, y + 72), 10, "#ECF9F6" if color == TEAL else PALE, "#BFD2E4", 1)
-        txt(d, (172, y + 36), number, 29, color, True, "ma")
-        txt(d, (340, y + 36), text, 18, TEXT, True, "ma")
-    panel(d, (552, 265, 1628, 525), "任务一 L6：目标检测位置一致", TEAL, 20)
+        rr(d, (74, y, 442, y + 72), 10, "#ECF9F6" if color == TEAL else PALE, "#BFD2E4", 1)
+        d.ellipse((95, y + 17, 133, y + 55), fill=color)
+        txt(d, (114, y + 36), "✓", 20, WHITE, True, "mm")
+        txt(d, (196, y + 36), number, 29, color, True, "ma")
+        txt(d, (340, y + 36), text, 17, TEXT, True, "ma")
+
+    # The central report-style panel is intentionally rendered from the
+    # published audit facts rather than a decorative mock terminal.
+    x1, y1, x2, y2 = 500, 265, 1068, 840
+    rr(d, (x1, y1, x2, y2), 12, "#142334", NAVY, 2)
+    rr(d, (x1, y1, x2, y1 + 52), 12, NAVY)
+    d.rectangle((x1, y1 + 26, x2, y1 + 52), fill=NAVY)
+    txt(d, ((x1 + x2) // 2, y1 + 26), "正式验证报告摘录", 20, WHITE, True, "mm")
+    checks = (
+        ("[type_contracts]", "81 / 81 公开算子类型契约", "通过"),
+        ("[task_steps]", "2 条任务 · 14 个正式计算步骤", "通过"),
+        ("[task1 L6]", "检测位置 Expected = CPU = GPU", "通过"),
+        ("[task2 L6]", "峰值轨迹与特征误差满足门限", "通过"),
+    )
+    for index, (kind, detail, status) in enumerate(checks):
+        y = 386 + index * 91
+        rr(d, (x1 + 24, y - 28, x2 - 24, y + 31), 6, "#1A2D41" if index % 2 == 0 else "#183044")
+        txt(d, (x1 + 45, y), kind, 16, "#9CCFE7", True, "lm")
+        txt(d, (x1 + 210, y), detail, 16, WHITE, True, "lm")
+        rr(d, (x2 - 105, y - 18, x2 - 43, y + 18), 8, "#1F8F79")
+        txt(d, (x2 - 74, y), status, 14, WHITE, True, "mm")
+    line(d, (x1 + 38, 767, x2 - 38, 767), "#35516A", 1)
+    txt(d, (x1 + 38, 797), "来源：type_contracts · task_step_audit · L6 metrics.json", 13, "#9CCFE7", True, "lm")
+
+    panel(d, (1100, 265, 1628, 525), "任务一 L6：目标检测位置一致", TEAL, 20)
     detect = t1["correctness_summary"]["gpu_detection"]
     for r, c in ((48, NAVY), (34, CPU), (20, TEAL)):
-        d.ellipse((780 - r, 392 - r, 780 + r, 392 + r), outline=c, width=4)
-    txt(d, (885, 353), "Expected = CPU = GPU", 26, TEAL, True)
-    txt(d, (885, 402), f"range={detect['range_bin']} · Doppler={detect['doppler_bin']} · {detect['doppler_hz']} Hz", 20, TEXT, True)
-    label(d, (1130, 448, 1575, 492), f"CFAR 阈值误差 {t1['correctness_summary']['cfar_threshold_mixed_error']:.6f} < 0.5", TEAL, "#ECF9F6", 16)
-    panel(d, (552, 555, 1628, 840), "任务二 L6：轨迹与特征误差通过门限", TEAL, 20)
-    graph = (620, 645, 1080, 790)
+        d.ellipse((1202 - r, 385 - r, 1202 + r, 385 + r), outline=c, width=4)
+    txt(d, (1300, 350), "Expected = CPU = GPU", 22, TEAL, True)
+    txt(d, (1300, 392), f"range={detect['range_bin']} · Doppler={detect['doppler_bin']} · {detect['doppler_hz']} Hz", 17, TEXT, True)
+    label(d, (1198, 447, 1585, 492), f"CFAR 阈值误差 {t1['correctness_summary']['cfar_threshold_mixed_error']:.6f} < 0.5", TEAL, "#ECF9F6", 15)
+    panel(d, (1100, 555, 1628, 840), "任务二 L6：轨迹与特征误差满足门限", TEAL, 20)
+    graph = (1130, 640, 1365, 790)
     line(d, (graph[0], graph[3], graph[2], graph[3]), MUTED, 2)
     line(d, (graph[0], graph[1], graph[0], graph[3]), MUTED, 2)
     truth, gpu = t2["truth_track"], t2["gpu_kalman_track"]
@@ -565,11 +631,11 @@ def page_p16() -> None:
             points.append((x, y))
         for a, b in zip(points[:-1], points[1:]):
             line(d, (*a, *b), color, width)
-    txt(d, (1115, 659), "CPU/GPU 峰值轨迹一致", 19, TEXT, True)
+    txt(d, (1395, 650), "CPU/GPU 峰值轨迹一致", 16, TEXT, True)
     c2 = t2["correctness_summary"]
-    label(d, (1115, 703, 1575, 745), f"Kalman RMSE {c2['kalman_track_rmse']:.6f} < 2", TEAL, "#ECF9F6", 16)
-    label(d, (1115, 763, 1575, 805), f"特征误差 {c2['feature_score_mixed_error']:.5e} < 1e-4", TEAL, "#ECF9F6", 16)
-    summary_band(d, "总结：正确性、性能与运行覆盖由统一报告同时验证，结果可直接回溯到结构化数据。")
+    label(d, (1390, 692, 1588, 732), f"RMSE {c2['kalman_track_rmse']:.6f} < 2", TEAL, "#ECF9F6", 13)
+    label(d, (1390, 750, 1588, 790), f"特征误差 {c2['feature_score_mixed_error']:.5e} < 1e-4", TEAL, "#ECF9F6", 12)
+    summary_band(d, "总结：类型契约、任务步骤与两条端到端任务的关键数值均由正式报告核验。")
     save(im, "P16_正确性验证_实测_v09_中文重构.png")
 
 
@@ -636,25 +702,12 @@ def cleanup_existing(source: str, target: str, boxes: tuple[tuple[int, int, int,
 
 
 def main() -> None:
-    # P03/P04/P05 retain their accepted main visuals.  Only the explanatory
-    # footers/negative comparison strip is removed; their in-page summary is
-    # preserved.
-    cleanup_existing("P03_赛题重述_整页_v05_双后端闭环.png", "P03_赛题重述_整页_v06_双后端闭环.png", ((0, 895, W, H),))
-    cleanup_existing("P04_代码架构_三层加目录树预留_v03.png", "P04_代码架构_三层目录树预留_v04.png", ((25, 838, 1050, H),))
-    cleanup_existing("P05_技术路线_单算子三机制_v09.png", "P05_技术路线_三加二加五_v10.png", ((0, 863, W, H),))
-    page_p06()
-    page_p07()
-    page_p08()
+    """Refresh only report-native pages without replacing approved visual pages."""
     page_p09_p11()
-    page_p12()
-    task_performance_page("P13_Task1_L1-L6_实测_v09_真实数据.png", "task1_radar",
-                          "任务一端到端性能：L1–L6 全部超过 25×", "正式任务规模从 L1 到 L6 运行通过，L6 达到 33.09×。")
-    page_p14()
-    task_performance_page("P15_Task2_L1-L6_实测_v09_真实数据.png", "task2_features",
-                          "任务二端到端性能：批量评分扩展至 1048.78×", "批量评分路径随规模扩大释放并行度，L6 达到 1048.78×。")
+    task_performance_page("P13_Task1_L1-L6_实测_v11_报告看板.png", "task1_radar", "", "")
+    task_performance_page("P15_Task2_L1-L6_实测_v11_报告看板.png", "task2_features", "", "")
     page_p16()
     page_p17()
-    page_p18()
 
 
 if __name__ == "__main__":
