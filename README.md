@@ -27,7 +27,6 @@ CETC/
 ├── data/
 │   ├── reference/        固定参考数据
 │   ├── generated/        可再生输入与 manifest
-│   ├── .reports_staging/ 运行期暂存
 │   └── reports/          当前发布报告
 ├── scripts/
 │   ├── build.sh、test_operators.sh、demo.sh、validate.sh
