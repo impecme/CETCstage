@@ -1,7 +1,7 @@
 {
   "module": "spectral",
   "operator": "welch",
-  "generated_at": "2026-07-19 16:48:52",
+  "generated_at": "2026-07-22 03:51:48",
   "git_commit": "",
   "gpu_name": "ZQ500-Q QUAD-0",
   "compile_config": {
@@ -16,36 +16,36 @@
     "max_rel_error": 0.360778,
     "mixed_error": 2.17851e-07,
     "rmse": 4.66562e-10,
-    "gpu_e2e_speedup": 3.27492,
-    "gpu_kernel_speedup": 4.30543,
+    "gpu_e2e_speedup": 3.23632,
+    "gpu_kernel_speedup": 4.24543,
     "cpu_perf": {
       "warmup": 5,
       "repeat": 30,
-      "mean_ms": 2.66114,
-      "median_ms": 2.66114,
-      "p95_ms": 2.66114,
-      "min_ms": 2.66114,
-      "max_ms": 2.66114,
+      "mean_ms": 2.63404,
+      "median_ms": 2.63404,
+      "p95_ms": 2.63404,
+      "min_ms": 2.63404,
+      "max_ms": 2.63404,
       "std_ms": 0
     },
     "gpu_e2e_perf": {
       "warmup": 5,
       "repeat": 30,
-      "mean_ms": 0.812584,
-      "median_ms": 0.812584,
-      "p95_ms": 0.812584,
-      "min_ms": 0.812584,
-      "max_ms": 0.812584,
+      "mean_ms": 0.813902,
+      "median_ms": 0.813902,
+      "p95_ms": 0.813902,
+      "min_ms": 0.813902,
+      "max_ms": 0.813902,
       "std_ms": 0
     },
     "gpu_kernel_perf": {
       "warmup": 5,
       "repeat": 30,
-      "mean_ms": 0.61809,
-      "median_ms": 0.61809,
-      "p95_ms": 0.61809,
-      "min_ms": 0.61809,
-      "max_ms": 0.61809,
+      "mean_ms": 0.620442,
+      "median_ms": 0.620442,
+      "p95_ms": 0.620442,
+      "min_ms": 0.620442,
+      "max_ms": 0.620442,
       "std_ms": 0
     },
     "device_storage_cache": {
@@ -164,34 +164,40 @@
       "cpu_perf": {
         "warmup": 5,
         "repeat": 30,
-        "mean_ms": 2.66332,
-        "median_ms": 2.66114,
-        "p95_ms": 2.68597,
-        "min_ms": 2.63733,
-        "max_ms": 2.77328,
-        "std_ms": 0.022771
+        "mean_ms": 2.63627,
+        "median_ms": 2.63404,
+        "p95_ms": 2.65633,
+        "min_ms": 2.61916,
+        "max_ms": 2.70083,
+        "std_ms": 0.0146571
       },
       "gpu_e2e_perf": {
         "warmup": 5,
         "repeat": 30,
-        "mean_ms": 0.813936,
-        "median_ms": 0.812584,
-        "p95_ms": 0.833224,
-        "min_ms": 0.799624,
-        "max_ms": 0.861465,
-        "std_ms": 0.011673
+        "mean_ms": 0.815049,
+        "median_ms": 0.813902,
+        "p95_ms": 0.824842,
+        "min_ms": 0.804233,
+        "max_ms": 0.828272,
+        "std_ms": 0.00628048
       },
       "gpu_kernel_perf": {
         "warmup": 5,
         "repeat": 30,
-        "mean_ms": 0.618252,
-        "median_ms": 0.61809,
-        "p95_ms": 0.621914,
-        "min_ms": 0.612384,
-        "max_ms": 0.625316,
-        "std_ms": 0.00264584
+        "mean_ms": 0.621441,
+        "median_ms": 0.620442,
+        "p95_ms": 0.63959,
+        "min_ms": 0.61563,
+        "max_ms": 0.640558,
+        "std_ms": 0.00547812
       },
       "artifacts": [
+        {"role": "case_spec", "path": "/CETC/data/generated/unit/spectral/welch/input/perf_mean_hann__spec.json", "sha256": "a922fb9dbba7b54320cad85061a0ed19cf3b5f45ba44c2019e713232d1ca772b"},
+        {"role": "x_input", "path": "/CETC/data/generated/unit/spectral/welch/input/perf_mean_hann__x.csv", "sha256": "8d06a27f29ab3659238a15982af831f45e804ad6e82b3a79d2ba7343b8828ea9"},
+        {"role": "cpu_frequencies", "path": "/CETC/data/generated/unit/spectral/welch/output_samples/perf_mean_hann__cpu__frequencies.csv", "sha256": "e479550ee404d8a92116a14e8ddecb3f40d1802659dfcb637739e35fd96021d0"},
+        {"role": "cpu_values", "path": "/CETC/data/generated/unit/spectral/welch/output_samples/perf_mean_hann__cpu__values.csv", "sha256": "467e3c788ae5cd322c961e55221943f6e5aaecbcfd72028f4fc66bac6d4b946b"},
+        {"role": "gpu_frequencies", "path": "/CETC/data/generated/unit/spectral/welch/output_samples/perf_mean_hann__gpu__frequencies.csv", "sha256": "e479550ee404d8a92116a14e8ddecb3f40d1802659dfcb637739e35fd96021d0"},
+        {"role": "gpu_values", "path": "/CETC/data/generated/unit/spectral/welch/output_samples/perf_mean_hann__gpu__values.csv", "sha256": "a90cbf50f10311b43d2fd3b14c3ee8c9cea05fbef2ae6cfd09bda223374ab9c9"}
       ]
     }
   ]

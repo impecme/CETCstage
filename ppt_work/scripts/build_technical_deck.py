@@ -18,12 +18,12 @@ from xml.etree import ElementTree as ET
 
 
 SLIDES = (
-    "P03_赛题重述_整页_v04_交付链路.png",
+    "P03_赛题重述_整页_v05_双后端闭环.png",
     "P04_代码架构_三层加目录树预留_v03.png",
     "P05_技术路线_单算子三机制_v09.png",
-    "P06_访存资源复用_Wiener代表_v03_性能收束.png",
-    "P07_并行结构重构_IIR代表_v03_性能收束.png",
-    "P08_分派Fusion_Periodogram代表_v03_性能收束.png",
+    "P06_访存资源复用_Wiener代表_v05_三项性能.png",
+    "P07_并行结构重构_IIR代表_v04_三项性能.png",
+    "P08_分派Fusion_Periodogram代表_v04_三项性能.png",
     # P09-P11 are reserved for three same-protocol operator-performance pages.
     # Do not build the reordered deck until all three real data pages exist.
     "P09_任务包含算子性能_待分层数据_v01.png",

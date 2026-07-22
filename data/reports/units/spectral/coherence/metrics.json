@@ -1,7 +1,7 @@
 {
   "module": "spectral",
   "operator": "coherence",
-  "generated_at": "2026-07-19 16:50:05",
+  "generated_at": "2026-07-22 03:53:04",
   "git_commit": "",
   "gpu_name": "ZQ500-Q QUAD-0",
   "compile_config": {
@@ -16,36 +16,36 @@
     "max_rel_error": 0.0734132,
     "mixed_error": 0.0683923,
     "rmse": 0.00870863,
-    "gpu_e2e_speedup": 16.1935,
-    "gpu_kernel_speedup": 29.3454,
+    "gpu_e2e_speedup": 16.5797,
+    "gpu_kernel_speedup": 29.7155,
     "cpu_perf": {
       "warmup": 5,
       "repeat": 30,
-      "mean_ms": 10.5511,
-      "median_ms": 10.5511,
-      "p95_ms": 10.5511,
-      "min_ms": 10.5511,
-      "max_ms": 10.5511,
+      "mean_ms": 10.7134,
+      "median_ms": 10.7134,
+      "p95_ms": 10.7134,
+      "min_ms": 10.7134,
+      "max_ms": 10.7134,
       "std_ms": 0
     },
     "gpu_e2e_perf": {
       "warmup": 5,
       "repeat": 30,
-      "mean_ms": 0.651564,
-      "median_ms": 0.651564,
-      "p95_ms": 0.651564,
-      "min_ms": 0.651564,
-      "max_ms": 0.651564,
+      "mean_ms": 0.646174,
+      "median_ms": 0.646174,
+      "p95_ms": 0.646174,
+      "min_ms": 0.646174,
+      "max_ms": 0.646174,
       "std_ms": 0
     },
     "gpu_kernel_perf": {
       "warmup": 5,
       "repeat": 30,
-      "mean_ms": 0.359548,
-      "median_ms": 0.359548,
-      "p95_ms": 0.359548,
-      "min_ms": 0.359548,
-      "max_ms": 0.359548,
+      "mean_ms": 0.360532,
+      "median_ms": 0.360532,
+      "p95_ms": 0.360532,
+      "min_ms": 0.360532,
+      "max_ms": 0.360532,
       "std_ms": 0
     },
     "device_storage_cache": {
@@ -164,34 +164,41 @@
       "cpu_perf": {
         "warmup": 5,
         "repeat": 30,
-        "mean_ms": 10.5694,
-        "median_ms": 10.5511,
-        "p95_ms": 10.6865,
-        "min_ms": 10.4847,
-        "max_ms": 10.6871,
-        "std_ms": 0.0590559
+        "mean_ms": 10.7231,
+        "median_ms": 10.7134,
+        "p95_ms": 10.9696,
+        "min_ms": 10.5745,
+        "max_ms": 11.4801,
+        "std_ms": 0.165104
       },
       "gpu_e2e_perf": {
         "warmup": 5,
         "repeat": 30,
-        "mean_ms": 0.65239,
-        "median_ms": 0.651564,
-        "p95_ms": 0.669804,
-        "min_ms": 0.621323,
-        "max_ms": 0.670224,
-        "std_ms": 0.00978195
+        "mean_ms": 0.656306,
+        "median_ms": 0.646174,
+        "p95_ms": 0.722823,
+        "min_ms": 0.624965,
+        "max_ms": 0.795184,
+        "std_ms": 0.0314463
       },
       "gpu_kernel_perf": {
         "warmup": 5,
         "repeat": 30,
-        "mean_ms": 0.361622,
-        "median_ms": 0.359548,
-        "p95_ms": 0.377268,
-        "min_ms": 0.355932,
-        "max_ms": 0.384156,
-        "std_ms": 0.00694992
+        "mean_ms": 0.362043,
+        "median_ms": 0.360532,
+        "p95_ms": 0.382772,
+        "min_ms": 0.356924,
+        "max_ms": 0.384374,
+        "std_ms": 0.00700949
       },
       "artifacts": [
+        {"role": "case_spec", "path": "/CETC/data/generated/unit/spectral/coherence/input/perf_hann_mean__spec.json", "sha256": "c146795b9d06a6af9af8e1616c78a36f4110a5415d501fa6cf0ba80538c3ef29"},
+        {"role": "x_input", "path": "/CETC/data/generated/unit/spectral/coherence/input/perf_hann_mean__x.csv", "sha256": "8d06a27f29ab3659238a15982af831f45e804ad6e82b3a79d2ba7343b8828ea9"},
+        {"role": "y_input", "path": "/CETC/data/generated/unit/spectral/coherence/input/perf_hann_mean__y.csv", "sha256": "98ebe010b867efcc4b4bf4482e3b21c88d0f08e6049110d5577d9acbec2d58a4"},
+        {"role": "cpu_frequencies", "path": "/CETC/data/generated/unit/spectral/coherence/output_samples/perf_hann_mean__cpu__frequencies.csv", "sha256": "e479550ee404d8a92116a14e8ddecb3f40d1802659dfcb637739e35fd96021d0"},
+        {"role": "cpu_values", "path": "/CETC/data/generated/unit/spectral/coherence/output_samples/perf_hann_mean__cpu__values.csv", "sha256": "a844832a7551ca15232e2dd5414ae60d14b79c9817eb848ce74617f3374205eb"},
+        {"role": "gpu_frequencies", "path": "/CETC/data/generated/unit/spectral/coherence/output_samples/perf_hann_mean__gpu__frequencies.csv", "sha256": "e479550ee404d8a92116a14e8ddecb3f40d1802659dfcb637739e35fd96021d0"},
+        {"role": "gpu_values", "path": "/CETC/data/generated/unit/spectral/coherence/output_samples/perf_hann_mean__gpu__values.csv", "sha256": "a52fb155cad45de7a6da9e909f5705590bdfffc30fe98ff61d46cad417f0aa65"}
       ]
     }
   ]

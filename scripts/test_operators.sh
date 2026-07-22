@@ -12,6 +12,7 @@ OPERATOR_CONTRACT="${PROJECT_ROOT}/tests/contracts/operator_sets.json"
 
 MODULE_FILTER="all"
 OPERATOR_FILTER="all"
+OPERATOR_SET="all81"
 CASE_SET="full"
 EMIT_REPORT=0
 VERBOSE=0
@@ -38,6 +39,7 @@ Usage: scripts/test_operators.sh [options]
 Options:
   --module NAME          Filter module, default: all
   --operator NAME        Filter operator, default: all
+  --operator-set NAME    Filter by tests/contracts/operator_sets.json set, default: all81
   --case-set NAME        smoke|accuracy|perf|full, default: full
   --emit-report          Write reports and generated samples
   --verbose              Enable verbose runner output
@@ -82,20 +84,64 @@ load_test_registry() {
   [[ -f "${OPERATOR_CONTRACT}" ]] || die "missing operator contract: ${OPERATOR_CONTRACT}"
 
   mapfile -t TEST_REGISTRY < <(
-    python3 - "${OPERATOR_CONTRACT}" <<'PY'
+    python3 - "${OPERATOR_CONTRACT}" "${OPERATOR_SET}" <<'PY'
 import json
 import pathlib
 import sys
 
 contract_path = pathlib.Path(sys.argv[1])
+operator_set_name = sys.argv[2]
 contract = json.loads(contract_path.read_text(encoding="utf-8"))
-all81 = contract.get("sets", {}).get("all81", {})
-operators = all81.get("operators", [])
-expected_count = all81.get("expected_count")
-if expected_count != 81 or len(operators) != expected_count or len(set(operators)) != len(operators):
+sets = contract.get("sets", {})
+if not isinstance(sets, dict):
+    raise SystemExit("operator contract is missing sets")
+
+all81_item = sets.get("all81", {})
+all81 = all81_item.get("operators") if isinstance(all81_item, dict) else None
+expected_count = all81_item.get("expected_count") if isinstance(all81_item, dict) else None
+if expected_count != 81 or not isinstance(all81, list) or len(all81) != expected_count or len(set(all81)) != len(all81):
     raise SystemExit("all81 operator contract is invalid")
 
-for key in operators:
+resolving = set()
+
+
+def resolve_set(name):
+    if name in resolving:
+        raise SystemExit(f"operator set cycle: {name}")
+    item = sets.get(name)
+    if not isinstance(item, dict):
+        raise SystemExit(f"unknown operator set: {name}")
+    resolving.add(name)
+    if "operators" in item:
+        operators = item.get("operators")
+        if not isinstance(operators, list) or not all(isinstance(value, str) for value in operators):
+            raise SystemExit(f"operator set {name} has invalid operators")
+        resolved = list(operators)
+    else:
+        include_names = item.get("include_sets", [])
+        exclude_names = item.get("exclude_sets", [])
+        if not isinstance(include_names, list) or not isinstance(exclude_names, list):
+            raise SystemExit(f"operator set {name} has invalid include/exclude sets")
+        include = set()
+        for include_name in include_names:
+            include.update(resolve_set(include_name))
+        exclude = set()
+        for exclude_name in exclude_names:
+            exclude.update(resolve_set(exclude_name))
+        resolved = [key for key in all81 if key in include and key not in exclude]
+    resolving.remove(name)
+    expected = item.get("expected_count")
+    if not isinstance(expected, int) or len(resolved) != expected or len(set(resolved)) != len(resolved):
+        raise SystemExit(f"operator set {name} expected_count mismatch")
+    unknown = sorted(set(resolved) - set(all81))
+    if unknown:
+        raise SystemExit(f"operator set {name} contains unknown operators: {', '.join(unknown)}")
+    return resolved
+
+
+selected = resolve_set(operator_set_name)
+
+for key in selected:
     parts = key.split("/")
     if len(parts) != 2 or not all(parts):
         raise SystemExit(f"invalid operator key: {key!r}")
@@ -105,7 +151,7 @@ for key in operators:
     print(f"{module}:{operator}:{target}:{binary}")
 PY
   )
-  [[ ${#TEST_REGISTRY[@]} -eq 81 ]] || die "operator contract did not produce 81 tests"
+  [[ ${#TEST_REGISTRY[@]} -gt 0 ]] || die "operator contract did not produce any tests"
 }
 
 load_zhongkexin_sdk_env() {
@@ -144,6 +190,11 @@ parse_args() {
       --operator)
         [[ $# -ge 2 ]] || die "--operator requires a value"
         OPERATOR_FILTER="$2"
+        shift 2
+        ;;
+      --operator-set)
+        [[ $# -ge 2 ]] || die "--operator-set requires a value"
+        OPERATOR_SET="$2"
         shift 2
         ;;
       --case-set)
@@ -343,6 +394,7 @@ main() {
   fi
 
   log "timing       : warmup=${WARMUP} repeat=${REPEAT}$([[ ${DEMO_FAST} -eq 1 ]] && printf ' (demo-fast)')"
+  log "operator set : ${OPERATOR_SET}"
 
   if [[ "${DO_BUILD}" -eq 1 ]]; then
     configure_and_build

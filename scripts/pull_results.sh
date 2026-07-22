@@ -14,15 +14,17 @@ INCLUDE_GENERATED=0
 USE_DEFAULT_REPORTS=1
 ALLOW_MISSING=0
 PROMOTE_REPORTS=0
+SYNC_REPORTS=0
 DRY_RUN=0
+REPORT_HASH_STAGE=""
 
 usage() {
   cat <<'USAGE'
 Usage: scripts/pull_results.sh [options]
 
-Copy published validation reports from the ZQ500 container into a unique
-directory outside the repository. The host repository is changed only with
---promote-reports.
+Copy reports from the ZQ500 container. Use --sync-reports to merge any
+available report files directly into this host repository, or
+--promote-reports to publish a complete verified report bundle atomically.
 
 Options:
   --container NAME       Docker container name (default: gpu_04)
@@ -36,6 +38,10 @@ Options:
                          may be repeated
   --no-default-reports   Do not request data/reports
   --include-generated    Also retrieve data/generated/demo
+  --sync-reports         Incrementally copy container data/reports directly into
+                         this repository's data/reports; preserves host files not
+                         present in the container and does not require full
+                         validation. Cannot be combined with --promote-reports.
   --promote-reports      Verify the pulled report bundle and atomically publish it
                          to this host repository; prior host reports are moved to
                          ../CETC_garbage/promoted_report_backups/
@@ -94,6 +100,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --promote-reports)
       PROMOTE_REPORTS=1
+      shift
+      ;;
+    --sync-reports)
+      SYNC_REPORTS=1
       shift
       ;;
     --dry-run)
@@ -167,6 +177,23 @@ relative_paths=("${normalized_relative_paths[@]}")
 [[ "${#relative_paths[@]}" -gt 0 || "${#ARTIFACT_PATHS[@]}" -gt 0 ]] || \
   die "no report or artifact paths were requested"
 
+if [[ "${SYNC_REPORTS}" -eq 1 && "${PROMOTE_REPORTS}" -eq 1 ]]; then
+  die "--sync-reports and --promote-reports are mutually exclusive"
+fi
+if [[ "${SYNC_REPORTS}" -eq 1 ]]; then
+  found_reports=0
+  for relative_path in "${relative_paths[@]}"; do
+    if [[ "${relative_path}" == "data/reports" ]]; then
+      found_reports=1
+      break
+    fi
+  done
+  [[ "${found_reports}" -eq 1 ]] || \
+    die "--sync-reports requires data/reports; omit --no-default-reports or add --report-path data/reports"
+  [[ "${#ARTIFACT_PATHS[@]}" -eq 0 ]] || \
+    die "--sync-reports only synchronizes data/reports; retrieve artifacts separately"
+fi
+
 if [[ "${PROMOTE_REPORTS}" -eq 1 ]]; then
   found_reports=0
   for relative_path in "${relative_paths[@]}"; do
@@ -180,7 +207,11 @@ if [[ "${PROMOTE_REPORTS}" -eq 1 ]]; then
 fi
 
 echo "[container-pull] source ${CONTAINER}:${CONTAINER_ROOT}"
-echo "[container-pull] output ${OUTPUT}"
+if [[ "${SYNC_REPORTS}" -eq 1 ]]; then
+  echo "[container-pull] synchronize into ${PROJECT_ROOT}/data/reports"
+else
+  echo "[container-pull] output ${OUTPUT}"
+fi
 for relative_path in "${relative_paths[@]}"; do
   echo "[container-pull] include ${CONTAINER_ROOT}/${relative_path}"
 done
@@ -195,6 +226,9 @@ fi
 
 command -v docker >/dev/null 2>&1 || die "docker is required on the server host"
 command -v tar >/dev/null 2>&1 || die "tar is required on the server host"
+if [[ "${SYNC_REPORTS}" -eq 1 ]]; then
+  command -v rsync >/dev/null 2>&1 || die "rsync is required for --sync-reports"
+fi
 [[ -S /var/run/docker.sock ]] || die "Docker socket is unavailable; run this script on the server host"
 
 docker_command=(docker)
@@ -203,15 +237,22 @@ if [[ "${EUID}" -ne 0 ]]; then
   docker_command=(sudo docker)
 fi
 
-OUTPUT_PARENT="$(dirname "${OUTPUT}")"
-mkdir -p "${OUTPUT_PARENT}"
-STAGE="$(mktemp -d "${OUTPUT_PARENT}/.container-pull.XXXXXX")"
+if [[ "${SYNC_REPORTS}" -eq 1 ]]; then
+  STAGE="$(mktemp -d "${HOST_PARENT}/.container-pull.XXXXXX")"
+else
+  OUTPUT_PARENT="$(dirname "${OUTPUT}")"
+  mkdir -p "${OUTPUT_PARENT}"
+  STAGE="$(mktemp -d "${OUTPUT_PARENT}/.container-pull.XXXXXX")"
+fi
 cleanup() {
   if [[ -n "${STAGE:-}" && -d "${STAGE}" ]]; then
     rm -rf -- "${STAGE}"
   fi
   if [[ -n "${PROMOTE_STAGE:-}" && -d "${PROMOTE_STAGE}" ]]; then
     rm -rf -- "${PROMOTE_STAGE}"
+  fi
+  if [[ -n "${REPORT_HASH_STAGE:-}" && -f "${REPORT_HASH_STAGE}" ]]; then
+    rm -f -- "${REPORT_HASH_STAGE}"
   fi
 }
 trap cleanup EXIT
@@ -281,6 +322,36 @@ container_byte_count="$(find "${STAGE}" -type f -printf '%s\n' | awk '{total += 
   cd "${STAGE}"
   sha256sum --quiet -c FILES.sha256
 )
+
+if [[ "${SYNC_REPORTS}" -eq 1 ]]; then
+  [[ "${#missing_paths[@]}" -eq 0 ]] || \
+    die "cannot synchronize reports from a partial transfer"
+  PULLED_REPORTS="${STAGE}/data/reports"
+  [[ -d "${PULLED_REPORTS}" && ! -L "${PULLED_REPORTS}" ]] || \
+    die "pulled report directory is missing or unsafe: ${PULLED_REPORTS}"
+  if find "${PULLED_REPORTS}" -type l -print -quit | grep -q .; then
+    die "pulled report directory contains a symbolic link"
+  fi
+
+  REPORTS_ROOT="${PROJECT_ROOT}/data/reports"
+  [[ -d "${REPORTS_ROOT}" && ! -L "${REPORTS_ROOT}" ]] || \
+    die "host report directory is missing or unsafe: ${REPORTS_ROOT}"
+  rsync -a "${PULLED_REPORTS}/" "${REPORTS_ROOT}/"
+
+  REPORT_HASH_STAGE="$(mktemp "${HOST_PARENT}/.reports-hash.XXXXXX")"
+  (
+    cd "${REPORTS_ROOT}"
+    find . -type f ! -name FILES.sha256 -printf '%P\0' \
+      | LC_ALL=C sort -z \
+      | xargs -0 -r sha256sum
+  ) >"${REPORT_HASH_STAGE}"
+  mv "${REPORT_HASH_STAGE}" "${REPORTS_ROOT}/FILES.sha256"
+  REPORT_HASH_STAGE=""
+
+  echo "[container-pull] synchronized ${container_file_count} container files into ${REPORTS_ROOT}"
+  echo "[container-pull] refreshed ${REPORTS_ROOT}/FILES.sha256"
+  exit 0
+fi
 
 mv "${STAGE}" "${OUTPUT}"
 STAGE=""

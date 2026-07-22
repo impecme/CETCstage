@@ -8,6 +8,7 @@ set -euo pipefail
 BUILD_DIR="build-zx"
 REPEAT=7
 DO_BUILD=1
+OUTPUT_ROOT=""
 
 usage() {
   cat <<'USAGE'
@@ -16,6 +17,7 @@ Usage: scripts/unified_scale_benchmark.sh [options]
 Options:
   --build-dir DIR       Build directory (default: build-zx)
   --repeat N            Per-level repeat count, minimum 3 (default: 7)
+  --output-root DIR     Canonical report directory (default: data/reports/demo)
   --build               Build task targets before running (default)
   --no-build            Reuse an existing build
   -h, --help            Show this help
@@ -41,6 +43,11 @@ while [[ $# -gt 0 ]]; do
     --repeat)
       [[ $# -ge 2 ]] || die "--repeat requires a value"
       REPEAT="$2"
+      shift 2
+      ;;
+    --output-root)
+      [[ $# -ge 2 ]] || die "--output-root requires a value"
+      OUTPUT_ROOT="$2"
       shift 2
       ;;
     --build)
@@ -79,6 +86,13 @@ if [[ "${BUILD_DIR}" = /* ]]; then
   BUILD_PATH="${BUILD_DIR}"
 else
   BUILD_PATH="${REPO_ROOT}/${BUILD_DIR}"
+fi
+if [[ -z "${OUTPUT_ROOT}" ]]; then
+  OUTPUT_PATH="${REPO_ROOT}/data/reports/demo"
+elif [[ "${OUTPUT_ROOT}" = /* ]]; then
+  OUTPUT_PATH="${OUTPUT_ROOT}"
+else
+  OUTPUT_PATH="${REPO_ROOT}/${OUTPUT_ROOT}"
 fi
 if [[ "${DO_BUILD}" -eq 1 ]]; then
   "${SCRIPT_DIR}/build.sh" --build-dir "${BUILD_PATH}" \
@@ -123,6 +137,6 @@ done
 
 python3 "${SCRIPT_DIR}/export_unified_scale_reports.py" \
   --source-root "${RAW_ROOT}" \
-  --output-root "${REPO_ROOT}/data/reports/demo"
+  --output-root "${OUTPUT_PATH}"
 
-echo "[unified-scale] PASS: data/reports/demo/task{1,2}_*/scales/L1...L6"
+echo "[unified-scale] PASS: ${OUTPUT_PATH}/task{1,2}_*/scales/L1...L6"

@@ -1,18 +1,18 @@
 {
   "delivery_manifest": "DELIVERY_FILES.txt",
   "delivery_manifest_scope": "entries outside the generated output tree",
-  "delivery_manifest_sha256": "61edc53864cdcfa49bc0a50d26d3ef4b14c895ce71d72fe82151e24550f6e434",
-  "generated_at": "2026-07-20T03:48:10+00:00",
+  "delivery_manifest_sha256": "2fabd75b369f41ddebb5acf20b203511f4bab4f508b9a836fac4a340932c1d67",
+  "generated_at": "2026-07-22T04:16:55+00:00",
   "git_commit": null,
   "gpu_names": [
     "ZQ500-Q QUAD-0"
   ],
   "input_evidence_file_count": 331,
-  "input_evidence_fingerprint": "abc130181d78b003f960cc5307c6a8d1718c645137259c4d60f581d674f7f770",
+  "input_evidence_fingerprint": "c63a2af0aeadc9df61078eefdbc98e0dd829d5287304a52549c57d9d042e1a0f",
   "reported_git_commits": [],
-  "run_id": "current-20260720-task-optimized-l6",
+  "run_id": "delivery-20260722T033513Z",
   "schema_version": "cetc_run_provenance_v1",
-  "source_content_fingerprint": "b3374633779c22b94c6b657b08baa3650a69239149329816fa90d4c2263c774e",
-  "source_file_count": 695,
+  "source_content_fingerprint": "8baf6b07fad953752eab0fd9c670df59eb218410720d34d2cf063cc44523bbe6",
+  "source_file_count": 700,
   "tracked_worktree_dirty": null
 }

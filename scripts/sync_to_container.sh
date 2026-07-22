@@ -9,13 +9,15 @@ DESTINATION=""
 DESTINATION_READY=0
 DESTINATION_EXPLICIT=0
 DRY_RUN=0
+REPLACE=0
 
 usage() {
   cat <<'USAGE'
 Usage: scripts/sync_to_container.sh [options]
 
 Stage the final repository on the host and copy it to a unique container
-incoming directory. The script never overwrites /CETC.
+incoming directory. Under the current Docker permission policy, --replace
+also prepares a fixed activation command for the permitted interactive shell.
 
 Options:
   --container NAME       Docker container name (default: gpu_04)
@@ -23,6 +25,11 @@ Options:
                          --destination-ready after creating it interactively.
   --destination-ready    Confirm --destination was created in the container
                          through the permitted interactive shell.
+  --replace              Start the container, copy and verify a unique incoming
+                         directory, then prepare /tmp/cetc_activate.sh. Run the
+                         printed fixed command in the permitted interactive shell
+                         to atomically replace /CETC. Does not build, validate,
+                         or publish reports.
   --dry-run              Build and verify the local filtered stage only
   -h, --help             Show this help
 
@@ -56,6 +63,10 @@ while [[ $# -gt 0 ]]; do
       DRY_RUN=1
       shift
       ;;
+    --replace)
+      REPLACE=1
+      shift
+      ;;
     -h|--help)
       usage
       exit 0
@@ -82,6 +93,12 @@ if [[ "${DESTINATION_READY}" -eq 1 && "${DESTINATION}" != /CETC.incoming.* ]]; t
 fi
 if [[ "${DESTINATION_READY}" -eq 1 && "${DESTINATION_EXPLICIT}" -eq 0 ]]; then
   die "--destination-ready requires an explicit --destination"
+fi
+if [[ "${REPLACE}" -eq 1 && "${DESTINATION_EXPLICIT}" -eq 1 ]]; then
+  die "--replace generates its own unique destination; do not pass --destination"
+fi
+if [[ "${REPLACE}" -eq 1 && "${DESTINATION_READY}" -eq 1 ]]; then
+  die "--replace creates its own destination; do not pass --destination-ready"
 fi
 
 command -v rsync >/dev/null 2>&1 || die "rsync is required on the host"
@@ -121,8 +138,11 @@ required_files=(
   scripts/demo.sh
   scripts/test_operators.sh
   scripts/finalize_reports.py
-  scripts/sync_to_container.sh
+  scripts/ppt_performance.py
+  scripts/ppt_performance.sh
   scripts/pull_results.sh
+  scripts/replace_container_project.sh
+  scripts/sync_to_container.sh
   scripts/clean.sh
   data/reports/README.md
   third_party/fftw/dist/fftw-3.3.10.tar.gz
@@ -180,6 +200,16 @@ if [[ "${EUID}" -ne 0 ]]; then
   docker_command=(sudo docker)
 fi
 
+if [[ "${REPLACE}" -eq 1 ]]; then
+  echo "[container-sync] starting ${CONTAINER}"
+  "${docker_command[@]}" start "${CONTAINER}" >/dev/null
+  # Docker cp may create a missing destination whose parent already exists.
+  # This avoids an unpermitted generic `docker exec ... mkdir` invocation.
+  echo "[container-sync] copying into fresh destination ${CONTAINER}:${DESTINATION}"
+  "${docker_command[@]}" cp "${STAGE}/." "${CONTAINER}:${DESTINATION}"
+  DESTINATION_READY=2
+fi
+
 if [[ "${DESTINATION_READY}" -eq 0 ]]; then
   cat <<EOF
 [container-sync] The account cannot create directories with non-interactive docker exec.
@@ -192,8 +222,10 @@ if [[ "${DESTINATION_READY}" -eq 0 ]]; then
 EOF
   exit 3
 fi
-echo "[container-sync] copying into user-prepared destination ${CONTAINER}:${DESTINATION}"
-"${docker_command[@]}" cp "${STAGE}/." "${CONTAINER}:${DESTINATION}/"
+if [[ "${DESTINATION_READY}" -eq 1 ]]; then
+  echo "[container-sync] copying into user-prepared destination ${CONTAINER}:${DESTINATION}"
+  "${docker_command[@]}" cp "${STAGE}/." "${CONTAINER}:${DESTINATION}/"
+fi
 
 READBACK="${STAGE_PARENT}/readback"
 mkdir -p "${READBACK}"
@@ -217,6 +249,27 @@ if ! cmp -s "${HOST_HASHES}" "${READBACK_HASHES}"; then
 fi
 
 echo "[container-sync] copy and full SHA256 readback complete"
+if [[ "${REPLACE}" -eq 1 ]]; then
+  ACTIVATION_HELPER="${STAGE_PARENT}/cetc_activate.sh"
+  {
+    printf '%s\n' '#!/usr/bin/env bash'
+    printf '%s\n' 'set -euo pipefail'
+    printf 'incoming=%q\n' "${DESTINATION}"
+    printf '%s\n' 'exec bash "${incoming}/scripts/replace_container_project.sh" "${incoming}"'
+  } >"${ACTIVATION_HELPER}"
+  chmod 0755 "${ACTIVATION_HELPER}"
+  "${docker_command[@]}" cp "${ACTIVATION_HELPER}" "${CONTAINER}:/tmp/cetc_activate.sh"
+  cat <<EOF
+[container-sync] stage PASS. The current Docker policy only permits an interactive shell for activation.
+[container-sync] Copy the following block on the server host; it contains no variable path to edit:
+  sudo docker exec -it ${CONTAINER} bash
+  bash /tmp/cetc_activate.sh
+  exit
+[container-sync] This activation only replaces /CETC and deletes the prior source tree; it does not build, test, validate, or publish reports.
+EOF
+  exit 0
+fi
+
 echo "Run on the host:"
 printf '  sudo docker exec -it %q bash\n' "${CONTAINER}"
 echo "Then run inside the container:"

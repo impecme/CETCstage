@@ -85,11 +85,11 @@
 
 - `CURRENT CODE`：当前源码/契约结构事实。
 - `RUN 2026-07-20 SNAPSHOT`：`current-20260720-task-optimized-l6` 已发布运行快照；当前源树与该快照存在 4 项 source drift，正式答辩前须复验冻结。
-- `HISTORICAL BEFORE/AFTER`：V5/V6/V7 历史优化前后；这是不同版本或开关下的对照，不是两条任务运行链路。
+- `GPU 优化前后提速`：统一显示 `X×`；待从 Git 基线版本完成同规模对照复测后填入。
 - `DERIVED`：从结构化 JSON 的 repeat/case 重算。
 - `FINAL L1-L6 · 2026-07-21`：ZQ500-Q QUAD-0 上的正式测评；每点 7 次，首轮 warm-up 排除，CPU/GPU total 取其余 6 次中位数，speedup 直接计算为 CPU/GPU。
 
-禁止把不同角标的数据放进同一个公式继续计算。例如历史 before 与当前 GPU 时间不能相除得到新的“总优化倍数”。
+禁止把不同页面的性能数字继续相除、相乘或拼接为新的“总优化倍数”。
 
 ### 3.2 当前数据黄线
 
@@ -117,7 +117,7 @@
 - 每页只有一个中心论点和一个主视觉；流程图使用正交箭头，技术图使用“原始问题 → 结构重写 → 数据/边界”的三段式，而不是无标签图标墙。
 - 数字页不使用生图模型伪造柱状图或曲线，统一由结构化 JSON 生成；图表依然使用同一页眉、页脚、配色与结论条。
 
-P03 V04 以右侧输入、接口、算子分组、双后端与任务对照为主；CPU reference 与 ZQ500 GPU 必须同时覆盖 Task1、Task2。删除右下交付横条，不使用无解释的图标或装饰图片。
+P03 V05 以右侧输入、接口、算子分组、双后端、双任务与报告闭环为主；CPU reference 与 ZQ500 GPU 必须同时覆盖 Task1、Task2，最终汇合为结果对照、正确性、性能与可追溯报告。不使用无解释的图标或装饰图片。
 
 每个技术页只证明一个核心判断，固定包含：
 
@@ -240,19 +240,20 @@ P03 V04 以右侧输入、接口、算子分组、双后端与任务对照为主
 **右侧示意内容**
 
 ```text
-信号输入
+Host 端输入：信号数据 · 算法参数
   ↓
-12 模块 / 81 算子
+统一 C++17 公开接口：type / shape / axis 语义契约
   ↓
-CPU reference  ║  ZQ500 GPU
-        ╲           ╱
-      CPU/GPU 双后端对照
-        ├───────┬───────┤
-        ↓       ↓
-Task1 雷达检测      Task2 特征融合与跟踪
+公共信号处理算子库：12 模块 · 81 公开算子
+  ↓
+同一接口 · 双后端对照：CPU reference  ║  ZQ500 GPU
+  ↓                                      ↓
+Task1 雷达检测：CPU / GPU               Task2 特征融合与跟踪：CPU / GPU
+                  ╲                    ╱
+          CPU/GPU 结果对照 → 正确性 · 性能 · 可追溯报告
 ```
 
-图中 CPU reference 与 ZQ500 GPU 是每条任务的双后端对照，不是“CPU 只运行 Task1、GPU 只运行 Task2”的任务分工。
+图中 CPU reference 与 ZQ500 GPU 是每条任务的双后端对照，不是“CPU 只运行 Task1、GPU 只运行 Task2”的任务分工；最终报告汇合两条任务的 CPU/GPU 对照结果。
 
 **讲解**
 
@@ -291,7 +292,7 @@ Task1 雷达检测      Task2 特征融合与跟踪
 
 左下放三组代表数据：Wiener Tile/Halo、IIR Affine Scan、Periodogram R2C/Fusion。P05～P07 的叙事必须先写“通用机制”，再用代表算子说明它如何落到真实单算子内核；不能把代表算子误说成整个公共库只优化了这三个算子。
 
-**右侧：2 条应用与 5 类组合路径**
+**右侧：2 条应用与 5 类应用路径**
 
 | 应用构建 | 正式测评状态 | 对应组合优化 |
 |---|---:|---|
@@ -305,7 +306,7 @@ Task1 雷达检测      Task2 特征融合与跟踪
 先报“3、2、5”：前三项是单算子层可复用的优化类别，P05～P07 用代表算子解释每类机制如何落到内核；后两项才是多算子应用构建。Task1 证明全公开算子组合，Task2 证明算子库 + 私有 helper 的 mixed 组合。五类应用路径按任务特征自由组合。
 
 **数据角标**：Wiener 使用 `RUN 2026-07-20 SNAPSHOT · unit benchmark`；Task1/Task2 分别标注 `FINAL L1-L6 · 2026-07-21 · L6 median`。
-**边界**：P04 的两个 L6 数字可与 P09/P11 对照，但不得和历史优化前后对比、旧 `scales/` 或独立 `final/` 数字继续相除、相乘或合并归因。
+**边界**：P04 的两个 L6 数字可与 P09/P11 对照，但不得和旧 `scales/` 或独立 `final/` 数字继续相除、相乘或合并归因。
 
 ---
 
@@ -315,7 +316,7 @@ Task1 雷达检测      Task2 特征融合与跟踪
 2. **Task2**：展示为“公开算子库 + 私有 batched/score-only helper”的 mixed 流程。private helper 只承担任务级批处理、紧凑输出或融合；与库算子协同调用仍属于算子库任务构建，不能包装成独立第三后端。
 3. **GPU 覆盖不等同于每例都更快**：对 E2E 小于 CPU 的公共 case，P15 如实显示为固定成本/规模边界；不能因为 CPU 更快就把 GPU 路径替换为 CPU 并称为 GPU 实现。只有代码中显式声明的 shape/dtype/correctness fallback 才能使用，且必须在页面脚注说明。
 4. P05～P07 固定标为“通用机制 + 代表算子”：它们分别解释访存/资源复用、并行结构重构、shape-aware 分派与算子内 fusion 如何落在真实算子内核，不声称这三类机制或三个算子穷尽全部 81 个实现。
-5. **机制效果的归因口径**：只有存在“仅开/关某一机制”的同配置开关对照，才可写为“该机制 `X×`”。目前可严格单机制归因的是 Periodogram setup cache `1.70×`（E2E 下降 `41.24%`）；Wiener Tile/Halo `61.27×`、IIR `1267.88×`、Periodogram R2C+fusion `108.98×` 都只能写为“代表路径整体前后对比”，不得拆分或宣称为该通用机制在全库的最高收益。当前 CPU/GPU E2E 则是成品算子性能，不属于任一机制的独立收益。
+5. **机制页性能三项**：每个代表算子只按固定顺序展示“最终 GPU 耗时”“CPU/GPU 加速比”“GPU 优化前后提速”。前两项取统一复测结果；第三项统一写 `X×`。GPU 优化前后提速=`优化前 GPU 时间÷优化后 GPU 时间`；CPU/GPU 加速比=`CPU 时间÷最终 GPU 时间`。不能只写“加速比”。后续完成 Git 基线版本的同规模对照复测后，再将 `X×` 替换为实测倍率。
 
 ---
 
@@ -331,11 +332,11 @@ Task1 雷达检测      Task2 特征融合与跟踪
 
 - 左：三类单算子复用对象：`capacity`（复用可容纳的 Device allocation）、`prepared`（复用 plan/window/table）、`邻域输入`（相邻输出共享输入）。只画“命中 → 直接执行 / 未命中 → 创建后回收”，不画多算子链。
 - 中：代表算子 Wiener：三个相邻窗口重复读取同一 global 区域，重构为 `16×16 output tile` 与 `(16+2r)×(16+2c)` shared Tile；线程协作加载 Tile/Halo 后，多输出复用同一块数据。
-- 右：只保留一张“性能结果”大卡：`Wiener Tile/Halo · 214.44→3.50 ms · 61.27×`；极小口径为“历史版本 · 组合路径”。
+- 右：标题“对应算子性能”，标明 `filtering / wiener`；固定三张指标卡：`最终 GPU 耗时｜统一复测结果｜待填`、`CPU/GPU 加速比｜统一复测结果｜待填`、`GPU 优化前后提速｜X×｜同规模对照复测后填入`。
 
 **效果**
 
-- `Wiener Tile/Halo` 代表路径：`214.44→3.50 ms = 61.27×`；标记为“历史版本 · 组合路径”。单机制开关对照、成品算子快照和归因限制移至演讲备注或备份材料。
+- `Wiener Tile/Halo`：右侧固定展示 `filtering / wiener` 的最终 GPU 耗时、CPU/GPU 加速比与 `X×` 优化前后提速数据位。
 
 **讲解**
 
@@ -367,7 +368,7 @@ Task1 雷达检测      Task2 特征融合与跟踪
 
 **效果**
 
-- `lfilter` 代表路径：`455.17→0.359 ms = 1267.88×`；标记为“历史版本 · 组合路径”。单机制开关对照、短序列 E2E 及限制说明移至演讲备注或备份材料。
+- `lfilter`：右侧固定展示 `filtering / lfilter` 的最终 GPU 耗时、CPU/GPU 加速比与 `X×` 优化前后提速数据位；短序列固定调用开销的规模边界可在复测结果页如实说明。
 
 **讲解**
 
@@ -390,18 +391,18 @@ Task1 雷达检测      Task2 特征融合与跟踪
 
 ```text
 旧：detrend → window → C2C FFT → full spectrum → power → crop → scale
-新：cached setup → fused prepare → 独立 R2C FFT → fused PSD output
+新：fused detrend+window → 独立 R2C FFT → fused power/crop/scale PSD
 ```
 
-完整双边谱与单边谱按真实体积比例绘制；FFT library call 必须保持独立节点。右侧用三张小卡分别标注“R2C 少算负频率”“fusion 少写中间量”“setup cache 少准备”；不能画成 FFT、PSD 和 cache 的一个万能 kernel。
+完整双边谱与单边谱按真实体积比例绘制；FFT library call 必须保持独立节点。右侧用三张小卡分别标注“R2C 少算负频率”“fusion 少写中间量”“分派满足输入约束”；不能画成 FFT、PSD 和 cache 的一个万能 kernel。prepared/cache 属于机制①，不在本页展示。
 
 **效果**
 
-- `R2C + Fusion` 代表路径：`72.91→0.669 ms = 108.98×`；标记为“历史版本 · 组合路径”。单机制开关对照、成品算子快照和归因限制移至演讲备注或备份材料。
+- `Periodogram R2C/Fusion`：右侧固定展示 `spectral / periodogram` 的最终 GPU 耗时、CPU/GPU 加速比与 `X×` 优化前后提速数据位。
 
 **讲解**
 
-先讲分派边界，再用“少算负频率、少写中间量、少做重复 setup”说明 R2C/Fusion 落地；右侧只读一项代表性能。
+先讲分派边界，再用“少算负频率、少写中间量、按约束选路径”说明 R2C/Fusion 落地；右侧只读一项代表性能。
 
 **来源**：`spectral.cu:1990`、`:2041`、`:2060`、`:2095`；`docs/PERFORMANCE.md:77`；当前 unit summary。
 **边界**：FFT 与 PSD 不是单 kernel；plan 为单槽复用；CSD/spectrogram 部分 R2C 因 ZQ500 数值问题保留 C2C。
@@ -432,13 +433,13 @@ template + pulses → entry H2D
 4. `parallel scan/reduction`：CA-CFAR 用 256-thread row-prefix/integral image；final detection 用两阶段 peak reduction。
 5. `compact output`：只将最终 detection list `(r, v, snr, ...)` 回传，不回传全功率图和 dense mask。
 
-用一条青绿色 Device-resident 包围带覆盖入口 H2D 到最终 materialize；ambgfun 必须是模板旁路，peak 同时接收 power 与 detections。底部放“**历史优化前后对比（版本候选，非当前正式 L6；不同 run，不能累加）**”版本对比带：template cache L6 stage `-7.43%` / total `-2.14%`；transpose+shift L6 stage `-11.57%` / total `-2.03%`；row-prefix CA-CFAR L6 stage `-28.68%` / total `-4.79%`；two-stage peak L6 stage `-43.95%` / total `-4.12%`。Device-resident 没有同配置的独立关闭消融，只作结构事实展示。另设蓝色角标：`任务总效果见 P09：FINAL L6 33.09×`，不得把它归因给任一路径。
+用一条青绿色 Device-resident 包围带覆盖入口 H2D 到最终 materialize；ambgfun 必须是模板旁路，peak 同时接收 power 与 detections。底部只放一张橙色小卡：`Task1 GPU 优化前后提速：X×`，小字“同规模对照复测后填入”。另设蓝色角标：`任务总效果见 P09：最终 GPU 耗时 · CPU/GPU 加速比 · X×`，不得把总效果归因给任一路径。
 
 **讲解**
 
-先沿主链证明六步调用的是公开 API，不是 task-private bypass；随后从右侧按“驻留、缓存、融合、scan/reduction、紧凑输出”逐条指回真实落点。底部“历史优化前后对比”只说明版本候选曾在独立 run 中降低对应 stage/total，不代表当前运行仍切换该旧路径，不能相加成 `33.09×`；该端到端总效果由 P09 的正式统一测评给出。
+先沿主链证明六步调用的是公开 API，不是 task-private bypass；随后从右侧按“驻留、缓存、融合、scan/reduction、紧凑输出”逐条指回真实落点。底部只保留任务级 `X×` 数据位；最终耗时和 CPU/GPU 加速比由 P09 的统一测评给出。
 
-**来源**：`task1_radar_demo.cpp:1221`、`:1236`～`:1287`、`:1759`～`:1790`；`types.hpp:923`～`:948`；任务契约；路径级历史优化前后对比见 `docs/PROJECT_LEDGER_notsub.md` 的 `V6-0045`、`V6-0046`、`V6-0048`、`V6-0049`。
+**来源**：`task1_radar_demo.cpp:1221`、`:1236`～`:1287`、`:1759`～`:1790`；`types.hpp:923`～`:948`；任务契约。
 **边界**：当前步骤逐次同步计时，不是 multi-stream pipeline；input construction 不属于六个正式计算步骤。
 **赛题一致性**：页面中的每个正式步骤必须标为对应公开算子库 GPU 实现；即使某些极小 public case 的 GPU E2E 慢于 CPU，也不能把 Task1 的 GPU 链画成 CPU shortcut。
 
@@ -453,7 +454,7 @@ template + pulses → entry H2D
 **主视觉**
 
 - 左侧：实测 Task1 L1～L6 `speedup = CPU median total / GPU median total` 曲线，L6 橙色标记为原 final-input 配置。
-- 中部：新 L6 的 CPU/GPU 中位 total、已计算 `33.09×`；标注 7 次运行且首轮 warm-up 排除。
+- 中部：新 L6 的最终 GPU 中位 total、已计算 CPU/GPU 加速比；并列一张橙色卡 `GPU 优化前后提速：X×`；标注 7 次运行且首轮 warm-up 排除。
 - 右侧：固定/改变项对照：`固定窗口、CFAR 参数、公开算子链；改变任务输入规模`。
 - 下方：Expected/CPU/GPU 检测位置一致，CFAR threshold mixed error `0.276398 < 0.5`，PASS。
 
@@ -495,13 +496,13 @@ entry H2D per input → batch/residency
 4. `parallel reduction`：band-score、CWT max-score 与 row peak 在频带、尺度或行内提前归约；此处不宣称使用 prefix scan。
 5. `score-only / compact output`：不物化全相关/谱图/CWT 张量，只保留四路 score、peak 和 Kalman state/track。
 
-用数据轮廓表现“三维张量 → 一维 score → 每帧一个 peak”。底部放“**历史优化前后对比（版本候选，非当前正式 L6；不同 run，不能累加）**”版本对比带：Task2 AOT correlate L6 hotspot `-61.66%` / total `-9.77%`；AOT spectrogram L6 hotspot `-43.37%` / total `-7.78%`。其余路径没有独立关闭消融时标“结构已采用，待独立归因”，不得凭 Task2 总加速倒推。另设蓝色角标：`任务总效果见 P11：FINAL L6 1048.78×`，不是任一路径的单独收益。
+用数据轮廓表现“三维张量 → 一维 score → 每帧一个 peak”。底部只放一张橙色小卡：`Task2 GPU 优化前后提速：X×`，小字“同规模对照复测后填入”。其余路径只展示结构与落点，不得凭任务总加速倒推任一路径收益。另设蓝色角标：`任务总效果见 P11：最终 GPU 耗时 · CPU/GPU 加速比 · X×`。
 
 **讲解**
 
-重点解释应用语义允许“只保留 score”，这是任务特化能够显著压缩工作量的根本原因。随后按右侧五条路径指回主链；明确 AOT 两项有历史优化前后对比，驻留、score-only 等只作结构事实展示，不能把 `1048.78×` 平摊到它们。
+重点解释应用语义允许“只保留 score”，这是任务特化能够显著压缩工作量的根本原因。随后按右侧五条路径指回主链；不将任务总加速平摊到任一路径。
 
-**来源**：`task2_features_demo.cpp:1660`～`:1671`、`:1894`～`:2106`；`task2_features_zx_gpu.cu:2830`、`:3051`、`:3206`、`:3398`、`:3457`；AOT 路径历史优化前后对比见 `docs/PERFORMANCE.md:208`～`:209`。
+**来源**：`task2_features_demo.cpp:1660`～`:1671`、`:1894`～`:2106`；`task2_features_zx_gpu.cu:2830`、`:3051`、`:3206`、`:3398`、`:3457`。
 **边界**：这是 mixed task-specialized pipeline；radix-2 pad 最大 4096；weighted+smooth 与 peak 是独立 kernel；Kalman 跨帧仍串行。Task2 total 同时包含 CPU 逐帧/输入准备与 GPU batch/特化的工作流差异，不能称为纯公共算子或单 kernel 加速比。
 **赛题一致性**：private helper 是与公开算子库协同的任务级 GPU 支路，不是绕过库的第三后端；图中必须同时保留 library-operator 和 helper 的边界。
 
@@ -516,7 +517,7 @@ entry H2D per input → batch/residency
 **主视觉**
 
 - 左侧：实测 Task2 L1～L6 加速比曲线，L6 为原 final-input 配置。
-- 中部：L6 CPU/GPU 中位 total：`28363.050 ms / 27.044 ms = 1048.78×`。
+- 中部：L6 最终 GPU 中位 total、CPU/GPU 加速比；并列一张橙色卡 `GPU 优化前后提速：X×`。
 - 右侧：统一协议，固定 batch、score-only、feature/track 门限；只改变输入规模。
 - 下方：CPU/GPU 轨迹一致；track RMSE `0.477855 < 2`，feature-score mixed error `9.83703e-5 < 1e-4`，PASS。
 
@@ -750,9 +751,9 @@ src/common：参数 / shape-axis / 数值规则
 |---|---|---|
 | P03 | 赛题交付与三类难题图 | README、contracts、reports |
 | P04 | 两层技术路线图 | 当前源码通用机制 + Wiener 单位 benchmark + 两条任务的正式 L6 中位数 |
-| P05 | Wiener Tile/Halo + 历史/当前效果 | `filtering.cu`、历史优化前后对比、unit summary |
-| P06 | IIR hierarchical scan + 两层时间结果 | affine compose、历史优化前后对比、unit summary |
-| P07 | Periodogram before/after + 三类收益 | `spectral.cu` R2C/fusion/cache |
+| P05 | Wiener Tile/Halo + 三项性能数据位 | `filtering.cu`、同规模优化前后对照、unit summary |
+| P06 | IIR hierarchical scan + 三项性能数据位 | affine compose、同规模优化前后对照、unit summary |
+| P07 | Periodogram before/after + 三项性能数据位 | `spectral.cu` R2C/fusion、同规模优化前后对照 |
 | P08/P09 | Task1 pipeline、正式 L1-L6 速度/正确性数据位 | Task1 source、`task1_radar/scales/L1-L6` metrics |
 | P10/P11 | CPU逐帧 vs GPU score-only、正式 L1-L6 数据位 | Task2 source/helper、`task2_features/scales/L1-L6` metrics |
 | P12 | 当前软件架构 SVG | CMake + `docs/ARCHITECTURE.md` |

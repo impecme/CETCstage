@@ -63,47 +63,23 @@ sudo docker restart gpu_04
 
 ```bash
 cd /home/usr_04/CETC
-scripts/sync_to_container.sh --dry-run
-scripts/sync_to_container.sh --container gpu_04
+scripts/sync_to_container.sh --container gpu_04 --replace
 ```
 
-脚本只复制根 `DELIVERY_FILES.txt` 中已审核、排序且无重复的普通文件，并校验
-staging 与回读 SHA256。当前账户不能执行非交互 `docker exec`，所以第一次运行只
-生成唯一的 `/CETC.incoming.<timestamp>.<pid>.<random>` 路径并打印交互建目录指令。
-按提示使用 `sudo docker exec -it gpu_04 bash` 建好目录后，再用脚本打印的
-`--destination ... --destination-ready` 命令调用获准的 `docker cp` 完成传输。
-脚本不会复制 `.git`、IDE/PPT/复赛资料、build/cache、日志、图件或运行样本，也不会
-覆盖 `/CETC`。
-
-进入容器后，可在任意目录使用脚本实际打印的 incoming 路径验证：
+脚本只复制根 `DELIVERY_FILES.txt` 中已审核、排序且无重复的普通文件，并完成 SHA256
+回读校验。当前账户不允许通用非交互 `docker exec`，因此脚本通过获准的 `docker cp`
+创建唯一 incoming 目录，并把带有该唯一路径的激活脚本写入容器 `/tmp`。随后在宿主机
+复制执行以下固定命令，无需填写时间戳或目录路径：
 
 ```bash
 sudo docker exec -it gpu_04 bash
-/CETC.incoming.20260717220000.12345.6789/scripts/validate.sh \
-  --build-dir build-zx
+bash /tmp/cetc_activate.sh
+exit
 ```
 
-上面的时间戳只是格式示例，不能原样照抄。验证与结果取回完成后，确需切换正式
-`/CETC` 时可在容器内做可回退的目录改名：
-
-```bash
-incoming=/CETC.incoming.20260717220000.12345.6789
-previous=/CETC.previous.20260717_220000
-if [[ ! -d "${incoming}" || ! -d /CETC || -e "${previous}" ]]; then
-  echo "invalid activation paths" >&2
-  exit 1
-fi
-cd /
-mv /CETC "${previous}"
-if ! mv "${incoming}" /CETC; then
-  mv "${previous}" /CETC
-  echo "activation failed; previous /CETC restored" >&2
-  exit 1
-fi
-```
-
-确认新 `/CETC` 完整通过后再单独处置旧目录。不要把 incoming 内容覆盖复制到旧
-`/CETC`，否则已经从主仓库清理的过程文件仍会残留。
+激活脚本在交互式 Shell 中原子替换 `/CETC`，失败时恢复旧目录；成功后删除旧源码。同步与
+激活均不运行构建、测试、验证、报告发布或任何固化流程。脚本不会复制 `.git`、IDE/PPT、
+build/cache、日志、图件或运行样本。
 
 ## 4. 构建
 
@@ -199,23 +175,24 @@ sudo docker cp \
   /home/usr_04/CETC_garbage/manual_pull/
 ```
 
-最终验证结果使用宿主机脚本统一取回。若项目仍在 incoming 目录：
+容器运行结束后，回到宿主机使用统一脚本同步结果。当前终版已切换为 `/CETC`，无需填写
+incoming 目录或时间戳；局部算子测试、任务复测、现场 `--live-demo` 和完整验证均可同步：
 
 ```bash
 cd /home/usr_04/CETC
-scripts/pull_results.sh \
-  --container gpu_04 \
-  --container-root /CETC.incoming.20260717220000.12345.6789 \
-  --promote-reports
+# 通用增量同步：写入宿主机 data/reports/ 对应路径，不要求完整验证
+scripts/pull_results.sh --container gpu_04 --sync-reports
+
+# 仅当完整 scripts/validate.sh 通过后：验证并原子替换宿主机 data/reports/
+scripts/pull_results.sh --container gpu_04 --promote-reports
 ```
 
-若已切换为 `/CETC`，可省略 `--container-root`。脚本默认把容器中的
-`data/reports/` 复制到仓库外唯一的
-`/home/usr_04/CETC_garbage/container_pull_<timestamp>/`，并生成传输清单。
-`--promote-reports` 会额外验证 `FILES.sha256` 和摘要门禁，然后原子更新主仓库的
-`data/reports/`；此前的主仓库 reports 会移动到 `CETC_garbage/`。不带该选项时
-主仓库不会被修改。需要诊断原始运行期数据时，可显式取回容器内
-`data/.reports_staging/`；它不属于发布报告。
+`--sync-reports` 先校验传输内容，再按相对路径增量写入主仓库 `data/reports/`，刷新
+`FILES.sha256`，且保留容器未生成的宿主机文件；它不运行报告固化。`--promote-reports` 会额外
+验证完整性门禁，然后原子替换主仓库 `data/reports/`；此前的主仓库 reports 会移动到
+`CETC_garbage/`。只有完整 81 算子、两条任务和审计报告齐全时才能使用
+`--promote-reports`。如需仅保留仓库外原始副本，可省略 `--sync-reports`；需要诊断运行期原始
+数据时，可显式取回容器内 `data/.reports_staging/`，它不属于发布报告。
 
 本地电脑与服务器之间仍使用 `scp`，且目标只能是本队个人目录。服务器地址以赛方
 当前通知为准。

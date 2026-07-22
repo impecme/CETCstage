@@ -167,7 +167,20 @@ scripts/test_operators.sh \
   --emit-report
 
 if [[ "${RUN_TASKS}" -eq 1 ]]; then
-  scripts/demo.sh --build-dir "${BUILD_DIR}" --no-build --repeat 5 --scale-sweep
+  # Publish the formal task L1-L6 measurements into the same staging root
+  # that finalize_reports.py consumes.  The formal protocol freezes the L6
+  # algorithm parameters and varies only the input dimensions.  Do not use
+  # demo.sh --scale-sweep here: it is a functional scale sweep and would
+  # overwrite the formal task reports with a different measurement protocol.
+  scripts/unified_scale_benchmark.sh \
+    --build-dir "${BUILD_DIR}" \
+    --no-build \
+    --repeat 7 \
+    --output-root "${PROJECT_ROOT}/data/.reports_staging/demo"
+
+  # Keep the regular task final report for delivery validation.  This updates
+  # latest_* only and leaves the formal scales/L1...L6 reports intact.
+  scripts/demo.sh --build-dir "${BUILD_DIR}" --no-build --repeat 5
   python3 tests/tools/task_contract_audit.py \
     --contracts tests/contracts/task_step_contracts.json \
     --output-dir "${AUDIT_ROOT}/task_steps" \
@@ -182,6 +195,8 @@ if [[ "${PUBLISH_REPORTS}" -eq 1 ]]; then
     --source-root "${PROJECT_ROOT}/data/.reports_staging" \
     --output "${PUBLISHED_REPORT_ROOT}" \
     --run-id "${RUN_ID}"
+  echo "[delivery-validation] 正式报告已发布，统一性能汇总如下"
+  scripts/ppt_performance.sh --print-only
 else
   echo "[delivery-validation] report publication skipped (diagnostic-only mode)"
 fi

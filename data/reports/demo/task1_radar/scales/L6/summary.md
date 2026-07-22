@@ -34,21 +34,21 @@
 
 | stage | cpu_ms | gpu_ms | gpu_kernel_ms |
 | --- | ---: | ---: | ---: |
-| input_construction | 155.103149 | 3.163750 | 3.130718 |
-| pulse_compression | 21.137411 | 1.257554 | 1.223508 |
-| pulse_doppler | 71.181061 | 1.512064 | 1.479272 |
-| power_map | 0.290451 | 0.177211 | 0.144016 |
-| ca_cfar | 1.471654 | 1.226324 | 1.170430 |
-| ambgfun | 110.577019 | 3.208109 | 3.173978 |
-| final_detection | 0.315181 | 0.205971 | 0.169228 |
-| total | 360.075928 | 10.750982 | 10.491149 |
+| input_construction | 164.425781 | 3.265843 | 3.222288 |
+| pulse_compression | 22.486124 | 1.489714 | 1.443300 |
+| pulse_doppler | 74.842926 | 1.673298 | 1.625436 |
+| power_map | 0.279846 | 0.243856 | 0.194704 |
+| ca_cfar | 1.286919 | 1.264739 | 1.216856 |
+| ambgfun | 111.131981 | 3.229642 | 3.181436 |
+| final_detection | 0.405319 | 0.301786 | 0.244538 |
+| total | 374.858887 | 11.468878 | 11.128558 |
 
 ## Validation
 
 - pass: `true`
 - repeat_runs: `7`
 - gpu_free_delta_mib: `-192.000`
-- rss_current_delta_mib: `520.496`
+- rss_current_delta_mib: `520.508`
 
 ## Artifacts
 

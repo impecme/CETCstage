@@ -1,7 +1,7 @@
 {
   "module": "filter_design",
   "operator": "kaiser_beta",
-  "generated_at": "2026-07-19 16:40:02",
+  "generated_at": "2026-07-22 03:42:38",
   "git_commit": "",
   "gpu_name": "ZQ500-Q QUAD-0",
   "compile_config": {
@@ -16,7 +16,7 @@
     "max_rel_error": 0,
     "mixed_error": 0,
     "rmse": 0,
-    "gpu_e2e_speedup": 0.000967118,
+    "gpu_e2e_speedup": 0.000916926,
     "gpu_kernel_speedup": 0,
     "cpu_perf": {
       "warmup": 5,
@@ -31,11 +31,11 @@
     "gpu_e2e_perf": {
       "warmup": 5,
       "repeat": 30,
-      "mean_ms": 0.04136,
-      "median_ms": 0.04136,
-      "p95_ms": 0.04136,
-      "min_ms": 0.04136,
-      "max_ms": 0.04136,
+      "mean_ms": 0.043624,
+      "median_ms": 0.043624,
+      "p95_ms": 0.043624,
+      "min_ms": 0.043624,
+      "max_ms": 0.043624,
       "std_ms": 0
     },
     "gpu_kernel_perf": {
@@ -199,22 +199,22 @@
       "cpu_perf": {
         "warmup": 5,
         "repeat": 30,
-        "mean_ms": 4.63333e-05,
+        "mean_ms": 4.6e-05,
         "median_ms": 4e-05,
         "p95_ms": 0.00013,
-        "min_ms": 4e-05,
+        "min_ms": 3e-05,
         "max_ms": 0.00014,
-        "std_ms": 2.37323e-05
+        "std_ms": 2.38886e-05
       },
       "gpu_e2e_perf": {
         "warmup": 5,
         "repeat": 30,
-        "mean_ms": 0.0421819,
-        "median_ms": 0.04136,
-        "p95_ms": 0.04503,
-        "min_ms": 0.039761,
-        "max_ms": 0.05847,
-        "std_ms": 0.0032478
+        "mean_ms": 0.0435616,
+        "median_ms": 0.043624,
+        "p95_ms": 0.045799,
+        "min_ms": 0.041539,
+        "max_ms": 0.045949,
+        "std_ms": 0.00123579
       },
       "gpu_kernel_perf": {
         "warmup": 5,
@@ -227,6 +227,8 @@
         "std_ms": 0
       },
       "artifacts": [
+        {"role": "cpu_signal", "path": "/CETC/data/generated/unit/filter_design/kaiser_beta/output_samples/perf_atten_80__cpu__signal.csv", "sha256": "76c33340c1dd646321c9e616489d5475ff40c66e959b7480b165b47e79c8115e"},
+        {"role": "gpu_signal", "path": "/CETC/data/generated/unit/filter_design/kaiser_beta/output_samples/perf_atten_80__gpu__signal.csv", "sha256": "76c33340c1dd646321c9e616489d5475ff40c66e959b7480b165b47e79c8115e"}
       ]
     }
   ]

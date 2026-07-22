@@ -1,5 +1,5 @@
 substage,cpu_ms,gpu_ms,counted_in_pipeline
-direct_band_score,0.000000,2.789869,true
-row_normalize,0.000000,0.187840,true
-validation_representative_spectrogram,0.000000,0.447162,false
-pipeline_total,0.000000,2.977709,true
+direct_band_score,0.000000,2.782671,true
+row_normalize,0.000000,0.183274,true
+validation_representative_spectrogram,0.000000,0.430119,false
+pipeline_total,0.000000,2.965945,true

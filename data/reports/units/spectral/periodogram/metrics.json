@@ -1,7 +1,7 @@
 {
   "module": "spectral",
   "operator": "periodogram",
-  "generated_at": "2026-07-19 16:48:45",
+  "generated_at": "2026-07-22 03:51:41",
   "git_commit": "",
   "gpu_name": "ZQ500-Q QUAD-0",
   "compile_config": {
@@ -16,36 +16,36 @@
     "max_rel_error": 3675.54,
     "mixed_error": 1.80449e-07,
     "rmse": 1.4911e-08,
-    "gpu_e2e_speedup": 3.86557,
-    "gpu_kernel_speedup": 7.35263,
+    "gpu_e2e_speedup": 3.77326,
+    "gpu_kernel_speedup": 7.39438,
     "cpu_perf": {
       "warmup": 5,
       "repeat": 30,
-      "mean_ms": 1.41709,
-      "median_ms": 1.41709,
-      "p95_ms": 1.41709,
-      "min_ms": 1.41709,
-      "max_ms": 1.41709,
+      "mean_ms": 1.42462,
+      "median_ms": 1.42462,
+      "p95_ms": 1.42462,
+      "min_ms": 1.42462,
+      "max_ms": 1.42462,
       "std_ms": 0
     },
     "gpu_e2e_perf": {
       "warmup": 5,
       "repeat": 30,
-      "mean_ms": 0.366592,
-      "median_ms": 0.366592,
-      "p95_ms": 0.366592,
-      "min_ms": 0.366592,
-      "max_ms": 0.366592,
+      "mean_ms": 0.377556,
+      "median_ms": 0.377556,
+      "p95_ms": 0.377556,
+      "min_ms": 0.377556,
+      "max_ms": 0.377556,
       "std_ms": 0
     },
     "gpu_kernel_perf": {
       "warmup": 5,
       "repeat": 30,
-      "mean_ms": 0.192732,
-      "median_ms": 0.192732,
-      "p95_ms": 0.192732,
-      "min_ms": 0.192732,
-      "max_ms": 0.192732,
+      "mean_ms": 0.192662,
+      "median_ms": 0.192662,
+      "p95_ms": 0.192662,
+      "min_ms": 0.192662,
+      "max_ms": 0.192662,
       "std_ms": 0
     },
     "device_storage_cache": {
@@ -164,34 +164,40 @@
       "cpu_perf": {
         "warmup": 5,
         "repeat": 30,
-        "mean_ms": 1.41904,
-        "median_ms": 1.41709,
-        "p95_ms": 1.44257,
-        "min_ms": 1.39873,
-        "max_ms": 1.4461,
-        "std_ms": 0.0108246
+        "mean_ms": 1.43208,
+        "median_ms": 1.42462,
+        "p95_ms": 1.4763,
+        "min_ms": 1.39736,
+        "max_ms": 1.53402,
+        "std_ms": 0.0274731
       },
       "gpu_e2e_perf": {
         "warmup": 5,
         "repeat": 30,
-        "mean_ms": 0.369069,
-        "median_ms": 0.366592,
-        "p95_ms": 0.408972,
-        "min_ms": 0.357152,
-        "max_ms": 0.415813,
-        "std_ms": 0.0124401
+        "mean_ms": 0.380491,
+        "median_ms": 0.377556,
+        "p95_ms": 0.403066,
+        "min_ms": 0.373496,
+        "max_ms": 0.408246,
+        "std_ms": 0.00809755
       },
       "gpu_kernel_perf": {
         "warmup": 5,
         "repeat": 30,
-        "mean_ms": 0.192671,
-        "median_ms": 0.192732,
-        "p95_ms": 0.193424,
-        "min_ms": 0.19156,
-        "max_ms": 0.193532,
-        "std_ms": 0.000450729
+        "mean_ms": 0.192709,
+        "median_ms": 0.192662,
+        "p95_ms": 0.193488,
+        "min_ms": 0.191992,
+        "max_ms": 0.193508,
+        "std_ms": 0.00037331
       },
       "artifacts": [
+        {"role": "case_spec", "path": "/CETC/data/generated/unit/spectral/periodogram/input/perf_hann_density__spec.json", "sha256": "2df8efd96ecfdb98f4d62d34a9a2f79930cc363f3d938ed83976644b9a981ac7"},
+        {"role": "x_input", "path": "/CETC/data/generated/unit/spectral/periodogram/input/perf_hann_density__x.csv", "sha256": "b06b89f9be9877aeb0fa799af785ec87531780b6d039a7f21ed6febc051faf7a"},
+        {"role": "cpu_frequencies", "path": "/CETC/data/generated/unit/spectral/periodogram/output_samples/perf_hann_density__cpu__frequencies.csv", "sha256": "6201decbb7933b477329dfde9e758797ca332bca72a14cbeb2f290cdc2f7a11b"},
+        {"role": "cpu_values", "path": "/CETC/data/generated/unit/spectral/periodogram/output_samples/perf_hann_density__cpu__values.csv", "sha256": "cd40985878ba9351c419665f8259df85b1646990f58e6ceef863fcf61c50310e"},
+        {"role": "gpu_frequencies", "path": "/CETC/data/generated/unit/spectral/periodogram/output_samples/perf_hann_density__gpu__frequencies.csv", "sha256": "6201decbb7933b477329dfde9e758797ca332bca72a14cbeb2f290cdc2f7a11b"},
+        {"role": "gpu_values", "path": "/CETC/data/generated/unit/spectral/periodogram/output_samples/perf_hann_density__gpu__values.csv", "sha256": "12e8f8cc075ade2c2879fcabf763ad4ad75f39dc4d8cc27ff1988590e1f385d9"}
       ]
     }
   ]

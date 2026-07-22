@@ -1,5 +1,5 @@
 substage,gpu_ms,counted_in_pipeline
-representative_filter,0.271651,false
-representative_correlate,2.838490,false
-representative_spectrogram,0.427172,false
-representative_cwt,0.664992,false
+representative_filter,0.239226,false
+representative_correlate,2.692307,false
+representative_spectrogram,0.428861,false
+representative_cwt,0.653396,false

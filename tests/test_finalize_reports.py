@@ -110,7 +110,7 @@ class FinalizeReportsTest(unittest.TestCase):
     def _task_metrics(self, scale: int) -> dict[str, object]:
         return {
             "version": "fixture",
-            "scenario": {"scale_level": scale},
+            "scenario": {"scale_level": scale, "unified_scale_protocol": True},
             "validation": {
                 "pass": True,
                 "checks": [{"name": "fixture", "pass": True}],
@@ -252,6 +252,18 @@ class FinalizeReportsTest(unittest.TestCase):
         completed = self.run_finalizer()
         self.assertNotEqual(completed.returncode, 0)
         self.assertIn("validation.pass must be true", completed.stderr)
+        self.assertFalse(self.output.exists())
+
+    def test_nonformal_task_scale_is_rejected(self) -> None:
+        path = self.reports / "demo/task2_features/scales/L4/latest_metrics.json"
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        payload["scenario"]["unified_scale_protocol"] = False
+        write_json(path, payload)
+
+        completed = self.run_finalizer()
+
+        self.assertNotEqual(completed.returncode, 0)
+        self.assertIn("formal task scale requires unified_scale_protocol=true", completed.stderr)
         self.assertFalse(self.output.exists())
 
     def test_cold_start_timing_outlier_does_not_reject_business_valid_task(self) -> None:

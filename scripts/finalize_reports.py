@@ -286,6 +286,10 @@ def validate_task_metrics(payload: dict[str, Any], task: str, scale: int | None,
     require(isinstance(scenario, dict), f"{label}: missing scenario")
     if scale is not None:
         require(scenario.get("scale_level") == scale, f"{label}: scale identity mismatch")
+        require(
+            scenario.get("unified_scale_protocol") is True,
+            f"{label}: formal task scale requires unified_scale_protocol=true",
+        )
     validation = payload.get("validation")
     require(isinstance(validation, dict), f"{label}: missing validation")
     require(validation.get("pass") is True, f"{label}: validation.pass must be true")

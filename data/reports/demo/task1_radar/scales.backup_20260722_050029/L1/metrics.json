@@ -1,0 +1,142 @@
+{
+  "version": "V3.3",
+  "scenario": {
+    "scale_level": 1,
+    "unified_scale_protocol": false,
+    "scale_value": 4096,
+    "fs": 1e+06,
+    "num_pulses": 32,
+    "samples_per_pulse": 128,
+    "rx_shape": [32, 128],
+    "template_length": 32,
+    "prf": 2000,
+    "delay_samples": 24,
+    "doppler_hz": 125,
+    "target_amplitude": 1,
+    "snr_db": 20,
+    "seed": 20260414,
+    "pulse_compression_nfft": 128,
+    "pulse_doppler_nfft": 32,
+    "pulse_compression_normalize": true,
+    "pulse_compression_window": "",
+    "pulse_doppler_window": "hann",
+    "cfar_guard_cells": [2, 2],
+    "cfar_reference_cells": [8, 8],
+    "cfar_pfa": 0.001
+  },
+  "shapes": {
+    "rx_matrix": [32, 128],
+    "pulse_compression": [32, 128],
+    "range_doppler": [32, 128],
+    "cfar": [32, 128],
+    "ambgfun_surface": [63, 64]
+  },
+  "injected_target": {
+    "delay_samples": 24,
+    "doppler_hz": 125,
+    "target_amplitude": 1
+  },
+  "expected_detection": {
+    "found": true,
+    "range_bin": 24,
+    "doppler_bin": 18,
+    "doppler_hz": 125,
+    "power": 7688
+  },
+  "cpu_detection": {
+    "found": true,
+    "range_bin": 24,
+    "doppler_bin": 18,
+    "doppler_hz": 125,
+    "power": 7723.35
+  },
+  "gpu_detection": {
+    "found": true,
+    "range_bin": 24,
+    "doppler_bin": 18,
+    "doppler_hz": 125,
+    "power": 7723.35
+  },
+  "timings": {
+    "input_construction": {"cpu_ms": 1.2127, "gpu_ms": 0.127309, "gpu_kernel_ms": 0.09421},
+    "pulse_compression": {"cpu_ms": 0.975726, "gpu_ms": 0.606548, "gpu_kernel_ms": 0.569044},
+    "pulse_doppler": {"cpu_ms": 0.346289, "gpu_ms": 0.302119, "gpu_kernel_ms": 0.2662},
+    "power_map": {"cpu_ms": 0.00141, "gpu_ms": 0.10366, "gpu_kernel_ms": 0.067422},
+    "ca_cfar": {"cpu_ms": 0.0071, "gpu_ms": 0.283909, "gpu_kernel_ms": 0.249298},
+    "ambgfun": {"cpu_ms": 0.443709, "gpu_ms": 0.290539, "gpu_kernel_ms": 0.252516},
+    "final_detection": {"cpu_ms": 0.00334, "gpu_ms": 0.12388, "gpu_kernel_ms": 0.087406},
+    "total": {"cpu_ms": 2.99027, "gpu_ms": 1.83796, "gpu_kernel_ms": 1.5861}
+  },
+  "pulse_compression_error": {
+    "mixed_error": 9.39597e-06,
+    "max_abs": 1.10792e-06,
+    "max_rel": 9.22731e-05,
+    "rmse": 2.66168e-07
+  },
+  "pulse_doppler_error": {
+    "mixed_error": 7.8845e-06,
+    "max_abs": 9.51889e-06,
+    "max_rel": 0.000107531,
+    "rmse": 1.03208e-06
+  },
+  "cfar_threshold_error": {
+    "mixed_error": 0.000262618,
+    "max_abs": 0.000396729,
+    "max_rel": 0.000429411,
+    "rmse": 7.01449e-05
+  },
+  "ambgfun_surface_error": {
+    "mixed_error": 8.32307e-06,
+    "max_abs": 1.19209e-07,
+    "max_rel": 4.81462,
+    "rmse": 1.63114e-08
+  },
+  "consistency": {
+    "cpu_gpu_detection_match": true,
+    "gpu_matches_expected_detection": true
+  },
+  "validation": {
+    "pass": true,
+    "checks": [
+      {"name": "cpu_gpu_detection_match", "pass": true, "value": 1, "limit": 1, "detail": "CPU/GPU detection bins must match"},
+      {"name": "gpu_matches_expected_detection", "pass": true, "value": 1, "limit": 1, "detail": "GPU detection must match injected target bin"},
+      {"name": "gpu_total_ms", "pass": true, "value": 1.83796, "limit": 10, "detail": "GPU total time must stay within baseline multiplier and hard limit"},
+      {"name": "pulse_compression_mixed_error", "pass": true, "value": 9.39597e-06, "limit": 0.0001, "detail": "pulse compression CPU/GPU mixed error"},
+      {"name": "pulse_doppler_mixed_error", "pass": true, "value": 7.8845e-06, "limit": 0.0001, "detail": "pulse doppler CPU/GPU mixed error"},
+      {"name": "cfar_threshold_mixed_error", "pass": true, "value": 0.000262618, "limit": 0.005, "detail": "CFAR threshold mixed error uses task-level intermediate tolerance"},
+      {"name": "ambgfun_surface_mixed_error", "pass": true, "value": 8.32307e-06, "limit": 0.0001, "detail": "ambiguity surface CPU/GPU mixed error"},
+      {"name": "invalid_input_checks", "pass": true, "value": 1, "limit": 1, "detail": "invalid configuration matrix must raise std::invalid_argument with field names"},
+      {"name": "repeat_business_consistency", "pass": true, "value": 1, "limit": 1, "detail": "all repeat iterations must pass business and numeric checks"},
+      {"name": "gpu_total_stability", "pass": true, "value": 0.0100976, "limit": 0.35, "detail": "GPU total time relative jitter across repeats"},
+      {"name": "gpu_free_memory_drift_mib", "pass": true, "value": 0, "limit": 32, "detail": "final GPU free memory must not drop materially after repeats"},
+      {"name": "rss_current_drift_mib", "pass": true, "value": 0, "limit": 64, "detail": "process current RSS must not grow materially after repeats"}
+    ]
+  },
+  "resource_usage": {
+    "before":     {
+      "rss_current_mib": 143.824,
+      "rss_peak_mib": 143.824,
+      "gpu_free_mib": 16090.8,
+      "gpu_total_mib": 16384,
+      "gpu_device": 0,
+      "gpu_device_name": "ZQ500-Q QUAD-0"
+    },
+    "after":     {
+      "rss_current_mib": 502.703,
+      "rss_peak_mib": 503.59,
+      "gpu_free_mib": 15978.8,
+      "gpu_total_mib": 16384,
+      "gpu_device": 0,
+      "gpu_device_name": "ZQ500-Q QUAD-0"
+    },
+    "gpu_free_delta_mib": -112,
+    "rss_current_delta_mib": 358.879
+  },
+  "repeat_runs": [
+    {"index": 1, "pass": true, "business_numeric_pass": true, "cpu_total_ms": 3.09957, "gpu_total_ms": 7.57632, "gpu_free_mib": 15978.8, "rss_current_mib": 502.703},
+    {"index": 2, "pass": true, "business_numeric_pass": true, "cpu_total_ms": 3.02309, "gpu_total_ms": 1.83416, "gpu_free_mib": 15978.8, "rss_current_mib": 502.703},
+    {"index": 3, "pass": true, "business_numeric_pass": true, "cpu_total_ms": 3.01597, "gpu_total_ms": 1.8546, "gpu_free_mib": 15978.8, "rss_current_mib": 502.703},
+    {"index": 4, "pass": true, "business_numeric_pass": true, "cpu_total_ms": 2.98593, "gpu_total_ms": 1.82453, "gpu_free_mib": 15978.8, "rss_current_mib": 502.703},
+    {"index": 5, "pass": true, "business_numeric_pass": true, "cpu_total_ms": 2.99027, "gpu_total_ms": 1.83796, "gpu_free_mib": 15978.8, "rss_current_mib": 502.703}
+  ]
+}

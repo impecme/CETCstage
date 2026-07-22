@@ -1,6 +1,6 @@
 {
   "calculation_step_count": 14,
-  "generated_at": "2026-07-20T03:48:10+00:00",
+  "generated_at": "2026-07-22T04:16:55+00:00",
   "operator_count": 81,
   "operators": {
     "expected": 81,
@@ -22,15 +22,15 @@
   },
   "provenance": {
     "input_evidence_file_count": 331,
-    "input_evidence_fingerprint": "abc130181d78b003f960cc5307c6a8d1718c645137259c4d60f581d674f7f770",
-    "run_id": "current-20260720-task-optimized-l6",
-    "source_content_fingerprint": "b3374633779c22b94c6b657b08baa3650a69239149329816fa90d4c2263c774e",
-    "source_file_count": 695
+    "input_evidence_fingerprint": "c63a2af0aeadc9df61078eefdbc98e0dd829d5287304a52549c57d9d042e1a0f",
+    "run_id": "delivery-20260722T033513Z",
+    "source_content_fingerprint": "8baf6b07fad953752eab0fd9c670df59eb218410720d34d2cf063cc44523bbe6",
+    "source_file_count": 700
   },
   "report_schema_version": "cetc_final_reports_v1",
-  "run_id": "current-20260720-task-optimized-l6",
+  "run_id": "delivery-20260722T033513Z",
   "schema_version": "cetc_final_reports_v1",
-  "source_fingerprint": "b3374633779c22b94c6b657b08baa3650a69239149329816fa90d4c2263c774e",
+  "source_fingerprint": "8baf6b07fad953752eab0fd9c670df59eb218410720d34d2cf063cc44523bbe6",
   "status": "passed",
   "task_count": 2,
   "task_scale_report_count": 12,
@@ -51,7 +51,7 @@
     "results": {
       "task1_radar": {
         "final": {
-          "scale_level": 6,
+          "scale_level": 3,
           "stage_row_count": 8,
           "step_count": 6,
           "validation_check_count": 12
@@ -97,7 +97,7 @@
       },
       "task2_features": {
         "final": {
-          "scale_level": 6,
+          "scale_level": 3,
           "stage_row_count": 10,
           "step_count": 8,
           "validation_check_count": 17

@@ -903,3 +903,37 @@ L6 的 raw final GPU event（仅代表 stream work，不是单 kernel profiler�
 ```
 
 应用性能页不制作不存在的传统 GPU 对比，改用 CPU reference vs ZQ500 当前 application-total，加同一 ZQ500 实现内部的历史 A/B。该结构让每项公共技术和每条应用都紧邻真实性能效果，同时在 20 页、8:33 主讲预算下保留 87 秒机动。详细页序和讲解预算见 `ppt_work/deck_spec.md`。
+
+---
+
+## 10. 2026-07-22 高性能代表算子与实现技术（P06～P08 选材）
+
+本表读取当前 `data/reports/units/benchmarks/summary.json` 的 CPU/GPU E2E 中位时间；加速比均为 `CPU median / GPU E2E median`。它只用于选择能同时体现技术深度与真实收益的代表页，不能解释为 GPU 优化前后提速。
+
+| 算子 | CPU / GPU E2E | CPU/GPU | 已实现的关键技术 | 代码位置 | PPT 取材结论 |
+|---|---:|---:|---|---|---|
+| `windows/general_gaussian` | `592.655 / 1.156 ms` | `512.80×` | 对称窗半区计算、镜像写回、幂次分支特化 | `src/zhongkexin/windows.cu:847`、`:897`、`:1739` | 性能最高，但技术页深度有限，放三层性能页代表值即可。 |
+| `wavelets/cwt` | `24639.200 / 59.786 ms` | `412.12×` | 宽度×采样二维映射；Ricker 条件下共享输入 Tile；小波核表缓存 | `src/zhongkexin/wavelets.cu:338`、`:596`、`:626`、`:639` | 可作为共享内存/缓存类备用代表。 |
+| `spectral/lombscargle` | `2156.370 / 11.574 ms` | `186.32×` | 频率对并行；每个 Block 线程分片累加；共享内存归约；大规模条件启用 pair kernel | `src/zhongkexin/spectral.cu:734`、`:1900`、`:1932` | **P07 主代表**：并行归约重构。 |
+| `filtering/wiener` | `648.002 / 3.493 ms` | `185.51×` | 2D Tile/Halo 协作加载；相邻窗口共享输入；shape/mysize 元数据缓存 | `src/zhongkexin/filtering.cu:989`、`:4284`、`:4318` | **P06 主代表**：访存与资源复用。 |
+| `filtering/channelize_poly` | `324.640 / 2.321 ms` | `139.87×` | `n_chans=8` 且点数达阈值时选择专用 point kernel；Shared Twiddle；循环展开；抽头缓存 | `src/zhongkexin/filtering.cu:2802`、`:4989`、`:5008`、`:5014` | **P08 主代表**：形状感知分派与特化核。 |
+| `filtering/sosfilt` | `9.202 / 1.388 ms` | `6.63×` | SOS 仿射变换；Tile Prefix Scan；block transform scan；状态回写 | `src/zhongkexin/filtering.cu:2190`、`:2284`、`:2354`、`:3139` | 技术难点真实存在；作为亮点/问答补充，不占主性能页。 |
+| `spectral/periodogram` | `1.425 / 0.378 ms` | `3.77×` | 单边输出使用 R2C；去趋势/窗函数准备；功率谱后处理 | `src/zhongkexin/spectral.cu:2041`、`:2095` | 可作为频谱路径语义补充，不占主性能页。 |
+
+### 10.1 P06～P08 终版技术叙事
+
+```text
+P06  邻域重复读取
+  → Tile/Halo 协作加载与元数据复用
+  → Wiener 185.51×
+
+P07  频率×样本双重循环
+  → 频率对并行、线程分片、共享归约
+  → Lomb-Scargle 186.32×
+
+P08  通道数与规模决定执行路径
+  → 8 通道特化核、Shared Twiddle、循环展开
+  → Channelize Poly 139.87×
+```
+
+其中 P07/P08 的主页面不再使用 `lfilter 0.58×` 与 `periodogram 3.77×`，避免将技术说明页置于弱性能代表上。GPU 优化前后提速仍统一显示 `X×`，等待同规模 Git 基线复测。

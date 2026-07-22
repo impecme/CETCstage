@@ -12,6 +12,16 @@
 
 页序为：P03 赛题重述、P04 代码架构、P05 技术路线、P06～P08 三项公共技术、P09～P11 三层算子性能、P12～P13 Task1、P14～P15 Task2、P16 正确性、P17 优缺点与改进、P18 亮点、P19 AI 使用说明。
 
+P03 使用 `P03_赛题重述_整页_v05_双后端闭环.png`：同一 Host 输入经统一 C++17 接口进入公共算子库；CPU reference 与 ZQ500 GPU 均执行 Task1、Task2，最终汇合为 CPU/GPU 结果对照、正确性、性能与可追溯报告，避免误读为“CPU 只对应 Task1、GPU 只对应 Task2”。
+
+P06～P08 分别使用：
+
+- `P06_访存资源复用_Wiener代表_v05_三项性能.png`：`filtering / wiener`。
+- `P07_并行结构重构_IIR代表_v04_三项性能.png`：`filtering / lfilter`。
+- `P08_分派Fusion_Periodogram代表_v04_三项性能.png`：`spectral / periodogram`。
+
+三页右侧统一为“对应算子性能”：最终 GPU 耗时、CPU/GPU 加速比、GPU 优化前后提速。前两项由统一复测结果填入；第三项当前固定为 `X×`，待 Git 基线版本完成同规模对照复测后替换。
+
 P19 使用 `P19_AI工具使用说明_v08_比例与人工原创.png`：代码辅助 90%，文档 / PPT 辅助 60%；核心亮点与优化技术由团队提出，非 AI 生成。
 
 构建脚本 [build_technical_deck.py](../scripts/build_technical_deck.py) 已从本目录读取图片，并在 P09～P11 补齐之前主动报缺图，避免输出包含旧数据或错序页面的“最终版”PPT。补齐后直接运行脚本；它只写入并覆盖 `../信号处理算子库_技术页_终版.pptx`。

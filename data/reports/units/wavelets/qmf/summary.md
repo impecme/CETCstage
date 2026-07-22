@@ -13,10 +13,10 @@
 
 ## 性能
 
-- CPU 中位时间：124.022 ms
-- GPU 端到端中位时间：1.70877 ms
-- GPU kernel 最小时间：1.60635 ms
-- GPU kernel 中位时间：1.60635 ms
-- GPU kernel 最大时间：1.60635 ms
-- GPU 端到端加速比：72.5798x
-- GPU kernel 加速比：77.2073x
+- CPU 中位时间：127.503 ms
+- GPU 端到端中位时间：1.65368 ms
+- GPU kernel 最小时间：1.60155 ms
+- GPU kernel 中位时间：1.60155 ms
+- GPU kernel 最大时间：1.60155 ms
+- GPU 端到端加速比：77.1028x
+- GPU kernel 加速比：79.6122x
