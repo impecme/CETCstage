@@ -1,0 +1,34 @@
+{
+  "source": {
+    "scale_summary": "data/reports/demo/scale_summary.json",
+    "task1_l6_metrics": "data/reports/demo/task1_radar/scales/L6/metrics.json",
+    "task2_l6_metrics": "data/reports/demo/task2_features/scales/L6/metrics.json",
+    "task1_l6_output_samples": "data/generated/demo/task1_radar/output_samples",
+    "task2_l6_output_samples": "data/generated/demo/task2_features/output_samples"
+  },
+  "generated_svg": [
+    "ppt_work/final_images/document_real_data/Figure36_Task1_Task2_L1_L6_Performance.svg",
+    "ppt_work/final_images/document_real_data/Figure20_Task1_L6_RangeDoppler_CPU_GPU.svg",
+    "ppt_work/final_images/document_real_data/Figure21_Task1_L6_CFAR_Detection_Overlay.svg",
+    "ppt_work/final_images/document_real_data/Figure22_Task1_L6_Ambiguity_Function_Surface.svg",
+    "ppt_work/final_images/document_real_data/Figure31_Task2_L6_Spectrogram_CPU_GPU.svg",
+    "ppt_work/final_images/document_real_data/Figure32_Task2_L6_CWT_CPU_GPU.svg",
+    "ppt_work/final_images/document_real_data/Figure33_Task2_L6_Feature_Score_Peak.svg",
+    "ppt_work/final_images/document_real_data/Figure34_Task2_L6_Kalman_Track_CPU_GPU_Truth.svg"
+  ],
+  "generated_png": [
+    "ppt_work/final_images/document_real_data/Figure36_Task1_Task2_L1_L6_Performance.png",
+    "ppt_work/final_images/document_real_data/Figure20_Task1_L6_RangeDoppler_CPU_GPU.png",
+    "ppt_work/final_images/document_real_data/Figure21_Task1_L6_CFAR_Detection_Overlay.png",
+    "ppt_work/final_images/document_real_data/Figure22_Task1_L6_Ambiguity_Function_Surface.png",
+    "ppt_work/final_images/document_real_data/Figure31_Task2_L6_Spectrogram_CPU_GPU.png",
+    "ppt_work/final_images/document_real_data/Figure32_Task2_L6_CWT_CPU_GPU.png",
+    "ppt_work/final_images/document_real_data/Figure33_Task2_L6_Feature_Score_Peak.png",
+    "ppt_work/final_images/document_real_data/Figure34_Task2_L6_Kalman_Track_CPU_GPU_Truth.png"
+  ],
+  "missing_output_samples": [],
+  "notes": [
+    "性能数据只来自 data/reports；输出对照图只来自任务 demo 生成的 CSV。",
+    "未生成的图表示宿主机当前缺少对应 output_samples，不能以 AI 或报告中的标量指标替代。"
+  ]
+}

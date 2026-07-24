@@ -1,0 +1,175 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1600" height="900" viewBox="0 0 1600 900">
+  <rect width="100%" height="100%" fill="#FFFFFF"/>
+  <style>text { font-family: Noto Sans CJK SC, Noto Sans CJK, sans-serif; fill: #102A43; }</style>
+  <text x="800.0" y="48.0" font-size="36" text-anchor="middle" fill="#102A43" font-weight="700">Task1 / Task2：L1—L6 真实端到端性能</text>
+  <rect x="55.0" y="85.0" width="735.0" height="360.0" rx="16.0" fill="#FFFFFF" stroke="#B8C7D9" stroke-width="2"/>
+  <text x="79.0" y="127.0" font-size="28" text-anchor="start" fill="#102A43" font-weight="700">Task1 雷达任务</text>
+  <line x1="140.0" y1="170.0" x2="140.0" y2="365.0" stroke="#8FA5BA" stroke-width="2.0"/>
+  <line x1="140.0" y1="365.0" x2="755.0" y2="365.0" stroke="#8FA5BA" stroke-width="2.0"/>
+  <line x1="140.0" y1="365.0" x2="140.0" y2="373.0" stroke="#8FA5BA" stroke-width="2.0"/>
+  <text x="140.0" y="403.0" font-size="20" text-anchor="middle" fill="#627D98" font-weight="400">L1</text>
+  <line x1="263.0" y1="365.0" x2="263.0" y2="373.0" stroke="#8FA5BA" stroke-width="2.0"/>
+  <text x="263.0" y="403.0" font-size="20" text-anchor="middle" fill="#627D98" font-weight="400">L2</text>
+  <line x1="386.0" y1="365.0" x2="386.0" y2="373.0" stroke="#8FA5BA" stroke-width="2.0"/>
+  <text x="386.0" y="403.0" font-size="20" text-anchor="middle" fill="#627D98" font-weight="400">L3</text>
+  <line x1="509.0" y1="365.0" x2="509.0" y2="373.0" stroke="#8FA5BA" stroke-width="2.0"/>
+  <text x="509.0" y="403.0" font-size="20" text-anchor="middle" fill="#627D98" font-weight="400">L4</text>
+  <line x1="632.0" y1="365.0" x2="632.0" y2="373.0" stroke="#8FA5BA" stroke-width="2.0"/>
+  <text x="632.0" y="403.0" font-size="20" text-anchor="middle" fill="#627D98" font-weight="400">L5</text>
+  <line x1="755.0" y1="365.0" x2="755.0" y2="373.0" stroke="#8FA5BA" stroke-width="2.0"/>
+  <text x="755.0" y="403.0" font-size="20" text-anchor="middle" fill="#627D98" font-weight="400">L6</text>
+  <line x1="140.0" y1="365.0" x2="755.0" y2="365.0" stroke="#D9E2EC" stroke-width="2.0" stroke-dasharray="5 7"/>
+  <text x="126.0" y="372.0" font-size="17" text-anchor="end" fill="#627D98" font-weight="400">1</text>
+  <line x1="140.0" y1="300.0" x2="755.0" y2="300.0" stroke="#D9E2EC" stroke-width="2.0" stroke-dasharray="5 7"/>
+  <text x="126.0" y="307.0" font-size="17" text-anchor="end" fill="#627D98" font-weight="400">10</text>
+  <line x1="140.0" y1="235.0" x2="755.0" y2="235.0" stroke="#D9E2EC" stroke-width="2.0" stroke-dasharray="5 7"/>
+  <text x="126.0" y="242.0" font-size="17" text-anchor="end" fill="#627D98" font-weight="400">100</text>
+  <line x1="140.0" y1="170.0" x2="755.0" y2="170.0" stroke="#D9E2EC" stroke-width="2.0" stroke-dasharray="5 7"/>
+  <text x="126.0" y="177.0" font-size="17" text-anchor="end" fill="#627D98" font-weight="400">1000</text>
+  <path d="M 140.0 217.3 L 263.0 216.3 L 386.0 213.7 L 509.0 211.7 L 632.0 205.7 L 755.0 197.6" fill="none" stroke="#174A8B" stroke-width="4.0" stroke-linejoin="round"/>
+  <path d="M 140.0 310.7 L 263.0 308.8 L 386.0 307.0 L 509.0 307.1 L 632.0 298.5 L 755.0 295.9" fill="none" stroke="#00A6C8" stroke-width="4.0" stroke-linejoin="round"/>
+  <circle cx="140.0" cy="217.3" r="6.0" fill="#174A8B"/>
+  <circle cx="263.0" cy="216.3" r="6.0" fill="#174A8B"/>
+  <circle cx="386.0" cy="213.7" r="6.0" fill="#174A8B"/>
+  <circle cx="509.0" cy="211.7" r="6.0" fill="#174A8B"/>
+  <circle cx="632.0" cy="205.7" r="6.0" fill="#174A8B"/>
+  <circle cx="755.0" cy="197.6" r="6.0" fill="#174A8B"/>
+  <circle cx="140.0" cy="310.7" r="6.0" fill="#00A6C8"/>
+  <circle cx="263.0" cy="308.8" r="6.0" fill="#00A6C8"/>
+  <circle cx="386.0" cy="307.0" r="6.0" fill="#00A6C8"/>
+  <circle cx="509.0" cy="307.1" r="6.0" fill="#00A6C8"/>
+  <circle cx="632.0" cy="298.5" r="6.0" fill="#00A6C8"/>
+  <circle cx="755.0" cy="295.9" r="6.0" fill="#00A6C8"/>
+  <text x="140.0" y="153.0" font-size="18" text-anchor="start" fill="#627D98" font-weight="400">总耗时 / ms（对数坐标）</text>
+  <line x1="545.0" y1="130.0" x2="580.0" y2="130.0" stroke="#174A8B" stroke-width="4"/>
+  <text x="590.0" y="137.0" font-size="18" text-anchor="start" fill="#627D98" font-weight="400">CPU</text>
+  <line x1="660.0" y1="130.0" x2="695.0" y2="130.0" stroke="#00A6C8" stroke-width="4"/>
+  <text x="705.0" y="137.0" font-size="18" text-anchor="start" fill="#627D98" font-weight="400">GPU E2E</text>
+  <rect x="810.0" y="85.0" width="735.0" height="360.0" rx="16.0" fill="#FFFFFF" stroke="#B8C7D9" stroke-width="2"/>
+  <text x="834.0" y="127.0" font-size="28" text-anchor="start" fill="#102A43" font-weight="700">Task1 加速比</text>
+  <line x1="895.0" y1="170.0" x2="895.0" y2="365.0" stroke="#8FA5BA" stroke-width="2.0"/>
+  <line x1="895.0" y1="365.0" x2="1510.0" y2="365.0" stroke="#8FA5BA" stroke-width="2.0"/>
+  <line x1="895.0" y1="365.0" x2="895.0" y2="373.0" stroke="#8FA5BA" stroke-width="2.0"/>
+  <text x="895.0" y="403.0" font-size="20" text-anchor="middle" fill="#627D98" font-weight="400">L1</text>
+  <line x1="1018.0" y1="365.0" x2="1018.0" y2="373.0" stroke="#8FA5BA" stroke-width="2.0"/>
+  <text x="1018.0" y="403.0" font-size="20" text-anchor="middle" fill="#627D98" font-weight="400">L2</text>
+  <line x1="1141.0" y1="365.0" x2="1141.0" y2="373.0" stroke="#8FA5BA" stroke-width="2.0"/>
+  <text x="1141.0" y="403.0" font-size="20" text-anchor="middle" fill="#627D98" font-weight="400">L3</text>
+  <line x1="1264.0" y1="365.0" x2="1264.0" y2="373.0" stroke="#8FA5BA" stroke-width="2.0"/>
+  <text x="1264.0" y="403.0" font-size="20" text-anchor="middle" fill="#627D98" font-weight="400">L4</text>
+  <line x1="1387.0" y1="365.0" x2="1387.0" y2="373.0" stroke="#8FA5BA" stroke-width="2.0"/>
+  <text x="1387.0" y="403.0" font-size="20" text-anchor="middle" fill="#627D98" font-weight="400">L5</text>
+  <line x1="1510.0" y1="365.0" x2="1510.0" y2="373.0" stroke="#8FA5BA" stroke-width="2.0"/>
+  <text x="1510.0" y="403.0" font-size="20" text-anchor="middle" fill="#627D98" font-weight="400">L6</text>
+  <line x1="895.0" y1="365.0" x2="1510.0" y2="365.0" stroke="#D9E2EC" stroke-width="2.0" stroke-dasharray="5 7"/>
+  <text x="881.0" y="372.0" font-size="17" text-anchor="end" fill="#627D98" font-weight="400">0×</text>
+  <line x1="895.0" y1="316.2" x2="1510.0" y2="316.2" stroke="#D9E2EC" stroke-width="2.0" stroke-dasharray="5 7"/>
+  <text x="881.0" y="323.2" font-size="17" text-anchor="end" fill="#627D98" font-weight="400">10×</text>
+  <line x1="895.0" y1="267.5" x2="1510.0" y2="267.5" stroke="#D9E2EC" stroke-width="2.0" stroke-dasharray="5 7"/>
+  <text x="881.0" y="274.5" font-size="17" text-anchor="end" fill="#627D98" font-weight="400">20×</text>
+  <line x1="895.0" y1="218.8" x2="1510.0" y2="218.8" stroke="#D9E2EC" stroke-width="2.0" stroke-dasharray="5 7"/>
+  <text x="881.0" y="225.8" font-size="17" text-anchor="end" fill="#627D98" font-weight="400">30×</text>
+  <line x1="895.0" y1="170.0" x2="1510.0" y2="170.0" stroke="#D9E2EC" stroke-width="2.0" stroke-dasharray="5 7"/>
+  <text x="881.0" y="177.0" font-size="17" text-anchor="end" fill="#627D98" font-weight="400">40×</text>
+  <path d="M 895.0 231.3 L 1018.0 235.9 L 1141.0 232.4 L 1264.0 221.4 L 1387.0 234.3 L 1510.0 206.4" fill="none" stroke="#F28E2B" stroke-width="5" stroke-linejoin="round"/>
+  <circle cx="895.0" cy="231.3" r="7.0" fill="#F28E2B"/>
+  <circle cx="1018.0" cy="235.9" r="7.0" fill="#F28E2B"/>
+  <circle cx="1141.0" cy="232.4" r="7.0" fill="#F28E2B"/>
+  <circle cx="1264.0" cy="221.4" r="7.0" fill="#F28E2B"/>
+  <circle cx="1387.0" cy="234.3" r="7.0" fill="#F28E2B"/>
+  <circle cx="1510.0" cy="206.4" r="7.0" fill="#F28E2B"/>
+  <text x="895.0" y="215.3" font-size="17" text-anchor="middle" fill="#F28E2B" font-weight="700">27.4×</text>
+  <text x="1018.0" y="219.9" font-size="17" text-anchor="middle" fill="#F28E2B" font-weight="700">26.5×</text>
+  <text x="1141.0" y="216.4" font-size="17" text-anchor="middle" fill="#F28E2B" font-weight="700">27.2×</text>
+  <text x="1264.0" y="205.4" font-size="17" text-anchor="middle" fill="#F28E2B" font-weight="700">29.5×</text>
+  <text x="1387.0" y="218.3" font-size="17" text-anchor="middle" fill="#F28E2B" font-weight="700">26.8×</text>
+  <text x="1510.0" y="190.4" font-size="17" text-anchor="middle" fill="#F28E2B" font-weight="700">32.5×</text>
+  <text x="895.0" y="153.0" font-size="18" text-anchor="start" fill="#627D98" font-weight="400">CPU / GPU E2E 加速比</text>
+  <rect x="55.0" y="485.0" width="735.0" height="360.0" rx="16.0" fill="#FFFFFF" stroke="#B8C7D9" stroke-width="2"/>
+  <text x="79.0" y="527.0" font-size="28" text-anchor="start" fill="#102A43" font-weight="700">Task2 特征任务</text>
+  <line x1="140.0" y1="570.0" x2="140.0" y2="765.0" stroke="#8FA5BA" stroke-width="2.0"/>
+  <line x1="140.0" y1="765.0" x2="755.0" y2="765.0" stroke="#8FA5BA" stroke-width="2.0"/>
+  <line x1="140.0" y1="765.0" x2="140.0" y2="773.0" stroke="#8FA5BA" stroke-width="2.0"/>
+  <text x="140.0" y="803.0" font-size="20" text-anchor="middle" fill="#627D98" font-weight="400">L1</text>
+  <line x1="263.0" y1="765.0" x2="263.0" y2="773.0" stroke="#8FA5BA" stroke-width="2.0"/>
+  <text x="263.0" y="803.0" font-size="20" text-anchor="middle" fill="#627D98" font-weight="400">L2</text>
+  <line x1="386.0" y1="765.0" x2="386.0" y2="773.0" stroke="#8FA5BA" stroke-width="2.0"/>
+  <text x="386.0" y="803.0" font-size="20" text-anchor="middle" fill="#627D98" font-weight="400">L3</text>
+  <line x1="509.0" y1="765.0" x2="509.0" y2="773.0" stroke="#8FA5BA" stroke-width="2.0"/>
+  <text x="509.0" y="803.0" font-size="20" text-anchor="middle" fill="#627D98" font-weight="400">L4</text>
+  <line x1="632.0" y1="765.0" x2="632.0" y2="773.0" stroke="#8FA5BA" stroke-width="2.0"/>
+  <text x="632.0" y="803.0" font-size="20" text-anchor="middle" fill="#627D98" font-weight="400">L5</text>
+  <line x1="755.0" y1="765.0" x2="755.0" y2="773.0" stroke="#8FA5BA" stroke-width="2.0"/>
+  <text x="755.0" y="803.0" font-size="20" text-anchor="middle" fill="#627D98" font-weight="400">L6</text>
+  <line x1="140.0" y1="765.0" x2="755.0" y2="765.0" stroke="#D9E2EC" stroke-width="2.0" stroke-dasharray="5 7"/>
+  <text x="126.0" y="772.0" font-size="17" text-anchor="end" fill="#627D98" font-weight="400">1</text>
+  <line x1="140.0" y1="726.0" x2="755.0" y2="726.0" stroke="#D9E2EC" stroke-width="2.0" stroke-dasharray="5 7"/>
+  <text x="126.0" y="733.0" font-size="17" text-anchor="end" fill="#627D98" font-weight="400">10</text>
+  <line x1="140.0" y1="687.0" x2="755.0" y2="687.0" stroke="#D9E2EC" stroke-width="2.0" stroke-dasharray="5 7"/>
+  <text x="126.0" y="694.0" font-size="17" text-anchor="end" fill="#627D98" font-weight="400">100</text>
+  <line x1="140.0" y1="648.0" x2="755.0" y2="648.0" stroke="#D9E2EC" stroke-width="2.0" stroke-dasharray="5 7"/>
+  <text x="126.0" y="655.0" font-size="17" text-anchor="end" fill="#627D98" font-weight="400">1000</text>
+  <line x1="140.0" y1="609.0" x2="755.0" y2="609.0" stroke="#D9E2EC" stroke-width="2.0" stroke-dasharray="5 7"/>
+  <text x="126.0" y="616.0" font-size="17" text-anchor="end" fill="#627D98" font-weight="400">10000</text>
+  <line x1="140.0" y1="570.0" x2="755.0" y2="570.0" stroke="#D9E2EC" stroke-width="2.0" stroke-dasharray="5 7"/>
+  <text x="126.0" y="577.0" font-size="17" text-anchor="end" fill="#627D98" font-weight="400">100000</text>
+  <path d="M 140.0 637.9 L 263.0 626.1 L 386.0 614.5 L 509.0 603.2 L 632.0 596.3 L 755.0 591.2" fill="none" stroke="#174A8B" stroke-width="4.0" stroke-linejoin="round"/>
+  <path d="M 140.0 736.8 L 263.0 733.2 L 386.0 724.5 L 509.0 720.4 L 632.0 713.1 L 755.0 709.1" fill="none" stroke="#00A6C8" stroke-width="4.0" stroke-linejoin="round"/>
+  <circle cx="140.0" cy="637.9" r="6.0" fill="#174A8B"/>
+  <circle cx="263.0" cy="626.1" r="6.0" fill="#174A8B"/>
+  <circle cx="386.0" cy="614.5" r="6.0" fill="#174A8B"/>
+  <circle cx="509.0" cy="603.2" r="6.0" fill="#174A8B"/>
+  <circle cx="632.0" cy="596.3" r="6.0" fill="#174A8B"/>
+  <circle cx="755.0" cy="591.2" r="6.0" fill="#174A8B"/>
+  <circle cx="140.0" cy="736.8" r="6.0" fill="#00A6C8"/>
+  <circle cx="263.0" cy="733.2" r="6.0" fill="#00A6C8"/>
+  <circle cx="386.0" cy="724.5" r="6.0" fill="#00A6C8"/>
+  <circle cx="509.0" cy="720.4" r="6.0" fill="#00A6C8"/>
+  <circle cx="632.0" cy="713.1" r="6.0" fill="#00A6C8"/>
+  <circle cx="755.0" cy="709.1" r="6.0" fill="#00A6C8"/>
+  <text x="140.0" y="553.0" font-size="18" text-anchor="start" fill="#627D98" font-weight="400">总耗时 / ms（对数坐标）</text>
+  <line x1="545.0" y1="530.0" x2="580.0" y2="530.0" stroke="#174A8B" stroke-width="4"/>
+  <text x="590.0" y="537.0" font-size="18" text-anchor="start" fill="#627D98" font-weight="400">CPU</text>
+  <line x1="660.0" y1="530.0" x2="695.0" y2="530.0" stroke="#00A6C8" stroke-width="4"/>
+  <text x="705.0" y="537.0" font-size="18" text-anchor="start" fill="#627D98" font-weight="400">GPU E2E</text>
+  <rect x="810.0" y="485.0" width="735.0" height="360.0" rx="16.0" fill="#FFFFFF" stroke="#B8C7D9" stroke-width="2"/>
+  <text x="834.0" y="527.0" font-size="28" text-anchor="start" fill="#102A43" font-weight="700">Task2 加速比</text>
+  <line x1="895.0" y1="570.0" x2="895.0" y2="765.0" stroke="#8FA5BA" stroke-width="2.0"/>
+  <line x1="895.0" y1="765.0" x2="1510.0" y2="765.0" stroke="#8FA5BA" stroke-width="2.0"/>
+  <line x1="895.0" y1="765.0" x2="895.0" y2="773.0" stroke="#8FA5BA" stroke-width="2.0"/>
+  <text x="895.0" y="803.0" font-size="20" text-anchor="middle" fill="#627D98" font-weight="400">L1</text>
+  <line x1="1018.0" y1="765.0" x2="1018.0" y2="773.0" stroke="#8FA5BA" stroke-width="2.0"/>
+  <text x="1018.0" y="803.0" font-size="20" text-anchor="middle" fill="#627D98" font-weight="400">L2</text>
+  <line x1="1141.0" y1="765.0" x2="1141.0" y2="773.0" stroke="#8FA5BA" stroke-width="2.0"/>
+  <text x="1141.0" y="803.0" font-size="20" text-anchor="middle" fill="#627D98" font-weight="400">L3</text>
+  <line x1="1264.0" y1="765.0" x2="1264.0" y2="773.0" stroke="#8FA5BA" stroke-width="2.0"/>
+  <text x="1264.0" y="803.0" font-size="20" text-anchor="middle" fill="#627D98" font-weight="400">L4</text>
+  <line x1="1387.0" y1="765.0" x2="1387.0" y2="773.0" stroke="#8FA5BA" stroke-width="2.0"/>
+  <text x="1387.0" y="803.0" font-size="20" text-anchor="middle" fill="#627D98" font-weight="400">L5</text>
+  <line x1="1510.0" y1="765.0" x2="1510.0" y2="773.0" stroke="#8FA5BA" stroke-width="2.0"/>
+  <text x="1510.0" y="803.0" font-size="20" text-anchor="middle" fill="#627D98" font-weight="400">L6</text>
+  <line x1="895.0" y1="765.0" x2="1510.0" y2="765.0" stroke="#D9E2EC" stroke-width="2.0" stroke-dasharray="5 7"/>
+  <text x="881.0" y="772.0" font-size="17" text-anchor="end" fill="#627D98" font-weight="400">0×</text>
+  <line x1="895.0" y1="716.2" x2="1510.0" y2="716.2" stroke="#D9E2EC" stroke-width="2.0" stroke-dasharray="5 7"/>
+  <text x="881.0" y="723.2" font-size="17" text-anchor="end" fill="#627D98" font-weight="400">500×</text>
+  <line x1="895.0" y1="667.5" x2="1510.0" y2="667.5" stroke="#D9E2EC" stroke-width="2.0" stroke-dasharray="5 7"/>
+  <text x="881.0" y="674.5" font-size="17" text-anchor="end" fill="#627D98" font-weight="400">1000×</text>
+  <line x1="895.0" y1="618.8" x2="1510.0" y2="618.8" stroke="#D9E2EC" stroke-width="2.0" stroke-dasharray="5 7"/>
+  <text x="881.0" y="625.8" font-size="17" text-anchor="end" fill="#627D98" font-weight="400">1500×</text>
+  <line x1="895.0" y1="570.0" x2="1510.0" y2="570.0" stroke="#D9E2EC" stroke-width="2.0" stroke-dasharray="5 7"/>
+  <text x="881.0" y="577.0" font-size="17" text-anchor="end" fill="#627D98" font-weight="400">2000×</text>
+  <path d="M 895.0 731.5 L 1018.0 710.5 L 1141.0 700.7 L 1264.0 666.1 L 1387.0 668.3 L 1510.0 662.3" fill="none" stroke="#F28E2B" stroke-width="5" stroke-linejoin="round"/>
+  <circle cx="895.0" cy="731.5" r="7.0" fill="#F28E2B"/>
+  <circle cx="1018.0" cy="710.5" r="7.0" fill="#F28E2B"/>
+  <circle cx="1141.0" cy="700.7" r="7.0" fill="#F28E2B"/>
+  <circle cx="1264.0" cy="666.1" r="7.0" fill="#F28E2B"/>
+  <circle cx="1387.0" cy="668.3" r="7.0" fill="#F28E2B"/>
+  <circle cx="1510.0" cy="662.3" r="7.0" fill="#F28E2B"/>
+  <text x="895.0" y="715.5" font-size="17" text-anchor="middle" fill="#F28E2B" font-weight="700">343.1×</text>
+  <text x="1018.0" y="694.5" font-size="17" text-anchor="middle" fill="#F28E2B" font-weight="700">559.0×</text>
+  <text x="1141.0" y="684.7" font-size="17" text-anchor="middle" fill="#F28E2B" font-weight="700">659.0×</text>
+  <text x="1264.0" y="650.1" font-size="17" text-anchor="middle" fill="#F28E2B" font-weight="700">1014.4×</text>
+  <text x="1387.0" y="652.3" font-size="17" text-anchor="middle" fill="#F28E2B" font-weight="700">992.2×</text>
+  <text x="1510.0" y="646.3" font-size="17" text-anchor="middle" fill="#F28E2B" font-weight="700">1053.3×</text>
+  <text x="895.0" y="553.0" font-size="18" text-anchor="start" fill="#627D98" font-weight="400">CPU / GPU E2E 加速比</text>
+</svg>
