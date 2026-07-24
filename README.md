@@ -201,21 +201,24 @@ scripts/pull_results.sh --container gpu_04 --promote-reports
 /CETC/scripts/ppt_performance.sh --print-only
 ```
 
-现场只演示赛题基础目录和两个任务最高加速比规模时，使用专用命令：
+现场需在 4 分 30 秒内完成赛题基础目录与两条任务的全链路演示时，使用专用命令：
 
 ```bash
-# 上台前完成构建；现场只复用二进制
-/CETC/scripts/build.sh --build-dir build-zx
+# 上台前仅构建现场所需的 53 个算子测试和两个任务 demo；不执行任何测量
+/CETC/scripts/build.sh --build-dir build-zx --live-demo
 
-# 现场实测 core53（53 个）perf case；Task1/Task2 自动选当前正式报告中加速比最高的规模，
-# 终端只打印 core53 和两个任务的单行结果；本轮快照直接写入既有 reports/units 与 reports/demo
+# 现场逐个执行 core53（53 个）缩小规模的 perf 输入，warmup=1、repeat=1。
+# Task1 / Task2 均采用正式统一协议的 L6 输入（分别为 128×4096、128×3072），repeat=1，均在同进程完成一次 GPU 预热后计时。
+# 终端仅打印 core53 与两条任务的耗时、CPU/GPU 加速比；本轮快照写入既有 reports/units 与 reports/demo。
 /CETC/scripts/ppt_performance.sh --live-demo --no-build
 ```
 
-当前正式报告中两个任务的最高加速比规模均为 `L6`：Task1 为 `33.094558×`，Task2 为
-`1048.778098×`。`--live-demo` 每次仍会从正式 L1～L6 报告重新选择最大值，不把该结论硬编码
-为固定规模；现场运行使用 `core53 / perf / warmup=1 / repeat=1` 和任务 `repeat=1`，因此是
-演示复核，不替代正式 `warmup/repeat` 协议的结果发布。
+`--live-demo` 固定使用 `core53 / perf / warmup=1 / repeat=1` 和任务 `L6 / repeat=1`。启动时脚本会
+在 `/tmp` 生成 53 份临时 perf manifest：每个算子保留一个原有性能用例，并将输入工作量约缩小为原来的
+`1/16`；CPU/GPU 仍按性能路径计时并打印耗时、加速比。临时目录在命令结束后删除，仓库内的正式 manifest、
+accuracy 输入和完整复测结果均不被修改。两个任务仍使用 L6：任务一保留原有 GPU pipeline 预热，任务二在
+同一进程补充一次完整 GPU pipeline 预热；两者均保留时间校验与结果落盘流程。正式 L1～L6 性能结论仍只
+使用完整统一复测报告。
 
 现场模式不会新建目录，完成后仅增加以下四个快照文件，并更新 `data/reports/FILES.sha256`：
 
@@ -223,6 +226,7 @@ scripts/pull_results.sh --container gpu_04 --promote-reports
 - `data/reports/demo/live_demo_tasks.json`、`data/reports/demo/live_demo_tasks.csv`
 
 它们明确标注为现场复核快照，不替代 `units/benchmarks/summary.json` 或任务的正式 L1～L6 报告。
+其中算子快照记录本次缩小规模 perf 输入下的 CPU/GPU 耗时与加速比，仅用于现场展示，不替代正式性能数据。
 
 默认算子测量为 `all81`、`case-set=full`、`warmup=5`、`repeat=30`；每行的加速比是
 结构化结果中直接记录的 `CPU median / GPU E2E median`。任务测量默认 `repeat=7`，

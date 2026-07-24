@@ -27,6 +27,7 @@
 
 #include "../../../include/cusignal/filtering/filtering.hpp"
 #include "../../../include/cusignal/core/helpers.hpp"
+#include "../common/live_perf.hpp"
 #include "../common/json.hpp"
 #include "../common/report.hpp"
 
@@ -270,7 +271,9 @@ namespace
 
     fs::path generated_root(const std::string &op)
     {
-        return repo_root() / "data" / "generated" / "unit" / "filtering" / op;
+        return cusignal_test::live_perf::generated_unit_root(
+                   repo_root() / "data" / "generated" / "unit") /
+               "filtering" / op;
     }
 
     fs::path report_root(const std::string &op)

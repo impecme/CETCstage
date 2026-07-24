@@ -2739,6 +2739,13 @@ namespace cusignal_demo::task2_features
             task_inputs.rx_frames,
             task_inputs.truth_track,
             cpu_inputs);
+
+        // Keep the measured GPU path in the same process, after its one-time
+        // runtime and operator workspace preparation has completed.
+        {
+            auto gpu_warmup_result = run_gpu_pipeline(config, gpu_inputs);
+            (void)gpu_warmup_result;
+        }
         const auto [gpu_device, gpu_timings] = run_gpu_pipeline(config, gpu_inputs);
         const HostGpuArtifacts gpu = materialize_gpu_artifacts(gpu_device);
 

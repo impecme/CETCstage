@@ -18,6 +18,7 @@
 
 #include "../../../include/cusignal/core/helpers.hpp"
 #include "../../../include/cusignal/correlate/correlate.hpp"
+#include "../common/live_perf.hpp"
 #include "../common/report.hpp"
 
 namespace fs = std::filesystem;
@@ -135,7 +136,9 @@ namespace
 
     fs::path generated_root(const std::string &op)
     {
-        return repo_root() / "data" / "generated" / "unit" / "correlate" / op;
+        return cusignal_test::live_perf::generated_unit_root(
+                   repo_root() / "data" / "generated" / "unit") /
+               "correlate" / op;
     }
 
     fs::path report_root(const std::string &op)
@@ -952,106 +955,109 @@ namespace
     Summary run_correlate_impl(const CliOptions &options)
     {
         Summary summary;
-        for (const CorrCase &test_case : correlate_accuracy_cases())
+        if (options.case_set != "perf")
         {
-            summary.accuracy_cases += 1;
-            if (!test_case.is_complex)
+            for (const CorrCase &test_case : correlate_accuracy_cases())
             {
-                if (test_case.dtype != "float32")
+                summary.accuracy_cases += 1;
+                if (!test_case.is_complex)
                 {
-                    evaluate_numeric_compat_case(test_case, summary, false);
-                    continue;
+                    if (test_case.dtype != "float32")
+                    {
+                        evaluate_numeric_compat_case(test_case, summary, false);
+                        continue;
+                    }
+                    const RealArray cpu =
+                        cusignal::cpu::correlate::correlate(
+                            test_case.in1_real, test_case.in2_real, test_case.mode, test_case.method);
+                    const ZxGpuRealArray gpu =
+                        cusignal::zx_gpu_backend::correlate::correlate(
+                            test_case.in1_real, test_case.in2_real, test_case.mode, test_case.method);
+                    const RealArray gpu_host = gpu.get();
+                    const ErrorMetrics cpu_gpu = compare_real(cpu.values, gpu_host.values);
+                    const ErrorMetrics cpu_ref = compare_real(cpu.values, test_case.expected_real.values);
+                    const ErrorMetrics gpu_ref = compare_real(gpu_host.values, test_case.expected_real.values);
+                    summary.cpu_gpu_error.max_abs_error =
+                        std::max(summary.cpu_gpu_error.max_abs_error, cpu_gpu.max_abs_error);
+                    summary.cpu_gpu_error.max_rel_error =
+                        std::max(summary.cpu_gpu_error.max_rel_error, cpu_gpu.max_rel_error);
+                    summary.cpu_gpu_error.rmse =
+                        std::max(summary.cpu_gpu_error.rmse, cpu_gpu.rmse);
+                    summary.reference_error.max_abs_error =
+                        std::max({summary.reference_error.max_abs_error, cpu_ref.max_abs_error, gpu_ref.max_abs_error});
+                    summary.reference_error.max_rel_error =
+                        std::max({summary.reference_error.max_rel_error, cpu_ref.max_rel_error, gpu_ref.max_rel_error});
+                    summary.reference_error.rmse =
+                        std::max({summary.reference_error.rmse, cpu_ref.rmse, gpu_ref.rmse});
+                    summary.pass = summary.pass &&
+                                   cpu_ref.max_abs_error < 1e-4f &&
+                                   gpu_ref.max_abs_error < 1e-4f;
                 }
-                const RealArray cpu =
-                    cusignal::cpu::correlate::correlate(
-                        test_case.in1_real, test_case.in2_real, test_case.mode, test_case.method);
-                const ZxGpuRealArray gpu =
-                    cusignal::zx_gpu_backend::correlate::correlate(
-                        test_case.in1_real, test_case.in2_real, test_case.mode, test_case.method);
-                const RealArray gpu_host = gpu.get();
-                const ErrorMetrics cpu_gpu = compare_real(cpu.values, gpu_host.values);
-                const ErrorMetrics cpu_ref = compare_real(cpu.values, test_case.expected_real.values);
-                const ErrorMetrics gpu_ref = compare_real(gpu_host.values, test_case.expected_real.values);
-                summary.cpu_gpu_error.max_abs_error =
-                    std::max(summary.cpu_gpu_error.max_abs_error, cpu_gpu.max_abs_error);
-                summary.cpu_gpu_error.max_rel_error =
-                    std::max(summary.cpu_gpu_error.max_rel_error, cpu_gpu.max_rel_error);
-                summary.cpu_gpu_error.rmse =
-                    std::max(summary.cpu_gpu_error.rmse, cpu_gpu.rmse);
-                summary.reference_error.max_abs_error =
-                    std::max({summary.reference_error.max_abs_error, cpu_ref.max_abs_error, gpu_ref.max_abs_error});
-                summary.reference_error.max_rel_error =
-                    std::max({summary.reference_error.max_rel_error, cpu_ref.max_rel_error, gpu_ref.max_rel_error});
-                summary.reference_error.rmse =
-                    std::max({summary.reference_error.rmse, cpu_ref.rmse, gpu_ref.rmse});
-                summary.pass = summary.pass &&
-                               cpu_ref.max_abs_error < 1e-4f &&
-                               gpu_ref.max_abs_error < 1e-4f;
+                else
+                {
+                    const ComplexArray cpu =
+                        cusignal::cpu::correlate::correlate(
+                            test_case.in1_complex, test_case.in2_complex, test_case.mode, test_case.method);
+                    const ZxGpuComplexArray gpu =
+                        cusignal::zx_gpu_backend::correlate::correlate(
+                            test_case.in1_complex, test_case.in2_complex, test_case.mode, test_case.method);
+                    const ComplexArray gpu_host = gpu.get();
+                    const ErrorMetrics cpu_gpu = compare_complex(cpu.values, gpu_host.values);
+                    const ErrorMetrics cpu_ref = compare_complex(cpu.values, test_case.expected_complex.values);
+                    const ErrorMetrics gpu_ref = compare_complex(gpu_host.values, test_case.expected_complex.values);
+                    summary.cpu_gpu_error.max_abs_error =
+                        std::max(summary.cpu_gpu_error.max_abs_error, cpu_gpu.max_abs_error);
+                    summary.cpu_gpu_error.max_rel_error =
+                        std::max(summary.cpu_gpu_error.max_rel_error, cpu_gpu.max_rel_error);
+                    summary.cpu_gpu_error.rmse =
+                        std::max(summary.cpu_gpu_error.rmse, cpu_gpu.rmse);
+                    summary.reference_error.max_abs_error =
+                        std::max({summary.reference_error.max_abs_error, cpu_ref.max_abs_error, gpu_ref.max_abs_error});
+                    summary.reference_error.max_rel_error =
+                        std::max({summary.reference_error.max_rel_error, cpu_ref.max_rel_error, gpu_ref.max_rel_error});
+                    summary.reference_error.rmse =
+                        std::max({summary.reference_error.rmse, cpu_ref.rmse, gpu_ref.rmse});
+                    summary.pass = summary.pass &&
+                                   cpu_ref.max_abs_error < 1e-4f &&
+                                   gpu_ref.max_abs_error < 1e-4f;
+                }
             }
-            else
-            {
-                const ComplexArray cpu =
-                    cusignal::cpu::correlate::correlate(
-                        test_case.in1_complex, test_case.in2_complex, test_case.mode, test_case.method);
-                const ZxGpuComplexArray gpu =
-                    cusignal::zx_gpu_backend::correlate::correlate(
-                        test_case.in1_complex, test_case.in2_complex, test_case.mode, test_case.method);
-                const ComplexArray gpu_host = gpu.get();
-                const ErrorMetrics cpu_gpu = compare_complex(cpu.values, gpu_host.values);
-                const ErrorMetrics cpu_ref = compare_complex(cpu.values, test_case.expected_complex.values);
-                const ErrorMetrics gpu_ref = compare_complex(gpu_host.values, test_case.expected_complex.values);
-                summary.cpu_gpu_error.max_abs_error =
-                    std::max(summary.cpu_gpu_error.max_abs_error, cpu_gpu.max_abs_error);
-                summary.cpu_gpu_error.max_rel_error =
-                    std::max(summary.cpu_gpu_error.max_rel_error, cpu_gpu.max_rel_error);
-                summary.cpu_gpu_error.rmse =
-                    std::max(summary.cpu_gpu_error.rmse, cpu_gpu.rmse);
-                summary.reference_error.max_abs_error =
-                    std::max({summary.reference_error.max_abs_error, cpu_ref.max_abs_error, gpu_ref.max_abs_error});
-                summary.reference_error.max_rel_error =
-                    std::max({summary.reference_error.max_rel_error, cpu_ref.max_rel_error, gpu_ref.max_rel_error});
-                summary.reference_error.rmse =
-                    std::max({summary.reference_error.rmse, cpu_ref.rmse, gpu_ref.rmse});
-                summary.pass = summary.pass &&
-                               cpu_ref.max_abs_error < 1e-4f &&
-                               gpu_ref.max_abs_error < 1e-4f;
-            }
-        }
 
-        {
-            summary.accuracy_cases += 1;
-            std::vector<float> left_values(65, 0.0f);
-            std::vector<float> right_values(65, 0.0f);
-            for (std::size_t index = 0; index < left_values.size(); ++index)
             {
-                left_values[index] = std::sin(0.07f * static_cast<float>(index));
-                right_values[index] = std::cos(0.11f * static_cast<float>(index));
+                summary.accuracy_cases += 1;
+                std::vector<float> left_values(65, 0.0f);
+                std::vector<float> right_values(65, 0.0f);
+                for (std::size_t index = 0; index < left_values.size(); ++index)
+                {
+                    left_values[index] = std::sin(0.07f * static_cast<float>(index));
+                    right_values[index] = std::cos(0.11f * static_cast<float>(index));
+                }
+                const RealArray left = make_real_array(Shape{left_values.size()}, left_values);
+                const RealArray right = make_real_array(Shape{right_values.size()}, right_values);
+                const RealArray cpu = cusignal::cpu::correlate::correlate(left, right, "same", "auto");
+                const ZxGpuRealArray gpu_device =
+                    cusignal::zx_gpu_backend::correlate::correlate(left, right, "same", "auto");
+                const bool used_fft =
+                    cusignal::zx_gpu_backend::correlate_test_hooks::last_correlation_used_fft();
+                const RealArray gpu = gpu_device.get();
+                const ErrorMetrics error = compare_real(cpu.values, gpu.values);
+                summary.cpu_gpu_error.max_abs_error =
+                    std::max(summary.cpu_gpu_error.max_abs_error, error.max_abs_error);
+                summary.cpu_gpu_error.max_rel_error =
+                    std::max(summary.cpu_gpu_error.max_rel_error, error.max_rel_error);
+                summary.cpu_gpu_error.rmse =
+                    std::max(summary.cpu_gpu_error.rmse, error.rmse);
+                summary.reference_error.max_abs_error =
+                    std::max(summary.reference_error.max_abs_error, error.max_abs_error);
+                summary.reference_error.max_rel_error =
+                    std::max(summary.reference_error.max_rel_error, error.max_rel_error);
+                summary.reference_error.rmse =
+                    std::max(summary.reference_error.rmse, error.rmse);
+                const bool contract_pass = used_fft && error.max_abs_error < 1e-4f;
+                summary.pass = summary.pass && contract_pass;
+                std::cout << "[correlate] auto_fft_path_contract="
+                          << (contract_pass ? "PASS" : "FAIL") << "\n";
             }
-            const RealArray left = make_real_array(Shape{left_values.size()}, left_values);
-            const RealArray right = make_real_array(Shape{right_values.size()}, right_values);
-            const RealArray cpu = cusignal::cpu::correlate::correlate(left, right, "same", "auto");
-            const ZxGpuRealArray gpu_device =
-                cusignal::zx_gpu_backend::correlate::correlate(left, right, "same", "auto");
-            const bool used_fft =
-                cusignal::zx_gpu_backend::correlate_test_hooks::last_correlation_used_fft();
-            const RealArray gpu = gpu_device.get();
-            const ErrorMetrics error = compare_real(cpu.values, gpu.values);
-            summary.cpu_gpu_error.max_abs_error =
-                std::max(summary.cpu_gpu_error.max_abs_error, error.max_abs_error);
-            summary.cpu_gpu_error.max_rel_error =
-                std::max(summary.cpu_gpu_error.max_rel_error, error.max_rel_error);
-            summary.cpu_gpu_error.rmse =
-                std::max(summary.cpu_gpu_error.rmse, error.rmse);
-            summary.reference_error.max_abs_error =
-                std::max(summary.reference_error.max_abs_error, error.max_abs_error);
-            summary.reference_error.max_rel_error =
-                std::max(summary.reference_error.max_rel_error, error.max_rel_error);
-            summary.reference_error.rmse =
-                std::max(summary.reference_error.rmse, error.rmse);
-            const bool contract_pass = used_fft && error.max_abs_error < 1e-4f;
-            summary.pass = summary.pass && contract_pass;
-            std::cout << "[correlate] auto_fft_path_contract="
-                      << (contract_pass ? "PASS" : "FAIL") << "\n";
         }
 
         if (options.case_set == "perf" || options.case_set == "full" || options.case_set == "smoke")
@@ -1123,9 +1129,11 @@ namespace
     Summary run_correlate2d_impl(const CliOptions &options)
     {
         Summary summary;
-        for (const CorrCase &test_case : correlate2d_accuracy_cases())
+        if (options.case_set != "perf")
         {
-            summary.accuracy_cases += 1;
+            for (const CorrCase &test_case : correlate2d_accuracy_cases())
+            {
+                summary.accuracy_cases += 1;
             if (!test_case.is_complex)
             {
                 if (test_case.dtype != "float32")
@@ -1187,6 +1195,7 @@ namespace
                                cpu_ref.max_abs_error < 1e-4f &&
                                gpu_ref.max_abs_error < 1e-4f;
             }
+            }
         }
 
         if (options.case_set == "perf" || options.case_set == "full" || options.case_set == "smoke")
@@ -1231,9 +1240,11 @@ namespace
     Summary run_lags_impl(const CliOptions &options)
     {
         Summary summary;
-        for (const LagCase &test_case : lag_accuracy_cases())
+        if (options.case_set != "perf")
         {
-            summary.accuracy_cases += 1;
+            for (const LagCase &test_case : lag_accuracy_cases())
+            {
+                summary.accuracy_cases += 1;
             const IndexVector cpu =
                 cusignal::cpu::correlate::correlation_lags(test_case.in1_len, test_case.in2_len, test_case.mode);
             const IndexVector gpu =
@@ -1245,9 +1256,10 @@ namespace
                 std::max(summary.cpu_gpu_error.max_abs_error, cpu_gpu.max_abs_error);
             summary.reference_error.max_abs_error =
                 std::max({summary.reference_error.max_abs_error, cpu_ref.max_abs_error, gpu_ref.max_abs_error});
-            summary.pass = summary.pass &&
-                           cpu_ref.max_abs_error == 0.0f &&
-                           gpu_ref.max_abs_error == 0.0f;
+                summary.pass = summary.pass &&
+                               cpu_ref.max_abs_error == 0.0f &&
+                               gpu_ref.max_abs_error == 0.0f;
+            }
         }
 
         if (options.case_set == "perf" || options.case_set == "full" || options.case_set == "smoke")

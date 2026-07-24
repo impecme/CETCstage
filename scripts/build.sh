@@ -9,6 +9,7 @@ BUILD_TYPE="${BUILD_TYPE:-Release}"
 JOBS="${JOBS:-}"
 CHECK_DEPS=1
 TARGETS=()
+LIVE_DEMO=0
 
 FFTW_VERSION="3.3.10"
 FFTW_SHA256="56c932549852cddcfafdab3820b0200c7742675be92179e59e6215b340e26467"
@@ -29,6 +30,8 @@ Options:
   --build-type TYPE   CMake build type (default: Release)
   --jobs N            Parallel build jobs (default: auto)
   --target NAME       Build one target; may be repeated (default: all)
+  --live-demo         Build only the 53 core53 test targets plus Task1/Task2 demos;
+                      do not run any measurement
   --skip-deps         Skip SDK/FFTW dependency checks
   -h, --help          Show this help
 
@@ -87,6 +90,10 @@ while [[ $# -gt 0 ]]; do
       TARGETS+=("$2")
       shift 2
       ;;
+    --live-demo)
+      LIVE_DEMO=1
+      shift
+      ;;
     --skip-deps)
       CHECK_DEPS=0
       shift
@@ -100,6 +107,59 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+if [[ "${LIVE_DEMO}" -eq 1 ]]; then
+  mapfile -t LIVE_DEMO_UNIT_TARGETS < <(
+    python3 - "${PROJECT_ROOT}/tests/contracts/operator_sets.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+sets = payload.get("sets")
+if not isinstance(sets, dict):
+    raise SystemExit("operator_sets.json missing sets")
+all81_item = sets.get("all81")
+all81 = all81_item.get("operators") if isinstance(all81_item, dict) else None
+if not isinstance(all81, list) or len(all81) != 81:
+    raise SystemExit("operator_sets.json has invalid all81")
+
+def resolve(name, resolving=None):
+    resolving = set() if resolving is None else resolving
+    if name in resolving:
+        raise SystemExit(f"operator-set cycle: {name}")
+    item = sets.get(name)
+    if not isinstance(item, dict):
+        raise SystemExit(f"unknown operator set: {name}")
+    resolving.add(name)
+    if "operators" in item:
+        values = item["operators"]
+        if not isinstance(values, list):
+            raise SystemExit(f"invalid operators in {name}")
+        result = list(values)
+    else:
+        included = set()
+        for include in item.get("include_sets", []):
+            included.update(resolve(include, resolving))
+        excluded = set()
+        for exclude in item.get("exclude_sets", []):
+            excluded.update(resolve(exclude, resolving))
+        result = [key for key in all81 if key in included and key not in excluded]
+    resolving.remove(name)
+    return result
+
+core53 = resolve("core53")
+if len(core53) != 53:
+    raise SystemExit(f"core53 target count mismatch: {len(core53)}")
+for key in core53:
+    module, operator = key.split("/", 1)
+    print(f"{module}_test_{operator}")
+PY
+  )
+  [[ ${#LIVE_DEMO_UNIT_TARGETS[@]} -eq 53 ]] || die "expected 53 core53 test targets"
+  TARGETS+=(task1_radar_demo task2_features_demo "${LIVE_DEMO_UNIT_TARGETS[@]}")
+  echo "[build] live-demo targets: 53 core53 tests + 2 task demos"
+fi
 
 if [[ -n "${JOBS}" && ! "${JOBS}" =~ ^[1-9][0-9]*$ ]]; then
   die "--jobs must be a positive integer"

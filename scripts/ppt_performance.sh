@@ -12,13 +12,17 @@ PRINT_ONLY=0
 DO_BUILD=1
 DEMO_FAST=0
 LIVE_DEMO=0
+LIVE_PERF_SCALE_DIVISOR=16
 OPERATOR_SET="all81"
 OPERATOR_CASE_SET="full"
+OPERATOR_DISPLAY="performance"
 OPERATOR_WARMUP=5
 OPERATOR_REPEAT=30
 TASK_REPEAT=7
+LIVE_START_SECONDS=0
 OPERATOR_SET_EXPLICIT=0
 OPERATOR_CASE_SET_EXPLICIT=0
+OPERATOR_DISPLAY_EXPLICIT=0
 OPERATOR_WARMUP_EXPLICIT=0
 OPERATOR_REPEAT_EXPLICIT=0
 TASK_REPEAT_EXPLICIT=0
@@ -36,12 +40,12 @@ Options:
   --all                    Measure and print both categories (default).
   --print-only             Do not measure; print current published reports.
   --demo-fast              Demo preset: demo_top30 operators, perf cases, warmup=1, repeat=3.
-  --live-demo              Live preset: core53 perf cases (warmup=1, repeat=1) plus
-                           each task's highest-speedup formal scale (repeat=1). Results
-                           are collected in staging, then snapshotted into existing reports/
-                           units and reports/demo; only core53 and two task rows are printed.
+  --live-demo              Live preset: core53 reduced-scale performance cases (one warm-up, one measurement)
+                           and Task1/Task2 at formal L6 with one in-process GPU warm-up before timing.
+                           It prints CPU/GPU latency and CPU-over-GPU speedup for all 53 operators.
   --operator-set NAME      Operator set from tests/contracts/operator_sets.json (default: all81).
   --operator-case-set NAME Operator case set: smoke|accuracy|perf|full (default: full).
+  --operator-display MODE  Terminal operator display: performance|validation (default: performance).
   --build-dir DIR          Build directory (default: build-zx).
   --no-build               Reuse existing binaries.
   --operator-warmup N      Operator warm-up iterations (default: 5).
@@ -105,6 +109,12 @@ while [[ $# -gt 0 ]]; do
       OPERATOR_CASE_SET_EXPLICIT=1
       shift 2
       ;;
+    --operator-display)
+      [[ $# -ge 2 ]] || die "--operator-display requires a value"
+      OPERATOR_DISPLAY="$2"
+      OPERATOR_DISPLAY_EXPLICIT=1
+      shift 2
+      ;;
     --build-dir)
       [[ $# -ge 2 ]] || die "--build-dir requires a value"
       BUILD_DIR="$2"
@@ -150,10 +160,12 @@ if [[ "${LIVE_DEMO}" -eq 1 && "${DEMO_FAST}" -eq 1 ]]; then
 fi
 
 if [[ "${LIVE_DEMO}" -eq 1 ]]; then
+  LIVE_START_SECONDS=${SECONDS}
   RUN_OPERATORS=1
   RUN_TASKS=1
   [[ "${OPERATOR_SET_EXPLICIT}" -eq 1 ]] || OPERATOR_SET="core53"
   [[ "${OPERATOR_CASE_SET_EXPLICIT}" -eq 1 ]] || OPERATOR_CASE_SET="perf"
+  [[ "${OPERATOR_DISPLAY_EXPLICIT}" -eq 1 ]] || OPERATOR_DISPLAY="performance"
   [[ "${OPERATOR_WARMUP_EXPLICIT}" -eq 1 ]] || OPERATOR_WARMUP=1
   [[ "${OPERATOR_REPEAT_EXPLICIT}" -eq 1 ]] || OPERATOR_REPEAT=1
   [[ "${TASK_REPEAT_EXPLICIT}" -eq 1 ]] || TASK_REPEAT=1
@@ -177,6 +189,10 @@ case "${OPERATOR_CASE_SET}" in
   smoke|accuracy|perf|full) ;;
   *) die "--operator-case-set must be one of: smoke, accuracy, perf, full" ;;
 esac
+case "${OPERATOR_DISPLAY}" in
+  performance|validation) ;;
+  *) die "--operator-display must be one of: performance, validation" ;;
+esac
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -194,7 +210,33 @@ if [[ "${PRINT_ONLY}" -eq 0 && "${DO_BUILD}" -eq 1 ]]; then
 fi
 
 if [[ "${PRINT_ONLY}" -eq 0 && "${RUN_OPERATORS}" -eq 1 ]]; then
-  "${SCRIPT_DIR}/test_operators.sh" \
+  OPERATOR_PHASE_START=${SECONDS}
+  if [[ "${LIVE_DEMO}" -eq 1 ]]; then
+    LIVE_PERF_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/cusignal_live_perf.XXXXXX")"
+    cleanup_live_perf_root() {
+      rm -rf -- "${LIVE_PERF_ROOT}"
+    }
+    trap cleanup_live_perf_root EXIT
+    python3 "${SCRIPT_DIR}/prepare_live_perf_inputs.py" \
+      --source "${PROJECT_ROOT}/data/generated/unit" \
+      --output "${LIVE_PERF_ROOT}" \
+      --operator-set "${OPERATOR_SET}" \
+      --scale-divisor "${LIVE_PERF_SCALE_DIVISOR}"
+    echo "[ppt-performance] live-demo core53: reduced-scale performance inputs; CPU/GPU timing enabled"
+  fi
+  if [[ "${LIVE_DEMO}" -eq 1 ]]; then
+    CUSIGNAL_GENERATED_UNIT_ROOT="${LIVE_PERF_ROOT}" \
+    CUSIGNAL_LIVE_DEMO_ONE_PERF_CASE=1 \
+      "${SCRIPT_DIR}/test_operators.sh" \
+        --build-dir "${BUILD_DIR}" \
+        --no-build \
+        --operator-set "${OPERATOR_SET}" \
+        --case-set "${OPERATOR_CASE_SET}" \
+        --warmup "${OPERATOR_WARMUP}" \
+        --repeat "${OPERATOR_REPEAT}" \
+        --emit-report
+  else
+    "${SCRIPT_DIR}/test_operators.sh" \
     --build-dir "${BUILD_DIR}" \
     --no-build \
     --operator-set "${OPERATOR_SET}" \
@@ -202,42 +244,17 @@ if [[ "${PRINT_ONLY}" -eq 0 && "${RUN_OPERATORS}" -eq 1 ]]; then
     --warmup "${OPERATOR_WARMUP}" \
     --repeat "${OPERATOR_REPEAT}" \
     --emit-report
+  fi
+  if [[ "${LIVE_DEMO}" -eq 1 ]]; then
+    echo "[ppt-performance] live-demo core53 reduced-scale performance elapsed: $((SECONDS - OPERATOR_PHASE_START)) s"
+  fi
 fi
 
 if [[ "${PRINT_ONLY}" -eq 0 && "${RUN_TASKS}" -eq 1 ]]; then
   if [[ "${LIVE_DEMO}" -eq 1 ]]; then
-    task_level_for_highest_speedup() {
-      local task="$1"
-      python3 - "${PROJECT_ROOT}" "${task}" <<'PY'
-import json
-import math
-import sys
-from pathlib import Path
-
-root = Path(sys.argv[1])
-task = sys.argv[2]
-best = None
-for level in range(1, 7):
-    path = root / "data" / "reports" / "demo" / task / "scales" / f"L{level}" / "metrics.json"
-    try:
-        metrics = json.loads(path.read_text(encoding="utf-8"))
-        scenario = metrics["scenario"]
-        speedup = float(metrics["speedup"]["cpu_over_gpu"])
-    except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
-        raise SystemExit(f"cannot select live-demo scale from {path}: {error}")
-    if scenario.get("unified_scale_protocol") is not True or not math.isfinite(speedup):
-        raise SystemExit(f"invalid formal scale report: {path}")
-    candidate = (speedup, level)
-    if best is None or candidate > best:
-        best = candidate
-
-assert best is not None
-print(best[1])
-PY
-    }
-
-    TASK1_LEVEL="$(task_level_for_highest_speedup task1_radar)"
-    TASK2_LEVEL="$(task_level_for_highest_speedup task2_features)"
+    TASK_PHASE_START=${SECONDS}
+    TASK1_LEVEL=6
+    TASK2_LEVEL=6
     if [[ "${BUILD_DIR}" = /* ]]; then
       BUILD_PATH="${BUILD_DIR}"
     else
@@ -248,12 +265,13 @@ PY
     [[ -x "${TASK1_EXE}" ]] || die "missing executable: ${TASK1_EXE}"
     [[ -x "${TASK2_EXE}" ]] || die "missing executable: ${TASK2_EXE}"
 
-    echo "[ppt-performance] live-demo task1_radar: selected highest formal speedup L${TASK1_LEVEL}"
+    echo "[ppt-performance] live-demo task1_radar: formal L${TASK1_LEVEL}; original timing flow"
     "${TASK1_EXE}" --repeat "${TASK_REPEAT}" --scale-level "${TASK1_LEVEL}" \
       --unified-scale-protocol --invalid-input-checks
-    echo "[ppt-performance] live-demo task2_features: selected highest formal speedup L${TASK2_LEVEL}"
+    echo "[ppt-performance] live-demo task2_features: formal L${TASK2_LEVEL}; original timing flow"
     "${TASK2_EXE}" --repeat "${TASK_REPEAT}" --scale-level "${TASK2_LEVEL}" \
       --unified-scale-protocol --invalid-input-checks
+    echo "[ppt-performance] live-demo Task1/Task2 elapsed: $((SECONDS - TASK_PHASE_START)) s"
   else
     "${SCRIPT_DIR}/unified_scale_benchmark.sh" \
       --build-dir "${BUILD_DIR}" \
@@ -266,6 +284,7 @@ report_args=()
 if [[ "${RUN_OPERATORS}" -eq 1 ]]; then
   report_args+=(--operators)
   report_args+=(--operator-set "${OPERATOR_SET}")
+  report_args+=(--operator-display "${OPERATOR_DISPLAY}")
   if [[ "${PRINT_ONLY}" -eq 1 ]]; then
     report_args+=(--operator-source published)
   else
@@ -283,3 +302,11 @@ if [[ "${LIVE_DEMO}" -eq 1 ]]; then
 fi
 
 python3 "${SCRIPT_DIR}/ppt_performance.py" "${report_args[@]}"
+
+if [[ "${LIVE_DEMO}" -eq 1 ]]; then
+  LIVE_ELAPSED=$((SECONDS - LIVE_START_SECONDS))
+  echo "[ppt-performance] live-demo total elapsed: ${LIVE_ELAPSED} s (target: <= 270 s)"
+  if (( LIVE_ELAPSED > 270 )); then
+    echo "[ppt-performance] warning: target exceeded; confirm the GPU is otherwise idle and binaries were prebuilt." >&2
+  fi
+fi

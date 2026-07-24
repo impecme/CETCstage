@@ -17,6 +17,7 @@
 
 #include "../../../include/cusignal/core/helpers.hpp"
 #include "../../../include/cusignal/demod/demod.hpp"
+#include "../common/live_perf.hpp"
 #include "../common/json.hpp"
 #include "../common/report.hpp"
 
@@ -97,7 +98,9 @@ namespace
 
     fs::path generated_root()
     {
-        return repo_root() / "data" / "generated" / "unit" / "demod" / "fm_demod";
+        return cusignal_test::live_perf::generated_unit_root(
+                   repo_root() / "data" / "generated" / "unit") /
+               "demod" / "fm_demod";
     }
 
     fs::path report_root()

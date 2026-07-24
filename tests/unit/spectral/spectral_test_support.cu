@@ -24,6 +24,7 @@
 
 #include "../../../include/cusignal/core/helpers.hpp"
 #include "../../../include/cusignal/spectral/spectral.hpp"
+#include "../common/live_perf.hpp"
 #include "../common/json.hpp"
 #include "../common/report.hpp"
 
@@ -281,7 +282,9 @@ namespace
 
     fs::path generated_root(const std::string &op)
     {
-        return repo_root() / "data" / "generated" / "unit" / "spectral" / op;
+        return cusignal_test::live_perf::generated_unit_root(
+                   repo_root() / "data" / "generated" / "unit") /
+               "spectral" / op;
     }
 
     fs::path report_root(const std::string &op)

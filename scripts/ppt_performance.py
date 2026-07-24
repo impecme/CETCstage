@@ -60,6 +60,12 @@ def parse_args() -> argparse.Namespace:
         help="打印 tests/contracts/operator_sets.json 中的某个算子集合，默认 all81",
     )
     parser.add_argument(
+        "--operator-display",
+        choices=("performance", "validation"),
+        default="performance",
+        help="performance 显示 CPU/GPU 性能；validation 显示小规模正确性执行状态",
+    )
+    parser.add_argument(
         "--task-source",
         choices=("published", "staging"),
         default="published",
@@ -202,6 +208,32 @@ def operator_values(record: dict[str, Any]) -> tuple[float | None, float | None,
     return cpu, gpu, speedup, state
 
 
+def validation_case_count(record: dict[str, Any], field: str) -> int:
+    value = record["summary"].get(field)
+    return value if isinstance(value, int) and value >= 0 else 0
+
+
+def print_operator_validation_group(title: str, keys: list[str], records: dict[str, dict[str, Any]]) -> None:
+    print("\n" + "=" * 100)
+    print(f"{title}｜{len(keys)} 个公开算子｜小规模正确性执行")
+    print(f"{'算子':<48} {'正确性用例':>14} {'性能用例':>14} {'状态':>12}")
+    print("-" * 100)
+    passed = failed = 0
+    for key in keys:
+        record = records.get(key)
+        if record is None:
+            fail(f"缺少算子结果：{key}")
+        state = "PASS" if record["pass"] else "FAIL"
+        passed += record["pass"]
+        failed += not record["pass"]
+        print(
+            f"{key:<48} {validation_case_count(record, 'accuracy_cases'):>14} "
+            f"{validation_case_count(record, 'perf_cases'):>14} {state:>12}"
+        )
+    print("-" * 100)
+    print(f"统计：通过 {passed}/{len(keys)}；失败 {failed}。本轮仅用于现场小规模功能验证，不计入正式性能数据。")
+
+
 def print_operator_group(title: str, keys: list[str], records: dict[str, dict[str, Any]]) -> None:
     print("\n" + "=" * 112)
     print(f"{title}｜{len(keys)} 个公开算子")
@@ -228,7 +260,7 @@ def print_operator_group(title: str, keys: list[str], records: dict[str, dict[st
     print(f"统计：GPU 快于 CPU {fast}；不快于 CPU {slow}；无性能记录 {unavailable}；失败 {failed}。")
 
 
-def print_operators(source: str, operator_set: str) -> None:
+def print_operators(source: str, operator_set: str, display: str) -> None:
     task27, extended28, core53, all81, sets = operator_tiers()
     if len(set(all81)) != 81:
         fail("all81 集合不是 81 个唯一公开算子")
@@ -237,6 +269,14 @@ def print_operators(source: str, operator_set: str) -> None:
     missing = sorted(set(selected) - set(records))
     if missing:
         fail(f"性能结果未覆盖 {len(missing)} 个算子：{', '.join(missing)}")
+
+    if display == "validation":
+        print(f"\n算子验证数据源：{path}")
+        if operator_set == "core53":
+            print_operator_validation_group("赛题基础目录 core53（包含 task27）", selected, records)
+        else:
+            print_operator_validation_group(f"演示集合 {operator_set}", selected, records)
+        return
 
     print(f"\n算子性能数据源：{path}")
     print("计时口径：各算子报告中的 perf case；CPU/GPU 均为 median，speedup=CPU/GPU。")
@@ -291,7 +331,7 @@ def print_tasks(source: str) -> None:
     if source == "published":
         print("正式任务性能｜统一 L1-L6 协议：首轮 warm-up 排除，后续重复取 CPU/GPU total 中位数")
     else:
-        print("现场任务性能｜本轮暂存运行：每个任务仅执行当前正式报告中加速比最高的一个规模")
+        print("现场任务性能｜本轮暂存运行：每个任务仅执行指定的正式 L6 输入")
     for task, title in (("task1_radar", "Task1 雷达检测"), ("task2_features", "Task2 特征融合与跟踪")):
         print("\n" + title)
         if source == "published":
@@ -376,7 +416,7 @@ def write_csv(path: Path, fields: list[str], rows: list[dict[str, Any]]) -> None
     atomic_write(path, buffer.getvalue())
 
 
-def write_live_reports() -> None:
+def write_live_reports(operator_display: str) -> None:
     task27, extended28, core53, all81, sets = operator_tiers()
     del task27, extended28, all81, sets
     records, source = staging_operator_records(core53)
@@ -386,9 +426,13 @@ def write_live_reports() -> None:
         if record is None:
             fail(f"现场算子结果缺失：{key}")
         cpu, gpu, speedup, state = operator_values(record)
+        if operator_display == "validation":
+            state = "PASS" if record["pass"] else "FAIL"
         operator_rows.append(
             {
                 "operator": key,
+                "accuracy_cases": validation_case_count(record, "accuracy_cases"),
+                "perf_cases": validation_case_count(record, "perf_cases"),
                 "cpu_median_ms": cpu,
                 "gpu_e2e_median_ms": gpu,
                 "speedup_cpu_over_gpu": speedup,
@@ -400,6 +444,13 @@ def write_live_reports() -> None:
     created_at = dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat()
     unit_root = ROOT / "data/reports/units"
     demo_root = ROOT / "data/reports/demo"
+    # A source-only container deployment intentionally omits historical reports.
+    # The live-demo snapshot is nevertheless part of the normal report layout,
+    # so materialize only these two established parent directories before writing.
+    for directory in (unit_root, demo_root):
+        directory.mkdir(parents=True, exist_ok=True)
+        if not directory.is_dir() or directory.is_symlink():
+            fail(f"现场报告目录不可用：{directory}")
     unit_payload = {
         "schema": "cetc_live_demo_core53_v1",
         "generated_at": created_at,
@@ -407,7 +458,8 @@ def write_live_reports() -> None:
             "operator_set": "core53",
             "operator_count": len(core53),
             "source": str(source.relative_to(ROOT)),
-            "note": "现场复核快照；不替代 units/benchmarks/summary.json。",
+            "mode": operator_display,
+            "note": "现场复核快照；不替代 units/benchmarks/summary.json。validation 模式不产生新的性能数据。",
         },
         "operators": operator_rows,
     }
@@ -416,7 +468,7 @@ def write_live_reports() -> None:
         "generated_at": created_at,
         "scope": {
             "task_count": len(task_rows),
-            "selection": "每个任务仅执行当前正式 L1-L6 报告中加速比最高的规模。",
+            "selection": "每个任务仅执行指定的正式 L6 输入。",
             "note": "现场复核快照；不替代正式 L1-L6 规模报告。",
         },
         "tasks": task_rows,
@@ -424,7 +476,7 @@ def write_live_reports() -> None:
     atomic_write(unit_root / "live_demo_core53.json", json.dumps(unit_payload, ensure_ascii=False, indent=2) + "\n")
     write_csv(
         unit_root / "live_demo_core53.csv",
-        ["operator", "cpu_median_ms", "gpu_e2e_median_ms", "speedup_cpu_over_gpu", "status"],
+        ["operator", "accuracy_cases", "perf_cases", "cpu_median_ms", "gpu_e2e_median_ms", "speedup_cpu_over_gpu", "status"],
         operator_rows,
     )
     atomic_write(demo_root / "live_demo_tasks.json", json.dumps(demo_payload, ensure_ascii=False, indent=2) + "\n")
@@ -441,11 +493,11 @@ def write_live_reports() -> None:
 def main() -> int:
     args = parse_args()
     if args.operators:
-        print_operators(args.operator_source, args.operator_set)
+        print_operators(args.operator_source, args.operator_set, args.operator_display)
     if args.tasks:
         print_tasks(args.task_source)
     if args.write_live_reports:
-        write_live_reports()
+        write_live_reports(args.operator_display)
     return 0
 
 

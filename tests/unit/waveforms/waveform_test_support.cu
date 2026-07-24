@@ -24,6 +24,7 @@
 
 #include "../../../include/cusignal/waveforms/waveforms.hpp"
 #include "../../../src/common/waveforms_detail.hpp"
+#include "../common/live_perf.hpp"
 #include "../common/json.hpp"
 #include "../common/report.hpp"
 
@@ -232,7 +233,9 @@ namespace
 
     fs::path generated_root(const std::string &op)
     {
-        return repo_root() / "data" / "generated" / "unit" / "waveforms" / op;
+        return cusignal_test::live_perf::generated_unit_root(
+                   repo_root() / "data" / "generated" / "unit") /
+               "waveforms" / op;
     }
 
     fs::path report_root(const std::string &op)
@@ -585,6 +588,18 @@ namespace
     bool include_perf_cases(const CliOptions &options)
     {
         return options.case_set == "perf" || options.case_set == "full";
+    }
+
+    template <typename CaseType>
+    std::vector<CaseType> limit_live_perf_cases(std::vector<CaseType> cases)
+    {
+        // The live demonstration measures one representative performance input
+        // per operator. Formal perf/full runs leave every manifest case intact.
+        if (std::getenv("CUSIGNAL_LIVE_DEMO_ONE_PERF_CASE") != nullptr && cases.size() > 1)
+        {
+            cases.resize(1);
+        }
+        return cases;
     }
 
     TimingStats compute_timing_stats(const std::vector<float> &samples)
@@ -2546,7 +2561,7 @@ int run_chirp_tests(int argc, char **argv)
             "chirp",
             options,
             load_chirp_cases(reference_root("chirp") / "manifest.json", "accuracy"),
-            load_chirp_cases(generated_root("chirp") / "manifest.json", "perf"),
+            limit_live_perf_cases(load_chirp_cases(generated_root("chirp") / "manifest.json", "perf")),
             [](const ChirpCase &test_case) { return run_cpu(test_case); },
             [](const ChirpCase &test_case) { return run_gpu(test_case); },
             [](const ChirpCase &test_case) { return load_expected_chirp(test_case); },
@@ -2583,7 +2598,7 @@ int run_gausspulse_tests(int argc, char **argv)
             "gausspulse",
             options,
             load_gausspulse_cases(reference_root("gausspulse") / "manifest.json", "accuracy"),
-            load_gausspulse_cases(generated_root("gausspulse") / "manifest.json", "perf"),
+            limit_live_perf_cases(load_gausspulse_cases(generated_root("gausspulse") / "manifest.json", "perf")),
             [](const GausspulseCase &test_case) { return run_cpu(test_case); },
             [](const GausspulseCase &test_case) { return run_gpu(test_case); },
             [](const GausspulseCase &test_case) { return load_expected_gausspulse(test_case); },
@@ -2610,8 +2625,8 @@ int run_sawtooth_tests(int argc, char **argv)
             options,
             load_scalar_wave_cases<SawtoothCase>(
                 reference_root("sawtooth") / "manifest.json", "accuracy", "width_file", "width"),
-            load_scalar_wave_cases<SawtoothCase>(
-                generated_root("sawtooth") / "manifest.json", "perf", "width_file", "width"),
+            limit_live_perf_cases(load_scalar_wave_cases<SawtoothCase>(
+                generated_root("sawtooth") / "manifest.json", "perf", "width_file", "width")),
             [](const SawtoothCase &test_case) { return run_cpu(test_case); },
             [](const SawtoothCase &test_case) { return run_gpu(test_case); },
             [](const SawtoothCase &test_case) { return load_expected_signal(test_case.expected_signal_file); },
@@ -2638,8 +2653,8 @@ int run_square_tests(int argc, char **argv)
             options,
             load_scalar_wave_cases<SquareCase>(
                 reference_root("square") / "manifest.json", "accuracy", "duty_file", "duty"),
-            load_scalar_wave_cases<SquareCase>(
-                generated_root("square") / "manifest.json", "perf", "duty_file", "duty"),
+            limit_live_perf_cases(load_scalar_wave_cases<SquareCase>(
+                generated_root("square") / "manifest.json", "perf", "duty_file", "duty")),
             [](const SquareCase &test_case) { return run_cpu(test_case); },
             [](const SquareCase &test_case) { return run_gpu(test_case); },
             [](const SquareCase &test_case) { return load_expected_signal(test_case.expected_signal_file); },
@@ -2665,7 +2680,7 @@ int run_unit_impulse_tests(int argc, char **argv)
             "unit_impulse",
             options,
             load_unit_impulse_cases(reference_root("unit_impulse") / "manifest.json", "accuracy"),
-            load_unit_impulse_cases(generated_root("unit_impulse") / "manifest.json", "perf"),
+            limit_live_perf_cases(load_unit_impulse_cases(generated_root("unit_impulse") / "manifest.json", "perf")),
             [](const UnitImpulseCase &test_case) { return run_cpu(test_case); },
             [](const UnitImpulseCase &test_case) { return run_gpu(test_case); },
             [](const UnitImpulseCase &test_case) { return load_expected_unit_impulse(test_case); },

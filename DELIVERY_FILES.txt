@@ -514,6 +514,7 @@ scripts/export_unified_scale_reports.py
 scripts/finalize_reports.py
 scripts/ppt_performance.py
 scripts/ppt_performance.sh
+scripts/prepare_live_perf_inputs.py
 scripts/pull_results.sh
 scripts/replace_container_project.sh
 scripts/sync_to_container.sh
@@ -580,6 +581,7 @@ tests/unit/bsplines/test_cubic.cpp
 tests/unit/bsplines/test_gauss_spline.cpp
 tests/unit/bsplines/test_quadratic.cpp
 tests/unit/common/json.hpp
+tests/unit/common/live_perf.hpp
 tests/unit/common/report.hpp
 tests/unit/core_types/CMakeLists.txt
 tests/unit/core_types/test_type_contracts.cu
