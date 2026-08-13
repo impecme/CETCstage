@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <cmath>
 #include <filesystem>
 #include <fstream>
@@ -31,6 +32,58 @@ namespace cusignal_demo::report
         // CUDA events measure work queued between the two events on the GPU stream.
         float gpu_kernel_ms = std::numeric_limits<float>::quiet_NaN();
     };
+
+    // Timing aggregation is deliberately shared by both task demos.  The
+    // reported task timing is the median of the per-repeat measurements, not
+    // the last iteration.  An even sample count uses the midpoint of the two
+    // central samples, which is the conventional statistical median.
+    inline float median_ms(std::vector<float> values)
+    {
+        if (values.empty())
+            return 0.0f;
+        std::sort(values.begin(), values.end());
+        const std::size_t middle = values.size() / 2;
+        if ((values.size() & 1U) != 0U)
+            return values[middle];
+        return 0.5f * (values[middle - 1] + values[middle]);
+    }
+
+    inline std::vector<StageTiming> median_stage_timings(
+        const std::vector<std::vector<StageTiming>> &runs)
+    {
+        if (runs.empty())
+            return {};
+        const std::size_t stage_count = runs.front().size();
+        std::vector<StageTiming> result;
+        result.reserve(stage_count);
+        for (std::size_t stage = 0; stage < stage_count; ++stage)
+        {
+            StageTiming timing;
+            timing.name = runs.front()[stage].name;
+            std::vector<float> cpu_values;
+            std::vector<float> gpu_values;
+            std::vector<float> kernel_values;
+            cpu_values.reserve(runs.size());
+            gpu_values.reserve(runs.size());
+            kernel_values.reserve(runs.size());
+            for (const auto &run : runs)
+            {
+                if (stage >= run.size())
+                    continue;
+                cpu_values.push_back(run[stage].cpu_ms);
+                gpu_values.push_back(run[stage].gpu_ms);
+                if (std::isfinite(run[stage].gpu_kernel_ms))
+                    kernel_values.push_back(run[stage].gpu_kernel_ms);
+            }
+            timing.cpu_ms = median_ms(std::move(cpu_values));
+            timing.gpu_ms = median_ms(std::move(gpu_values));
+            timing.gpu_kernel_ms = kernel_values.empty()
+                ? std::numeric_limits<float>::quiet_NaN()
+                : median_ms(std::move(kernel_values));
+            result.push_back(std::move(timing));
+        }
+        return result;
+    }
 
     template <typename Value>
     struct GpuMeasurement

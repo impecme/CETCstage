@@ -18,6 +18,12 @@ namespace cusignal_demo::task2_features
         cusignal::core::ZxGpuRealArray &real_output);
     bool task2_fixed_fft_filter_enabled_zx_gpu();
 
+    struct FusionKernelTiming
+    {
+        float smooth_ms = 0.0f;
+        float peak_ms = 0.0f;
+    };
+
     cusignal::core::ZxGpuComplexArray extract_row_complex_zx_gpu(
         const cusignal::core::ZxGpuComplexArray &input,
         int row_index);
@@ -94,7 +100,8 @@ namespace cusignal_demo::task2_features
         const cusignal::core::ZxGpuRealSignal &weights,
         int peak_order,
         cusignal::core::ZxGpuRealArray &feature_scores,
-        cusignal::core::ZxGpuRealSignal &peak_track);
+        cusignal::core::ZxGpuRealSignal &peak_track,
+        FusionKernelTiming *kernel_timing = nullptr);
     cusignal::core::ZxGpuRealSignal kalman_track_from_peaks_zx_gpu(
         const cusignal::core::ZxGpuRealSignal &peak_track);
     cusignal::core::ZxGpuRealSignal copy_measurement_track_zx_gpu(

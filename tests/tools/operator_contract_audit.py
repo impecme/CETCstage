@@ -5,9 +5,12 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import subprocess
+import zipfile
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any, Iterable, Tuple
 
@@ -18,8 +21,17 @@ OperatorKey = Tuple[str, str]
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--registry", default="")
-    parser.add_argument("--runner", default="scripts/test_operators.sh")
+    parser.add_argument(
+        "--runner",
+        default="",
+        help="optional compatible registry runner; otherwise pass --registry",
+    )
     parser.add_argument("--sets", default="tests/contracts/operator_sets.json")
+    parser.add_argument(
+        "--appendix-xlsx",
+        default="",
+        help="optional XLSX source used to verify task_appendix exactly",
+    )
     parser.add_argument("--build-dir", default="build-zx")
     parser.add_argument("--platform", default="ZHONGKEXIN")
     parser.add_argument("--summary-json", default="")
@@ -55,6 +67,84 @@ def load_operator_set_config(path: Path) -> dict[str, Any]:
     if not isinstance(sets, dict) or not sets:
         raise ValueError(f"operator set file has no sets: {path}")
     return payload
+
+
+def load_appendix_from_xlsx(path: Path) -> set[OperatorKey]:
+    """Read the operator-name column from the small appendix workbook.
+
+    The repository deliberately avoids an openpyxl dependency.  The workbook
+    is an ordinary XLSX package, so reading shared strings and column B is
+    sufficient and makes the source check reproducible in the container.
+    """
+    namespace = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+    ns = {"x": namespace}
+    try:
+        with zipfile.ZipFile(path) as archive:
+            shared_root = ET.fromstring(archive.read("xl/sharedStrings.xml"))
+            shared: list[str] = []
+            for item in shared_root.findall("x:si", ns):
+                shared.append("".join(text.text or "" for text in item.iter(f"{{{namespace}}}t")))
+            sheet_root = ET.fromstring(archive.read("xl/worksheets/sheet1.xml"))
+    except (OSError, KeyError, ET.ParseError, zipfile.BadZipFile) as error:
+        raise ValueError(f"cannot read appendix XLSX {path}: {error}") from error
+
+    operators: set[OperatorKey] = set()
+    for row in sheet_root.findall(".//x:sheetData/x:row", ns):
+        if row.attrib.get("r") == "1":
+            continue
+        name_cell = None
+        for cell in row.findall("x:c", ns):
+            reference = cell.attrib.get("r", "")
+            if reference.startswith("B"):
+                name_cell = cell
+                break
+        if name_cell is None:
+            continue
+        value = name_cell.find("x:v", ns)
+        if value is None or not value.text:
+            continue
+        if name_cell.attrib.get("t") == "s":
+            index = int(value.text)
+            if index < 0 or index >= len(shared):
+                raise ValueError(f"invalid shared-string index in {path}: {index}")
+            operator_name = shared[index].strip()
+        else:
+            operator_name = value.text.strip()
+        if operator_name:
+            operators.add(("estimation", "kalman_filter" if operator_name == "kalmanfilter" else operator_name))
+
+    # The worksheet lists module names in column C only at the first row of a
+    # block.  Reconstruct each block from the known source paths rather than
+    # depending on merged-cell formatting details.
+    module_by_name = {
+        "cubic": "bsplines", "gauss_spline": "bsplines", "quadratic": "bsplines",
+        "correlate": "correlate", "correlate2d": "correlate",
+        "fm_demod": "demod", "kalmanfilter": "estimation",
+        "firwin": "filter_design", "firwin2": "filter_design",
+        "channelize_poly": "filtering", "detrend": "filtering", "firfilter": "filtering",
+        "firfilter2": "filtering", "freq_shift": "filtering", "hilbert": "filtering",
+        "hilbert2": "filtering", "lfilter_zi": "filtering", "sosfilt": "filtering",
+        "wiener": "filtering", "decimate": "filtering", "resample": "filtering",
+        "resample_poly": "filtering", "upfirdn": "filtering", "argrelextrema": "peak_finding",
+        "ambgfun": "radartools", "ca_cfar": "radartools", "cfar_alpha": "radartools",
+        "pulse_compression": "radartools", "pulse_doppler": "radartools", "csd": "spectral",
+        "istft": "spectral", "lombscargle": "spectral", "spectrogram": "spectral",
+        "stft": "spectral", "vectorstrength": "spectral", "chirp": "waveforms",
+        "gausspulse": "waveforms", "sawtooth": "waveforms", "square": "waveforms",
+        "unit_impulse": "waveforms", "cwt": "wavelets", "morlet": "wavelets",
+        "morlet2": "wavelets", "qmf": "wavelets", "ricker": "wavelets",
+        "chebwin": "windows", "general_cosine": "windows", "general_gaussian": "windows",
+        "hamming": "windows", "kaiser": "windows", "parzen": "windows", "taylor": "windows",
+        "triang": "windows",
+    }
+    normalized: set[OperatorKey] = set()
+    for _ignored_module, name in operators:
+        original = "kalmanfilter" if name == "kalman_filter" else name
+        module = module_by_name.get(original)
+        if module is None:
+            raise ValueError(f"appendix XLSX contains unknown operator name: {original}")
+        normalized.add((module, name))
+    return normalized
 
 
 def resolve_operator_sets(
@@ -153,6 +243,17 @@ def parse_registry_text(text: str) -> tuple[list[OperatorKey], dict[OperatorKey,
 def load_registry(args: argparse.Namespace) -> tuple[list[OperatorKey], dict[OperatorKey, str]]:
     if args.registry:
         return parse_registry_text(Path(args.registry).read_text(encoding="utf-8"))
+    if not args.runner:
+        # The checked-in contract is the authoritative registry when this
+        # audit is run before a build exists.  A built runner can still be
+        # supplied explicitly for an independent target-name check.
+        payload = load_operator_set_config(Path(args.sets))
+        values = payload.get("sets", {}).get("all81", {}).get("operators", [])
+        if not isinstance(values, list) or len(values) != 81:
+            raise ValueError("operator set contract cannot provide an all81 registry")
+        operators = [parse_operator_key(str(value)) for value in values]
+        targets = {key: f"{key[0]}_test_{key[1]}" for key in operators}
+        return operators, targets
     completed = subprocess.run(
         [
             args.runner,
@@ -188,22 +289,60 @@ def validate_source_paths(repo_root: Path, registry_order: list[OperatorKey]) ->
 def validate_operator_sets(
     registry_order: list[OperatorKey],
     payload: dict[str, Any],
+    appendix_xlsx: Path | None = None,
 ) -> tuple[dict[str, set[OperatorKey]], dict[str, Any]]:
     resolved = resolve_operator_sets(payload, registry_order)
-    required = {"task27": 27, "core53": 53, "extended28": 28, "all81": 81}
+    required = {
+        "all81": 81,
+        "task_appendix": 53,
+        "task_used": 18,
+        "appendix_only": 37,
+        "native_only": 26,
+    }
     for name, expected in required.items():
         if name not in resolved or len(resolved[name]) != expected:
             raise ValueError(f"required set {name} must contain {expected} operators")
-    if not resolved["task27"] <= resolved["core53"]:
-        raise ValueError("task27 must be a subset of core53")
-    if resolved["core53"] & resolved["extended28"]:
-        raise ValueError("core53 and extended28 must be disjoint")
-    if resolved["core53"] | resolved["extended28"] != resolved["all81"]:
-        raise ValueError("core53 union extended28 must equal all81")
+    if resolved["task_used"] & resolved["appendix_only"]:
+        raise ValueError("task_used and appendix_only must be disjoint")
+    expected_appendix_only = resolved["task_appendix"] - resolved["task_used"]
+    if resolved["appendix_only"] != expected_appendix_only:
+        raise ValueError("appendix_only must equal task_appendix minus task_used")
+    groups = (
+        resolved["task_used"],
+        resolved["appendix_only"],
+        resolved["native_only"],
+    )
+    if sum(len(group) for group in groups) != len(resolved["all81"]):
+        raise ValueError("task tiers must cover all81 without overlap")
+    if len(set().union(*groups)) != len(resolved["all81"]):
+        raise ValueError("task tiers must be pairwise disjoint and cover all81")
+    if set().union(*groups) != resolved["all81"]:
+        raise ValueError("task tiers union must equal all81")
+    source = payload["sets"]["task_appendix"].get("source")
+    if source == "算子表.xlsx":
+        if appendix_xlsx is None:
+            raise ValueError("task_appendix requires an appendix XLSX source")
+        xlsx_values = load_appendix_from_xlsx(appendix_xlsx)
+        if xlsx_values != resolved["task_appendix"]:
+            missing = sorted(resolved["task_appendix"] - xlsx_values)
+            extra = sorted(xlsx_values - resolved["task_appendix"])
+            raise ValueError(
+                "task_appendix differs from 算子表.xlsx: "
+                f"missing={','.join(format_operator_key(value) for value in missing)} "
+                f"extra={','.join(format_operator_key(value) for value in extra)}"
+            )
+        expected_sha = payload["sets"]["task_appendix"].get("source_sha256")
+        if expected_sha:
+            digest = hashlib.sha256(appendix_xlsx.read_bytes()).hexdigest()
+            if digest != expected_sha:
+                raise ValueError(
+                    f"算子表.xlsx sha256 mismatch: expected={expected_sha} actual={digest}"
+                )
     summary = {
         "status": "passed",
         "registry_count": len(registry_order),
         "source_path_check": "passed",
+        "task_appendix_source": source,
         "sets": {name: len(values) for name, values in sorted(resolved.items())},
     }
     return resolved, summary
@@ -226,12 +365,12 @@ def write_set_contract_markdown(
     ]
     for index, key in enumerate(registry_order, start=1):
         module, operator = key
-        if key in resolved["task27"]:
-            group = "A-task27"
-        elif key in resolved["core53"]:
-            group = "B-core53"
+        if key in resolved["task_used"]:
+            group = "A-task_used"
+        elif key in resolved["appendix_only"]:
+            group = "B-appendix_only"
         else:
-            group = "C-extended28"
+            group = "C-native_only"
         lines.append(
             f"| {index} | {group} | `{module}/{operator}` | "
             f"`include/cusignal/{module}/{module}.hpp` | `src/cpu/{module}.cpp` | "
@@ -353,12 +492,12 @@ def audit_operator(
     )
     test_pass = bool(target) and test_cmake_path.is_file()
 
-    if key in groups["task27"]:
-        group = "A-task27"
-    elif key in groups["core53"]:
-        group = "B-core53"
+    if key in groups["task_used"]:
+        group = "A-task_used"
+    elif key in groups["appendix_only"]:
+        group = "B-appendix_only"
     else:
-        group = "C-extended28"
+        group = "C-native_only"
     findings = []
     if not declaration_pass:
         findings.append("missing_cpu_or_gpu_public_declaration")
@@ -447,8 +586,16 @@ def main() -> int:
     repo_root = Path(__file__).resolve().parents[2]
     registry_order, targets = load_registry(args)
     validate_source_paths(repo_root, registry_order)
-    payload = load_operator_set_config(Path(args.sets))
-    groups, set_summary = validate_operator_sets(registry_order, payload)
+    sets_path = Path(args.sets)
+    payload = load_operator_set_config(sets_path)
+    appendix_source = Path(args.appendix_xlsx) if args.appendix_xlsx else None
+    if appendix_source is None and payload.get("sets", {}).get("task_appendix", {}).get("source") == "算子表.xlsx":
+        appendix_source = sets_path.resolve().parents[2] / "算子表.xlsx"
+    groups, set_summary = validate_operator_sets(
+        registry_order,
+        payload,
+        appendix_source,
+    )
 
     if args.summary_json:
         summary_path = Path(args.summary_json)

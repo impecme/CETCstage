@@ -1,7 +1,7 @@
 {
   "module": "windows",
   "operator": "general_hamming",
-  "generated_at": "2026-07-22 03:40:57",
+  "generated_at": "2026-08-09 12:37:35",
   "git_commit": "",
   "gpu_name": "ZQ500-Q QUAD-0",
   "compile_config": {
@@ -10,65 +10,67 @@
   },
   "summary": {
     "pass": true,
-    "accuracy_cases": 2,
+    "accuracy_cases": 0,
     "perf_cases": 1,
     "max_abs_error": 1.49012e-07,
     "max_rel_error": 6.9245e-07,
     "mixed_error": 0,
-    "rmse": 4.54424e-08,
-    "gpu_e2e_speedup": 1.70549,
-    "gpu_kernel_speedup": 4.27032,
+    "rmse": 4.28657e-08,
+    "gpu_e2e_speedup": 0.21388,
+    "gpu_kernel_speedup": 0.892256,
+    "gpu_e2e_scope": "host input construction + fresh H2D + compute + D2H/output materialization",
+    "gpu_kernel_scope": "prepared device input + CUDA events; H2D/D2H excluded",
     "cpu_perf": {
       "warmup": 5,
       "repeat": 30,
-      "mean_ms": 0.130296,
-      "median_ms": 0.130296,
-      "p95_ms": 0.130296,
-      "min_ms": 0.130296,
-      "max_ms": 0.130296,
+      "mean_ms": 0.024690501391887665,
+      "median_ms": 0.024690501391887665,
+      "p95_ms": 0.024690501391887665,
+      "min_ms": 0.024690501391887665,
+      "max_ms": 0.024690501391887665,
       "std_ms": 0
     },
     "gpu_e2e_perf": {
       "warmup": 5,
       "repeat": 30,
-      "mean_ms": 0.076398,
-      "median_ms": 0.076398,
-      "p95_ms": 0.076398,
-      "min_ms": 0.076398,
-      "max_ms": 0.076398,
+      "mean_ms": 0.11544100195169449,
+      "median_ms": 0.11544100195169449,
+      "p95_ms": 0.11544100195169449,
+      "min_ms": 0.11544100195169449,
+      "max_ms": 0.11544100195169449,
       "std_ms": 0
     },
     "gpu_kernel_perf": {
       "warmup": 5,
       "repeat": 30,
-      "mean_ms": 0.030512,
-      "median_ms": 0.030512,
-      "p95_ms": 0.030512,
-      "min_ms": 0.030512,
-      "max_ms": 0.030512,
+      "mean_ms": 0.027672000229358673,
+      "median_ms": 0.027672000229358673,
+      "p95_ms": 0.027672000229358673,
+      "min_ms": 0.027672000229358673,
+      "max_ms": 0.027672000229358673,
       "std_ms": 0
     },
     "device_storage_cache": {
       "cache_enabled": true,
-      "allocation_calls": 2,
-      "allocation_bytes": 65576,
-      "allocation_mib": 0.0625381,
-      "cache_hits": 71,
-      "cache_misses": 2,
-      "recycled_blocks": 73,
-      "recycled_bytes": 4653136,
-      "recycled_mib": 4.43758,
+      "allocation_calls": 1,
+      "allocation_bytes": 12288,
+      "allocation_mib": 0.0117188,
+      "cache_hits": 70,
+      "cache_misses": 1,
+      "recycled_blocks": 71,
+      "recycled_bytes": 872448,
+      "recycled_mib": 0.832031,
       "evicted_blocks": 0,
       "evicted_bytes": 0,
       "evicted_mib": 0,
       "freed_blocks": 0,
       "freed_bytes": 0,
       "freed_mib": 0,
-      "cached_blocks": 2,
-      "cached_bytes": 65576,
-      "cached_mib": 0.0625381,
-      "peak_cached_bytes": 65576,
-      "peak_cached_mib": 0.0625381,
+      "cached_blocks": 1,
+      "cached_bytes": 12288,
+      "cached_mib": 0.0117188,
+      "peak_cached_bytes": 12288,
+      "peak_cached_mib": 0.0117188,
       "max_cached_blocks": 8,
       "max_cached_bytes": 536870912,
       "max_cached_mib": 512,
@@ -78,122 +80,52 @@
   },
   "cases": [
     {
-      "case_id": "alpha_052",
-      "category": "accuracy",
-      "samples": 10,
-      "pass": true,
-      "cpu_gpu_error": {
-        "max_abs_error": 1.19209e-07,
-        "max_rel_error": 2.93525e-07,
-        "mixed_error": 0,
-        "rmse": 4.54424e-08,
-        "l2_error": 1.43702e-07,
-        "exact_match": false,
-        "first_mismatch_index": 1
-      },
-      "cpu_reference_error": {
-        "max_abs_error": 2.08616e-07,
-        "max_rel_error": 9.31323e-07,
-        "mixed_error": 0,
-        "rmse": 8.40959e-08,
-        "l2_error": 2.65935e-07,
-        "exact_match": false,
-        "first_mismatch_index": 0
-      },
-      "gpu_reference_error": {
-        "max_abs_error": 8.9407e-08,
-        "max_rel_error": 9.31323e-07,
-        "mixed_error": 0,
-        "rmse": 5.19408e-08,
-        "l2_error": 1.64251e-07,
-        "exact_match": false,
-        "first_mismatch_index": 0
-      },
-      "artifacts": [
-      ]
-    },
-    {
-      "case_id": "alpha_052_float16_compat",
-      "category": "accuracy",
-      "samples": 10,
-      "pass": true,
-      "cpu_gpu_error": {
-        "max_abs_error": 0,
-        "max_rel_error": 0,
-        "mixed_error": 0,
-        "rmse": 0,
-        "l2_error": 0,
-        "exact_match": true,
-        "first_mismatch_index": -1
-      },
-      "cpu_reference_error": {
-        "max_abs_error": 0,
-        "max_rel_error": 0,
-        "mixed_error": 0,
-        "rmse": 0,
-        "l2_error": 0,
-        "exact_match": true,
-        "first_mismatch_index": -1
-      },
-      "gpu_reference_error": {
-        "max_abs_error": 0,
-        "max_rel_error": 0,
-        "mixed_error": 0,
-        "rmse": 0,
-        "l2_error": 0,
-        "exact_match": true,
-        "first_mismatch_index": -1
-      },
-      "artifacts": [
-      ]
-    },
-    {
       "case_id": "perf_large",
       "category": "perf",
-      "samples": 16384,
+      "samples": 3072,
       "pass": true,
       "cpu_gpu_error": {
-        "max_abs_error": 1.49012e-07,
-        "max_rel_error": 6.9245e-07,
+        "max_abs_error": 1.4901161193847656e-07,
+        "max_rel_error": 6.9244981659721816e-07,
         "mixed_error": 0,
-        "rmse": 4.26282e-08,
-        "l2_error": 5.45641e-06,
+        "rmse": 4.2865714533490973e-08,
+        "l2_error": 2.3758591396472184e-06,
         "exact_match": false,
-        "first_mismatch_index": 2
+        "first_mismatch_index": 1
       },
       "cpu_perf": {
         "warmup": 5,
         "repeat": 30,
-        "mean_ms": 0.130662,
-        "median_ms": 0.130296,
-        "p95_ms": 0.130486,
-        "min_ms": 0.130136,
-        "max_ms": 0.141646,
-        "std_ms": 0.00204153
+        "mean_ms": 0.024706633761525154,
+        "median_ms": 0.024690501391887665,
+        "p95_ms": 0.024749999865889549,
+        "min_ms": 0.024679999798536301,
+        "max_ms": 0.024751000106334686,
+        "std_ms": 2.9136785087757744e-05
       },
       "gpu_e2e_perf": {
         "warmup": 5,
         "repeat": 30,
-        "mean_ms": 0.0781711,
-        "median_ms": 0.076398,
-        "p95_ms": 0.086947,
-        "min_ms": 0.073598,
-        "max_ms": 0.099807,
-        "std_ms": 0.00499723
+        "mean_ms": 0.11608599871397018,
+        "median_ms": 0.11544100195169449,
+        "p95_ms": 0.12241099774837494,
+        "min_ms": 0.1122720018029213,
+        "max_ms": 0.13154099881649017,
+        "std_ms": 0.0034577997867017984
       },
       "gpu_kernel_perf": {
         "warmup": 5,
         "repeat": 30,
-        "mean_ms": 0.0305061,
-        "median_ms": 0.030512,
-        "p95_ms": 0.030714,
-        "min_ms": 0.03022,
-        "max_ms": 0.030772,
-        "std_ms": 0.0001593
+        "mean_ms": 0.027634134516119957,
+        "median_ms": 0.027672000229358673,
+        "p95_ms": 0.027909999713301659,
+        "min_ms": 0.027248000726103783,
+        "max_ms": 0.027939999476075172,
+        "std_ms": 0.00018399542022962123
       },
       "artifacts": [
-        {"role": "cpu_signal", "path": "/CETC/data/generated/unit/windows/general_hamming/output_samples/perf_large__cpu__signal.csv", "sha256": "7f8a958e3f5f52627dad92b71313de3b6cced594746dbc6ffbe9b44119e1e017"},
-        {"role": "gpu_signal", "path": "/CETC/data/generated/unit/windows/general_hamming/output_samples/perf_large__gpu__signal.csv", "sha256": "409c22b4c4054a0f589a9677ebb999e2553a9eaac8a6561e20f350838d624333"}
+        {"role": "cpu_signal", "path": "/tmp/cetc_operator_scales.4oabek/manifests_L6/windows/general_hamming/output_samples/perf_large__cpu__signal.csv", "sha256": "b47e233fde2f7a9510fee8c8b63ff4498a321a1caf6e25f381cd154287d8866b"},
+        {"role": "gpu_signal", "path": "/tmp/cetc_operator_scales.4oabek/manifests_L6/windows/general_hamming/output_samples/perf_large__gpu__signal.csv", "sha256": "0855ac8de4d8cb70918af955b318c96538b1dfcfe19d0576deb32af25d53fb07"}
       ]
     }
   ]

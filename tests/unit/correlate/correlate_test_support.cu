@@ -55,6 +55,7 @@ namespace
     using cusignal::core::ZxGpuInt32Array;
     using cusignal::core::ZxGpuInt8Array;
     using cusignal::core::ZxGpuRealArray;
+    using cusignal::core::RealArrayLike;
     using cusignal::core::IndexVector;
     using cusignal::core::RealArray;
     using cusignal::core::RealSignal;
@@ -498,7 +499,9 @@ namespace
         std::sort(samples.begin(), samples.end());
         const float sum = std::accumulate(samples.begin(), samples.end(), 0.0f);
         stats.mean_ms = sum / static_cast<float>(samples.size());
-        stats.median_ms = samples[samples.size() / 2];
+        stats.median_ms = samples.size() % 2 == 0
+                              ? 0.5f * (samples[samples.size() / 2 - 1] + samples[samples.size() / 2])
+                              : samples[samples.size() / 2];
         const std::size_t p95_index =
             std::min(samples.size() - 1, (samples.size() * 95) / 100);
         stats.p95_ms = samples[p95_index];
@@ -664,12 +667,15 @@ namespace
         }
         if (summary.gpu_e2e_perf.has_value())
         {
+            const bool kernel_valid = summary.gpu_kernel_perf.has_value() &&
+                                      summary.gpu_kernel_perf->median_ms > 0.0f;
             std::cout << "gpu_perf_ms   : e2e_median=" << format_fixed(summary.gpu_e2e_perf->median_ms)
                       << "  kernel_median="
-                      << format_fixed(summary.gpu_kernel_perf.has_value() ? summary.gpu_kernel_perf->median_ms : 0.0f)
+                      << (kernel_valid ? format_fixed(summary.gpu_kernel_perf->median_ms) : "n/a")
                       << "  p95=" << format_fixed(summary.gpu_e2e_perf->p95_ms)
                       << "  e2e_speedup=" << format_fixed(speedup(summary.cpu_perf, summary.gpu_e2e_perf)) << "x"
-                      << "  kernel_speedup=" << format_fixed(speedup(summary.cpu_perf, summary.gpu_kernel_perf)) << "x"
+                      << "  kernel_speedup="
+                      << (kernel_valid ? format_fixed(speedup(summary.cpu_perf, summary.gpu_kernel_perf)) + "x" : "n/a")
                       << "\n";
         }
         if (options.emit_report)
@@ -1070,11 +1076,23 @@ namespace
                     (void)cusignal::cpu::correlate::correlate(perf.in1_real, perf.in2_real, perf.mode, perf.method);
                 });
             }
-            std::vector<float> kernel_samples;
             summary.gpu_e2e_perf = measure_timing(options.warmup, options.repeat, [&]() {
                 (void)cusignal::zx_gpu_backend::correlate_test_hooks::consume_last_kernel_ms();
-                (void)cusignal::zx_gpu_backend::correlate::correlate(perf.in1_real, perf.in2_real, perf.mode, perf.method);
+                (void)cusignal::zx_gpu_backend::correlate::correlate(
+                    perf.in1_real, perf.in2_real, perf.mode, perf.method).get();
                 cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
+            });
+            const ZxGpuRealArray prepared_left = ZxGpuRealArray::from_host(perf.in1_real);
+            const ZxGpuRealArray prepared_right = ZxGpuRealArray::from_host(perf.in2_real);
+            const RealArrayLike kernel_left = prepared_left;
+            const RealArrayLike kernel_right = prepared_right;
+            std::vector<float> kernel_samples;
+            kernel_samples.reserve(static_cast<std::size_t>(options.warmup + options.repeat));
+            (void)measure_timing(options.warmup, options.repeat, [&]() {
+                (void)cusignal::zx_gpu_backend::correlate_test_hooks::consume_last_kernel_ms();
+                (void)cusignal::zx_gpu_backend::correlate::correlate(
+                    kernel_left, kernel_right, perf.mode, perf.method);
+                cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu kernel");
                 kernel_samples.push_back(cusignal::zx_gpu_backend::correlate_test_hooks::consume_last_kernel_ms());
             });
             summary.gpu_kernel_perf = summarize_measured_kernel_timings(
@@ -1208,11 +1226,23 @@ namespace
                     (void)cusignal::cpu::correlate::correlate2d(perf.in1_real, perf.in2_real, perf.mode, "fill", 0.0f);
                 });
             }
-            std::vector<float> kernel_samples;
             summary.gpu_e2e_perf = measure_timing(options.warmup, options.repeat, [&]() {
                 (void)cusignal::zx_gpu_backend::correlate_test_hooks::consume_last_kernel_ms();
-                (void)cusignal::zx_gpu_backend::correlate::correlate2d(perf.in1_real, perf.in2_real, perf.mode, "fill", 0.0f);
+                (void)cusignal::zx_gpu_backend::correlate::correlate2d(
+                    perf.in1_real, perf.in2_real, perf.mode, "fill", 0.0f).get();
                 cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
+            });
+            const ZxGpuRealArray prepared_left = ZxGpuRealArray::from_host(perf.in1_real);
+            const ZxGpuRealArray prepared_right = ZxGpuRealArray::from_host(perf.in2_real);
+            const RealArrayLike kernel_left = prepared_left;
+            const RealArrayLike kernel_right = prepared_right;
+            std::vector<float> kernel_samples;
+            kernel_samples.reserve(static_cast<std::size_t>(options.warmup + options.repeat));
+            (void)measure_timing(options.warmup, options.repeat, [&]() {
+                (void)cusignal::zx_gpu_backend::correlate_test_hooks::consume_last_kernel_ms();
+                (void)cusignal::zx_gpu_backend::correlate::correlate2d(
+                    kernel_left, kernel_right, perf.mode, "fill", 0.0f);
+                cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu kernel");
                 kernel_samples.push_back(cusignal::zx_gpu_backend::correlate_test_hooks::consume_last_kernel_ms());
             });
             summary.gpu_kernel_perf = summarize_measured_kernel_timings(
@@ -1272,15 +1302,16 @@ namespace
                     (void)cusignal::cpu::correlate::correlation_lags(perf.in1_len, perf.in2_len, perf.mode);
                 });
             }
-            std::vector<float> kernel_samples;
             summary.gpu_e2e_perf = measure_timing(options.warmup, options.repeat, [&]() {
                 (void)cusignal::zx_gpu_backend::correlate_test_hooks::consume_last_kernel_ms();
-                (void)cusignal::zx_gpu_backend::correlate::correlation_lags(perf.in1_len, perf.in2_len, perf.mode);
+                (void)cusignal::zx_gpu_backend::correlate::correlation_lags(
+                    perf.in1_len, perf.in2_len, perf.mode).get();
                 cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
-                kernel_samples.push_back(cusignal::zx_gpu_backend::correlate_test_hooks::consume_last_kernel_ms());
             });
-            summary.gpu_kernel_perf = summarize_measured_kernel_timings(
-                std::move(kernel_samples), options.warmup, options.repeat);
+            // correlation_lags is an index construction path and has no
+            // separately timed GPU kernel. Keep this field absent so reports
+            // render N/A instead of a fabricated 0 ms/0x value.
+            summary.gpu_kernel_perf.reset();
             if (options.emit_report)
             {
                 if (!options.gpu_only_perf)

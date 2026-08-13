@@ -1,7 +1,7 @@
 # 算子测试报告：windows/boxcar
 
 - 状态：通过
-- 精度用例：2
+- 精度用例：0
 - 性能用例：1
 
 ## 误差
@@ -13,10 +13,10 @@
 
 ## 性能
 
-- CPU 中位时间：0.00282 ms
-- GPU 端到端中位时间：0.076488 ms
-- GPU kernel 最小时间：0.027348 ms
-- GPU kernel 中位时间：0.027348 ms
-- GPU kernel 最大时间：0.027348 ms
-- GPU 端到端加速比：0.0368685x
-- GPU kernel 加速比：0.103115x
+- CPU 中位时间：0.00032 ms
+- GPU 端到端中位时间：0.113981 ms
+- GPU kernel 最小时间：0.026776 ms
+- GPU kernel 中位时间：0.026776 ms
+- GPU kernel 最大时间：0.026776 ms
+- GPU 端到端加速比：0.00280749x
+- GPU kernel 加速比：0.011951x

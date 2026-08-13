@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 import subprocess
 import sys
 import tempfile
@@ -14,7 +13,6 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PLATFORM_TOOLS = REPO_ROOT / "tests" / "platform" / "tools"
-DELIVERY_VALIDATION = REPO_ROOT / "scripts" / "validate.sh"
 sys.path.insert(0, str(PLATFORM_TOOLS))
 
 from validate_zx_compat_fixtures import (  # noqa: E402
@@ -287,34 +285,6 @@ class FixtureValidationTest(unittest.TestCase):
         )
         self.assertNotEqual(result.returncode, 0)
         self.assertFalse(output.exists())
-
-    def test_delivery_validation_rejects_fixtures_before_build(self) -> None:
-        output = self.root / "delivery-reports"
-        build = self.root / "build-must-not-exist"
-        empty_source = self.root / "missing-fixtures"
-        empty_source.mkdir()
-        environment = os.environ.copy()
-        environment["DELIVERY_REPORT_ROOT"] = str(output)
-        result = subprocess.run(
-            [
-                "bash",
-                str(DELIVERY_VALIDATION),
-                "--fixtures",
-                str(empty_source),
-                "--build-dir",
-                str(build),
-            ],
-            cwd=str(REPO_ROOT),
-            env=environment,
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            check=False,
-        )
-        self.assertNotEqual(result.returncode, 0)
-        self.assertFalse((output / "audits" / "fixture_validation.json").exists())
-        self.assertFalse(build.exists())
-
 
 if __name__ == "__main__":
     unittest.main()

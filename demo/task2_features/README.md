@@ -16,15 +16,13 @@
 
 - `data/generated/demo/task2_features/input/`
 - `data/generated/demo/task2_features/output_samples/`
-- `data/reports/demo/task2_features/final/summary.md`
-- `data/reports/demo/task2_features/final/metrics.json`
-- `data/reports/demo/task2_features/final/stage_timings.csv`
-- `data/reports/demo/task2_features/final/step_metrics.csv`
-- `data/reports/demo/task2_features/final/step_metrics.json`
+- `data/reports/demo/task2_features/summary.csv`
+- `data/reports/demo/task2_features/operators/L1.csv` ... `L6.csv`
 
-`latest_summary.md` and `latest_metrics.json` include `mixed_error` for each CPU/GPU comparison. The metric uses absolute error near zero-valued CPU references and relative error elsewhere, matching the unit benchmark reporting policy.
+GPU 正式路径在 Device 端生成 chirp、gausspulse、干扰波形、目标帧和噪声；CPU/GPU 使用相同 seed 和计数式 RNG。
+`summary.csv` 同时记录 input/operator/e2e 三类误差，算子 CSV 记录各实际算子的 CPU/GPU 时间和误差。
 
-`scripts/demo.sh --build-dir build-zx --no-build --scale-sweep` 生成 L1-L6
+`scripts/performance.sh --tasks --task task2 --build-dir build-zx --no-build --scale all` 生成 L1-L6
 结构化报告，不自动作图。
 
 ## Fixed Scenario

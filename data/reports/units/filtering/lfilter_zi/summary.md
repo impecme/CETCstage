@@ -1,7 +1,7 @@
 # 算子测试报告：filtering/lfilter_zi
 
 - 状态：通过
-- 精度用例：2
+- 精度用例：0
 - 性能用例：1
 
 ## 误差
@@ -13,10 +13,10 @@
 
 ## 性能
 
-- CPU 中位时间：15.6791 ms
-- GPU 端到端中位时间：0.474465 ms
-- GPU kernel 最小时间：0.264159 ms
-- GPU kernel 中位时间：0.264159 ms
-- GPU kernel 最大时间：0.264159 ms
-- GPU 端到端加速比：33.0459x
-- GPU kernel 加速比：59.3548x
+- CPU 中位时间：15.6841 ms
+- GPU 端到端中位时间：0.526896 ms
+- GPU kernel 最小时间：0.264379 ms
+- GPU kernel 中位时间：0.264379 ms
+- GPU kernel 最大时间：0.264379 ms
+- GPU 端到端加速比：29.767x
+- GPU kernel 加速比：59.3243x

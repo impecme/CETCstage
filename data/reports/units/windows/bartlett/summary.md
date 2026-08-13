@@ -1,7 +1,7 @@
 # 算子测试报告：windows/bartlett
 
 - 状态：通过
-- 精度用例：2
+- 精度用例：0
 - 性能用例：1
 
 ## 误差
@@ -13,10 +13,10 @@
 
 ## 性能
 
-- CPU 中位时间：0.020779 ms
-- GPU 端到端中位时间：0.073018 ms
-- GPU kernel 最小时间：0.02821 ms
-- GPU kernel 中位时间：0.02821 ms
-- GPU kernel 最大时间：0.02821 ms
-- GPU 端到端加速比：0.284574x
-- GPU kernel 加速比：0.736583x
+- CPU 中位时间：0.00395 ms
+- GPU 端到端中位时间：0.113871 ms
+- GPU kernel 最小时间：0.027239 ms
+- GPU kernel 中位时间：0.027239 ms
+- GPU kernel 最大时间：0.027239 ms
+- GPU 端到端加速比：0.0346884x
+- GPU kernel 加速比：0.145013x

@@ -1,8 +1,8 @@
 # 算子测试报告：waveforms/unit_impulse
 
 - 状态：通过
-- 精度用例：4
-- 性能用例：2
+- 精度用例：0
+- 性能用例：1
 
 ## 误差
 
@@ -13,10 +13,10 @@
 
 ## 性能
 
-- CPU 中位时间：104.794 ms
-- GPU 端到端中位时间：0.813414 ms
-- GPU kernel 最小时间：0.026436 ms
-- GPU kernel 中位时间：0.026526 ms
-- GPU kernel 最大时间：0.026526 ms
-- GPU 端到端加速比：128.833x
-- GPU kernel 加速比：3950.63x
+- CPU 中位时间：50.0187 ms
+- GPU 端到端中位时间：97.8931 ms
+- GPU kernel 最小时间：0.026578 ms
+- GPU kernel 中位时间：0.026578 ms
+- GPU kernel 最大时间：0.026578 ms
+- GPU 端到端加速比：0.510953x
+- GPU kernel 加速比：1881.96x

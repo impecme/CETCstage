@@ -52,8 +52,12 @@ ambgfun 的二维/切片结果均在公开头中显式建模。
 
 ## 3. 模块组成
 
-机器注册表 `tests/contracts/operator_sets.json` 的 `all81` 集合覆盖 12 个模块。
+机器注册表 `tests/contracts/operator_sets.json` 的 `all81` 集合覆盖 12 个模块；
+赛题范围由 `算子表.xlsx` 的 `task_appendix=53` 冻结。
 这里的 81 是独立测试和 benchmark 条目数，不是对所有辅助 public helper 的计数。
+其中两个任务源码实际调用的注册算子为 18 项（任务专用 Helper/变体另行记录），
+附录中未被任务采用的其余注册算子为 37 项，原生库中不在赛题附录且未被任务采用的
+算子为 26 项，三层互斥覆盖 81 项。
 
 | 模块 | 条目数 | 主要职责 |
 | --- | ---: | --- |

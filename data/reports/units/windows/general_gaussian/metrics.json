@@ -1,7 +1,7 @@
 {
   "module": "windows",
   "operator": "general_gaussian",
-  "generated_at": "2026-07-22 03:40:56",
+  "generated_at": "2026-08-09 12:37:35",
   "git_commit": "",
   "gpu_name": "ZQ500-Q QUAD-0",
   "compile_config": {
@@ -10,65 +10,67 @@
   },
   "summary": {
     "pass": true,
-    "accuracy_cases": 2,
+    "accuracy_cases": 0,
     "perf_cases": 1,
     "max_abs_error": 1.19209e-07,
     "max_rel_error": 1.52635e-05,
     "mixed_error": 0,
-    "rmse": 2.50824e-08,
-    "gpu_e2e_speedup": 512.803,
-    "gpu_kernel_speedup": 542.745,
+    "rmse": 1.93418e-08,
+    "gpu_e2e_speedup": 0.600874,
+    "gpu_kernel_speedup": 2.44985,
+    "gpu_e2e_scope": "host input construction + fresh H2D + compute + D2H/output materialization",
+    "gpu_kernel_scope": "prepared device input + CUDA events; H2D/D2H excluded",
     "cpu_perf": {
       "warmup": 5,
       "repeat": 30,
-      "mean_ms": 592.655,
-      "median_ms": 592.655,
-      "p95_ms": 592.655,
-      "min_ms": 592.655,
-      "max_ms": 592.655,
+      "mean_ms": 0.068341001868247986,
+      "median_ms": 0.068341001868247986,
+      "p95_ms": 0.068341001868247986,
+      "min_ms": 0.068341001868247986,
+      "max_ms": 0.068341001868247986,
       "std_ms": 0
     },
     "gpu_e2e_perf": {
       "warmup": 5,
       "repeat": 30,
-      "mean_ms": 1.15572,
-      "median_ms": 1.15572,
-      "p95_ms": 1.15572,
-      "min_ms": 1.15572,
-      "max_ms": 1.15572,
+      "mean_ms": 0.11373600363731384,
+      "median_ms": 0.11373600363731384,
+      "p95_ms": 0.11373600363731384,
+      "min_ms": 0.11373600363731384,
+      "max_ms": 0.11373600363731384,
       "std_ms": 0
     },
     "gpu_kernel_perf": {
       "warmup": 5,
       "repeat": 30,
-      "mean_ms": 1.09196,
-      "median_ms": 1.09196,
-      "p95_ms": 1.09196,
-      "min_ms": 1.09196,
-      "max_ms": 1.09196,
+      "mean_ms": 0.027896000072360039,
+      "median_ms": 0.027896000072360039,
+      "p95_ms": 0.027896000072360039,
+      "min_ms": 0.027896000072360039,
+      "max_ms": 0.027896000072360039,
       "std_ms": 0
     },
     "device_storage_cache": {
       "cache_enabled": true,
-      "allocation_calls": 2,
-      "allocation_bytes": 67108912,
-      "allocation_mib": 64,
-      "cache_hits": 71,
-      "cache_misses": 2,
-      "recycled_blocks": 73,
-      "recycled_bytes": 4764729440,
-      "recycled_mib": 4544,
+      "allocation_calls": 1,
+      "allocation_bytes": 12288,
+      "allocation_mib": 0.0117188,
+      "cache_hits": 70,
+      "cache_misses": 1,
+      "recycled_blocks": 71,
+      "recycled_bytes": 872448,
+      "recycled_mib": 0.832031,
       "evicted_blocks": 0,
       "evicted_bytes": 0,
       "evicted_mib": 0,
       "freed_blocks": 0,
       "freed_bytes": 0,
       "freed_mib": 0,
-      "cached_blocks": 2,
-      "cached_bytes": 67108912,
-      "cached_mib": 64,
-      "peak_cached_bytes": 67108912,
-      "peak_cached_mib": 64,
+      "cached_blocks": 1,
+      "cached_bytes": 12288,
+      "cached_mib": 0.0117188,
+      "peak_cached_bytes": 12288,
+      "peak_cached_mib": 0.0117188,
       "max_cached_blocks": 8,
       "max_cached_bytes": 536870912,
       "max_cached_mib": 512,
@@ -78,122 +80,52 @@
   },
   "cases": [
     {
-      "case_id": "shape_pair",
-      "category": "accuracy",
-      "samples": 12,
-      "pass": true,
-      "cpu_gpu_error": {
-        "max_abs_error": 5.96046e-08,
-        "max_rel_error": 1.08478e-07,
-        "mixed_error": 0,
-        "rmse": 2.50824e-08,
-        "l2_error": 8.68881e-08,
-        "exact_match": false,
-        "first_mismatch_index": 0
-      },
-      "cpu_reference_error": {
-        "max_abs_error": 5.96046e-08,
-        "max_rel_error": 9.76305e-07,
-        "mixed_error": 0,
-        "rmse": 3.49572e-08,
-        "l2_error": 1.21095e-07,
-        "exact_match": false,
-        "first_mismatch_index": 0
-      },
-      "gpu_reference_error": {
-        "max_abs_error": 5.96046e-08,
-        "max_rel_error": 1.08478e-06,
-        "mixed_error": 0,
-        "rmse": 4.21564e-08,
-        "l2_error": 1.46034e-07,
-        "exact_match": false,
-        "first_mismatch_index": 0
-      },
-      "artifacts": [
-      ]
-    },
-    {
-      "case_id": "shape_pair_float16_compat",
-      "category": "accuracy",
-      "samples": 12,
-      "pass": true,
-      "cpu_gpu_error": {
-        "max_abs_error": 0,
-        "max_rel_error": 0,
-        "mixed_error": 0,
-        "rmse": 0,
-        "l2_error": 0,
-        "exact_match": true,
-        "first_mismatch_index": -1
-      },
-      "cpu_reference_error": {
-        "max_abs_error": 0,
-        "max_rel_error": 0,
-        "mixed_error": 0,
-        "rmse": 0,
-        "l2_error": 0,
-        "exact_match": true,
-        "first_mismatch_index": -1
-      },
-      "gpu_reference_error": {
-        "max_abs_error": 0,
-        "max_rel_error": 0,
-        "mixed_error": 0,
-        "rmse": 0,
-        "l2_error": 0,
-        "exact_match": true,
-        "first_mismatch_index": -1
-      },
-      "artifacts": [
-      ]
-    },
-    {
       "case_id": "perf_large",
       "category": "perf",
-      "samples": 16777216,
+      "samples": 3072,
       "pass": true,
       "cpu_gpu_error": {
-        "max_abs_error": 1.19209e-07,
-        "max_rel_error": 1.52635e-05,
+        "max_abs_error": 1.1920928955078125e-07,
+        "max_rel_error": 1.5263520253938623e-05,
         "mixed_error": 0,
-        "rmse": 2.61726e-10,
-        "l2_error": 1.07203e-06,
+        "rmse": 1.934176374618346e-08,
+        "l2_error": 1.072029363058391e-06,
         "exact_match": false,
-        "first_mismatch_index": 8387472
+        "first_mismatch_index": 400
       },
       "cpu_perf": {
         "warmup": 5,
         "repeat": 30,
-        "mean_ms": 593.542,
-        "median_ms": 592.655,
-        "p95_ms": 599.678,
-        "min_ms": 591.676,
-        "max_ms": 601.76,
-        "std_ms": 2.44776
+        "mean_ms": 0.068815469741821289,
+        "median_ms": 0.068341001868247986,
+        "p95_ms": 0.068391002714633942,
+        "min_ms": 0.068340003490447998,
+        "max_ms": 0.082321003079414368,
+        "std_ms": 0.0025079613551497459
       },
       "gpu_e2e_perf": {
         "warmup": 5,
         "repeat": 30,
-        "mean_ms": 1.15823,
-        "median_ms": 1.15572,
-        "p95_ms": 1.18689,
-        "min_ms": 1.14089,
-        "max_ms": 1.18736,
-        "std_ms": 0.0122567
+        "mean_ms": 0.11432433128356934,
+        "median_ms": 0.11373600363731384,
+        "p95_ms": 0.11847099661827087,
+        "min_ms": 0.1078609973192215,
+        "max_ms": 0.12164100259542465,
+        "std_ms": 0.0024847253225743771
       },
       "gpu_kernel_perf": {
         "warmup": 5,
         "repeat": 30,
-        "mean_ms": 1.09197,
-        "median_ms": 1.09196,
-        "p95_ms": 1.09503,
-        "min_ms": 1.08965,
-        "max_ms": 1.09509,
-        "std_ms": 0.00143614
+        "mean_ms": 0.027855932712554932,
+        "median_ms": 0.027896000072360039,
+        "p95_ms": 0.028168000280857086,
+        "min_ms": 0.027380000799894333,
+        "max_ms": 0.028325999155640602,
+        "std_ms": 0.00023710999812465161
       },
       "artifacts": [
-        {"role": "cpu_signal", "path": "/CETC/data/generated/unit/windows/general_gaussian/output_samples/perf_large__cpu__signal.csv", "sha256": "8b096024e75cf4a3c7975ce62d016212b7e07d363bc8a28d092b38a312b7d9b0"},
-        {"role": "gpu_signal", "path": "/CETC/data/generated/unit/windows/general_gaussian/output_samples/perf_large__gpu__signal.csv", "sha256": "8b096024e75cf4a3c7975ce62d016212b7e07d363bc8a28d092b38a312b7d9b0"}
+        {"role": "cpu_signal", "path": "/tmp/cetc_operator_scales.4oabek/manifests_L6/windows/general_gaussian/output_samples/perf_large__cpu__signal.csv", "sha256": "8b096024e75cf4a3c7975ce62d016212b7e07d363bc8a28d092b38a312b7d9b0"},
+        {"role": "gpu_signal", "path": "/tmp/cetc_operator_scales.4oabek/manifests_L6/windows/general_gaussian/output_samples/perf_large__gpu__signal.csv", "sha256": "8b096024e75cf4a3c7975ce62d016212b7e07d363bc8a28d092b38a312b7d9b0"}
       ]
     }
   ]

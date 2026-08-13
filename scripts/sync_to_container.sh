@@ -132,14 +132,11 @@ rsync -a --files-from="${DELIVERY_MANIFEST}" "${PROJECT_ROOT}/" "${STAGE}/"
 required_files=(
   README.md
   DELIVERY_FILES.txt
+  auto_git.sh
   CMakeLists.txt
   scripts/build.sh
-  scripts/validate.sh
-  scripts/demo.sh
-  scripts/test_operators.sh
-  scripts/finalize_reports.py
-  scripts/ppt_performance.py
-  scripts/ppt_performance.sh
+  scripts/performance.sh
+  scripts/smoke.sh
   scripts/pull_results.sh
   scripts/replace_container_project.sh
   scripts/sync_to_container.sh
@@ -275,7 +272,7 @@ printf '  sudo docker exec -it %q bash\n' "${CONTAINER}"
 echo "Then run inside the container:"
 printf '  cd %q\n' "${DESTINATION}"
 echo '  source /zq500/sdk/env.sh ""'
-echo '  scripts/validate.sh --build-dir build-zx'
+echo '  scripts/smoke.sh --all --build-dir build-zx'
 echo "After leaving the container, retrieve reports from the host with:"
-printf '  scripts/pull_results.sh --container %q --container-root %q --promote-reports\n' \
+printf '  scripts/pull_results.sh --container %q --container-root %q --sync-reports\n' \
   "${CONTAINER}" "${DESTINATION}"

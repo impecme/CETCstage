@@ -1,256 +1,160 @@
-# CETC ZQ500 信号处理算子库
+# CETC
 
-这是面向中科芯 ZQ500 平台的 C++17 信号处理代码库。它包含 CPU reference 和 ZQ500
-GPU 实现，覆盖 12 个模块、81 个公开算子，以及 Task1 雷达处理和 Task2 特征提取两个
-可执行 demo。
+中科芯 ZQ500 信号处理库、81 个公开算子和两个任务 demo。
 
-## 代码结构
+## 脚本边界
 
 ```text
-CETC/
-├── CMakeLists.txt        顶层构建入口
-├── DELIVERY_FILES.txt    容器同步与交付清单
-├── include/cusignal/     公开 API 与兼容层
-├── src/
-│   ├── common/           共用语义与工具
-│   ├── cpu/              CPU reference
-│   └── zhongkexin/       ZQ500 GPU 后端
-├── demo/
-│   ├── common/           Task 报告公共代码
-│   ├── task1_radar/      雷达处理 demo
-│   └── task2_features/   特征提取 demo
-├── tests/
-│   ├── unit/             81 算子独立测试
-│   ├── contracts/        all81、dtype、任务契约
-│   ├── tools/            审计工具
-│   └── platform/         ZQ500 兼容性检查
-├── data/
-│   ├── reference/        固定参考数据
-│   ├── generated/        可再生输入与 manifest
-│   └── reports/          当前发布报告
-├── scripts/
-│   ├── build.sh、test_operators.sh、demo.sh、validate.sh
-│   ├── finalize_reports.py、clean.sh
-│   └── sync_to_container.sh、pull_results.sh
-├── third_party/fftw/     离线 FFTW 依赖
-└── docs/                 架构、运行、验证与交付文档
+auto_git.sh                         根目录自动提交辅助脚本，保留
+scripts/build.sh                    唯一构建入口
+scripts/performance.sh              唯一性能测试入口
+scripts/smoke.sh                    正确性烟测入口
+scripts/clean.sh                    清理可再生运行数据
+scripts/sync_to_container.sh        宿主机同步源码到容器
+scripts/replace_container_project.sh 容器内替换源码
+scripts/pull_results.sh             容器结果取回
 ```
 
-结构图只列出稳定边界，不逐项展开 81 个算子、参考 CSV、运行期暂存或各模块单测文件；
-这些条目分别由 `tests/contracts/operator_sets.json`、各算子 manifest 和 `tests/unit/`
-管理。
+`scripts/` 不再保留旧的分散构建、算子测试、任务 demo、六规模 benchmark、报告
+收束或 PPT 包装脚本。算子集合定义在
+`tests/contracts/operator_sets.json`，六个规模定义在
+`tests/contracts/operator_scale_profiles.json`。
 
-## 容器
+集合数量固定为：`all81=81`、`task_appendix=53`、`task_used=18`、
+`appendix_only=37`、`native_only=26`。第一层按任务源码真实调用的注册算子确定；任务 Helper/变体单独记录，不计入 81 个注册算子。
 
-本队对应容器为 `gpu_04`。Docker 命令在服务器宿主机执行；进入容器后才运行构建、
-测试和 demo 命令。当前账户可使用交互式 shell，但不具备通用非交互
-`sudo docker exec gpu_04 <command>` 权限。
+## 构建
 
-### 直接运行容器中的终版代码
-
-在宿主机复制执行以下命令进入容器：
+构建必须在 ZQ500 容器中执行。默认构建全部 81 个算子：
 
 ```bash
+scripts/build.sh
+```
+
+按算子集合、模块或单个算子构建：
+
+```bash
+scripts/build.sh --operators --operator-set task_used
+scripts/build.sh --operators --operator-set appendix_only
+scripts/build.sh --operators --operator-set all81 --module spectral
+scripts/build.sh --operators --operator spectral/spectrogram
+```
+
+按任务构建，或一次构建全部内容：
+
+```bash
+scripts/build.sh --tasks task1
+scripts/build.sh --tasks task2
+scripts/build.sh --tasks both
+scripts/build.sh --all
+```
+
+`--operator-set`、`--module`、`--operator` 可以组合；完整参数见
+`scripts/build.sh --help`。`--target` 仅用于高级 CMake target 调试，不是日常入口。
+
+## 性能测试
+
+性能入口可以选择算子、任务、集合、模块、单个算子和固定规模。规模只允许单个
+`L1`～`L6` 或六个规模全部执行，不提供自定义规模配置：
+
+```bash
+# 任务实际调用的 18 个注册算子，六个规模
+scripts/performance.sh --operators --operator-set task_used --scale all
+
+# 附录中但任务未使用的算子，单个规模
+scripts/performance.sh --operators --operator-set appendix_only --scale L3
+
+# 单个算子
+scripts/performance.sh --operators --operator spectral/spectrogram --scale all
+
+# 单个任务或两个任务
+scripts/performance.sh --tasks --task task1 --scale all
+scripts/performance.sh --tasks --task both --scale L6
+
+# 81 个算子和两个任务
+scripts/performance.sh --all --scale all
+```
+
+默认将汇总结果写入 `data/reports/units/benchmarks/`，任务结果写入
+`data/reports/demo/<task>/summary.csv`、公共注册算子 `operators/L1.csv` ... `L6.csv` 和任务阶段
+`stages/L1.csv` ... `L6.csv`；其中 Task1 每个规模 5 个公共算子、Task2 每个规模 14 个公共算子，
+阶段/私有 Helper 不计入公共算子数量。原始中间文件写入
+`data/.reports_staging/performance/run_<timestamp>_<pid>/`。性能报告中分别保留 CPU
+端到端、GPU E2E、GPU kernel 计时及加速比；E2E 加速比为 `CPU E2E / GPU E2E`，
+`gpu_kernel_speedup` 仅为 `CPU wall / GPU kernel` 辅助比值，不表述为严格的 CPU/GPU kernel
+加速比。无独立 GPU kernel 的算子以 `null`/“不适用”表示。已有构建可加 `--no-build`；正式性能测量
+默认 `warmup=5/repeat=30`，可用 `--warmup`、`--repeat` 调整。
+
+任务级正式 E2E 每次 repeat 都在各自后端重新构造输入；GPU 路径由 Device 波形算子和
+输入 kernel 直接生成，正式 `task_input_h2d_ms=0`，链内 Device 输出直接传给下一算子，
+链尾统一回读。可复用的是显存容量和 FFT plan，不是上一轮输入值；任务报告的
+`timing_protocol` 会记录这一口径。
+
+## 正确性烟测
+
+烟测复用性能入口的选择器，但固定代表性 `L3`、`warmup=0`、`repeat=1`，只检查
+正确性，不承担完整平台审计或正式报告发布：
+
+```bash
+scripts/smoke.sh --all
+scripts/smoke.sh --operators --operator filtering/wiener
+scripts/smoke.sh --tasks --task both
+```
+
+## 容器工作流
+
+Docker 命令在服务器宿主机执行，构建/测试命令在 `gpu_04` 容器内执行：
+
+```bash
+# 宿主机
 sudo docker start gpu_04
 sudo docker exec -it gpu_04 bash
+
+# 容器内
+cd /CETC
+scripts/build.sh --all
+scripts/smoke.sh --all
+scripts/performance.sh --all --scale all
+exit
 ```
 
-容器内的最终运行入口均使用绝对路径。无论当前位于 `/`、`/tmp` 或其他目录，均可直接
-执行下列命令；脚本会自行定位 `/CETC`、加载 SDK，并把相对 `build-zx` 定位为
-`/CETC/build-zx`：
-
-```bash
-/CETC/scripts/validate.sh --build-dir build-zx
-```
-
-`exit` 只退出当前容器 shell，不会停止 `gpu_04`。
-
-### 同步宿主机的新源码
-
-在宿主机源码修改后，先复制运行以下命令：
+同步源码前在宿主机运行：
 
 ```bash
 cd /home/usr_04/CETC
 scripts/sync_to_container.sh --container gpu_04 --replace
 ```
 
-再复制执行脚本打印的固定激活块；其内容始终如下，无需填写时间戳或目录路径：
+按脚本打印的激活命令在容器内执行。`sync_to_container.sh` 只同步
+`DELIVERY_FILES.txt` 白名单，不构建、不测试、不发布报告。
+
+结果取回同样在宿主机执行：
 
 ```bash
-sudo docker exec -it gpu_04 bash
-bash /tmp/cetc_activate.sh
-exit
-```
-
-第一条命令自动启动 `gpu_04`、复制唯一暂存目录、完成 SHA256 回读校验，并将激活脚本放入
-容器 `/tmp`。第二条固定命令在当前账户获准的交互式 Shell 中原子替换 `/CETC` 并删除旧源码。
-两步均不执行构建、测试、验证、报告发布或任何固化流程；替换后再按本 README 的构建、演示或
-性能命令单独执行。
-
-### 取回容器运行结果
-
-容器内运行完成后先 `exit` 返回宿主机。当前终版路径固定为 `/CETC`，因此取回时无需填写
-容器目录或时间戳。局部算子测试、任务复测、现场 `--live-demo` 与完整验证均可直接同步到
-宿主机仓库的对应目录：
-
-```bash
-# 通用结果同步：将容器 data/reports 中已有文件增量写入宿主机 data/reports/
-# 不要求运行完整验证；容器未生成的宿主机报告会保留
 cd /home/usr_04/CETC
+scripts/pull_results.sh --container gpu_04
 scripts/pull_results.sh --container gpu_04 --sync-reports
-
-# 正式发布：仅在 scripts/validate.sh 完整通过后使用；校验后原子替换宿主机 data/reports/
-cd /home/usr_04/CETC
-scripts/pull_results.sh --container gpu_04 --promote-reports
 ```
 
-`--sync-reports` 通过 SHA256 校验传输内容后，将容器结果按原有相对路径写入宿主机
-`data/reports/`，并刷新该目录的 `FILES.sha256`；它不调用报告固化脚本，也不删除容器未生成的
-宿主机文件。完整验证通过后再使用 `--promote-reports`：只有 81 个算子、两条任务及审计报告
-齐全时才原子替换整个宿主机 `data/reports/`，此前的报告自动移入
-`/home/usr_04/CETC_garbage/promoted_report_backups/`。
+第一条保存到仓库外的 `CETC_garbage/container_pull_<timestamp>/`；第二条把容器的
+`data/reports/` 增量同步到宿主机，不执行报告固化，也没有 `--promote-reports` 模式。
 
-如需仅保留仓库外的原始传输副本而不更新仓库，可省略 `--sync-reports`；脚本会把副本保存到
-`/home/usr_04/CETC_garbage/container_pull_<时间戳>/`。
-
-## 构建与运行
-
-以下命令均可在容器任意目录执行。
-
-先构建：
+## 清理
 
 ```bash
-/CETC/scripts/build.sh --build-dir build-zx
+scripts/clean.sh --dry-run
+scripts/clean.sh
 ```
 
-构建并运行两个任务 demo，使用默认 L6 高并行数据规模：
+只清理可再生输入、运行期暂存和日志，不处理 `data/reference/`、规模 manifest、已存在
+的报告或用户的其他未提交修改。`auto_git.sh` 会调用该清理入口。
 
-```bash
-/CETC/scripts/demo.sh --build-dir build-zx --build --repeat 5
-```
+## 目录
 
-在不修改源码的前提下探索任务输入形状、比较实际加速比，并把中间日志保留在容器
-`/tmp`，可运行：
-
-```bash
-/CETC/scripts/explore_task_acceleration.sh --build-dir build-zx --task both --repeat 3
-```
-
-探索脚本只保留通过 CPU/GPU 数值验证的候选，并按端到端加速比输出排序；它不会将探索
-结果发布为最终报告。确定候选后，应以 `repeat=5` 单独复测，再运行正式 demo 生成报告。
-
-构建并运行全部算子，使用每个算子 manifest 中定义的默认 full case：
-
-```bash
-/CETC/scripts/test_operators.sh --build-dir build-zx --case-set full
-```
-
-构建并运行指定算子，使用该算子 manifest 中定义的默认 full case：
-
-```bash
-/CETC/scripts/test_operators.sh \
-  --build-dir build-zx \
-  --module filtering \
-  --operator wiener \
-  --case-set full
-```
-
-查看可运行的模块和算子：
-
-```bash
-/CETC/scripts/test_operators.sh --list
-```
-
-### 答辩性能终端表
-
-生成答辩用性能终端表：默认一次测量 81 个公开算子和两条任务的正式 L1～L6，随后按
-`task27`、`extended28`、`core53` 三层逐算子打印 CPU median、GPU E2E median、已计算
-加速比和状态，并打印两个任务的 L1～L6 表：
-
-```bash
-/CETC/scripts/ppt_performance.sh
-```
-
-分项运行与只读打印：
-
-```bash
-# 重测 all81，并按 task27 / extended28 / core53 三层打印全部公开算子性能
-/CETC/scripts/ppt_performance.sh --operators
-
-# 重测两条任务的正式统一 L1-L6，并打印任务端到端性能
-/CETC/scripts/ppt_performance.sh --tasks
-
-# 不执行 GPU 测量，仅打印当前 data/reports/ 中已有的结果
-/CETC/scripts/ppt_performance.sh --print-only
-```
-
-现场时间有限时建议先在上台前构建一次。以下 `--demo-fast` 命令用于局部复测，不适合作为
-短时现场演示：Top30 和完整任务 L1～L6 仍需较长时间。
-
-```bash
-# 上台前准备：只构建，不计入现场演示时间
-/CETC/scripts/build.sh --build-dir build-zx
-
-# 局部算子复测：Top30 代表算子，perf case，warmup=1，repeat=3
-/CETC/scripts/ppt_performance.sh --operators --demo-fast --no-build
-
-# 局部任务复测：两条任务正式 L1-L6，repeat=3
-/CETC/scripts/ppt_performance.sh --tasks --demo-fast --no-build
-
-# 兜底方案：不重测，秒级打印已发布的 all81 和任务数据
-/CETC/scripts/ppt_performance.sh --print-only
-```
-
-现场需在 4 分 30 秒内完成赛题基础目录与两条任务的全链路演示时，使用专用命令：
-
-```bash
-# 上台前仅构建现场所需的 53 个算子测试和两个任务 demo；不执行任何测量
-/CETC/scripts/build.sh --build-dir build-zx --live-demo
-
-# 现场逐个执行 core53（53 个）缩小规模的 perf 输入，warmup=1、repeat=1。
-# Task1 / Task2 均采用正式统一协议的 L6 输入（分别为 128×4096、128×3072），repeat=1，均在同进程完成一次 GPU 预热后计时。
-# 终端仅打印 core53 与两条任务的耗时、CPU/GPU 加速比；本轮快照写入既有 reports/units 与 reports/demo。
-/CETC/scripts/ppt_performance.sh --live-demo --no-build
-```
-
-`--live-demo` 固定使用 `core53 / perf / warmup=1 / repeat=1` 和任务 `L6 / repeat=1`。启动时脚本会
-在 `/tmp` 生成 53 份临时 perf manifest：每个算子保留一个原有性能用例，并将输入工作量约缩小为原来的
-`1/16`；CPU/GPU 仍按性能路径计时并打印耗时、加速比。临时目录在命令结束后删除，仓库内的正式 manifest、
-accuracy 输入和完整复测结果均不被修改。两个任务仍使用 L6：任务一保留原有 GPU pipeline 预热，任务二在
-同一进程补充一次完整 GPU pipeline 预热；两者均保留时间校验与结果落盘流程。正式 L1～L6 性能结论仍只
-使用完整统一复测报告。
-
-现场模式不会新建目录，完成后仅增加以下四个快照文件，并更新 `data/reports/FILES.sha256`：
-
-- `data/reports/units/live_demo_core53.json`、`data/reports/units/live_demo_core53.csv`
-- `data/reports/demo/live_demo_tasks.json`、`data/reports/demo/live_demo_tasks.csv`
-
-它们明确标注为现场复核快照，不替代 `units/benchmarks/summary.json` 或任务的正式 L1～L6 报告。
-其中算子快照记录本次缩小规模 perf 输入下的 CPU/GPU 耗时与加速比，仅用于现场展示，不替代正式性能数据。
-
-默认算子测量为 `all81`、`case-set=full`、`warmup=5`、`repeat=30`；每行的加速比是
-结构化结果中直接记录的 `CPU median / GPU E2E median`。任务测量默认 `repeat=7`，
-首轮仅 warm-up，后续轮次的 CPU/GPU total 中位数用于计算 L1～L6 加速比。可用
-`--no-build` 复用已有二进制，也可用 `--operator-set`、`--operator-case-set`、
-`--operator-warmup`、`--operator-repeat`、`--task-repeat` 调整测量范围和次数。
-
-`core53` 包含 `task27`，三层是性能覆盖视图，不得相加为 108 个算子；`extended28` 使用
-“赛题附录”标题前，仍须核对其与官方附录名单一致。
-
-执行完整验证，包括构建、81 个算子、Task1/Task2 的 L1-L6、接口/dtype/任务步骤审计
-及报告发布；全部通过后自动在终端集中打印三层算子性能表和两条任务的 L1-L6 性能表：
-
-```bash
-/CETC/scripts/validate.sh --build-dir build-zx
-```
-
-完整验证成功后，当前报告发布到 `data/reports/`：
-
-- `units/<module>/<operator>/`：逐算子测试数据；
-- `units/benchmarks/summary.json` 和 `summary.csv`：全部算子的运行时间、加速比和误差汇总；
-- `demo/`：两个任务的最终场景和 L1-L6 数据；
-- `validation/`：接口、dtype、算子集合和任务步骤审计。
-
-运行期数据写在 `data/.reports_staging/`，只有完整验证通过才会替换已发布报告。
-构建目录、缓存、日志和历史过程文件不属于交付内容。详细容器工作流和结果取回见
-[docs/BUILD_AND_RUN.md](docs/BUILD_AND_RUN.md)。
+- `include/`、`src/`：公共接口、CPU 实现和 ZQ500 GPU 实现。
+- `demo/`：Task1/Task2 demo。
+- `tests/contracts/`：算子集合和规模契约。
+- `tests/unit/`：算子测试目标。
+- `data/generated/`：可再生输入和 manifest。
+- `data/.reports_staging/`：运行期原始报告暂存区。
+- `docs/`：构建、性能、交付和历史说明。

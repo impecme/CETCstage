@@ -9,7 +9,13 @@ BUILD_TYPE="${BUILD_TYPE:-Release}"
 JOBS="${JOBS:-}"
 CHECK_DEPS=1
 TARGETS=()
-LIVE_DEMO=0
+OPERATOR_MODE=0
+OPERATOR_SET="all81"
+MODULE_FILTER="all"
+OPERATOR_FILTER="all"
+TASK_MODE=0
+TASK_SELECTION=""
+ALL_SELECTION=0
 
 FFTW_VERSION="3.3.10"
 FFTW_SHA256="56c932549852cddcfafdab3820b0200c7742675be92179e59e6215b340e26467"
@@ -29,9 +35,13 @@ Options:
   --build-dir PATH    Build directory (default: build-zx)
   --build-type TYPE   CMake build type (default: Release)
   --jobs N            Parallel build jobs (default: auto)
-  --target NAME       Build one target; may be repeated (default: all)
-  --live-demo         Build only the 53 core53 test targets plus Task1/Task2 demos;
-                      do not run any measurement
+  --operators         Select operator targets (default set: all81)
+  --operator-set NAME Operator set: task_used|appendix_only|task_appendix|native_only|all81
+  --module NAME       Restrict the selected operator set to one module
+  --operator NAME     Build one operator, as module/operator or with --module
+  --tasks NAME        Build task1, task2, or both
+  --all               Build all 81 operators and both task demos
+  --target NAME       Advanced: build one CMake target; may be repeated
   --skip-deps         Skip SDK/FFTW dependency checks
   -h, --help          Show this help
 
@@ -90,8 +100,36 @@ while [[ $# -gt 0 ]]; do
       TARGETS+=("$2")
       shift 2
       ;;
-    --live-demo)
-      LIVE_DEMO=1
+    --operators)
+      OPERATOR_MODE=1
+      shift
+      ;;
+    --operator-set)
+      [[ $# -ge 2 ]] || die "--operator-set requires a value"
+      OPERATOR_MODE=1
+      OPERATOR_SET="$2"
+      shift 2
+      ;;
+    --module)
+      [[ $# -ge 2 ]] || die "--module requires a value"
+      OPERATOR_MODE=1
+      MODULE_FILTER="$2"
+      shift 2
+      ;;
+    --operator)
+      [[ $# -ge 2 ]] || die "--operator requires a value"
+      OPERATOR_MODE=1
+      OPERATOR_FILTER="$2"
+      shift 2
+      ;;
+    --tasks)
+      [[ $# -ge 2 ]] || die "--tasks requires a value"
+      TASK_MODE=1
+      TASK_SELECTION="$2"
+      shift 2
+      ;;
+    --all)
+      ALL_SELECTION=1
       shift
       ;;
     --skip-deps)
@@ -108,14 +146,42 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ "${LIVE_DEMO}" -eq 1 ]]; then
-  mapfile -t LIVE_DEMO_UNIT_TARGETS < <(
-    python3 - "${PROJECT_ROOT}/tests/contracts/operator_sets.json" <<'PY'
+if [[ "${ALL_SELECTION}" -eq 1 ]]; then
+  [[ "${OPERATOR_MODE}" -eq 0 && "${TASK_MODE}" -eq 0 && ${#TARGETS[@]} -eq 0 ]] || \
+    die "--all cannot be combined with operator, task, or target selectors"
+  OPERATOR_MODE=1
+  OPERATOR_SET="all81"
+  TASK_MODE=1
+  TASK_SELECTION="both"
+fi
+
+if [[ ${#TARGETS[@]} -gt 0 && ( "${OPERATOR_MODE}" -eq 1 || "${TASK_MODE}" -eq 1 ) ]]; then
+  die "--target cannot be combined with semantic operator/task selectors"
+fi
+
+if [[ "${OPERATOR_MODE}" -eq 1 ]]; then
+  if [[ "${OPERATOR_FILTER}" == */* ]]; then
+    OPERATOR_MODULE_FROM_NAME="${OPERATOR_FILTER%%/*}"
+    OPERATOR_NAME_FROM_NAME="${OPERATOR_FILTER#*/}"
+    [[ -n "${OPERATOR_MODULE_FROM_NAME}" && -n "${OPERATOR_NAME_FROM_NAME}" ]] || \
+      die "--operator must be module/operator"
+    [[ "${MODULE_FILTER}" == "all" || "${MODULE_FILTER}" == "${OPERATOR_MODULE_FROM_NAME}" ]] || \
+      die "--operator conflicts with --module"
+    MODULE_FILTER="${OPERATOR_MODULE_FROM_NAME}"
+    OPERATOR_FILTER="${OPERATOR_NAME_FROM_NAME}"
+  elif [[ "${OPERATOR_FILTER}" != "all" && "${MODULE_FILTER}" == "all" ]]; then
+    die "--operator without module must use module/operator"
+  fi
+
+  mapfile -t SELECTED_OPERATOR_TARGETS < <(
+    python3 - "${PROJECT_ROOT}/tests/contracts/operator_sets.json" \
+      "${OPERATOR_SET}" "${MODULE_FILTER}" "${OPERATOR_FILTER}" <<'PY'
 import json
 import sys
 from pathlib import Path
 
 payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+set_name, module_filter, operator_filter = sys.argv[2:5]
 sets = payload.get("sets")
 if not isinstance(sets, dict):
     raise SystemExit("operator_sets.json missing sets")
@@ -146,19 +212,37 @@ def resolve(name, resolving=None):
             excluded.update(resolve(exclude, resolving))
         result = [key for key in all81 if key in included and key not in excluded]
     resolving.remove(name)
+    expected = item.get("expected_count")
+    if not isinstance(expected, int) or len(result) != expected or len(set(result)) != len(result):
+        raise SystemExit(f"operator set {name} expected_count mismatch")
+    if not set(result).issubset(set(all81)):
+        raise SystemExit(f"operator set {name} contains an unknown operator")
     return result
 
-core53 = resolve("core53")
-if len(core53) != 53:
-    raise SystemExit(f"core53 target count mismatch: {len(core53)}")
-for key in core53:
+selected = resolve(set_name)
+for key in selected:
     module, operator = key.split("/", 1)
-    print(f"{module}_test_{operator}")
+    if module_filter != "all" and module != module_filter:
+        continue
+    if operator_filter != "all" and operator != operator_filter:
+        continue
+    # Every unit-test executable follows the module_test_operator naming
+    # convention, including waveforms (its CMake helper adds the prefix).
+    target = f"{module}_test_{operator}"
+    print(target)
 PY
   )
-  [[ ${#LIVE_DEMO_UNIT_TARGETS[@]} -eq 53 ]] || die "expected 53 core53 test targets"
-  TARGETS+=(task1_radar_demo task2_features_demo "${LIVE_DEMO_UNIT_TARGETS[@]}")
-  echo "[build] live-demo targets: 53 core53 tests + 2 task demos"
+  [[ ${#SELECTED_OPERATOR_TARGETS[@]} -gt 0 ]] || die "no operator target matched the requested selectors"
+  TARGETS+=("${SELECTED_OPERATOR_TARGETS[@]}")
+fi
+
+if [[ "${TASK_MODE}" -eq 1 ]]; then
+  case "${TASK_SELECTION}" in
+    task1) TARGETS+=(task1_radar_demo) ;;
+    task2) TARGETS+=(task2_features_demo) ;;
+    both) TARGETS+=(task1_radar_demo task2_features_demo) ;;
+    *) die "--tasks must be task1, task2, or both" ;;
+  esac
 fi
 
 if [[ -n "${JOBS}" && ! "${JOBS}" =~ ^[1-9][0-9]*$ ]]; then

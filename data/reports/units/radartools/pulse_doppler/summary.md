@@ -1,7 +1,7 @@
 # 算子测试报告：radartools/pulse_doppler
 
 - 状态：通过
-- 精度用例：2
+- 精度用例：0
 - 性能用例：1
 
 ## 误差
@@ -13,10 +13,10 @@
 
 ## 性能
 
-- CPU 中位时间：8.94657 ms
-- GPU 端到端中位时间：0.291995 ms
-- GPU kernel 最小时间：0.153748 ms
-- GPU kernel 中位时间：0.153748 ms
-- GPU kernel 最大时间：0.153748 ms
-- GPU 端到端加速比：30.6395x
-- GPU kernel 加速比：58.1898x
+- CPU 中位时间：44.7621 ms
+- GPU 端到端中位时间：62.8506 ms
+- GPU kernel 最小时间：0.134372 ms
+- GPU kernel 中位时间：0.134372 ms
+- GPU kernel 最大时间：0.134372 ms
+- GPU 端到端加速比：0.712198x
+- GPU kernel 加速比：333.121x

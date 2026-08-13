@@ -131,6 +131,7 @@ namespace
         std::string id;
         std::string category;
         std::string input_kind = "real"; // cmplx_sort 使用的输入域
+        int sample_count = 4096; // cmplx_sort 复数性能输入长度
         int numtaps = 0; // firwin / firwin2 的 FIR taps 数
         float attenuation = 0.0; // kaiser_atten / kaiser_beta 的衰减（dB）
         float width = -1.0; // firwin 的过渡带宽度（负值表示禁用）
@@ -508,7 +509,11 @@ namespace
         }
         if (test_case.id == "perf_complex")
         {
-            constexpr std::size_t sample_count = 4096;
+            if (test_case.sample_count < 2)
+            {
+                throw std::runtime_error("cmplx_sort sample_count must be >= 2");
+            }
+            const std::size_t sample_count = static_cast<std::size_t>(test_case.sample_count);
             const float pi = std::acos(-1.0);
             const float phase_scale = (8.0 * pi) / static_cast<float>(sample_count - 1);
             ComplexSignal input;
@@ -793,7 +798,9 @@ namespace
         }
         else
         {
-            stats.median_ms = sorted[sorted.size() / 2];
+            stats.median_ms = sorted.size() % 2 == 0
+                                  ? 0.5f * (sorted[sorted.size() / 2 - 1] + sorted[sorted.size() / 2])
+                                  : sorted[sorted.size() / 2];
         }
         const std::size_t p95_index = static_cast<std::size_t>(
             std::ceil(0.95 * static_cast<float>(sorted.size())) - 1.0);
@@ -1060,6 +1067,10 @@ namespace
         {
             stream << ",\n  \"numtaps\": " << test_case.numtaps;
         }
+        if (test_case.id == "perf_complex")
+        {
+            stream << ",\n  \"sample_count\": " << test_case.sample_count;
+        }
         if (!test_case.cutoff.empty())
         {
             if (test_case.cutoff_is_scalar)
@@ -1147,6 +1158,7 @@ namespace
             test_case.id = get_string(object, "id");
             test_case.category = category;
             test_case.input_kind = get_optional_string(object, "input_kind").value_or("real"); // cmplx_sort 输入类型：real / complex
+            test_case.sample_count = get_optional_int(object, "sample_count", 4096); // cmplx_sort 复数性能输入长度
             test_case.numtaps = get_optional_int(object, "numtaps", 0); // FIR taps 数
             test_case.attenuation = get_optional_number(object, "attenuation", 0.0); // 衰减（dB）
             test_case.width = get_optional_number(object, "width", -1.0); // firwin 过渡带宽度
@@ -1549,11 +1561,11 @@ namespace
     {
         std::ostringstream stream;
         stream << "{"
-               << "\"max_abs_error\":" << metrics.max_abs_error << ','
-               << "\"max_rel_error\":" << metrics.max_rel_error << ','
-               << "\"mixed_error\":" << metrics.mixed_error << ','
-               << "\"rmse\":" << metrics.rmse << ','
-               << "\"l2_error\":" << metrics.l2_error << ','
+               << "\"max_abs_error\":" << cusignal_test::report::json_number(metrics.max_abs_error) << ','
+               << "\"max_rel_error\":" << cusignal_test::report::json_number(metrics.max_rel_error) << ','
+               << "\"mixed_error\":" << cusignal_test::report::json_number(metrics.mixed_error) << ','
+               << "\"rmse\":" << cusignal_test::report::json_number(metrics.rmse) << ','
+               << "\"l2_error\":" << cusignal_test::report::json_number(metrics.l2_error) << ','
                << "\"exact_match\":" << (metrics.exact_match ? "true" : "false") << ','
                << "\"first_mismatch_index\":" << metrics.first_mismatch_index << ','
                << "\"compared_samples\":" << metrics.compared_samples << "}";
@@ -1619,7 +1631,7 @@ namespace
             {
                 gpu_e2e_perf.push_back(report.gpu_e2e_perf->median_ms);
             }
-            if (report.gpu_kernel_perf.has_value())
+            if (cusignal_test::report::valid_timing(report.gpu_kernel_perf))
             {
                 gpu_kernel_perf.push_back(report.gpu_kernel_perf->median_ms);
             }
@@ -1705,14 +1717,14 @@ namespace
             std::cout << "gpu_perf_ms   : e2e_median="
                       << format_fixed(summary.gpu_e2e_perf->median_ms)
                       << "  kernel_median="
-                      << (summary.gpu_kernel_perf.has_value()
+                      << (cusignal_test::report::valid_timing(summary.gpu_kernel_perf)
                               ? format_fixed(summary.gpu_kernel_perf->median_ms)
                               : "n/a")
                       << "  p95=" << format_fixed(summary.gpu_e2e_perf->p95_ms)
                       << "  e2e_speedup="
                       << format_fixed(median_speedup(summary.cpu_perf, summary.gpu_e2e_perf)) << "x"
                       << "  kernel_speedup="
-                      << (summary.gpu_kernel_perf.has_value()
+                      << (cusignal_test::report::valid_timing(summary.gpu_kernel_perf)
                               ? format_fixed(median_speedup(summary.cpu_perf, summary.gpu_kernel_perf)) + "x"
                               : "n/a")
                       << '\n';
@@ -1789,11 +1801,21 @@ namespace
         }
         report.gpu_e2e_perf = benchmark_host_latency(options, [&]()
                                                      {
-                                                         (void)runner.gpu(test_case);
+                                                         (void)materialize(runner.gpu(test_case));
                                                          cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
                                                      });
-        report.gpu_kernel_perf = benchmark_gpu_kernel_latency(options, [&]()
-                                                              { (void)runner.gpu(test_case); });
+        // These implementations are scalar/CPU-fallback paths in the
+        // ZQ500 backend and do not launch an independently timed kernel.
+        // Do not turn the hook's zero placeholder into a misleading 0x.
+        if (op != "kaiser_beta" && op != "kaiser_atten" && op != "cmplx_sort")
+        {
+            report.gpu_kernel_perf = benchmark_gpu_kernel_latency(options, [&]()
+                                                                  { (void)runner.gpu(test_case); });
+        }
+        else
+        {
+            report.gpu_kernel_perf.reset();
+        }
 
         if (options.emit_report)
         {

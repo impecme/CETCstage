@@ -1,78 +1,67 @@
 # 最终交付状态
 
-## 当前结论
+## 当前边界
 
 - 主仓库就是交付版本；本轮不创建外部压缩包，不提交、不推送。
-- V5.5、V6、V7 均已关闭，最终执行编号为 `V7-0011`。
-- 最终演示 wall 为 `101.971/240 s`；Top30 为 `30/30`，中位加速
-  `109.919x`；all81 为 `81/81`；dtype 缺口为 `0`；任务步骤为 `14/14`。
-- 不再启动 V6/V7 候选，不重新解释或修改冻结性能结论。
-- 当前代码终版报告已由 `gpu_04` 容器完整验证生成，运行编号为
-  `current-20260719-165100`；不得用历史证据文件替代。
+- 算子集合口径为 `all81=81`、`task_appendix=53`、`task_used=18`、
+  `appendix_only=37`、`native_only=26`。
+- `scripts/` 只保留一个构建入口、一个性能入口、一个正确性烟测入口，以及清理、
+  容器同步、容器替换和结果取回脚本。
+- 历史运行编号、冻结性能数据和旧流程说明位于 `docs/history/`，不作为当前入口。
 
-## 交付边界
+## 保留内容
 
-主仓库保留以下内容：
+- `include/`、`src/`：公共接口、CPU 实现和 ZQ500 GPU 实现；
+- `demo/`：Task1/Task2 demo；
+- `tests/`：算子、任务和平台相关测试；
+- `tests/contracts/`：算子集合与六级规模契约；
+- `scripts/build.sh`：统一构建；
+- `scripts/performance.sh`：统一性能测试；
+- `scripts/smoke.sh`：统一正确性烟测；
+- `scripts/clean.sh`：清理可再生运行数据；
+- `scripts/sync_to_container.sh`、`replace_container_project.sh`、`pull_results.sh`：
+  容器工作流；
+- `data/reference/`、`data/generated/**/manifest.json`：参考数据和输入契约；
+- `data/reports/`：已有结果目录；
+- `DELIVERY_FILES.txt`：容器同步白名单。
 
-- `include/`、`src/`：公开接口、CPU reference 和中科芯 ZQ500 实现；
-- `demo/`：Task1/Task2 可执行演示及其必要辅助代码；
-- `tests/`：81 算子、核心类型和平台兼容性测试；
-- `scripts/`：8 个最终构建、验证、演示、算子测试、报告收束、同步、取回和清理脚本；
-- `data/reference/`、`data/generated/**/manifest.json`：静态参考数据和规模契约；
-- `data/reports/`：完整验证后发布的当前算子、benchmark、任务、门禁与汇总数据；
-- `docs/`：按交付维度组织的最终文档。
+旧的分散构建、算子测试、任务 demo、六规模 benchmark、报告 finalizer、PPT 包装和
+完整 validate 入口不属于当前脚本架构。
 
-以下内容不属于交付源树：构建目录、编译缓存、Python 缓存、SDK 副本、历史候选
-脚本、逐轮计划、日志、图件、外层归档和 before/after/diff 清单。当前报告
-finalizer 是交付验证链的一部分，保留在 `scripts/`。
+## 报告边界
 
-## 本轮整理
+`performance.sh` 将最终结果写入 `data/reports/units/benchmarks/` 和
+`data/reports/demo/<task>/summary.csv` 与 `operators/`；算子和任务二进制负责生成正式 CSV
+报告。每次运行的原始中间文件另写入
+`data/.reports_staging/performance/run_<timestamp>_<pid>/`。当前架构不再保留独立报告
+finalizer。
 
-历史冻结证据、计划、候选脚本、图件、日志、构建目录和被移除的重复测试入口均已
-可恢复地移至 `/home/usr_04/CETC_garbage/`。当前代码已在 `gpu_04` 容器完整运行，
-finalizer 已发布 `data/reports/`；原始运行期数据仅保存在可恢复的取回目录，
-主仓库只保留终版数据。其 `summary.md/json` 记录运行编号和来源指纹，`FILES.sha256`
-校验全部终版文件。
+容器结果取回由宿主机上的 `pull_results.sh` 完成：
+
+```bash
+scripts/pull_results.sh --container gpu_04
+scripts/pull_results.sh --container gpu_04 --sync-reports
+```
+
+不提供 `--promote-reports`。`--sync-reports` 只是校验并增量合并容器已有报告，不能
+替代重新运行构建、烟测或性能测试。
 
 ## 验证边界
 
-本轮执行了不产生 GPU 性能结论的宿主机静态检查、JSON/Markdown/脚本检查和兼容
-夹具校验；同时在赛方容器完成了 ZQ500 编译产物上的 81 算子测试、Task demo 与
-结构化审计。该运行只验证当前代码正确性和交付报告完整性，不会生成或改变 V5.5、
-V6、V7 的冻结性能结论。
+宿主机可执行 shell 语法、帮助接口、契约文件和 Python 单元测试的静态检查；GPU 构建、
+正确性和性能必须在 `gpu_04` 容器内运行：
 
-打包、归档文件数和归档 SHA256 由后续打包流程生成，不在主仓库中预填一个会随
-工作树继续变化的值。
+```bash
+scripts/build.sh --all
+scripts/smoke.sh --all
+scripts/performance.sh --all --scale all
+```
 
-根 [DELIVERY_FILES.txt](../DELIVERY_FILES.txt) 是用于容器源码同步的精确白名单，
-已排序且无重复。同步脚本只按该文件组装 staging，并在容器复制后完整回读做 SHA256
-对比。它刻意不含 `data/reports/`，避免把先前运行的报告带入新的容器验证；
-完整验证后的当前代码报告由 `scripts/pull_results.sh --promote-reports` 单独校验并带回主
-仓库。最终文件数量、总大小和交付归档 SHA256 由后续实际打包流程生成，不能预填。
+本轮已在 `gpu_04` 容器完成契约审计、目标构建、相关算子定向性能和两个任务 L3 烟测；
+未在本轮执行 81 个算子六级全量性能复测，也未将容器报告再次拉回宿主机。
 
-宿主机账户不能直接访问 `/var/run/docker.sock`，但获准使用 `sudo docker exec -it
-gpu_04 bash`、`docker cp` 和容器状态命令。本轮已按该流程完成容器验证和结果取回；
-后续复验仍应在容器内使用 `scripts/validate.sh --build-dir build-zx`。
+## 受保护项
 
-`.zq500_sdk_full.delete_me/` 是一个已忽略的 2,605,660,568 字节 SDK 副本，属主
-为 `nobody:nogroup`。当前账号没有权限跨目录移动它，免交互 sudo 也不可用，因此
-它仍在工作树物理目录中，但明确不属于交付 allowlist。后续打包必须排除该目录；
-如需让物理目录也瘦身，应由具有权限的管理员可恢复地移出，而不是在本仓库中
-强制删除。
-
-## 本地受保护项
-
-下列工作区状态不由本轮整理处置，也不应在未确认时纳入交付：
-
-- tracked `.codex` 删除；
-- 根目录赛事 DOCX 删除；
-- `.vscode/`；
-- `复赛说明文件/`；
-- `ppt_work/`。
-
-其中三份兼容 XLSX 是外部验证夹具，通过 `ZX_COMPAT_SOURCE_DIR` 提供；其身份由
-仓库内 manifest 冻结，但源文件本身不因此自动成为交付内容。
-
-同目录的《参赛者服务器使用说明》和《ZQ500 dlPTI 使用手册》本轮仅作只读操作
-依据。进入退出、双向复制和 SDK 初始化已经收束到 `docs/BUILD_AND_RUN.md`；两份
-PDF 仍不进入交付白名单。
+本轮不处置以下已有工作区状态：`.codex`、赛事 DOCX、`.vscode/`、
+`复赛说明文件/` 和 `ppt_work/`。兼容 XLSX 由
+`ZX_COMPAT_SOURCE_DIR` 提供，不因本脚本清理自动加入交付白名单。

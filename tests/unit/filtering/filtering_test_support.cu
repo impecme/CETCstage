@@ -3566,7 +3566,7 @@ namespace
             }
             if (report.cpu_perf.has_value()) cpu_perf.push_back(report.cpu_perf->median_ms);
             if (report.gpu_e2e_perf.has_value()) gpu_e2e_perf.push_back(report.gpu_e2e_perf->median_ms);
-            if (report.gpu_kernel_perf.has_value()) gpu_kernel_perf.push_back(report.gpu_kernel_perf->median_ms);
+            if (cusignal_test::report::valid_timing(report.gpu_kernel_perf)) gpu_kernel_perf.push_back(report.gpu_kernel_perf->median_ms);
         }
         if (have_ref)
         {
@@ -3637,10 +3637,10 @@ namespace
         if (summary.gpu_e2e_perf.has_value())
         {
             std::cout << "gpu_perf_ms   : e2e_median=" << format_fixed(summary.gpu_e2e_perf->median_ms)
-                      << "  kernel_median=" << (summary.gpu_kernel_perf.has_value() ? format_fixed(summary.gpu_kernel_perf->median_ms) : "n/a")
+                      << "  kernel_median=" << (cusignal_test::report::valid_timing(summary.gpu_kernel_perf) ? format_fixed(summary.gpu_kernel_perf->median_ms) : "n/a")
                       << "  p95=" << format_fixed(summary.gpu_e2e_perf->p95_ms)
                       << "  e2e_speedup=" << format_fixed(median_speedup(summary.cpu_perf, summary.gpu_e2e_perf)) << "x"
-                      << "  kernel_speedup=" << (summary.gpu_kernel_perf.has_value() ? format_fixed(median_speedup(summary.cpu_perf, summary.gpu_kernel_perf)) + "x" : "n/a")
+                      << "  kernel_speedup=" << (cusignal_test::report::valid_timing(summary.gpu_kernel_perf) ? format_fixed(median_speedup(summary.cpu_perf, summary.gpu_kernel_perf)) + "x" : "n/a")
                       << '\n';
         }
         else
@@ -3920,6 +3920,40 @@ namespace
             return runner.gpu(test_case);
         };
 
+        auto run_gpu_e2e = [&]() -> OutputBundle {
+            // Refresh every host-backed operand before each E2E sample.  The
+            // kernel benchmark deliberately uses the already prepared device
+            // operands in run_gpu_perf() so its CUDA-event value is kernel-only.
+            if (detrend_device_data.has_value())
+                detrend_device_data->copy_from(get_data_array(test_case));
+            if (freq_shift_x.has_value())
+                freq_shift_x->copy_from(get_x_complex(test_case));
+            if (channelize_x.has_value())
+            {
+                channelize_x->copy_from(flatten(get_x_complex(test_case)));
+                channelize_h->copy_from(get_h_signal(test_case));
+            }
+            if (filtering_x.has_value())
+                filtering_x->copy_from(get_x_real(test_case));
+            if (filtering_b.has_value())
+                filtering_b->copy_from(get_b_signal(test_case));
+            if (filtering_sos.has_value())
+                filtering_sos->copy_from(get_sos_array(test_case));
+            if (filtering_zi.has_value())
+                filtering_zi->copy_from(get_zi_array(test_case));
+            if (filtering_h.has_value())
+                filtering_h->copy_from(get_h_signal(test_case));
+            if (filtering_t.has_value())
+                filtering_t->copy_from(get_t_signal(test_case));
+            if (const auto *window_values = std::get_if<RealSignal>(&test_case.window))
+            {
+                filtering_window_signal.reset();
+                filtering_window = to_zx_gpu_window_spec_with_device_array(
+                    *window_values, filtering_window_signal);
+            }
+            return materialize(run_gpu_perf());
+        };
+
         OutputBundle gpu_output;
         if (!options.gpu_only_perf)
         {
@@ -3941,7 +3975,7 @@ namespace
             report.cpu_perf = benchmark_host_latency(options, [&]() { (void)runner.cpu(test_case); });
         }
         report.gpu_e2e_perf = benchmark_host_latency(options, [&]() {
-            (void)run_gpu_perf();
+            (void)run_gpu_e2e();
             cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
         });
         report.gpu_kernel_perf = benchmark_gpu_kernel_latency(options, [&]() { (void)run_gpu_perf(); });

@@ -47,8 +47,9 @@ CPU 和 GPU 后端保持同一功能域，但所有权边界不同：
   “所有返回均为 device 数组”。
 - 多返回和分支返回使用具名 `struct` 与 `std::variant`，不模拟 Python 动态 tuple。
 
-性能口径中的 GPU E2E 通常覆盖 host 输入上传和 GPU 计算，不包含调用方为了
-correctness 对照而显式执行的 `.get()`。具体 runner 口径以最终报告为准。
+独立算子性能口径仍按各算子 runner 的实际输入路径记录；两个任务 demo 的 GPU E2E
+使用设备端波形和回波/帧构造，不包含验证对照专用的 `.get()`/H2D。具体 runner 口径以
+最终任务报告的 `timing_protocol` 和 `summary.csv` 为准。
 
 ## 3. 81 算子注册矩阵
 
@@ -75,49 +76,20 @@ correctness 对照而显式执行的 `.get()`。具体 runner 口径以最终报
 ## 4. 冻结算子集合
 
 机器集合只在 `tests/contracts/operator_sets.json` 维护，`module/operator` 是 canonical
-key。最终集合关系如下：
+key。`task_appendix` 的唯一上游来源是仓库根目录 `算子表.xlsx`，审计会逐项比对并校验
+其 SHA256。当前正式划分如下：
 
 | 集合 | 数量 | 定义 |
 | --- | ---: | --- |
 | `all81` | 81 | 全部注册算子 |
-| `task27` | 27 | Task1/Task2 直接依赖算子 |
-| `extended28` | 28 | V4.3 启用的原注释候选 |
-| `core53` | 53 | `all81 - extended28` |
-| `demo_top30` | 30 | V6-0141 L6 E2E speedup 固定排序的演示集合 |
-| `demo_cache_probe4` | 4 | cache A/B 的固定探针集合 |
+| `task_appendix` | 53 | `算子表.xlsx` 的全部赛题范围 |
+| `task_used` | 18 | 两个任务源码实际调用的注册算子 |
+| `appendix_only` | 37 | 赛题表中两个任务未采用的其余注册算子 |
+| `native_only` | 26 | 既不在赛题表、也未被任务采用的原生库算子 |
 
-`task27` 精确包含：
-
-```text
-waveforms/chirp, waveforms/gausspulse, waveforms/unit_impulse,
-bsplines/cubic, bsplines/quadratic,
-windows/hamming, windows/kaiser,
-filter_design/firwin, filter_design/firwin2,
-filtering/firfilter, filtering/sosfilt, filtering/hilbert, filtering/hilbert2,
-radartools/pulse_compression, radartools/pulse_doppler, radartools/ambgfun,
-radartools/cfar_alpha, radartools/ca_cfar,
-spectral/spectrogram, spectral/stft,
-wavelets/ricker, wavelets/cwt,
-correlate/correlate, correlate/correlate2d,
-demod/fm_demod, estimation/kalman_filter, peak_finding/argrelextrema
-```
-
-`extended28` 精确包含：
-
-```text
-windows/get_window, windows/barthann, windows/bartlett, windows/blackman,
-windows/blackmanharris, windows/bohman, windows/boxcar, windows/cosine,
-windows/exponential, windows/flattop, windows/gaussian, windows/general_hamming,
-windows/hann, windows/nuttall, windows/tukey,
-filter_design/kaiser_beta, filter_design/kaiser_atten, filter_design/cmplx_sort,
-filtering/lfilter, filtering/firfilter_zi, filtering/filtfilt,
-radartools/mvdr,
-spectral/periodogram, spectral/welch, spectral/coherence,
-correlate/correlation_lags, peak_finding/argrelmin, peak_finding/argrelmax
-```
-
-历史上这 28 项曾是注释候选；V4.3 起已全部进入 active 集合并通过，不应再称为
-未实现或静默候选。
+`appendix_only = task_appendix - task_used`；三组
+`task_used`、`appendix_only`、`native_only` 互不重叠且并集为 `all81 = 81`。
+现场只测量 `task_appendix` 53 项，按前两层顺序展示。
 
 ## 5. 任务 public helper
 

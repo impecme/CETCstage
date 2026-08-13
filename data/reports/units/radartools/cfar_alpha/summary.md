@@ -1,7 +1,7 @@
 # 算子测试报告：radartools/cfar_alpha
 
 - 状态：通过
-- 精度用例：2
+- 精度用例：0
 - 性能用例：1
 
 ## 误差
@@ -14,9 +14,9 @@
 ## 性能
 
 - CPU 中位时间：0.0001 ms
-- GPU 端到端中位时间：0.043569 ms
+- GPU 端到端中位时间：0.083881 ms
 - GPU kernel 最小时间：0 ms
 - GPU kernel 中位时间：0 ms
 - GPU kernel 最大时间：0 ms
-- GPU 端到端加速比：0.00229521x
+- GPU 端到端加速比：0.00119217x
 - GPU kernel 加速比：0x

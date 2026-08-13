@@ -618,7 +618,9 @@ namespace
         std::sort(sorted.begin(), sorted.end());
         stats.min_ms = sorted.front();
         stats.max_ms = sorted.back();
-        stats.median_ms = sorted[sorted.size() / 2];
+        stats.median_ms = sorted.size() % 2 == 0
+                              ? 0.5f * (sorted[sorted.size() / 2 - 1] + sorted[sorted.size() / 2])
+                              : sorted[sorted.size() / 2];
         const std::size_t p95_index =
             static_cast<std::size_t>(std::ceil(0.95 * static_cast<float>(sorted.size()))) - 1;
         stats.p95_ms = sorted[std::min<std::size_t>(p95_index, sorted.size() - 1)];
@@ -1397,7 +1399,7 @@ namespace
             {
                 gpu_e2e_perf_medians.push_back(report.gpu_e2e_perf->median_ms);
             }
-            if (report.gpu_kernel_perf.has_value())
+            if (cusignal_test::report::valid_timing(report.gpu_kernel_perf))
             {
                 gpu_kernel_perf_medians.push_back(report.gpu_kernel_perf->median_ms);
             }
@@ -1488,13 +1490,14 @@ namespace
             std::cout << "gpu_perf_ms   : e2e_median="
                       << format_fixed(summary.gpu_e2e_perf->median_ms)
                       << "  kernel_median="
-                      << (summary.gpu_kernel_perf.has_value()
+                      << (cusignal_test::report::valid_timing(summary.gpu_kernel_perf)
                               ? format_fixed(summary.gpu_kernel_perf->median_ms)
                               : "n/a")
                       << "  p95=" << format_fixed(summary.gpu_e2e_perf->p95_ms)
                       << "  e2e_speedup=" << format_fixed(e2e_speedup) << "x"
                       << "  kernel_speedup="
-                      << (summary.gpu_kernel_perf.has_value() && summary.cpu_perf.has_value()
+                      << (cusignal_test::report::valid_timing(summary.gpu_kernel_perf) &&
+                                  cusignal_test::report::valid_timing(summary.cpu_perf)
                               ? format_fixed(kernel_speedup) + "x"
                               : "n/a")
                       << '\n';
@@ -2473,7 +2476,9 @@ namespace
                 }
                 report.gpu_e2e_perf =
                     benchmark_host_latency(options, [&]() {
-                        (void)gpu_perf_runner();
+                        // E2E invokes the public host-input path every time,
+                        // forcing a fresh H2D and materializing all outputs.
+                        (void)to_output_bundle(gpu_runner(test_case));
                         cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
                     });
                 report.gpu_kernel_perf = kernel_bench(test_case, options);

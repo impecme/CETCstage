@@ -1,0 +1,1127 @@
+{
+  "schema_version": 1,
+  "description": "Explicit all81 six-level operator workload profiles. Dimensions prefer powers of two; legal odd-tap and fixed-FFT exceptions are explicit.",
+  "levels": [
+    "L1",
+    "L2",
+    "L3",
+    "L4",
+    "L5",
+    "L6"
+  ],
+  "profiles": {
+    "vector_large": {
+      "scale_kind": "data",
+      "levels": [
+        {
+          "length": 262144,
+          "shape1d": [
+            262144
+          ],
+          "output_length": 393216
+        },
+        {
+          "length": 524288,
+          "shape1d": [
+            524288
+          ],
+          "output_length": 786432
+        },
+        {
+          "length": 1048576,
+          "shape1d": [
+            1048576
+          ],
+          "output_length": 1572864
+        },
+        {
+          "length": 2097152,
+          "shape1d": [
+            2097152
+          ],
+          "output_length": 3145728
+        },
+        {
+          "length": 4194304,
+          "shape1d": [
+            4194304
+          ],
+          "output_length": 6291456
+        },
+        {
+          "length": 8388608,
+          "shape1d": [
+            8388608
+          ],
+          "output_length": 12582912
+        }
+      ]
+    },
+    "vector_heavy": {
+      "scale_kind": "data",
+      "levels": [
+        {
+          "length": 65536,
+          "shape1d": [
+            65536
+          ],
+          "output_length": 98304,
+          "freq_length": 131072
+        },
+        {
+          "length": 131072,
+          "shape1d": [
+            131072
+          ],
+          "output_length": 196608,
+          "freq_length": 262144
+        },
+        {
+          "length": 262144,
+          "shape1d": [
+            262144
+          ],
+          "output_length": 393216,
+          "freq_length": 524288
+        },
+        {
+          "length": 524288,
+          "shape1d": [
+            524288
+          ],
+          "output_length": 786432,
+          "freq_length": 1048576
+        },
+        {
+          "length": 1048576,
+          "shape1d": [
+            1048576
+          ],
+          "output_length": 1572864,
+          "freq_length": 2097152
+        },
+        {
+          "length": 2097152,
+          "shape1d": [
+            2097152
+          ],
+          "output_length": 3145728,
+          "freq_length": 4194304
+        }
+      ]
+    },
+    "window_length": {
+      "scale_kind": "data",
+      "levels": [
+        {
+          "length": 256
+        },
+        {
+          "length": 512
+        },
+        {
+          "length": 1024
+        },
+        {
+          "length": 1536
+        },
+        {
+          "length": 2048
+        },
+        {
+          "length": 3072
+        }
+      ]
+    },
+    "lombscargle_quadratic": {
+      "scale_kind": "data",
+      "levels": [
+        {
+          "length": 512,
+          "shape1d": [
+            512
+          ],
+          "freq_length": 1024
+        },
+        {
+          "length": 1024,
+          "shape1d": [
+            1024
+          ],
+          "freq_length": 2048
+        },
+        {
+          "length": 2048,
+          "shape1d": [
+            2048
+          ],
+          "freq_length": 4096
+        },
+        {
+          "length": 4096,
+          "shape1d": [
+            4096
+          ],
+          "freq_length": 8192
+        },
+        {
+          "length": 8192,
+          "shape1d": [
+            8192
+          ],
+          "freq_length": 16384
+        },
+        {
+          "length": 16384,
+          "shape1d": [
+            16384
+          ],
+          "freq_length": 32768
+        }
+      ]
+    },
+    "correlation_vector": {
+      "scale_kind": "data",
+      "levels": [
+        {
+          "length": 16384,
+          "shape1d": [
+            16384
+          ]
+        },
+        {
+          "length": 32768,
+          "shape1d": [
+            32768
+          ]
+        },
+        {
+          "length": 65536,
+          "shape1d": [
+            65536
+          ]
+        },
+        {
+          "length": 131072,
+          "shape1d": [
+            131072
+          ]
+        },
+        {
+          "length": 262144,
+          "shape1d": [
+            262144
+          ]
+        },
+        {
+          "length": 524288,
+          "shape1d": [
+            524288
+          ]
+        }
+      ]
+    },
+    "square2d": {
+      "scale_kind": "data",
+      "levels": [
+        {
+          "shape": [
+            128,
+            128
+          ]
+        },
+        {
+          "shape": [
+            256,
+            256
+          ]
+        },
+        {
+          "shape": [
+            512,
+            512
+          ]
+        },
+        {
+          "shape": [
+            1024,
+            1024
+          ]
+        },
+        {
+          "shape": [
+            2048,
+            2048
+          ]
+        },
+        {
+          "shape": [
+            4096,
+            4096
+          ]
+        }
+      ]
+    },
+    "rect2d": {
+      "scale_kind": "data",
+      "levels": [
+        {
+          "shape": [
+            128,
+            256
+          ]
+        },
+        {
+          "shape": [
+            256,
+            512
+          ]
+        },
+        {
+          "shape": [
+            512,
+            1024
+          ]
+        },
+        {
+          "shape": [
+            1024,
+            2048
+          ]
+        },
+        {
+          "shape": [
+            2048,
+            4096
+          ]
+        },
+        {
+          "shape": [
+            4096,
+            8192
+          ]
+        }
+      ]
+    },
+    "radar_fixed_col": {
+      "scale_kind": "data",
+      "levels": [
+        {
+          "shape": [
+            512,
+            256
+          ]
+        },
+        {
+          "shape": [
+            1024,
+            256
+          ]
+        },
+        {
+          "shape": [
+            2048,
+            256
+          ]
+        },
+        {
+          "shape": [
+            4096,
+            256
+          ]
+        },
+        {
+          "shape": [
+            8192,
+            256
+          ]
+        },
+        {
+          "shape": [
+            16384,
+            256
+          ]
+        }
+      ]
+    },
+    "fixed_channel": {
+      "scale_kind": "data",
+      "levels": [
+        {
+          "shape": [
+            8,
+            16384
+          ]
+        },
+        {
+          "shape": [
+            8,
+            32768
+          ]
+        },
+        {
+          "shape": [
+            8,
+            65536
+          ]
+        },
+        {
+          "shape": [
+            8,
+            131072
+          ]
+        },
+        {
+          "shape": [
+            8,
+            262144
+          ]
+        },
+        {
+          "shape": [
+            8,
+            524288
+          ]
+        }
+      ]
+    },
+    "quadratic": {
+      "scale_kind": "data",
+      "levels": [
+        {
+          "length": 256,
+          "shape1d": [
+            256
+          ]
+        },
+        {
+          "length": 512,
+          "shape1d": [
+            512
+          ]
+        },
+        {
+          "length": 1024,
+          "shape1d": [
+            1024
+          ]
+        },
+        {
+          "length": 2048,
+          "shape1d": [
+            2048
+          ]
+        },
+        {
+          "length": 4096,
+          "shape1d": [
+            4096
+          ]
+        },
+        {
+          "length": 8192,
+          "shape1d": [
+            8192
+          ]
+        }
+      ]
+    },
+    "filter_taps": {
+      "scale_kind": "scalar_parameter",
+      "levels": [
+        {
+          "numtaps": 257,
+          "nfreqs": 513
+        },
+        {
+          "numtaps": 513,
+          "nfreqs": 1025
+        },
+        {
+          "numtaps": 1025,
+          "nfreqs": 2049
+        },
+        {
+          "numtaps": 2049,
+          "nfreqs": 4097
+        },
+        {
+          "numtaps": 4097,
+          "nfreqs": 8193
+        },
+        {
+          "numtaps": 8193,
+          "nfreqs": 16385
+        }
+      ]
+    },
+    "filter_order": {
+      "scale_kind": "scalar_parameter",
+      "levels": [
+        {
+          "filter_order": 16
+        },
+        {
+          "filter_order": 32
+        },
+        {
+          "filter_order": 64
+        },
+        {
+          "filter_order": 128
+        },
+        {
+          "filter_order": 256
+        },
+        {
+          "filter_order": 512
+        }
+      ]
+    },
+    "pair_lengths": {
+      "scale_kind": "data",
+      "levels": [
+        {
+          "in1_len": 32768,
+          "in2_len": 4096
+        },
+        {
+          "in1_len": 65536,
+          "in2_len": 8192
+        },
+        {
+          "in1_len": 131072,
+          "in2_len": 16384
+        },
+        {
+          "in1_len": 262144,
+          "in2_len": 32768
+        },
+        {
+          "in1_len": 524288,
+          "in2_len": 65536
+        },
+        {
+          "in1_len": 1048576,
+          "in2_len": 131072
+        }
+      ]
+    },
+    "recursive_points": {
+      "scale_kind": "data",
+      "levels": [
+        {
+          "points": 512
+        },
+        {
+          "points": 1024
+        },
+        {
+          "points": 2048
+        },
+        {
+          "points": 4096
+        },
+        {
+          "points": 8192
+        },
+        {
+          "points": 16384
+        }
+      ]
+    },
+    "istft_frames": {
+      "scale_kind": "data",
+      "levels": [
+        {
+          "shape": [
+            129,
+            128
+          ]
+        },
+        {
+          "shape": [
+            129,
+            256
+          ]
+        },
+        {
+          "shape": [
+            129,
+            512
+          ]
+        },
+        {
+          "shape": [
+            129,
+            1024
+          ]
+        },
+        {
+          "shape": [
+            129,
+            2048
+          ]
+        },
+        {
+          "shape": [
+            129,
+            4096
+          ]
+        }
+      ]
+    },
+    "scalar_cells": {
+      "scale_kind": "scalar_parameter",
+      "levels": [
+        {
+          "cells": 64
+        },
+        {
+          "cells": 128
+        },
+        {
+          "cells": 256
+        },
+        {
+          "cells": 512
+        },
+        {
+          "cells": 1024
+        },
+        {
+          "cells": 2048
+        }
+      ]
+    },
+    "scalar_attenuation": {
+      "scale_kind": "scalar_parameter",
+      "levels": [
+        {
+          "attenuation": 32
+        },
+        {
+          "attenuation": 64
+        },
+        {
+          "attenuation": 128
+        },
+        {
+          "attenuation": 256
+        },
+        {
+          "attenuation": 512
+        },
+        {
+          "attenuation": 1024
+        }
+      ]
+    }
+  },
+  "operators": {
+    "waveforms/chirp": {
+      "profile": "vector_large",
+      "fields": {
+        "t_generator.count": "length"
+      }
+    },
+    "waveforms/gausspulse": {
+      "profile": "vector_large",
+      "fields": {
+        "t_generator.count": "length"
+      }
+    },
+    "waveforms/sawtooth": {
+      "profile": "vector_large",
+      "fields": {
+        "t_generator.count": "length"
+      }
+    },
+    "waveforms/square": {
+      "profile": "vector_large",
+      "fields": {
+        "t_generator.count": "length"
+      }
+    },
+    "waveforms/unit_impulse": {
+      "profile": "vector_large",
+      "fields": {
+        "size": "length"
+      }
+    },
+    "bsplines/cubic": {
+      "profile": "vector_large",
+      "fields": {
+        "x_count": "length",
+        "x_shape": "shape1d"
+      }
+    },
+    "bsplines/quadratic": {
+      "profile": "vector_large",
+      "fields": {
+        "x_count": "length",
+        "x_shape": "shape1d"
+      }
+    },
+    "bsplines/gauss_spline": {
+      "profile": "vector_large",
+      "fields": {
+        "x_count": "length",
+        "x_shape": "shape1d"
+      }
+    },
+    "windows/get_window": {
+      "profile": "window_length",
+      "fields": {
+        "size": "length"
+      }
+    },
+    "windows/barthann": {
+      "profile": "window_length",
+      "fields": {
+        "size": "length"
+      }
+    },
+    "windows/bartlett": {
+      "profile": "window_length",
+      "fields": {
+        "size": "length"
+      }
+    },
+    "windows/blackman": {
+      "profile": "window_length",
+      "fields": {
+        "size": "length"
+      }
+    },
+    "windows/blackmanharris": {
+      "profile": "window_length",
+      "fields": {
+        "size": "length"
+      }
+    },
+    "windows/bohman": {
+      "profile": "window_length",
+      "fields": {
+        "size": "length"
+      }
+    },
+    "windows/boxcar": {
+      "profile": "window_length",
+      "fields": {
+        "size": "length"
+      }
+    },
+    "windows/chebwin": {
+      "profile": "window_length",
+      "fields": {
+        "size": "length"
+      }
+    },
+    "windows/cosine": {
+      "profile": "window_length",
+      "fields": {
+        "size": "length"
+      }
+    },
+    "windows/exponential": {
+      "profile": "window_length",
+      "fields": {
+        "size": "length"
+      }
+    },
+    "windows/flattop": {
+      "profile": "window_length",
+      "fields": {
+        "size": "length"
+      }
+    },
+    "windows/gaussian": {
+      "profile": "window_length",
+      "fields": {
+        "size": "length"
+      }
+    },
+    "windows/general_cosine": {
+      "profile": "window_length",
+      "fields": {
+        "size": "length"
+      }
+    },
+    "windows/general_gaussian": {
+      "profile": "window_length",
+      "fields": {
+        "size": "length"
+      }
+    },
+    "windows/general_hamming": {
+      "profile": "window_length",
+      "fields": {
+        "size": "length"
+      }
+    },
+    "windows/hamming": {
+      "profile": "window_length",
+      "fields": {
+        "size": "length"
+      }
+    },
+    "windows/hann": {
+      "profile": "window_length",
+      "fields": {
+        "size": "length"
+      }
+    },
+    "windows/kaiser": {
+      "profile": "window_length",
+      "fields": {
+        "size": "length"
+      }
+    },
+    "windows/nuttall": {
+      "profile": "window_length",
+      "fields": {
+        "size": "length"
+      }
+    },
+    "windows/parzen": {
+      "profile": "window_length",
+      "fields": {
+        "size": "length"
+      }
+    },
+    "windows/taylor": {
+      "profile": "window_length",
+      "fields": {
+        "size": "length"
+      }
+    },
+    "windows/triang": {
+      "profile": "window_length",
+      "fields": {
+        "size": "length"
+      }
+    },
+    "windows/tukey": {
+      "profile": "window_length",
+      "fields": {
+        "size": "length"
+      }
+    },
+    "filter_design/cmplx_sort": {
+      "profile": "vector_large",
+      "create_fields": [
+        "sample_count"
+      ],
+      "fields": {
+        "sample_count": "length"
+      }
+    },
+    "filter_design/kaiser_atten": {
+      "profile": "filter_taps",
+      "fields": {
+        "numtaps": "numtaps"
+      }
+    },
+    "filter_design/firwin": {
+      "profile": "filter_taps",
+      "fields": {
+        "numtaps": "numtaps"
+      }
+    },
+    "filter_design/firwin2": {
+      "profile": "filter_taps",
+      "fields": {
+        "numtaps": "numtaps",
+        "nfreqs": "nfreqs"
+      }
+    },
+    "filter_design/kaiser_beta": {
+      "profile": "scalar_attenuation",
+      "fields": {
+        "attenuation": "attenuation"
+      }
+    },
+    "filtering/wiener": {
+      "profile": "square2d",
+      "fields": {
+        "x_shape": "shape"
+      }
+    },
+    "filtering/firfilter": {
+      "profile": "square2d",
+      "fields": {
+        "x_shape": "shape"
+      }
+    },
+    "filtering/hilbert2": {
+      "profile": "square2d",
+      "fields": {
+        "x_shape": "shape"
+      }
+    },
+    "correlate/correlate2d": {
+      "profile": "square2d",
+      "fields": {
+        "shape1": "shape"
+      }
+    },
+    "filtering/lfilter": {
+      "profile": "vector_large",
+      "fields": {
+        "x_shape": "shape1d"
+      }
+    },
+    "filtering/sosfilt": {
+      "profile": "vector_large",
+      "fields": {
+        "x_shape": "shape1d"
+      }
+    },
+    "filtering/hilbert": {
+      "profile": "vector_large",
+      "fields": {
+        "x_shape": "shape1d"
+      }
+    },
+    "filtering/firfilter2": {
+      "profile": "vector_large",
+      "fields": {
+        "x_shape": "shape1d"
+      }
+    },
+    "filtering/filtfilt": {
+      "profile": "vector_large",
+      "fields": {
+        "x_shape": "shape1d"
+      }
+    },
+    "filtering/freq_shift": {
+      "profile": "vector_large",
+      "fields": {
+        "x_shape": "shape1d"
+      }
+    },
+    "filtering/decimate": {
+      "profile": "vector_large",
+      "fields": {
+        "x_shape": "shape1d"
+      }
+    },
+    "filtering/resample": {
+      "profile": "vector_large",
+      "fields": {
+        "x_shape": "shape1d",
+        "num": "output_length"
+      }
+    },
+    "filtering/resample_poly": {
+      "profile": "vector_large",
+      "fields": {
+        "x_shape": "shape1d"
+      }
+    },
+    "filtering/upfirdn": {
+      "profile": "vector_large",
+      "fields": {
+        "x_shape": "shape1d"
+      }
+    },
+    "filtering/detrend": {
+      "profile": "vector_large",
+      "fields": {
+        "data_shape": "shape1d"
+      }
+    },
+    "filtering/firfilter_zi": {
+      "profile": "filter_order",
+      "fields": {
+        "filter_order": "filter_order"
+      }
+    },
+    "filtering/lfilter_zi": {
+      "profile": "filter_order",
+      "fields": {
+        "filter_order": "filter_order"
+      }
+    },
+    "filtering/channelize_poly": {
+      "profile": "vector_large",
+      "fields": {
+        "x_count": "length"
+      }
+    },
+    "radartools/pulse_compression": {
+      "profile": "radar_fixed_col",
+      "fields": {
+        "x_shape": "shape",
+        "x_generator.shape": "shape"
+      }
+    },
+    "radartools/pulse_doppler": {
+      "profile": "radar_fixed_col",
+      "fields": {
+        "x_shape": "shape",
+        "x_generator.shape": "shape"
+      }
+    },
+    "radartools/ambgfun": {
+      "profile": "quadratic",
+      "fields": {
+        "x_shape": "shape1d",
+        "x_generator.length": "length"
+      }
+    },
+    "radartools/cfar_alpha": {
+      "profile": "scalar_cells",
+      "fields": {
+        "cells": "cells"
+      }
+    },
+    "radartools/ca_cfar": {
+      "profile": "rect2d",
+      "fields": {
+        "x_shape": "shape",
+        "real_x_generator.shape": "shape"
+      }
+    },
+    "demod/fm_demod": {
+      "profile": "rect2d",
+      "fields": {
+        "shape": "shape"
+      }
+    },
+    "peak_finding/argrelextrema": {
+      "profile": "rect2d",
+      "fields": {
+        "shape": "shape"
+      }
+    },
+    "peak_finding/argrelmin": {
+      "profile": "rect2d",
+      "fields": {
+        "shape": "shape"
+      }
+    },
+    "peak_finding/argrelmax": {
+      "profile": "rect2d",
+      "fields": {
+        "shape": "shape"
+      }
+    },
+    "radartools/mvdr": {
+      "profile": "fixed_channel",
+      "fields": {
+        "x_shape": "shape",
+        "x_generator.shape": "shape"
+      }
+    },
+    "spectral/lombscargle": {
+      "profile": "lombscargle_quadratic",
+      "fields": {
+        "x_generator.count": "length",
+        "y_generator.shape": "shape1d",
+        "freqs_generator.count": "freq_length"
+      }
+    },
+    "spectral/periodogram": {
+      "profile": "vector_heavy",
+      "fields": {
+        "x_generator.shape": "shape1d"
+      }
+    },
+    "spectral/welch": {
+      "profile": "vector_heavy",
+      "fields": {
+        "x_generator.shape": "shape1d"
+      }
+    },
+    "spectral/spectrogram": {
+      "profile": "vector_heavy",
+      "fields": {
+        "x_generator.shape": "shape1d"
+      }
+    },
+    "spectral/stft": {
+      "profile": "vector_heavy",
+      "fields": {
+        "x_generator.shape": "shape1d"
+      }
+    },
+    "spectral/csd": {
+      "profile": "vector_heavy",
+      "fields": {
+        "x_generator.shape": "shape1d",
+        "y_generator.shape": "shape1d"
+      }
+    },
+    "spectral/coherence": {
+      "profile": "vector_heavy",
+      "fields": {
+        "x_generator.shape": "shape1d",
+        "y_generator.shape": "shape1d"
+      }
+    },
+    "spectral/istft": {
+      "profile": "istft_frames",
+      "fields": {
+        "zxx_generator.shape": "shape"
+      }
+    },
+    "spectral/vectorstrength": {
+      "profile": "vector_large",
+      "fields": {
+        "events_generator.count": "length"
+      }
+    },
+    "wavelets/qmf": {
+      "profile": "vector_large",
+      "fields": {
+        "hk_count": "length"
+      }
+    },
+    "wavelets/morlet": {
+      "profile": "vector_large",
+      "fields": {
+        "points": "length"
+      }
+    },
+    "wavelets/ricker": {
+      "profile": "vector_large",
+      "fields": {
+        "points": "length"
+      }
+    },
+    "wavelets/morlet2": {
+      "profile": "vector_large",
+      "fields": {
+        "points": "length"
+      }
+    },
+    "wavelets/cwt": {
+      "profile": "vector_heavy",
+      "fields": {
+        "data_count": "length"
+      }
+    },
+    "correlate/correlate": {
+      "profile": "correlation_vector",
+      "fields": {
+        "shape1": "shape1d"
+      }
+    },
+    "correlate/correlation_lags": {
+      "profile": "pair_lengths",
+      "fields": {
+        "in1_len": "in1_len",
+        "in2_len": "in2_len"
+      }
+    },
+    "estimation/kalman_filter": {
+      "profile": "recursive_points",
+      "fields": {
+        "points": "points"
+      }
+    }
+  }
+}

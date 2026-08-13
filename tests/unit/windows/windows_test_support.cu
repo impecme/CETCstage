@@ -544,7 +544,9 @@ namespace
         std::sort(sorted.begin(), sorted.end());
         stats.min_ms = sorted.front();
         stats.max_ms = sorted.back();
-        stats.median_ms = sorted[sorted.size() / 2];
+        stats.median_ms = sorted.size() % 2 == 0
+                              ? 0.5f * (sorted[sorted.size() / 2 - 1] + sorted[sorted.size() / 2])
+                              : sorted[sorted.size() / 2];
         const std::size_t p95_index =
             static_cast<std::size_t>(std::ceil(0.95 * static_cast<float>(sorted.size()))) - 1;
         stats.p95_ms = sorted[std::min<std::size_t>(p95_index, sorted.size() - 1)];
@@ -1108,7 +1110,7 @@ namespace
             {
                 gpu_e2e_perf_medians.push_back(report.gpu_e2e_perf->median_ms);
             }
-            if (report.gpu_kernel_perf.has_value())
+            if (cusignal_test::report::valid_timing(report.gpu_kernel_perf))
             {
                 gpu_kernel_perf_medians.push_back(report.gpu_kernel_perf->median_ms);
             }
@@ -1179,7 +1181,22 @@ namespace
                << "    \"gpu_e2e_speedup\": "
                << median_speedup(summary.cpu_perf, summary.gpu_e2e_perf) << ",\n"
                << "    \"gpu_kernel_speedup\": "
-               << median_speedup(summary.cpu_perf, summary.gpu_kernel_perf);
+               << cusignal_test::report::optional_median_speedup_json(
+                      summary.cpu_perf, summary.gpu_kernel_perf)
+               << ",\n"
+               << "    \"gpu_acceleration_eligible\": "
+               << (cusignal_test::report::valid_timing(summary.gpu_kernel_perf) ? "true" : "false")
+               << ",\n"
+               << "    \"path_kind\": \""
+               << (cusignal_test::report::valid_timing(summary.gpu_kernel_perf)
+                       ? "gpu_kernel"
+                       : "cpu_or_no_independent_kernel")
+               << "\",\n"
+               << "    \"input_kind\": \"parameter_only\",\n"
+               << "    \"gpu_e2e_scope\": \"host parameter construction + GPU generation + D2H/output materialization\",\n"
+               << "    \"gpu_kernel_scope\": \"prepared device input + CUDA events; H2D/D2H excluded\",\n"
+               << "    \"input_refresh_policy\": \"fresh host values and H2D on every measured GPU E2E repeat\",\n"
+               << "    \"workspace_reuse_policy\": \"device allocation capacity and FFT plan may be reused; input values may not\"";
 
         if (summary.reference_error.has_value())
         {
@@ -1199,7 +1216,7 @@ namespace
             stream << ",\n    \"gpu_e2e_perf\": "
                    << build_timing_stats_json(*summary.gpu_e2e_perf, options, 4);
         }
-        if (summary.gpu_kernel_perf.has_value())
+        if (cusignal_test::report::valid_timing(summary.gpu_kernel_perf))
         {
             stream << ",\n    \"gpu_kernel_perf\": "
                    << build_timing_stats_json(*summary.gpu_kernel_perf, options, 4);
@@ -1250,7 +1267,7 @@ namespace
                 stream << ",\n      \"gpu_e2e_perf\": "
                        << build_timing_stats_json(*report.gpu_e2e_perf, options, 6);
             }
-            if (report.gpu_kernel_perf.has_value())
+            if (cusignal_test::report::valid_timing(report.gpu_kernel_perf))
             {
                 stream << ",\n      \"gpu_kernel_perf\": "
                        << build_timing_stats_json(*report.gpu_kernel_perf, options, 6);
@@ -1293,6 +1310,7 @@ namespace
 
         for (const CaseReport &report : cases)
         {
+            const bool kernel_valid = cusignal_test::report::valid_timing(report.gpu_kernel_perf);
             stream << report.case_id << ','
                    << report.category << ','
                    << (report.pass ? "true" : "false") << ','
@@ -1308,10 +1326,12 @@ namespace
                    << (report.cpu_perf.has_value() ? report.cpu_perf->median_ms : 0.0) << ','
                    << (report.gpu_e2e_perf.has_value() ? report.gpu_e2e_perf->mean_ms : 0.0) << ','
                    << (report.gpu_e2e_perf.has_value() ? report.gpu_e2e_perf->median_ms : 0.0) << ','
-                   << (report.gpu_kernel_perf.has_value() ? report.gpu_kernel_perf->mean_ms : 0.0) << ','
-                   << (report.gpu_kernel_perf.has_value() ? report.gpu_kernel_perf->median_ms : 0.0) << ','
+                   << (kernel_valid ? std::to_string(report.gpu_kernel_perf->mean_ms) : "") << ','
+                   << (kernel_valid ? std::to_string(report.gpu_kernel_perf->median_ms) : "") << ','
                    << median_speedup(report.cpu_perf, report.gpu_e2e_perf) << ','
-                   << median_speedup(report.cpu_perf, report.gpu_kernel_perf) << ','
+                   << (kernel_valid
+                           ? std::to_string(median_speedup(report.cpu_perf, report.gpu_kernel_perf))
+                           : "") << ','
                    << '"' << json_escape(report.note) << '"' << '\n';
         }
         return stream.str();
@@ -1332,8 +1352,15 @@ namespace
                << "- cpu_gpu max_rel_error: " << format_float(summary.cpu_gpu_error.max_rel_error) << "\n"
                << "- gpu_e2e_speedup: "
                << format_fixed(median_speedup(summary.cpu_perf, summary.gpu_e2e_perf)) << "x\n"
-               << "- gpu_kernel_speedup: "
-               << format_fixed(median_speedup(summary.cpu_perf, summary.gpu_kernel_perf)) << "x\n";
+               << "- gpu_kernel_speedup: ";
+        if (cusignal_test::report::valid_timing(summary.gpu_kernel_perf))
+        {
+            stream << format_fixed(median_speedup(summary.cpu_perf, summary.gpu_kernel_perf)) << "x\n";
+        }
+        else
+        {
+            stream << "—/不适用\n";
+        }
         if (summary.reference_error.has_value())
         {
             stream << "- reference max_abs_error: "
@@ -1370,7 +1397,7 @@ namespace
             {
                 stream << ", gpu_e2e_median_ms=" << format_fixed(report.gpu_e2e_perf->median_ms);
             }
-            if (report.gpu_kernel_perf.has_value())
+            if (cusignal_test::report::valid_timing(report.gpu_kernel_perf))
             {
                 stream << ", gpu_kernel_median_ms=" << format_fixed(report.gpu_kernel_perf->median_ms);
             }
@@ -1434,14 +1461,14 @@ namespace
             std::cout << "gpu_perf_ms   : e2e_median="
                       << format_fixed(summary.gpu_e2e_perf->median_ms)
                       << "  kernel_median="
-                      << (summary.gpu_kernel_perf.has_value()
+                      << (cusignal_test::report::valid_timing(summary.gpu_kernel_perf)
                               ? format_fixed(summary.gpu_kernel_perf->median_ms)
                               : "n/a")
                       << "  p95=" << format_fixed(summary.gpu_e2e_perf->p95_ms)
                       << "  e2e_speedup="
                       << format_fixed(median_speedup(summary.cpu_perf, summary.gpu_e2e_perf)) << "x"
                       << "  kernel_speedup="
-                      << (summary.gpu_kernel_perf.has_value()
+                      << (cusignal_test::report::valid_timing(summary.gpu_kernel_perf)
                               ? format_fixed(median_speedup(summary.cpu_perf, summary.gpu_kernel_perf)) + "x"
                               : "n/a")
                       << '\n';
@@ -1515,7 +1542,7 @@ namespace
             report.cpu_perf = benchmark_host_latency(options, [&]() { (void)runner.cpu(test_case); });
         }
         report.gpu_e2e_perf = benchmark_host_latency(options, [&]() {
-            (void)runner.gpu(test_case);
+            (void)runner.gpu(test_case).get();
             cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
         });
         report.gpu_kernel_perf =

@@ -1,7 +1,7 @@
 # 算子测试报告：peak_finding/argrelextrema
 
 - 状态：通过
-- 精度用例：7
+- 精度用例：0
 - 性能用例：1
 
 ## 误差
@@ -13,10 +13,10 @@
 
 ## 性能
 
-- CPU 中位时间：0.997987 ms
-- GPU 端到端中位时间：0.243849 ms
-- GPU kernel 最小时间：0.18832 ms
-- GPU kernel 中位时间：0.195936 ms
-- GPU kernel 最大时间：0.29086 ms
-- GPU 端到端加速比：4.09264x
-- GPU kernel 加速比：5.09343x
+- CPU 中位时间：1038.92 ms
+- GPU 端到端中位时间：205.382 ms
+- GPU kernel 最小时间：18.7396 ms
+- GPU kernel 中位时间：18.7731 ms
+- GPU kernel 最大时间：22.0255 ms
+- GPU 端到端加速比：5.05846x
+- GPU kernel 加速比：55.3408x

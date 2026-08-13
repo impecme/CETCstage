@@ -9,6 +9,7 @@
 #include <cmath>
 #include <complex>
 #include <cstring>
+#include <cstdlib>
 #include <stdexcept>
 #include <utility>
 #include <vector>
@@ -76,6 +77,18 @@ namespace
             return;
         }
         throw std::runtime_error(std::string(what) + ": cuSOLVER error code " + std::to_string(static_cast<int>(status)));
+    }
+
+    bool force_fresh_host_upload()
+    {
+        const char *value = std::getenv("CUSIGNAL_PERF_FRESH_INPUT");
+        if (value == nullptr)
+        {
+            return false;
+        }
+        return std::strcmp(value, "0") != 0 &&
+               std::strcmp(value, "false") != 0 &&
+               std::strcmp(value, "FALSE") != 0;
     }
 
     void check_kernel_launch(const char *what)
@@ -497,6 +510,7 @@ namespace
         const ComplexArray &host = std::get<ComplexArray>(input);
         const bool cacheable = host.values.size() <= kMvdrHostInputCacheMaxElements;
         const bool cache_hit =
+            !force_fresh_host_upload() &&
             cacheable &&
             cache_valid &&
             cached_host_input.shape == host.shape &&
@@ -1784,6 +1798,7 @@ namespace cusignal
                     host_input != nullptr &&
                     host_input->values.size() <= kPulseHostInputCacheMaxElements;
                 const bool host_input_cache_hit =
+                    !force_fresh_host_upload() &&
                     cacheable_host_input &&
                     g_workspace.pulse.host_input_cache_valid &&
                     g_workspace.pulse.cached_host_input.shape == host_input->shape &&
@@ -2064,6 +2079,7 @@ namespace cusignal
                     host_x->size() <= 512 &&
                     host_y->size() <= 512;
                 const bool host_2d_cache_hit =
+                    !force_fresh_host_upload() &&
                     cacheable_host_2d &&
                     g_workspace.ambgfun.host_2d_cache_valid &&
                     g_workspace.ambgfun.cached_host_2d_x == *host_x &&

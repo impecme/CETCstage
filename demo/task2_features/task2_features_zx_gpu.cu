@@ -3403,7 +3403,8 @@ namespace cusignal_demo::task2_features
         const ZxGpuRealSignal &weights,
         int peak_order,
         ZxGpuRealArray &feature_scores,
-        ZxGpuRealSignal &peak_track)
+        ZxGpuRealSignal &peak_track,
+        FusionKernelTiming *kernel_timing)
     {
         if (corr_score.rank() != 2)
         {
@@ -3433,25 +3434,45 @@ namespace cusignal_demo::task2_features
             return;
         }
 
-        fused_feature_smooth_kernel<<<block_count(corr_score.size()), kThreadsPerBlock>>>(
-            corr_score.data(),
-            demod_score.data(),
-            wavelet_score.data(),
-            spectrogram_score.data(),
-            weights.data(),
-            weights.size(),
-            rows,
-            cols,
-            feature_scores.data());
-        check_kernel_launch("fused_feature_smooth_kernel");
-
-        row_peak_track_kernel<<<rows, kThreadsPerBlock>>>(
-            feature_scores.data(),
-            rows,
-            cols,
-            peak_order,
-            peak_track.data());
-        check_kernel_launch("row_peak_track_kernel");
+        const auto timed_launch = [](auto &&launch, const char *what) {
+            cudaEvent_t start = nullptr;
+            cudaEvent_t stop = nullptr;
+            throw_on_zx_gpu_error(cudaEventCreate(&start), "cudaEventCreate(fusion start)");
+            try
+            {
+                throw_on_zx_gpu_error(cudaEventCreate(&stop), "cudaEventCreate(fusion stop)");
+                throw_on_zx_gpu_error(cudaEventRecord(start), "cudaEventRecord(fusion start)");
+                launch();
+                check_kernel_launch(what);
+                throw_on_zx_gpu_error(cudaEventRecord(stop), "cudaEventRecord(fusion stop)");
+                throw_on_zx_gpu_error(cudaEventSynchronize(stop), "cudaEventSynchronize(fusion stop)");
+                float elapsed = 0.0f;
+                throw_on_zx_gpu_error(cudaEventElapsedTime(&elapsed, start, stop), "cudaEventElapsedTime(fusion)");
+                (void)cudaEventDestroy(stop);
+                (void)cudaEventDestroy(start);
+                return elapsed;
+            }
+            catch (...)
+            {
+                if (stop != nullptr) (void)cudaEventDestroy(stop);
+                if (start != nullptr) (void)cudaEventDestroy(start);
+                throw;
+            }
+        };
+        const float smooth_ms = timed_launch([&]() {
+            fused_feature_smooth_kernel<<<block_count(corr_score.size()), kThreadsPerBlock>>>(
+                corr_score.data(), demod_score.data(), wavelet_score.data(), spectrogram_score.data(),
+                weights.data(), weights.size(), rows, cols, feature_scores.data());
+        }, "fused_feature_smooth_kernel");
+        const float peak_ms = timed_launch([&]() {
+            row_peak_track_kernel<<<rows, kThreadsPerBlock>>>(
+                feature_scores.data(), rows, cols, peak_order, peak_track.data());
+        }, "row_peak_track_kernel");
+        if (kernel_timing != nullptr)
+        {
+            kernel_timing->smooth_ms = smooth_ms;
+            kernel_timing->peak_ms = peak_ms;
+        }
     }
 
     ZxGpuRealSignal kalman_track_from_peaks_zx_gpu(const ZxGpuRealSignal &peak_track)

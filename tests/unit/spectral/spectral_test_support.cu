@@ -1450,7 +1450,9 @@ namespace
         std::sort(sorted.begin(), sorted.end());
         stats.min_ms = sorted.front();
         stats.max_ms = sorted.back();
-        stats.median_ms = sorted[sorted.size() / 2];
+        stats.median_ms = sorted.size() % 2 == 0
+                              ? 0.5f * (sorted[sorted.size() / 2 - 1] + sorted[sorted.size() / 2])
+                              : sorted[sorted.size() / 2];
         const std::size_t p95_index =
             static_cast<std::size_t>(std::ceil(0.95 * static_cast<float>(sorted.size()))) - 1;
         stats.p95_ms = sorted[std::min<std::size_t>(p95_index, sorted.size() - 1)];
@@ -3290,7 +3292,7 @@ namespace
             }
             if (report.cpu_perf.has_value()) cpu_perf_medians.push_back(report.cpu_perf->median_ms);
             if (report.gpu_e2e_perf.has_value()) gpu_e2e_perf_medians.push_back(report.gpu_e2e_perf->median_ms);
-            if (report.gpu_kernel_perf.has_value()) gpu_kernel_perf_medians.push_back(report.gpu_kernel_perf->median_ms);
+            if (cusignal_test::report::valid_timing(report.gpu_kernel_perf)) gpu_kernel_perf_medians.push_back(report.gpu_kernel_perf->median_ms);
             if (!report.pass) summary.failed_cases.push_back(report.case_id);
         }
         if (has_reference_error) summary.reference_error = reference_error;
@@ -3350,11 +3352,11 @@ namespace
         {
             std::cout << "gpu_perf_ms   : e2e_median=" << format_fixed(summary.gpu_e2e_perf->median_ms)
                       << "  kernel_median="
-                      << (summary.gpu_kernel_perf.has_value() ? format_fixed(summary.gpu_kernel_perf->median_ms) : "n/a")
+                      << (cusignal_test::report::valid_timing(summary.gpu_kernel_perf) ? format_fixed(summary.gpu_kernel_perf->median_ms) : "n/a")
                       << "  p95=" << format_fixed(summary.gpu_e2e_perf->p95_ms)
                       << "  e2e_speedup=" << format_fixed(median_speedup(summary.cpu_perf, summary.gpu_e2e_perf)) << "x"
                       << "  kernel_speedup="
-                      << (summary.gpu_kernel_perf.has_value()
+                      << (cusignal_test::report::valid_timing(summary.gpu_kernel_perf)
                               ? format_fixed(median_speedup(summary.cpu_perf, summary.gpu_kernel_perf)) + "x"
                               : "n/a")
                       << '\n';
@@ -3581,6 +3583,19 @@ namespace
             return runner.gpu(test_case);
         };
 
+        auto run_gpu_e2e = [&]() -> OutputBundle {
+            if (csd_x.has_value())
+                csd_x->copy_from(load_x_array(test_case));
+            if (csd_y.has_value())
+                csd_y->copy_from(load_y_array(test_case));
+            if (spectral_x.has_value())
+                spectral_x->copy_from(load_x_array(test_case));
+            if (vectorstrength_events.has_value())
+                vectorstrength_events->copy_from(load_events(test_case));
+            // All output fields are materialized here so D2H is part of E2E.
+            return materialize(run_gpu_perf());
+        };
+
         OutputBundle gpu_output;
         if (!options.gpu_only_perf)
         {
@@ -3603,7 +3618,7 @@ namespace
             report.cpu_perf = benchmark_host_latency(options, [&]() { (void)runner.cpu(test_case); });
         }
         report.gpu_e2e_perf = benchmark_host_latency(options, [&]() {
-            (void)run_gpu_perf();
+            (void)run_gpu_e2e();
             cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
         });
         report.gpu_kernel_perf = benchmark_gpu_kernel_latency(options, [&]() { (void)run_gpu_perf(); });

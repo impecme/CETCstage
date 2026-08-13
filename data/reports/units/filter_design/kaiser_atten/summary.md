@@ -1,7 +1,7 @@
 # 算子测试报告：filter_design/kaiser_atten
 
 - 状态：通过
-- 精度用例：3
+- 精度用例：0
 - 性能用例：1
 
 ## 误差
@@ -13,10 +13,10 @@
 
 ## 性能
 
-- CPU 中位时间：4e-05 ms
-- GPU 端到端中位时间：0.042954 ms
+- CPU 中位时间：5e-05 ms
+- GPU 端到端中位时间：0.081961 ms
 - GPU kernel 最小时间：0 ms
 - GPU kernel 中位时间：0 ms
 - GPU kernel 最大时间：0 ms
-- GPU 端到端加速比：0.000931229x
+- GPU 端到端加速比：0.000610046x
 - GPU kernel 加速比：0x

@@ -13,7 +13,6 @@ EXTRA_REPORT_PATHS=()
 INCLUDE_GENERATED=0
 USE_DEFAULT_REPORTS=1
 ALLOW_MISSING=0
-PROMOTE_REPORTS=0
 SYNC_REPORTS=0
 DRY_RUN=0
 REPORT_HASH_STAGE=""
@@ -23,8 +22,7 @@ usage() {
 Usage: scripts/pull_results.sh [options]
 
 Copy reports from the ZQ500 container. Use --sync-reports to merge any
-available report files directly into this host repository, or
---promote-reports to publish a complete verified report bundle atomically.
+available report files directly into this host repository.
 
 Options:
   --container NAME       Docker container name (default: gpu_04)
@@ -41,10 +39,7 @@ Options:
   --sync-reports         Incrementally copy container data/reports directly into
                          this repository's data/reports; preserves host files not
                          present in the container and does not require full
-                         validation. Cannot be combined with --promote-reports.
-  --promote-reports      Verify the pulled report bundle and atomically publish it
-                         to this host repository; prior host reports are moved to
-                         ../CETC_garbage/promoted_report_backups/
+                         validation.
   --allow-missing        Return success when requested paths are missing; missing
                          paths are still recorded in TRANSFER_STATUS.txt
   --dry-run              Print the transfer plan without using Docker
@@ -96,10 +91,6 @@ while [[ $# -gt 0 ]]; do
       ;;
     --allow-missing)
       ALLOW_MISSING=1
-      shift
-      ;;
-    --promote-reports)
-      PROMOTE_REPORTS=1
       shift
       ;;
     --sync-reports)
@@ -177,9 +168,6 @@ relative_paths=("${normalized_relative_paths[@]}")
 [[ "${#relative_paths[@]}" -gt 0 || "${#ARTIFACT_PATHS[@]}" -gt 0 ]] || \
   die "no report or artifact paths were requested"
 
-if [[ "${SYNC_REPORTS}" -eq 1 && "${PROMOTE_REPORTS}" -eq 1 ]]; then
-  die "--sync-reports and --promote-reports are mutually exclusive"
-fi
 if [[ "${SYNC_REPORTS}" -eq 1 ]]; then
   found_reports=0
   for relative_path in "${relative_paths[@]}"; do
@@ -192,18 +180,6 @@ if [[ "${SYNC_REPORTS}" -eq 1 ]]; then
     die "--sync-reports requires data/reports; omit --no-default-reports or add --report-path data/reports"
   [[ "${#ARTIFACT_PATHS[@]}" -eq 0 ]] || \
     die "--sync-reports only synchronizes data/reports; retrieve artifacts separately"
-fi
-
-if [[ "${PROMOTE_REPORTS}" -eq 1 ]]; then
-  found_reports=0
-  for relative_path in "${relative_paths[@]}"; do
-    if [[ "${relative_path}" == "data/reports" ]]; then
-      found_reports=1
-      break
-    fi
-  done
-  [[ "${found_reports}" -eq 1 ]] || \
-    die "--promote-reports requires data/reports; omit --no-default-reports or add --report-path data/reports"
 fi
 
 echo "[container-pull] source ${CONTAINER}:${CONTAINER_ROOT}"
@@ -247,9 +223,6 @@ fi
 cleanup() {
   if [[ -n "${STAGE:-}" && -d "${STAGE}" ]]; then
     rm -rf -- "${STAGE}"
-  fi
-  if [[ -n "${PROMOTE_STAGE:-}" && -d "${PROMOTE_STAGE}" ]]; then
-    rm -rf -- "${PROMOTE_STAGE}"
   fi
   if [[ -n "${REPORT_HASH_STAGE:-}" && -f "${REPORT_HASH_STAGE}" ]]; then
     rm -f -- "${REPORT_HASH_STAGE}"
@@ -336,6 +309,19 @@ if [[ "${SYNC_REPORTS}" -eq 1 ]]; then
   REPORTS_ROOT="${PROJECT_ROOT}/data/reports"
   [[ -d "${REPORTS_ROOT}" && ! -L "${REPORTS_ROOT}" ]] || \
     die "host report directory is missing or unsafe: ${REPORTS_ROOT}"
+  # Task1/Task2 reports are replacement-style formal outputs.  Remove only
+  # those two explicitly scoped task directories before copying the new
+  # summary.csv/operators tree, so legacy scales/final Host+H2D artifacts
+  # cannot survive an otherwise incremental report pull.
+  for task_report in task1_radar task2_features; do
+    pulled_task="${PULLED_REPORTS}/demo/${task_report}"
+    host_task="${REPORTS_ROOT}/demo/${task_report}"
+    if [[ -d "${pulled_task}" ]]; then
+      [[ ! -L "${pulled_task}" && ! -L "${host_task}" ]] || \
+        die "task report path is a symbolic link: ${task_report}"
+      rm -rf "${host_task}"
+    fi
+  done
   rsync -a "${PULLED_REPORTS}/" "${REPORTS_ROOT}/"
 
   REPORT_HASH_STAGE="$(mktemp "${HOST_PARENT}/.reports-hash.XXXXXX")"
@@ -361,45 +347,4 @@ echo "[container-pull] SHA256 manifest: ${OUTPUT}/FILES.sha256"
 if [[ "${#missing_paths[@]}" -gt 0 && "${ALLOW_MISSING}" -eq 0 ]]; then
   echo "[container-pull] partial result preserved at ${OUTPUT}" >&2
   exit 1
-fi
-
-if [[ "${PROMOTE_REPORTS}" -eq 1 ]]; then
-  [[ "${#missing_paths[@]}" -eq 0 ]] || \
-    die "cannot promote a partial transfer; raw result remains at ${OUTPUT}"
-  PULLED_REPORTS="${OUTPUT}/data/reports"
-  [[ -d "${PULLED_REPORTS}" && ! -L "${PULLED_REPORTS}" ]] || \
-    die "pulled report directory is missing or unsafe: ${PULLED_REPORTS}"
-  "${PROJECT_ROOT}/scripts/finalize_reports.py" \
-    --repo-root "${PROJECT_ROOT}" \
-    --output "${PULLED_REPORTS}" \
-    --verify
-
-  REPORTS_ROOT="${PROJECT_ROOT}/data/reports"
-  PROMOTE_STAGE="$(mktemp -d "${HOST_PARENT}/.reports-promote.XXXXXX")"
-  cp -a "${PULLED_REPORTS}/." "${PROMOTE_STAGE}/"
-  "${PROJECT_ROOT}/scripts/finalize_reports.py" \
-    --repo-root "${PROJECT_ROOT}" \
-    --output "${PROMOTE_STAGE}" \
-    --verify
-
-  BACKUP=""
-  if [[ -e "${REPORTS_ROOT}" ]]; then
-    [[ -d "${REPORTS_ROOT}" && ! -L "${REPORTS_ROOT}" ]] || \
-      die "existing host report directory is unsafe: ${REPORTS_ROOT}"
-    BACKUP_ROOT="${HOST_PARENT}/CETC_garbage/promoted_report_backups"
-    mkdir -p "${BACKUP_ROOT}"
-    BACKUP="${BACKUP_ROOT}/reports_$(date +%Y%m%d_%H%M%S).$$"
-    mv "${REPORTS_ROOT}" "${BACKUP}"
-  fi
-  if ! mv "${PROMOTE_STAGE}" "${REPORTS_ROOT}"; then
-    if [[ -n "${BACKUP}" && -d "${BACKUP}" && ! -e "${REPORTS_ROOT}" ]]; then
-      mv "${BACKUP}" "${REPORTS_ROOT}"
-    fi
-    die "failed to publish host reports"
-  fi
-  PROMOTE_STAGE=""
-  echo "[container-pull] published verified reports: ${REPORTS_ROOT}"
-  if [[ -n "${BACKUP}" ]]; then
-    echo "[container-pull] previous host reports moved to: ${BACKUP}"
-  fi
 fi

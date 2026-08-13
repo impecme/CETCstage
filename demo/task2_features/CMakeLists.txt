@@ -1,6 +1,8 @@
 add_executable(
     task2_features_demo
     task2_features_demo.cpp
+    task2_common.cpp
+    task2_cpu.cpp
 )
 
 target_link_libraries(task2_features_demo PRIVATE cusignal_zx_gpu ${CUSIGNAL_ZX_GPU_RUNTIME_TARGET})

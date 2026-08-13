@@ -347,7 +347,9 @@ namespace
         std::sort(samples.begin(), samples.end());
         const float sum = std::accumulate(samples.begin(), samples.end(), 0.0f);
         stats.mean_ms = sum / static_cast<float>(samples.size());
-        stats.median_ms = samples[samples.size() / 2];
+        stats.median_ms = samples.size() % 2 == 0
+                              ? 0.5f * (samples[samples.size() / 2 - 1] + samples[samples.size() / 2])
+                              : samples[samples.size() / 2];
         stats.p95_ms = samples[std::min(samples.size() - 1, (samples.size() * 95) / 100)];
         stats.min_ms = samples.front();
         stats.max_ms = samples.back();
@@ -683,7 +685,14 @@ namespace
             std::vector<float> kernel_samples;
             summary.gpu_e2e_perf = measure(options.warmup, options.repeat, [&]() {
                 (void)cusignal::zx_gpu_backend::peak_finding_test_hooks::consume_last_kernel_ms();
-                (void)gpu_perf();
+                const ZxGpuRealArray fresh_data = ZxGpuRealArray::from_host(perf.data);
+                const auto result = cusignal::zx_gpu_backend::peak_finding::argrelextrema(
+                    fresh_data,
+                    perf.comparator,
+                    perf.axis,
+                    perf.order,
+                    perf.mode);
+                (void)to_host(result.indices);
                 cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
                 kernel_samples.push_back(cusignal::zx_gpu_backend::peak_finding_test_hooks::consume_last_kernel_ms());
             });
@@ -729,14 +738,18 @@ namespace
                       << "  mean=" << format_fixed(summary.cpu_perf->mean_ms)
                       << "  p95=" << format_fixed(summary.cpu_perf->p95_ms) << "\n";
         }
-        if (summary.gpu_e2e_perf.has_value())
-        {
-            std::cout << "gpu_perf_ms   : e2e_median=" << format_fixed(summary.gpu_e2e_perf->median_ms)
-                      << "  kernel_median="
-                      << format_fixed(summary.gpu_kernel_perf.has_value() ? summary.gpu_kernel_perf->median_ms : 0.0f)
-                      << "  p95=" << format_fixed(summary.gpu_e2e_perf->p95_ms)
-                      << "  e2e_speedup=" << format_fixed(speedup(summary.cpu_perf, summary.gpu_e2e_perf)) << "x"
-                      << "  kernel_speedup=" << format_fixed(speedup(summary.cpu_perf, summary.gpu_kernel_perf)) << "x\n";
+    if (summary.gpu_e2e_perf.has_value())
+    {
+        const bool kernel_valid = summary.gpu_kernel_perf.has_value() &&
+                                  summary.gpu_kernel_perf->median_ms > 0.0f;
+        std::cout << "gpu_perf_ms   : e2e_median=" << format_fixed(summary.gpu_e2e_perf->median_ms)
+                  << "  kernel_median="
+                  << (kernel_valid ? format_fixed(summary.gpu_kernel_perf->median_ms) : "n/a")
+                  << "  p95=" << format_fixed(summary.gpu_e2e_perf->p95_ms)
+                  << "  e2e_speedup=" << format_fixed(speedup(summary.cpu_perf, summary.gpu_e2e_perf)) << "x"
+                  << "  kernel_speedup="
+                  << (kernel_valid ? format_fixed(speedup(summary.cpu_perf, summary.gpu_kernel_perf)) + "x" : "n/a")
+                  << "\n";
         }
         if (options.emit_report)
         {

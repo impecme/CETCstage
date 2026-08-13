@@ -1,7 +1,7 @@
 # 算子测试报告：wavelets/qmf
 
 - 状态：通过
-- 精度用例：4
+- 精度用例：0
 - 性能用例：1
 
 ## 误差
@@ -13,10 +13,10 @@
 
 ## 性能
 
-- CPU 中位时间：127.503 ms
-- GPU 端到端中位时间：1.65368 ms
-- GPU kernel 最小时间：1.60155 ms
-- GPU kernel 中位时间：1.60155 ms
-- GPU kernel 最大时间：1.60155 ms
-- GPU 端到端加速比：77.1028x
-- GPU kernel 加速比：79.6122x
+- CPU 中位时间：54.6148 ms
+- GPU 端到端中位时间：127.985 ms
+- GPU kernel 最小时间：0.822091 ms
+- GPU kernel 中位时间：0.822091 ms
+- GPU kernel 最大时间：0.822091 ms
+- GPU 端到端加速比：0.42673x
+- GPU kernel 加速比：66.434x

@@ -1,7 +1,7 @@
 {
   "module": "windows",
   "operator": "bartlett",
-  "generated_at": "2026-07-22 03:40:11",
+  "generated_at": "2026-08-09 12:37:28",
   "git_commit": "",
   "gpu_name": "ZQ500-Q QUAD-0",
   "compile_config": {
@@ -10,65 +10,67 @@
   },
   "summary": {
     "pass": true,
-    "accuracy_cases": 2,
+    "accuracy_cases": 0,
     "perf_cases": 1,
     "max_abs_error": 0,
     "max_rel_error": 0,
     "mixed_error": 0,
     "rmse": 0,
-    "gpu_e2e_speedup": 0.284574,
-    "gpu_kernel_speedup": 0.736583,
+    "gpu_e2e_speedup": 0.0346884,
+    "gpu_kernel_speedup": 0.145013,
+    "gpu_e2e_scope": "host input construction + fresh H2D + compute + D2H/output materialization",
+    "gpu_kernel_scope": "prepared device input + CUDA events; H2D/D2H excluded",
     "cpu_perf": {
       "warmup": 5,
       "repeat": 30,
-      "mean_ms": 0.020779,
-      "median_ms": 0.020779,
-      "p95_ms": 0.020779,
-      "min_ms": 0.020779,
-      "max_ms": 0.020779,
+      "mean_ms": 0.0039499998092651367,
+      "median_ms": 0.0039499998092651367,
+      "p95_ms": 0.0039499998092651367,
+      "min_ms": 0.0039499998092651367,
+      "max_ms": 0.0039499998092651367,
       "std_ms": 0
     },
     "gpu_e2e_perf": {
       "warmup": 5,
       "repeat": 30,
-      "mean_ms": 0.073018,
-      "median_ms": 0.073018,
-      "p95_ms": 0.073018,
-      "min_ms": 0.073018,
-      "max_ms": 0.073018,
+      "mean_ms": 0.11387100070714951,
+      "median_ms": 0.11387100070714951,
+      "p95_ms": 0.11387100070714951,
+      "min_ms": 0.11387100070714951,
+      "max_ms": 0.11387100070714951,
       "std_ms": 0
     },
     "gpu_kernel_perf": {
       "warmup": 5,
       "repeat": 30,
-      "mean_ms": 0.02821,
-      "median_ms": 0.02821,
-      "p95_ms": 0.02821,
-      "min_ms": 0.02821,
-      "max_ms": 0.02821,
+      "mean_ms": 0.027239000424742699,
+      "median_ms": 0.027239000424742699,
+      "p95_ms": 0.027239000424742699,
+      "min_ms": 0.027239000424742699,
+      "max_ms": 0.027239000424742699,
       "std_ms": 0
     },
     "device_storage_cache": {
       "cache_enabled": true,
-      "allocation_calls": 2,
-      "allocation_bytes": 65576,
-      "allocation_mib": 0.0625381,
-      "cache_hits": 71,
-      "cache_misses": 2,
-      "recycled_blocks": 73,
-      "recycled_bytes": 4653136,
-      "recycled_mib": 4.43758,
+      "allocation_calls": 1,
+      "allocation_bytes": 12288,
+      "allocation_mib": 0.0117188,
+      "cache_hits": 70,
+      "cache_misses": 1,
+      "recycled_blocks": 71,
+      "recycled_bytes": 872448,
+      "recycled_mib": 0.832031,
       "evicted_blocks": 0,
       "evicted_bytes": 0,
       "evicted_mib": 0,
       "freed_blocks": 0,
       "freed_bytes": 0,
       "freed_mib": 0,
-      "cached_blocks": 2,
-      "cached_bytes": 65576,
-      "cached_mib": 0.0625381,
-      "peak_cached_bytes": 65576,
-      "peak_cached_mib": 0.0625381,
+      "cached_blocks": 1,
+      "cached_bytes": 12288,
+      "cached_mib": 0.0117188,
+      "peak_cached_bytes": 12288,
+      "peak_cached_mib": 0.0117188,
       "max_cached_blocks": 8,
       "max_cached_bytes": 536870912,
       "max_cached_mib": 512,
@@ -78,79 +80,9 @@
   },
   "cases": [
     {
-      "case_id": "periodic_small",
-      "category": "accuracy",
-      "samples": 10,
-      "pass": true,
-      "cpu_gpu_error": {
-        "max_abs_error": 0,
-        "max_rel_error": 0,
-        "mixed_error": 0,
-        "rmse": 0,
-        "l2_error": 0,
-        "exact_match": true,
-        "first_mismatch_index": -1
-      },
-      "cpu_reference_error": {
-        "max_abs_error": 5.96046e-08,
-        "max_rel_error": 2.23517e-07,
-        "mixed_error": 0,
-        "rmse": 2.53758e-08,
-        "l2_error": 8.02452e-08,
-        "exact_match": false,
-        "first_mismatch_index": 6
-      },
-      "gpu_reference_error": {
-        "max_abs_error": 5.96046e-08,
-        "max_rel_error": 2.23517e-07,
-        "mixed_error": 0,
-        "rmse": 2.53758e-08,
-        "l2_error": 8.02452e-08,
-        "exact_match": false,
-        "first_mismatch_index": 6
-      },
-      "artifacts": [
-      ]
-    },
-    {
-      "case_id": "periodic_small_float16_compat",
-      "category": "accuracy",
-      "samples": 10,
-      "pass": true,
-      "cpu_gpu_error": {
-        "max_abs_error": 0,
-        "max_rel_error": 0,
-        "mixed_error": 0,
-        "rmse": 0,
-        "l2_error": 0,
-        "exact_match": true,
-        "first_mismatch_index": -1
-      },
-      "cpu_reference_error": {
-        "max_abs_error": 0,
-        "max_rel_error": 0,
-        "mixed_error": 0,
-        "rmse": 0,
-        "l2_error": 0,
-        "exact_match": true,
-        "first_mismatch_index": -1
-      },
-      "gpu_reference_error": {
-        "max_abs_error": 0,
-        "max_rel_error": 0,
-        "mixed_error": 0,
-        "rmse": 0,
-        "l2_error": 0,
-        "exact_match": true,
-        "first_mismatch_index": -1
-      },
-      "artifacts": [
-      ]
-    },
-    {
       "case_id": "perf_large",
       "category": "perf",
-      "samples": 16384,
+      "samples": 3072,
       "pass": true,
       "cpu_gpu_error": {
         "max_abs_error": 0,
@@ -164,36 +96,36 @@
       "cpu_perf": {
         "warmup": 5,
         "repeat": 30,
-        "mean_ms": 0.020788,
-        "median_ms": 0.020779,
-        "p95_ms": 0.02081,
-        "min_ms": 0.02075,
-        "max_ms": 0.021119,
-        "std_ms": 6.25948e-05
+        "mean_ms": 0.003953699953854084,
+        "median_ms": 0.0039499998092651367,
+        "p95_ms": 0.0039599998854100704,
+        "min_ms": 0.0039300001226365566,
+        "max_ms": 0.0040099998004734516,
+        "std_ms": 1.276748844247777e-05
       },
       "gpu_e2e_perf": {
         "warmup": 5,
         "repeat": 30,
-        "mean_ms": 0.0741917,
-        "median_ms": 0.073018,
-        "p95_ms": 0.082338,
-        "min_ms": 0.071058,
-        "max_ms": 0.084328,
-        "std_ms": 0.00322159
+        "mean_ms": 0.11445700377225876,
+        "median_ms": 0.11387100070714951,
+        "p95_ms": 0.11754199862480164,
+        "min_ms": 0.11041200160980225,
+        "max_ms": 0.13517099618911743,
+        "std_ms": 0.0041452478617429733
       },
       "gpu_kernel_perf": {
         "warmup": 5,
         "repeat": 30,
-        "mean_ms": 0.0281827,
-        "median_ms": 0.02821,
-        "p95_ms": 0.028456,
-        "min_ms": 0.02779,
-        "max_ms": 0.028468,
-        "std_ms": 0.000161052
+        "mean_ms": 0.027211600914597511,
+        "median_ms": 0.027239000424742699,
+        "p95_ms": 0.0274679996073246,
+        "min_ms": 0.026823999360203743,
+        "max_ms": 0.027612000703811646,
+        "std_ms": 0.00018838161486200988
       },
       "artifacts": [
-        {"role": "cpu_signal", "path": "/CETC/data/generated/unit/windows/bartlett/output_samples/perf_large__cpu__signal.csv", "sha256": "a8250906a3a12586d8bbee8cf7deb5e340afd921b0f08bcbdc7f10deb4c7f71d"},
-        {"role": "gpu_signal", "path": "/CETC/data/generated/unit/windows/bartlett/output_samples/perf_large__gpu__signal.csv", "sha256": "a8250906a3a12586d8bbee8cf7deb5e340afd921b0f08bcbdc7f10deb4c7f71d"}
+        {"role": "cpu_signal", "path": "/tmp/cetc_operator_scales.4oabek/manifests_L6/windows/bartlett/output_samples/perf_large__cpu__signal.csv", "sha256": "a198038e6fd8cf9c07e39eaf55b7154babee00f4c665255529f451c49d283c0d"},
+        {"role": "gpu_signal", "path": "/tmp/cetc_operator_scales.4oabek/manifests_L6/windows/bartlett/output_samples/perf_large__gpu__signal.csv", "sha256": "a198038e6fd8cf9c07e39eaf55b7154babee00f4c665255529f451c49d283c0d"}
       ]
     }
   ]

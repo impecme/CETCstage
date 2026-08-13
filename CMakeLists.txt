@@ -224,6 +224,8 @@ set(CUSIGNAL_ZHONGKEXIN_GPU_SOURCES
 )
 
 list(APPEND CUSIGNAL_ZHONGKEXIN_GPU_SOURCES
+    demo/task1_radar/task1_gpu.cu
+    demo/task2_features/task2_gpu.cu
     demo/task2_features/task2_features_zx_gpu.cu
 )
 set_source_files_properties(${CUSIGNAL_ZHONGKEXIN_GPU_SOURCES} PROPERTIES LANGUAGE CXX)

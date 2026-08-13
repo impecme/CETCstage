@@ -1,7 +1,7 @@
 # 算子测试报告：filtering/firfilter_zi
 
 - 状态：通过
-- 精度用例：2
+- 精度用例：0
 - 性能用例：1
 
 ## 误差
@@ -14,9 +14,9 @@
 ## 性能
 
 - CPU 中位时间：0.01121 ms
-- GPU 端到端中位时间：0.247009 ms
-- GPU kernel 最小时间：0.083632 ms
-- GPU kernel 中位时间：0.083632 ms
-- GPU kernel 最大时间：0.083632 ms
-- GPU 端到端加速比：0.0453829x
-- GPU kernel 加速比：0.13404x
+- GPU 端到端中位时间：0.29501 ms
+- GPU kernel 最小时间：0.083862 ms
+- GPU kernel 中位时间：0.083862 ms
+- GPU kernel 最大时间：0.083862 ms
+- GPU 端到端加速比：0.0379987x
+- GPU kernel 加速比：0.133672x

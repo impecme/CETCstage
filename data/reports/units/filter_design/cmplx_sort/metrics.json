@@ -1,7 +1,7 @@
 {
   "module": "filter_design",
   "operator": "cmplx_sort",
-  "generated_at": "2026-07-22 03:42:38",
+  "generated_at": "2026-08-09 12:41:03",
   "git_commit": "",
   "gpu_name": "ZQ500-Q QUAD-0",
   "compile_config": {
@@ -10,32 +10,34 @@
   },
   "summary": {
     "pass": true,
-    "accuracy_cases": 3,
+    "accuracy_cases": 0,
     "perf_cases": 1,
     "max_abs_error": 0,
     "max_rel_error": 0,
     "mixed_error": 0,
     "rmse": 0,
-    "gpu_e2e_speedup": 0.813522,
+    "gpu_e2e_speedup": 0.841746,
     "gpu_kernel_speedup": 0,
+    "gpu_e2e_scope": "host input construction + fresh H2D + compute + D2H/output materialization",
+    "gpu_kernel_scope": "prepared device input + CUDA events; H2D/D2H excluded",
     "cpu_perf": {
       "warmup": 5,
       "repeat": 30,
-      "mean_ms": 0.43742,
-      "median_ms": 0.43742,
-      "p95_ms": 0.43742,
-      "min_ms": 0.43742,
-      "max_ms": 0.43742,
+      "mean_ms": 1728.845703125,
+      "median_ms": 1728.845703125,
+      "p95_ms": 1728.845703125,
+      "min_ms": 1728.845703125,
+      "max_ms": 1728.845703125,
       "std_ms": 0
     },
     "gpu_e2e_perf": {
       "warmup": 5,
       "repeat": 30,
-      "mean_ms": 0.537687,
-      "median_ms": 0.537687,
-      "p95_ms": 0.537687,
-      "min_ms": 0.537687,
-      "max_ms": 0.537687,
+      "mean_ms": 2053.88134765625,
+      "median_ms": 2053.88134765625,
+      "p95_ms": 2053.88134765625,
+      "min_ms": 2053.88134765625,
+      "max_ms": 2053.88134765625,
       "std_ms": 0
     },
     "gpu_kernel_perf": {
@@ -50,25 +52,25 @@
     },
     "device_storage_cache": {
       "cache_enabled": true,
-      "allocation_calls": 5,
-      "allocation_bytes": 49232,
-      "allocation_mib": 0.0469513,
-      "cache_hits": 143,
-      "cache_misses": 5,
-      "recycled_blocks": 148,
-      "recycled_bytes": 3489932,
-      "recycled_mib": 3.32826,
+      "allocation_calls": 2,
+      "allocation_bytes": 100663296,
+      "allocation_mib": 96,
+      "cache_hits": 140,
+      "cache_misses": 2,
+      "recycled_blocks": 142,
+      "recycled_bytes": 7147094016,
+      "recycled_mib": 6816,
       "evicted_blocks": 0,
       "evicted_bytes": 0,
       "evicted_mib": 0,
       "freed_blocks": 0,
       "freed_bytes": 0,
       "freed_mib": 0,
-      "cached_blocks": 5,
-      "cached_bytes": 49232,
-      "cached_mib": 0.0469513,
-      "peak_cached_bytes": 49232,
-      "peak_cached_mib": 0.0469513,
+      "cached_blocks": 2,
+      "cached_bytes": 100663296,
+      "cached_mib": 96,
+      "peak_cached_bytes": 100663296,
+      "peak_cached_mib": 96,
       "max_cached_blocks": 8,
       "max_cached_bytes": 536870912,
       "max_cached_mib": 512,
@@ -78,114 +80,9 @@
   },
   "cases": [
     {
-      "case_id": "real_case",
-      "category": "accuracy",
-      "samples": 5,
-      "pass": true,
-      "cpu_gpu_error": {
-        "max_abs_error": 0,
-        "max_rel_error": 0,
-        "mixed_error": 0,
-        "rmse": 0,
-        "l2_error": 0,
-        "exact_match": true,
-        "first_mismatch_index": -1
-      },
-      "cpu_reference_error": {
-        "max_abs_error": 0,
-        "max_rel_error": 0,
-        "mixed_error": 0,
-        "rmse": 0,
-        "l2_error": 0,
-        "exact_match": true,
-        "first_mismatch_index": -1
-      },
-      "gpu_reference_error": {
-        "max_abs_error": 0,
-        "max_rel_error": 0,
-        "mixed_error": 0,
-        "rmse": 0,
-        "l2_error": 0,
-        "exact_match": true,
-        "first_mismatch_index": -1
-      },
-      "artifacts": [
-      ]
-    },
-    {
-      "case_id": "complex_case",
-      "category": "accuracy",
-      "samples": 5,
-      "pass": true,
-      "cpu_gpu_error": {
-        "max_abs_error": 0,
-        "max_rel_error": 0,
-        "mixed_error": 0,
-        "rmse": 0,
-        "l2_error": 0,
-        "exact_match": true,
-        "first_mismatch_index": -1
-      },
-      "cpu_reference_error": {
-        "max_abs_error": 0,
-        "max_rel_error": 0,
-        "mixed_error": 0,
-        "rmse": 0,
-        "l2_error": 0,
-        "exact_match": true,
-        "first_mismatch_index": -1
-      },
-      "gpu_reference_error": {
-        "max_abs_error": 0,
-        "max_rel_error": 0,
-        "mixed_error": 0,
-        "rmse": 0,
-        "l2_error": 0,
-        "exact_match": true,
-        "first_mismatch_index": -1
-      },
-      "artifacts": [
-      ]
-    },
-    {
-      "case_id": "real_case_float16_compat",
-      "category": "accuracy",
-      "samples": 5,
-      "pass": true,
-      "cpu_gpu_error": {
-        "max_abs_error": 0,
-        "max_rel_error": 0,
-        "mixed_error": 0,
-        "rmse": 0,
-        "l2_error": 0,
-        "exact_match": true,
-        "first_mismatch_index": -1
-      },
-      "cpu_reference_error": {
-        "max_abs_error": 0,
-        "max_rel_error": 0,
-        "mixed_error": 0,
-        "rmse": 0,
-        "l2_error": 0,
-        "exact_match": true,
-        "first_mismatch_index": -1
-      },
-      "gpu_reference_error": {
-        "max_abs_error": 0,
-        "max_rel_error": 0,
-        "mixed_error": 0,
-        "rmse": 0,
-        "l2_error": 0,
-        "exact_match": true,
-        "first_mismatch_index": -1
-      },
-      "artifacts": [
-      ]
-    },
-    {
       "case_id": "perf_complex",
       "category": "perf",
-      "samples": 4096,
+      "samples": 8388608,
       "pass": true,
       "cpu_gpu_error": {
         "max_abs_error": 0,
@@ -199,22 +96,22 @@
       "cpu_perf": {
         "warmup": 5,
         "repeat": 30,
-        "mean_ms": 0.438949,
-        "median_ms": 0.43742,
-        "p95_ms": 0.44961,
-        "min_ms": 0.43697,
-        "max_ms": 0.45271,
-        "std_ms": 0.00409156
+        "mean_ms": 1733.1309814453125,
+        "median_ms": 1728.845703125,
+        "p95_ms": 1749.9498291015625,
+        "min_ms": 1726.3004150390625,
+        "max_ms": 1754.331787109375,
+        "std_ms": 8.6735773086547852
       },
       "gpu_e2e_perf": {
         "warmup": 5,
         "repeat": 30,
-        "mean_ms": 0.539351,
-        "median_ms": 0.537687,
-        "p95_ms": 0.547967,
-        "min_ms": 0.536237,
-        "max_ms": 0.558597,
-        "std_ms": 0.00443929
+        "mean_ms": 2056.132080078125,
+        "median_ms": 2053.88134765625,
+        "p95_ms": 2071.96630859375,
+        "min_ms": 2051.210205078125,
+        "max_ms": 2079.25927734375,
+        "std_ms": 6.549809455871582
       },
       "gpu_kernel_perf": {
         "warmup": 5,
@@ -227,10 +124,10 @@
         "std_ms": 0
       },
       "artifacts": [
-        {"role": "cpu_signal", "path": "/CETC/data/generated/unit/filter_design/cmplx_sort/output_samples/perf_complex__cpu__signal.csv", "sha256": "e525c953439594d4bc247b8d50abdf8d0f10b1e74285fd336912e424f44abe13"},
-        {"role": "cpu_indices", "path": "/CETC/data/generated/unit/filter_design/cmplx_sort/output_samples/perf_complex__cpu__indices.csv", "sha256": "47422e98a4601c2d308a6e71d4c6806ea6308f2235c86465bf772beb44bb6fc3"},
-        {"role": "gpu_signal", "path": "/CETC/data/generated/unit/filter_design/cmplx_sort/output_samples/perf_complex__gpu__signal.csv", "sha256": "e525c953439594d4bc247b8d50abdf8d0f10b1e74285fd336912e424f44abe13"},
-        {"role": "gpu_indices", "path": "/CETC/data/generated/unit/filter_design/cmplx_sort/output_samples/perf_complex__gpu__indices.csv", "sha256": "47422e98a4601c2d308a6e71d4c6806ea6308f2235c86465bf772beb44bb6fc3"}
+        {"role": "cpu_signal", "path": "/tmp/cetc_operator_scales.4oabek/manifests_L6/filter_design/cmplx_sort/output_samples/perf_complex__cpu__signal.csv", "sha256": "27c0871e355ed5baa7c2ce62df4ed5bc489ba1e3c579dc60954a66b85baf4eff"},
+        {"role": "cpu_indices", "path": "/tmp/cetc_operator_scales.4oabek/manifests_L6/filter_design/cmplx_sort/output_samples/perf_complex__cpu__indices.csv", "sha256": "6e2ceef49cf50a9b6e93008ece159718e3898056ea1e04c1c9569c04a45eddbe"},
+        {"role": "gpu_signal", "path": "/tmp/cetc_operator_scales.4oabek/manifests_L6/filter_design/cmplx_sort/output_samples/perf_complex__gpu__signal.csv", "sha256": "27c0871e355ed5baa7c2ce62df4ed5bc489ba1e3c579dc60954a66b85baf4eff"},
+        {"role": "gpu_indices", "path": "/tmp/cetc_operator_scales.4oabek/manifests_L6/filter_design/cmplx_sort/output_samples/perf_complex__gpu__indices.csv", "sha256": "6e2ceef49cf50a9b6e93008ece159718e3898056ea1e04c1c9569c04a45eddbe"}
       ]
     }
   ]

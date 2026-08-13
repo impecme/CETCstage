@@ -2,12 +2,12 @@
   "status": "passed",
   "registry_count": 81,
   "source_path_check": "passed",
+  "task_appendix_source": "\u7b97\u5b50\u8868.xlsx",
   "sets": {
     "all81": 81,
-    "core53": 53,
-    "demo_cache_probe4": 4,
-    "demo_top30": 30,
-    "extended28": 28,
-    "task27": 27
+    "appendix_only": 37,
+    "native_only": 26,
+    "task_appendix": 53,
+    "task_used": 18
   }
 }

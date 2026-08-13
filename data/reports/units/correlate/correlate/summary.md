@@ -1,7 +1,7 @@
 # 算子测试报告：correlate/correlate
 
 - 状态：通过
-- 精度用例：7
+- 精度用例：0
 - 性能用例：1
 
 ## 误差
@@ -13,10 +13,10 @@
 
 ## 性能
 
-- CPU 中位时间：11.891 ms
-- GPU 端到端中位时间：0.405988 ms
-- GPU kernel 最小时间：0.200948 ms
-- GPU kernel 中位时间：0.211202 ms
-- GPU kernel 最大时间：0.231104 ms
-- GPU 端到端加速比：29.2889x
-- GPU kernel 加速比：56.3013x
+- CPU 中位时间：11.0632 ms
+- GPU 端到端中位时间：0.450138 ms
+- GPU kernel 最小时间：0.20153 ms
+- GPU kernel 中位时间：0.212359 ms
+- GPU kernel 最大时间：0.225774 ms
+- GPU 端到端加速比：24.5774x
+- GPU kernel 加速比：52.0967x

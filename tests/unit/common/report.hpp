@@ -23,6 +23,19 @@ namespace cusignal_test::report
 {
     namespace fs = std::filesystem;
 
+    template <typename NumericT>
+    inline std::string json_number(NumericT value)
+    {
+        const double converted = static_cast<double>(value);
+        if (!std::isfinite(converted))
+        {
+            return "null";
+        }
+        std::ostringstream stream;
+        stream << std::setprecision(17) << converted;
+        return stream.str();
+    }
+
     struct WritePolicy
     {
         bool emit_case_reference_errors = true;
@@ -153,15 +166,35 @@ namespace cusignal_test::report
     }
 
     template <typename TimingStatsT>
+    inline bool valid_timing(const std::optional<TimingStatsT> &timing)
+    {
+        return timing.has_value() &&
+               std::isfinite(static_cast<double>(timing->median_ms)) &&
+               timing->median_ms > 0.0;
+    }
+
+    template <typename TimingStatsT>
     inline float median_speedup(
         const std::optional<TimingStatsT> &baseline,
         const std::optional<TimingStatsT> &candidate)
     {
-        if (!baseline.has_value() || !candidate.has_value() || candidate->median_ms <= 0.0)
+        if (!valid_timing(baseline) || !valid_timing(candidate))
         {
             return 0.0;
         }
         return baseline->median_ms / candidate->median_ms;
+    }
+
+    template <typename TimingStatsT>
+    inline std::string optional_median_speedup_json(
+        const std::optional<TimingStatsT> &baseline,
+        const std::optional<TimingStatsT> &candidate)
+    {
+        if (!valid_timing(baseline) || !valid_timing(candidate))
+        {
+            return "null";
+        }
+        return json_number(static_cast<double>(baseline->median_ms / candidate->median_ms));
     }
 
     template <typename TimingStatsT>
@@ -177,12 +210,12 @@ namespace cusignal_test::report
         stream << "{\n";
         stream << child_indent << "\"warmup\": " << warmup << ",\n";
         stream << child_indent << "\"repeat\": " << repeat << ",\n";
-        stream << child_indent << "\"mean_ms\": " << stats.mean_ms << ",\n";
-        stream << child_indent << "\"median_ms\": " << stats.median_ms << ",\n";
-        stream << child_indent << "\"p95_ms\": " << stats.p95_ms << ",\n";
-        stream << child_indent << "\"min_ms\": " << stats.min_ms << ",\n";
-        stream << child_indent << "\"max_ms\": " << stats.max_ms << ",\n";
-        stream << child_indent << "\"std_ms\": " << stats.std_ms << '\n';
+        stream << child_indent << "\"mean_ms\": " << json_number(stats.mean_ms) << ",\n";
+        stream << child_indent << "\"median_ms\": " << json_number(stats.median_ms) << ",\n";
+        stream << child_indent << "\"p95_ms\": " << json_number(stats.p95_ms) << ",\n";
+        stream << child_indent << "\"min_ms\": " << json_number(stats.min_ms) << ",\n";
+        stream << child_indent << "\"max_ms\": " << json_number(stats.max_ms) << ",\n";
+        stream << child_indent << "\"std_ms\": " << json_number(stats.std_ms) << '\n';
         stream << current_indent << '}';
         return stream.str();
     }
@@ -194,11 +227,11 @@ namespace cusignal_test::report
         const std::string child_indent(static_cast<std::size_t>(indent + 2), ' ');
         std::ostringstream stream;
         stream << "{\n";
-        stream << child_indent << "\"max_abs_error\": " << metrics.max_abs_error << ",\n";
-        stream << child_indent << "\"max_rel_error\": " << metrics.max_rel_error << ",\n";
-        stream << child_indent << "\"mixed_error\": " << metrics.mixed_error << ",\n";
-        stream << child_indent << "\"rmse\": " << metrics.rmse << ",\n";
-        stream << child_indent << "\"l2_error\": " << metrics.l2_error << ",\n";
+        stream << child_indent << "\"max_abs_error\": " << json_number(metrics.max_abs_error) << ",\n";
+        stream << child_indent << "\"max_rel_error\": " << json_number(metrics.max_rel_error) << ",\n";
+        stream << child_indent << "\"mixed_error\": " << json_number(metrics.mixed_error) << ",\n";
+        stream << child_indent << "\"rmse\": " << json_number(metrics.rmse) << ",\n";
+        stream << child_indent << "\"l2_error\": " << json_number(metrics.l2_error) << ",\n";
         stream << child_indent << "\"exact_match\": "
                << (metrics.exact_match ? "true" : "false") << ",\n";
         stream << child_indent << "\"first_mismatch_index\": "
@@ -217,7 +250,7 @@ namespace cusignal_test::report
         int indent,
         bool &has_previous_field)
     {
-        if (!stats.has_value())
+        if (!valid_timing(stats))
         {
             return;
         }
@@ -306,7 +339,19 @@ namespace cusignal_test::report
         {
             return default_value;
         }
-        return iter->second.as_number();
+        return iter->second.is_number() ? iter->second.as_number() : default_value;
+    }
+
+    inline std::string get_optional_number_json(
+        const cusignal_test::json::Object &object,
+        const std::string &key)
+    {
+        const auto iter = object.find(key);
+        if (iter == object.end() || !iter->second.is_number())
+        {
+            return "null";
+        }
+        return json_number(iter->second.as_number());
     }
 
     template <typename SummaryT, typename CaseT>
@@ -336,18 +381,18 @@ namespace cusignal_test::report
                    << format_float(summary.reference_error->max_rel_error) << "\n";
         }
         stream << "\n## Performance\n\n";
-        if (!summary.cpu_perf.has_value() && !summary.gpu_e2e_perf.has_value() &&
-            !summary.gpu_kernel_perf.has_value())
+        if (!valid_timing(summary.cpu_perf) && !valid_timing(summary.gpu_e2e_perf) &&
+            !valid_timing(summary.gpu_kernel_perf))
         {
             stream << "- timing: not_run (accuracy-only case set; use perf/full case set for timing)\n";
         }
-        if (summary.cpu_perf.has_value())
+        if (valid_timing(summary.cpu_perf))
         {
             stream << "- cpu median_ms: " << format_fixed(summary.cpu_perf->median_ms) << "\n";
             stream << "- cpu mean_ms: " << format_fixed(summary.cpu_perf->mean_ms) << "\n";
             stream << "- cpu p95_ms: " << format_fixed(summary.cpu_perf->p95_ms) << "\n";
         }
-        if (summary.gpu_e2e_perf.has_value())
+        if (valid_timing(summary.gpu_e2e_perf))
         {
             stream << "- gpu_e2e median_ms: " << format_fixed(summary.gpu_e2e_perf->median_ms)
                    << "\n";
@@ -359,7 +404,7 @@ namespace cusignal_test::report
                    << format_fixed(median_speedup(summary.cpu_perf, summary.gpu_e2e_perf))
                    << "x\n";
         }
-        if (summary.gpu_kernel_perf.has_value())
+        if (valid_timing(summary.gpu_kernel_perf))
         {
             stream << "- gpu_kernel median_ms: "
                    << format_fixed(summary.gpu_kernel_perf->median_ms) << "\n";
@@ -432,7 +477,7 @@ namespace cusignal_test::report
                        << stats.median_ms << ',' << stats.p95_ms << ',' << stats.min_ms << ','
                        << stats.max_ms << ',' << stats.std_ms << ",,,,,\n";
             }
-            if (report.gpu_kernel_perf.has_value())
+            if (valid_timing(report.gpu_kernel_perf))
             {
                 const auto &stats = *report.gpu_kernel_perf;
                 stream << report.case_id << ",gpu_kernel,perf," << report.samples << ','
@@ -502,9 +547,29 @@ namespace cusignal_test::report
         stream << "    \"mixed_error\": " << summary.cpu_gpu_error.mixed_error << ",\n";
         stream << "    \"rmse\": " << summary.cpu_gpu_error.rmse << ",\n";
         stream << "    \"gpu_e2e_speedup\": "
-               << median_speedup(summary.cpu_perf, summary.gpu_e2e_perf) << ",\n";
+               << optional_median_speedup_json(summary.cpu_perf, summary.gpu_e2e_perf) << ",\n";
         stream << "    \"gpu_kernel_speedup\": "
-               << median_speedup(summary.cpu_perf, summary.gpu_kernel_perf);
+               << optional_median_speedup_json(summary.cpu_perf, summary.gpu_kernel_perf) << ",\n";
+        stream << "    \"gpu_acceleration_eligible\": "
+               << (valid_timing(summary.gpu_kernel_perf) ? "true" : "false") << ",\n";
+        stream << "    \"path_kind\": \""
+               << (valid_timing(summary.gpu_kernel_perf) ? "gpu_kernel" : "cpu_or_no_independent_kernel")
+               << "\",\n";
+        const bool input_free_e2e =
+            module == "windows" ||
+            (module == "filter_design" && op != "cmplx_sort") ||
+            (module == "radartools" && op == "cfar_alpha") ||
+            (module == "correlate" && op == "correlation_lags");
+        stream << "    \"input_kind\": \""
+               << (input_free_e2e ? "parameter_only" : "host_input") << "\",\n";
+        stream << "    \"gpu_e2e_scope\": \""
+               << (input_free_e2e
+                       ? "host parameter construction + GPU generation + D2H/output materialization"
+                       : "host input construction + fresh H2D + compute + D2H/output materialization")
+               << "\",\n";
+        stream << "    \"gpu_kernel_scope\": \"prepared device input + CUDA events; H2D/D2H excluded\"";
+        stream << ",\n    \"input_refresh_policy\": \"fresh host values and H2D on every measured GPU E2E repeat\",\n";
+        stream << "    \"workspace_reuse_policy\": \"device allocation capacity and FFT plan may be reused; input values may not\"";
         bool has_summary_field = true;
         append_timing_stats_field(
             stream, "cpu_perf", summary.cpu_perf, options.warmup, options.repeat, 4, has_summary_field);
@@ -635,9 +700,29 @@ namespace cusignal_test::report
         stream << "    \"mixed_error\": " << summary.cpu_gpu_error.mixed_error << ",\n";
         stream << "    \"rmse\": " << summary.cpu_gpu_error.rmse << ",\n";
         stream << "    \"gpu_e2e_speedup\": "
-               << median_speedup(summary.cpu_perf, summary.gpu_e2e_perf) << ",\n";
+               << optional_median_speedup_json(summary.cpu_perf, summary.gpu_e2e_perf) << ",\n";
         stream << "    \"gpu_kernel_speedup\": "
-               << median_speedup(summary.cpu_perf, summary.gpu_kernel_perf);
+               << optional_median_speedup_json(summary.cpu_perf, summary.gpu_kernel_perf) << ",\n";
+        stream << "    \"gpu_acceleration_eligible\": "
+               << (valid_timing(summary.gpu_kernel_perf) ? "true" : "false") << ",\n";
+        stream << "    \"path_kind\": \""
+               << (valid_timing(summary.gpu_kernel_perf) ? "gpu_kernel" : "cpu_or_no_independent_kernel")
+               << "\",\n";
+        const bool input_free_e2e =
+            module == "windows" ||
+            (module == "filter_design" && op != "cmplx_sort") ||
+            (module == "radartools" && op == "cfar_alpha") ||
+            (module == "correlate" && op == "correlation_lags");
+        stream << "    \"input_kind\": \""
+               << (input_free_e2e ? "parameter_only" : "host_input") << "\",\n";
+        stream << "    \"gpu_e2e_scope\": \""
+               << (input_free_e2e
+                       ? "host parameter construction + GPU generation + D2H/output materialization"
+                       : "host input construction + fresh H2D + compute + D2H/output materialization")
+               << "\",\n";
+        stream << "    \"gpu_kernel_scope\": \"prepared device input + CUDA events; H2D/D2H excluded\"";
+        stream << ",\n    \"input_refresh_policy\": \"fresh host values and H2D on every measured GPU E2E repeat\",\n";
+        stream << "    \"workspace_reuse_policy\": \"device allocation capacity and FFT plan may be reused; input values may not\"";
         bool has_summary_field = true;
         append_timing_stats_field(
             stream, "cpu_perf", summary.cpu_perf, options.warmup, options.repeat, 4, has_summary_field);
@@ -856,9 +941,9 @@ namespace cusignal_test::report
                 json_stream << "      \"max_abs_error\": " << max_abs_error << ",\n";
                 json_stream << "      \"max_rel_error\": " << max_rel_error << ",\n";
                 json_stream << "      \"gpu_e2e_speedup\": "
-                            << get_optional_number(summary, "gpu_e2e_speedup") << ",\n";
+                            << get_optional_number_json(summary, "gpu_e2e_speedup") << ",\n";
                 json_stream << "      \"gpu_kernel_speedup\": "
-                            << get_optional_number(summary, "gpu_kernel_speedup");
+                            << get_optional_number_json(summary, "gpu_kernel_speedup");
 
                 for (const std::string key : {"cpu_perf", "gpu_e2e_perf", "gpu_kernel_perf"})
                 {
