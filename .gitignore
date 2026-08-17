@@ -32,3 +32,5 @@ operator_gpu_baseline_75a700d_protocol
 data/reports/operator_gpu_rollback_cmplx_sort_20260816
 
 data/cpu_reference_cache_20260816_full
+
+data/reports/operator_gpu_non_kernel_20260816_full
