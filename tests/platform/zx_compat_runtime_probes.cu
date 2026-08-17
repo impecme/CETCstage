@@ -40,6 +40,13 @@ int main()
     cudaStream_t stream = nullptr;
     cudaEvent_t begin = nullptr;
     cudaEvent_t end = nullptr;
+    float *pinned_input = nullptr;
+    float *pinned_output = nullptr;
+    int host_alloc_status = -1;
+    int async_h2d_status = -1;
+    int async_d2h_status = -1;
+    int pinned_sync_status = -1;
+    bool pinned_copy_supported = false;
     if (!check_cuda(cudaMalloc(reinterpret_cast<void **>(&device_values), count * sizeof(float)), "cudaMalloc") ||
         !check_cuda(cudaMemcpy(device_values, input.data(), count * sizeof(float), cudaMemcpyHostToDevice), "cudaMemcpy H2D") ||
         !check_cuda(cudaMemset(device_values + 4, 0, 4 * sizeof(float)), "cudaMemset") ||
@@ -63,8 +70,72 @@ int main()
             return 1;
     }
 
+    // Capability probe only.  The production path remains synchronous unless
+    // a later benchmark explicitly proves that a pinned staging path helps the
+    // complete operator E2E time.
+    host_alloc_status = static_cast<int>(cudaHostAlloc(
+        reinterpret_cast<void **>(&pinned_input),
+        count * sizeof(float),
+        cudaHostAllocDefault));
+    if (host_alloc_status == static_cast<int>(cudaSuccess))
+    {
+        host_alloc_status = static_cast<int>(cudaHostAlloc(
+            reinterpret_cast<void **>(&pinned_output),
+            count * sizeof(float),
+            cudaHostAllocDefault));
+    }
+    if (host_alloc_status == static_cast<int>(cudaSuccess))
+    {
+        for (int index = 0; index < count; ++index)
+        {
+            pinned_input[index] = static_cast<float>(index + 10);
+            pinned_output[index] = -1.0f;
+        }
+        async_h2d_status = static_cast<int>(cudaMemcpyAsync(
+            device_values,
+            pinned_input,
+            count * sizeof(float),
+            cudaMemcpyHostToDevice,
+            stream));
+        pinned_sync_status = static_cast<int>(cudaStreamSynchronize(stream));
+        async_d2h_status = static_cast<int>(cudaMemcpyAsync(
+            pinned_output,
+            device_values,
+            count * sizeof(float),
+            cudaMemcpyDeviceToHost,
+            stream));
+        if (async_d2h_status == static_cast<int>(cudaSuccess))
+        {
+            pinned_sync_status = static_cast<int>(cudaStreamSynchronize(stream));
+        }
+        pinned_copy_supported =
+            async_h2d_status == static_cast<int>(cudaSuccess) &&
+            async_d2h_status == static_cast<int>(cudaSuccess) &&
+            pinned_sync_status == static_cast<int>(cudaSuccess);
+        if (pinned_copy_supported)
+        {
+            for (int index = 0; index < count; ++index)
+            {
+                if (std::fabs(pinned_output[index] - pinned_input[index]) > 1.0e-6f)
+                {
+                    pinned_copy_supported = false;
+                    break;
+                }
+            }
+        }
+    }
+    if (pinned_output != nullptr)
+    {
+        cudaFreeHost(pinned_output);
+    }
+    if (pinned_input != nullptr)
+    {
+        cudaFreeHost(pinned_input);
+    }
+
     cufftHandle fft = 0;
     cufftHandle fft_batch = 0;
+    cufftHandle fft_many = 0;
     cufftComplex *fft_values = nullptr;
     cublasHandle_t blas = nullptr;
     cusolverDnHandle_t solver = nullptr;
@@ -76,6 +147,26 @@ int main()
     const auto plan_single_end = std::chrono::steady_clock::now();
     const cufftResult batch_plan_status = cufftPlan1d(&fft_batch, count, CUFFT_C2C, 8);
     const auto plan_batch_end = std::chrono::steady_clock::now();
+    int transform_size[1] = {count};
+    int input_embed[1] = {count};
+    int output_embed[1] = {count};
+    const cufftResult plan_many_status = cufftPlanMany(
+        &fft_many,
+        1,
+        transform_size,
+        input_embed,
+        8,
+        1,
+        output_embed,
+        8,
+        1,
+        CUFFT_C2C,
+        8);
+    const bool plan_many_supported = plan_many_status == CUFFT_SUCCESS;
+    bool plan_many_advanced_supported = plan_many_supported;
+    int plan_many_set_stream_status = -1;
+    int plan_many_exec_status = -1;
+    int plan_many_numeric_status = -1;
     std::size_t single_workspace_bytes = 0;
     std::size_t batch_workspace_bytes = 0;
     if (!check_cuda(cudaMalloc(reinterpret_cast<void **>(&fft_values), count * 8 * sizeof(cufftComplex)), "cudaMalloc(fft)") ||
@@ -95,8 +186,77 @@ int main()
         cusparseCreate(&sparse) != CUSPARSE_STATUS_SUCCESS ||
         curandCreateGenerator(&random, CURAND_RNG_PSEUDO_XORWOW) != CURAND_STATUS_SUCCESS)
         return 1;
+    if (plan_many_supported)
+    {
+        const cufftResult set_stream_status = cufftSetStream(fft_many, stream);
+        plan_many_set_stream_status = static_cast<int>(set_stream_status);
+        if (set_stream_status != CUFFT_SUCCESS)
+        {
+            plan_many_advanced_supported = false;
+        }
+        else
+        {
+            std::vector<cufftComplex> advanced_input(count * 8);
+            for (cufftComplex &value : advanced_input)
+            {
+                value.x = 0.0f;
+                value.y = 0.0f;
+            }
+            for (int batch = 0; batch < 8; ++batch)
+            {
+                advanced_input[batch].x = 1.0f;
+            }
+            if (!check_cuda(
+                    cudaMemcpy(
+                        fft_values,
+                        advanced_input.data(),
+                        advanced_input.size() * sizeof(cufftComplex),
+                        cudaMemcpyHostToDevice),
+                    "cudaMemcpy PlanMany H2D"))
+                return 1;
+            const cufftResult exec_status =
+                cufftExecC2C(fft_many, fft_values, fft_values, CUFFT_FORWARD);
+            plan_many_exec_status = static_cast<int>(exec_status);
+            if (exec_status != CUFFT_SUCCESS ||
+                !check_cuda(cudaStreamSynchronize(stream), "cudaStreamSynchronize(PlanMany)"))
+            {
+                plan_many_advanced_supported = false;
+            }
+            else
+            {
+                std::vector<cufftComplex> advanced_output(count * 8);
+                if (!check_cuda(
+                        cudaMemcpy(
+                            advanced_output.data(),
+                            fft_values,
+                            advanced_output.size() * sizeof(cufftComplex),
+                            cudaMemcpyDeviceToHost),
+                        "cudaMemcpy PlanMany D2H"))
+                    return 1;
+                bool numeric_ok = true;
+                for (int batch = 0; batch < 8; ++batch)
+                {
+                    for (int index = 0; index < count; ++index)
+                    {
+                        const cufftComplex value = advanced_output[batch + index * 8];
+                        if (std::fabs(value.x - 1.0f) > 1.0e-4f ||
+                            std::fabs(value.y) > 1.0e-4f)
+                        {
+                            numeric_ok = false;
+                        }
+                    }
+                }
+                plan_many_numeric_status = numeric_ok ? 0 : 1;
+                plan_many_advanced_supported = numeric_ok;
+            }
+        }
+    }
     cufftDestroy(fft);
     cufftDestroy(fft_batch);
+    if (fft_many != 0)
+    {
+        cufftDestroy(fft_many);
+    }
     cudaFree(fft_values);
     cublasDestroy(blas);
     cusolverDnDestroy(solver);
@@ -163,6 +323,19 @@ int main()
               << " async_engines=" << properties.asyncEngineCount
               << " single_plan_ms=" << single_plan_ms
               << " batch8_plan_ms=" << batch_plan_ms
+              << " plan_many=" << (plan_many_supported ? "supported" : "unsupported")
+              << " plan_many_status=" << static_cast<int>(plan_many_status)
+              << " plan_many_advanced="
+              << (plan_many_advanced_supported ? "passed" : "failed")
+              << " pinned_async="
+              << (pinned_copy_supported ? "passed" : "failed")
+              << " host_alloc_status=" << host_alloc_status
+              << " async_h2d_status=" << async_h2d_status
+              << " async_d2h_status=" << async_d2h_status
+              << " pinned_sync_status=" << pinned_sync_status
+              << " plan_many_set_stream_status=" << plan_many_set_stream_status
+              << " plan_many_exec_status=" << plan_many_exec_status
+              << " plan_many_numeric_status=" << plan_many_numeric_status
               << " single_workspace_bytes=" << single_workspace_bytes
               << " batch8_workspace_bytes=" << batch_workspace_bytes
               << " nondefault_stream=passed cufft_set_stream=passed"

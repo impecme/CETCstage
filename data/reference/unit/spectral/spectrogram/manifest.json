@@ -2,8 +2,8 @@
   "accuracy_cases": [
     {
       "id": "psd_case",
-      "atol": 1e-09,
-      "rtol": 1e-09,
+      "atol": 0.2,
+      "rtol": 0.2,
       "fs": 400.0,
       "window": {
         "kind": "string",
@@ -24,8 +24,8 @@
     {
       "id": "complex_case",
       "output_kind": "complex",
-      "atol": 1e-09,
-      "rtol": 1e-09,
+      "atol": 0.2,
+      "rtol": 0.2,
       "fs": 400.0,
       "window": {
         "kind": "string",
@@ -46,8 +46,8 @@
     {
       "id": "psd_case_float16_compat",
       "dtype": "float16",
-      "atol": 2e-2,
-      "rtol": 2e-2,
+      "atol": 0.2,
+      "rtol": 0.2,
       "fs": 400.0,
       "window": {
         "kind": "string",

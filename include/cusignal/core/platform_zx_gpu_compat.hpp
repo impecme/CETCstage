@@ -5,6 +5,8 @@
 #include <stdexcept>
 #include <string>
 
+#include "cusignal/core/benchmark_input_protocol.hpp"
+
 namespace cusignal
 {
     namespace core
@@ -48,11 +50,13 @@ namespace cusignal
 
             inline void copy_host_to_device(void *dst, const void *src, std::size_t bytes, const char *what = "cudaMemcpy H2D")
             {
+                benchmark::note_host_to_device(bytes);
                 throw_on_zx_gpu_error(cudaMemcpy(dst, src, bytes, cudaMemcpyHostToDevice), what);
             }
 
             inline void copy_device_to_host(void *dst, const void *src, std::size_t bytes, const char *what = "cudaMemcpy D2H")
             {
+                benchmark::note_device_to_host(bytes);
                 throw_on_zx_gpu_error(cudaMemcpy(dst, src, bytes, cudaMemcpyDeviceToHost), what);
             }
 

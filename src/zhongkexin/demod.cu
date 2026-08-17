@@ -2,11 +2,14 @@
 
 #include <cuda_runtime.h>
 
+#include <cstdint>
+#include <limits>
 #include <vector>
 
 #include "cusignal/core/helpers.hpp"
 
 #include "../common/demod_detail.hpp"
+#include "../common/zx_tile_policy.hpp"
 
 namespace
 {
@@ -17,48 +20,63 @@ namespace
     using cusignal::core::IndexVector;
 
     namespace demod_detail = cusignal::demod_detail;
+    namespace tile = cusignal::zx_tile;
 
     constexpr int kThreadsPerBlock = 256;
     thread_local float g_last_kernel_ms = 0.0f;
 
+    struct TimingEvents
+    {
+        cudaEvent_t start = nullptr;
+        cudaEvent_t stop = nullptr;
+
+        ~TimingEvents()
+        {
+            if (start != nullptr)
+            {
+                cudaEventDestroy(start);
+            }
+            if (stop != nullptr)
+            {
+                cudaEventDestroy(stop);
+            }
+        }
+
+        void ensure()
+        {
+            if (start == nullptr)
+            {
+                cusignal::core::throw_on_zx_gpu_error(
+                    cudaEventCreate(&start), "cudaEventCreate(start)");
+                cusignal::core::throw_on_zx_gpu_error(
+                    cudaEventCreate(&stop), "cudaEventCreate(stop)");
+            }
+        }
+    };
+
+    thread_local TimingEvents g_timing_events;
+
     class ScopedZxGpuEvents
     {
     public:
-        ScopedZxGpuEvents()
-        {
-            cusignal::core::throw_on_zx_gpu_error(cudaEventCreate(&start_), "cudaEventCreate(start)");
-            cusignal::core::throw_on_zx_gpu_error(cudaEventCreate(&stop_), "cudaEventCreate(stop)");
-        }
-
-        ~ScopedZxGpuEvents()
-        {
-            if (start_ != nullptr)
-            {
-                cudaEventDestroy(start_);
-            }
-            if (stop_ != nullptr)
-            {
-                cudaEventDestroy(stop_);
-            }
-        }
-
         template <typename Callable>
         float measure(Callable callable)
         {
-            cusignal::core::throw_on_zx_gpu_error(cudaEventRecord(start_), "cudaEventRecord(start)");
+            g_timing_events.ensure();
+            cusignal::core::throw_on_zx_gpu_error(
+                cudaEventRecord(g_timing_events.start), "cudaEventRecord(start)");
             callable();
-            cusignal::core::throw_on_zx_gpu_error(cudaEventRecord(stop_), "cudaEventRecord(stop)");
-            cusignal::core::throw_on_zx_gpu_error(cudaEventSynchronize(stop_), "cudaEventSynchronize(stop)");
+            cusignal::core::throw_on_zx_gpu_error(
+                cudaEventRecord(g_timing_events.stop), "cudaEventRecord(stop)");
+            cusignal::core::throw_on_zx_gpu_error(
+                cudaEventSynchronize(g_timing_events.stop), "cudaEventSynchronize(stop)");
             float elapsed_ms = 0.0f;
             cusignal::core::throw_on_zx_gpu_error(
-                cudaEventElapsedTime(&elapsed_ms, start_, stop_),
+                cudaEventElapsedTime(
+                    &elapsed_ms, g_timing_events.start, g_timing_events.stop),
                 "cudaEventElapsedTime");
             return elapsed_ms;
         }
-
-    private:
-        cudaEvent_t start_ = nullptr;
-        cudaEvent_t stop_ = nullptr;
     };
 
     struct DemodWorkspace
@@ -82,7 +100,9 @@ namespace
 
     int block_count(std::size_t count)
     {
-        return count == 0 ? 0 : static_cast<int>((count + kThreadsPerBlock - 1) / kThreadsPerBlock);
+        return count == 0
+            ? 0
+            : static_cast<int>(tile::ceil_div(count, static_cast<std::size_t>(tile::linear_shape(count).threads)));
     }
 
     void check_kernel_launch(const char *what)
@@ -237,6 +257,48 @@ namespace
             demod_detail::wrapped_phase_difference(
                 current.x, current.y, next.x, next.y);
     }
+
+    // CUTLASS-style row tile for the common contiguous last-axis case.  A
+    // block owns one complete row, computes the row base once, and lets each
+    // thread produce a small register tile of adjacent output samples.  The
+    // generic strided kernel remains the compatibility path for every other
+    // layout.
+    __global__ void fm_demod_contiguous_row_tile_kernel(
+        const float2 *input,
+        std::size_t line_count,
+        std::size_t axis_size,
+        float *output,
+        int elements_per_thread)
+    {
+        const std::size_t line = static_cast<std::size_t>(blockIdx.x);
+        if (line >= line_count)
+        {
+            return;
+        }
+
+        const std::size_t input_base = line * axis_size;
+        const std::size_t output_base = line * (axis_size - 1);
+        for (std::size_t tile_begin = 0;
+             tile_begin < axis_size - 1;
+             tile_begin += blockDim.x * static_cast<std::size_t>(elements_per_thread))
+        {
+            for (int item = 0; item < elements_per_thread; ++item)
+            {
+                const std::size_t axis_index =
+                    tile_begin + static_cast<std::size_t>(threadIdx.x) +
+                    static_cast<std::size_t>(item) * blockDim.x;
+                if (axis_index >= axis_size - 1)
+                {
+                    continue;
+                }
+                const float2 current = input[input_base + axis_index];
+                const float2 next = input[input_base + axis_index + 1];
+                output[output_base + axis_index] =
+                    demod_detail::wrapped_phase_difference(
+                        current.x, current.y, next.x, next.y);
+            }
+        }
+    }
 } // namespace
 
 namespace cusignal
@@ -313,25 +375,58 @@ namespace cusignal
                 const std::size_t line_count =
                     core::shape_product(device_x.shape()) / axis_length;
                 const std::size_t axis_stride = host_strides[normalized_axis];
+                const tile::PolicyDecision tuning = tile::select(
+                    tile::make_row_operator_key(
+                        "demod/fm_demod",
+                        line_count,
+                        axis_length,
+                        1,
+                        static_cast<std::uint64_t>(normalized_axis + 1),
+                        static_cast<std::uint64_t>(device_x.rank())));
+                const tile::ScopedPolicy policy_scope(tuning);
+                const bool contiguous_last_axis =
+                    normalized_axis + 1 == device_x.rank() && axis_stride == 1;
+                const bool use_row_tile =
+                    tile::optimized_path() &&
+                    contiguous_last_axis &&
+                    axis_length >= 128 &&
+                    line_count <= static_cast<std::size_t>(std::numeric_limits<int>::max());
+                const int elements_per_thread =
+                    use_row_tile ? tile::row_shape(axis_length, line_count).elements_per_thread : 1;
 
                 ScopedZxGpuEvents events;
                 g_last_kernel_ms = events.measure([&]() {
-                    fm_demod_phase_difference_kernel<<<
-                        block_count(line_count * (axis_length - 1)),
-                        kThreadsPerBlock>>>(
-                        reinterpret_cast<const float2 *>(device_x.data()),
-                        static_cast<int>(device_x.rank()),
-                        g_workspace.shape_storage.data(),
-                        g_workspace.strides_storage.data(),
-                        static_cast<int>(output.rank()),
-                        g_workspace.output_shape_storage.data(),
-                        g_workspace.output_strides_storage.data(),
-                        static_cast<int>(normalized_axis),
-                        axis_length,
-                        axis_stride,
-                        line_count,
-                        output.data());
-                    check_kernel_launch("fm_demod_phase_difference_kernel");
+                    if (use_row_tile)
+                    {
+                        fm_demod_contiguous_row_tile_kernel<<<
+                            static_cast<int>(line_count),
+                            kThreadsPerBlock>>>(
+                            reinterpret_cast<const float2 *>(device_x.data()),
+                            line_count,
+                            axis_length,
+                            output.data(),
+                            elements_per_thread);
+                        check_kernel_launch("fm_demod_contiguous_row_tile_kernel");
+                    }
+                    else
+                    {
+                        fm_demod_phase_difference_kernel<<<
+                            block_count(line_count * (axis_length - 1)),
+                            kThreadsPerBlock>>>(
+                            reinterpret_cast<const float2 *>(device_x.data()),
+                            static_cast<int>(device_x.rank()),
+                            g_workspace.shape_storage.data(),
+                            g_workspace.strides_storage.data(),
+                            static_cast<int>(output.rank()),
+                            g_workspace.output_shape_storage.data(),
+                            g_workspace.output_strides_storage.data(),
+                            static_cast<int>(normalized_axis),
+                            axis_length,
+                            axis_stride,
+                            line_count,
+                            output.data());
+                        check_kernel_launch("fm_demod_phase_difference_kernel");
+                    }
                 });
                 return output;
             }

@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "status": "COMPARED",
+  "baseline_root": "/home/usr_04/CETC/operator_gpu_baseline_75a700d_protocol",
+  "baseline_csv_sha256": "877ac441218bfcaf7fd86012ad0ae90c773cfb7f2f2eabf1604d0146c5240c93",
+  "baseline_frozen_sha256": "884e47f63367b494cac04d65f5cdc1160750744862bd0eb943fb72ef1510b5fa",
+  "baseline_commit": "75a700da93eb7ebe6133392273493ef90cf54d82",
+  "optimized_source": "working-tree+non-kernel-full-cpu-cache",
+  "optimized_csv": "/home/usr_04/CETC/data/reports/operator_gpu_non_kernel_20260816_full/units/benchmarks/operator_scales.csv",
+  "optimized_csv_sha256": "f54df74e1a6794b74437713d88f57ed2482153506618320804ba212b6f8ecf35",
+  "operator_count": 81,
+  "row_count": 486,
+  "warmup": 5,
+  "repeat": 30,
+  "device_target": "ZQ500",
+  "generated_at": "2026-08-16T11:09:55.187281+00:00"
+}

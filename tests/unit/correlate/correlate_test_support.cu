@@ -522,6 +522,7 @@ namespace
     {
         for (int index = 0; index < warmup; ++index)
         {
+            cusignal::core::benchmark::note_iteration();
             callable();
         }
 
@@ -530,6 +531,7 @@ namespace
         for (int index = 0; index < repeat; ++index)
         {
             const auto start = std::chrono::steady_clock::now();
+            cusignal::core::benchmark::note_iteration();
             callable();
             const auto stop = std::chrono::steady_clock::now();
             samples.push_back(
@@ -1070,28 +1072,28 @@ namespace
         {
             summary.perf_cases = 1;
             const CorrCase perf = correlate_perf_case(false);
-            if (!options.gpu_only_perf)
+            if (!options.gpu_only_perf && !cusignal::core::benchmark::skip_cpu_timing())
             {
                 summary.cpu_perf = measure_timing(options.warmup, options.repeat, [&]() {
                     (void)cusignal::cpu::correlate::correlate(perf.in1_real, perf.in2_real, perf.mode, perf.method);
                 });
             }
+            cusignal::core::benchmark::InputRefreshRun input_refresh(
+                static_cast<std::uint64_t>(2 * (options.warmup + options.repeat)), true);
             summary.gpu_e2e_perf = measure_timing(options.warmup, options.repeat, [&]() {
                 (void)cusignal::zx_gpu_backend::correlate_test_hooks::consume_last_kernel_ms();
                 (void)cusignal::zx_gpu_backend::correlate::correlate(
                     perf.in1_real, perf.in2_real, perf.mode, perf.method).get();
                 cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
             });
-            const ZxGpuRealArray prepared_left = ZxGpuRealArray::from_host(perf.in1_real);
-            const ZxGpuRealArray prepared_right = ZxGpuRealArray::from_host(perf.in2_real);
-            const RealArrayLike kernel_left = prepared_left;
-            const RealArrayLike kernel_right = prepared_right;
             std::vector<float> kernel_samples;
             kernel_samples.reserve(static_cast<std::size_t>(options.warmup + options.repeat));
             (void)measure_timing(options.warmup, options.repeat, [&]() {
                 (void)cusignal::zx_gpu_backend::correlate_test_hooks::consume_last_kernel_ms();
+                const ZxGpuRealArray fresh_left = ZxGpuRealArray::from_host(perf.in1_real);
+                const ZxGpuRealArray fresh_right = ZxGpuRealArray::from_host(perf.in2_real);
                 (void)cusignal::zx_gpu_backend::correlate::correlate(
-                    kernel_left, kernel_right, perf.mode, perf.method);
+                    fresh_left, fresh_right, perf.mode, perf.method);
                 cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu kernel");
                 kernel_samples.push_back(cusignal::zx_gpu_backend::correlate_test_hooks::consume_last_kernel_ms());
             });
@@ -1220,28 +1222,28 @@ namespace
         {
             summary.perf_cases = 1;
             const CorrCase perf = correlate_perf_case(true);
-            if (!options.gpu_only_perf)
+            if (!options.gpu_only_perf && !cusignal::core::benchmark::skip_cpu_timing())
             {
                 summary.cpu_perf = measure_timing(options.warmup, options.repeat, [&]() {
                     (void)cusignal::cpu::correlate::correlate2d(perf.in1_real, perf.in2_real, perf.mode, "fill", 0.0f);
                 });
             }
+            cusignal::core::benchmark::InputRefreshRun input_refresh(
+                static_cast<std::uint64_t>(2 * (options.warmup + options.repeat)), true);
             summary.gpu_e2e_perf = measure_timing(options.warmup, options.repeat, [&]() {
                 (void)cusignal::zx_gpu_backend::correlate_test_hooks::consume_last_kernel_ms();
                 (void)cusignal::zx_gpu_backend::correlate::correlate2d(
                     perf.in1_real, perf.in2_real, perf.mode, "fill", 0.0f).get();
                 cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
             });
-            const ZxGpuRealArray prepared_left = ZxGpuRealArray::from_host(perf.in1_real);
-            const ZxGpuRealArray prepared_right = ZxGpuRealArray::from_host(perf.in2_real);
-            const RealArrayLike kernel_left = prepared_left;
-            const RealArrayLike kernel_right = prepared_right;
             std::vector<float> kernel_samples;
             kernel_samples.reserve(static_cast<std::size_t>(options.warmup + options.repeat));
             (void)measure_timing(options.warmup, options.repeat, [&]() {
                 (void)cusignal::zx_gpu_backend::correlate_test_hooks::consume_last_kernel_ms();
+                const ZxGpuRealArray fresh_left = ZxGpuRealArray::from_host(perf.in1_real);
+                const ZxGpuRealArray fresh_right = ZxGpuRealArray::from_host(perf.in2_real);
                 (void)cusignal::zx_gpu_backend::correlate::correlate2d(
-                    kernel_left, kernel_right, perf.mode, "fill", 0.0f);
+                    fresh_left, fresh_right, perf.mode, "fill", 0.0f);
                 cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu kernel");
                 kernel_samples.push_back(cusignal::zx_gpu_backend::correlate_test_hooks::consume_last_kernel_ms());
             });
@@ -1296,12 +1298,14 @@ namespace
         {
             summary.perf_cases = 1;
             const LagCase perf = lag_perf_case();
-            if (!options.gpu_only_perf)
+            if (!options.gpu_only_perf && !cusignal::core::benchmark::skip_cpu_timing())
             {
                 summary.cpu_perf = measure_timing(options.warmup, options.repeat, [&]() {
                     (void)cusignal::cpu::correlate::correlation_lags(perf.in1_len, perf.in2_len, perf.mode);
                 });
             }
+            cusignal::core::benchmark::InputRefreshRun input_refresh(
+                static_cast<std::uint64_t>(options.warmup + options.repeat), false);
             summary.gpu_e2e_perf = measure_timing(options.warmup, options.repeat, [&]() {
                 (void)cusignal::zx_gpu_backend::correlate_test_hooks::consume_last_kernel_ms();
                 (void)cusignal::zx_gpu_backend::correlate::correlation_lags(

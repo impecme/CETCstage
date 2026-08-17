@@ -15,6 +15,8 @@
 #include "cusignal/windows/windows.hpp"
 
 #include "../common/filter_design_detail.hpp"
+#include "../common/zx_execution_context.hpp"
+#include "../common/zx_tile_policy.hpp"
 
 namespace
 {
@@ -24,6 +26,7 @@ namespace
     using cusignal::core::ZxGpuRealSignal;
     using cusignal::core::ZxGpuWindowSpec;
     namespace detail = cusignal::filter_design_detail;
+    namespace tile = cusignal::zx_tile;
 
     constexpr int kThreadsPerBlock = 256;
     thread_local float g_last_kernel_ms = 0.0;
@@ -51,69 +54,7 @@ namespace
     }
 
     template <typename T>
-    class DeviceBuffer
-    {
-    public:
-        DeviceBuffer() = default;
-        ~DeviceBuffer()
-        {
-            release();
-        }
-
-        DeviceBuffer(const DeviceBuffer &) = delete;
-        DeviceBuffer &operator=(const DeviceBuffer &) = delete;
-
-        void reserve(std::size_t size)
-        {
-            if (size <= capacity_)
-            {
-                return;
-            }
-            release();
-            capacity_ = size;
-            if (capacity_ == 0)
-            {
-                return;
-            }
-            throw_on_zx_gpu_error(cudaMalloc(&data_, capacity_ * sizeof(T)), "cudaMalloc");
-        }
-
-        void copy_from_host(const T *host, std::size_t count, const char *what)
-        {
-            if (count == 0)
-            {
-                return;
-            }
-            reserve(count);
-            throw_on_zx_gpu_error(
-                cudaMemcpy(data_, host, count * sizeof(T), cudaMemcpyHostToDevice),
-                what);
-        }
-
-        T *get()
-        {
-            return data_;
-        }
-
-        const T *get() const
-        {
-            return data_;
-        }
-
-    private:
-        void release()
-        {
-            if (data_ != nullptr)
-            {
-                cudaFree(data_);
-                data_ = nullptr;
-            }
-            capacity_ = 0;
-        }
-
-        T *data_ = nullptr;
-        std::size_t capacity_ = 0;
-    };
+    using DeviceBuffer = cusignal::zx_execution::ReusableDeviceBuffer<T>;
 
     struct Firwin2PreparedCache
     {
@@ -130,42 +71,56 @@ namespace
         ZxGpuWindowSpec window;
     };
 
+    struct TimingEvents
+    {
+        cudaEvent_t start = nullptr;
+        cudaEvent_t stop = nullptr;
+
+        ~TimingEvents()
+        {
+            if (start != nullptr)
+            {
+                cudaEventDestroy(start);
+            }
+            if (stop != nullptr)
+            {
+                cudaEventDestroy(stop);
+            }
+        }
+
+        void ensure()
+        {
+            if (start == nullptr)
+            {
+                throw_on_zx_gpu_error(cudaEventCreate(&start), "cudaEventCreate(start)");
+                throw_on_zx_gpu_error(cudaEventCreate(&stop), "cudaEventCreate(stop)");
+            }
+        }
+    };
+
+    thread_local TimingEvents g_timing_events;
+
     class ScopedZxGpuEvents
     {
     public:
-        ScopedZxGpuEvents()
-        {
-            throw_on_zx_gpu_error(cudaEventCreate(&start_), "cudaEventCreate(start)");
-            throw_on_zx_gpu_error(cudaEventCreate(&stop_), "cudaEventCreate(stop)");
-        }
-
-        ~ScopedZxGpuEvents()
-        {
-            if (start_ != nullptr)
-            {
-                cudaEventDestroy(start_);
-            }
-            if (stop_ != nullptr)
-            {
-                cudaEventDestroy(stop_);
-            }
-        }
-
         template <typename Callable>
         float measure(Callable callable)
         {
-            throw_on_zx_gpu_error(cudaEventRecord(start_), "cudaEventRecord(start)");
+            g_timing_events.ensure();
+            throw_on_zx_gpu_error(
+                cudaEventRecord(g_timing_events.start), "cudaEventRecord(start)");
             callable();
-            throw_on_zx_gpu_error(cudaEventRecord(stop_), "cudaEventRecord(stop)");
-            throw_on_zx_gpu_error(cudaEventSynchronize(stop_), "cudaEventSynchronize(stop)");
+            throw_on_zx_gpu_error(
+                cudaEventRecord(g_timing_events.stop), "cudaEventRecord(stop)");
+            throw_on_zx_gpu_error(
+                cudaEventSynchronize(g_timing_events.stop), "cudaEventSynchronize(stop)");
             float elapsed_ms = 0.0f;
-            throw_on_zx_gpu_error(cudaEventElapsedTime(&elapsed_ms, start_, stop_), "cudaEventElapsedTime");
+            throw_on_zx_gpu_error(
+                cudaEventElapsedTime(
+                    &elapsed_ms, g_timing_events.start, g_timing_events.stop),
+                "cudaEventElapsedTime");
             return elapsed_ms;
         }
-
-    private:
-        cudaEvent_t start_ = nullptr;
-        cudaEvent_t stop_ = nullptr;
     };
 
     struct FilterDesignWorkspace
@@ -700,7 +655,7 @@ namespace cusignal
                 int device_id = 0;
                 throw_on_zx_gpu_error(cudaGetDevice(&device_id), "cudaGetDevice");
                 const bool cacheable_window = firwin2_window_cacheable(window);
-                const bool cache_hit = cacheable_window &&
+                const bool cache_hit = tile::optimized_path() && cacheable_window &&
                                        workspace.firwin2_taps_template_valid &&
                                        workspace.firwin2_taps_template.size() ==
                                            static_cast<std::size_t>(numtaps) &&

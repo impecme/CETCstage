@@ -143,8 +143,10 @@ def validate_task_step_reports(
             failures.append(f"summary must contain exactly L1-L6: {task}: {sorted(scales)}")
         required_summary = {
             "task", "scale", "warmup", "repeat", "task_input_h2d_ms",
-            "cpu_total_ms", "gpu_e2e_ms", "gpu_kernel_ms", "e2e_speedup",
-            "input_max_abs", "operator_max_abs", "e2e_max_abs", "validation_pass",
+            "cpu_total_ms", "gpu_e2e_ms", "gpu_kernel_ms", "e2e_speedup", "kernel_speedup",
+            "input_max_abs", "input_max_rel", "input_rmse", "input_mixed_error",
+            "operator_max_abs", "operator_max_rel", "operator_rmse", "operator_mixed_error",
+            "e2e_max_abs", "e2e_max_rel", "e2e_rmse", "e2e_mixed_error", "validation_pass",
         }
         for row in summary_rows:
             missing = required_summary - set(row)
@@ -160,11 +162,30 @@ def validate_task_step_reports(
             number(row, "task_input_h2d_ms")
             if row.get("task_input_h2d_ms") not in {"0", "0.0", "0.000000", "0.000000000"}:
                 failures.append(f"task_input_h2d_ms must be 0 for device-native task protocol: {task}/{row.get('scale', '')}")
-            number(row, "cpu_total_ms", positive=True)
-            number(row, "gpu_e2e_ms", positive=True)
-            number(row, "gpu_kernel_ms", positive=True)
-            number(row, "e2e_speedup", positive=True)
-            for field in ("input_max_abs", "operator_max_abs", "e2e_max_abs"):
+            cpu_total = number(row, "cpu_total_ms", positive=True)
+            gpu_e2e = number(row, "gpu_e2e_ms", positive=True)
+            gpu_kernel = number(row, "gpu_kernel_ms", positive=True)
+            e2e_speedup = number(row, "e2e_speedup", positive=True)
+            if cpu_total is not None and gpu_e2e is not None and e2e_speedup is not None:
+                expected = cpu_total / gpu_e2e
+                if not math.isclose(e2e_speedup, expected, rel_tol=1.0e-5, abs_tol=1.0e-6):
+                    failures.append(
+                        f"task E2E speedup must be CPU E2E / GPU E2E: "
+                        f"{task}/{row.get('scale', '')}"
+                    )
+            kernel_speedup = number(row, "kernel_speedup")
+            if cpu_total is not None and gpu_kernel is not None and kernel_speedup is not None:
+                expected = cpu_total / gpu_kernel
+                if not math.isclose(kernel_speedup, expected, rel_tol=1.0e-5, abs_tol=1.0e-6):
+                    failures.append(
+                        f"task kernel speedup must be CPU E2E / GPU kernel total: "
+                        f"{task}/{row.get('scale', '')}"
+                    )
+            for field in (
+                "input_max_abs", "input_max_rel", "input_rmse", "input_mixed_error",
+                "operator_max_abs", "operator_max_rel", "operator_rmse", "operator_mixed_error",
+                "e2e_max_abs", "e2e_max_rel", "e2e_rmse", "e2e_mixed_error",
+            ):
                 number(row, field)
             if row.get("validation_pass") != "PASS":
                 failures.append(f"task validation failed: {task}/{row.get('scale', '')}")
@@ -190,7 +211,8 @@ def validate_task_step_reports(
             report_steps.update(actual)
             required_operator = {
                 "task", "scale", "operator", "cpu_ms", "gpu_e2e_ms", "gpu_kernel_ms",
-                "source_step", "mapping_mode", "e2e_speedup", "operator_max_abs", "e2e_max_abs", "status",
+                "source_step", "mapping_mode", "e2e_speedup", "kernel_speedup",
+                "operator_max_abs", "e2e_max_abs", "status",
             }
             for row in rows:
                 missing = required_operator - set(row)
@@ -198,14 +220,35 @@ def validate_task_step_reports(
                 if missing:
                     failures.append(f"missing operator fields: {task}/L{index}/{name}: {sorted(missing)}")
                     continue
-                number(row, "cpu_ms", positive=True)
-                number(row, "gpu_e2e_ms", positive=True)
+                cpu_ms = number(row, "cpu_ms", positive=True)
+                gpu_e2e_ms = number(row, "gpu_e2e_ms", positive=True)
                 kernel = number(row, "gpu_kernel_ms", positive=True)
                 if kernel is not None:
                     kernel_available += 1
-                number(row, "e2e_speedup", positive=True)
+                e2e_speedup = number(row, "e2e_speedup", positive=True)
+                if cpu_ms is not None and gpu_e2e_ms is not None and e2e_speedup is not None:
+                    expected = cpu_ms / gpu_e2e_ms
+                    if not math.isclose(e2e_speedup, expected, rel_tol=1.0e-5, abs_tol=1.0e-6):
+                        failures.append(
+                            f"operator E2E speedup must be CPU E2E / GPU E2E: "
+                            f"{task}/L{index}/{name}"
+                        )
+                kernel_speedup = number(row, "kernel_speedup")
+                if cpu_ms is not None and kernel is not None and kernel_speedup is not None:
+                    expected = cpu_ms / kernel
+                    if not math.isclose(kernel_speedup, expected, rel_tol=1.0e-5, abs_tol=1.0e-6):
+                        failures.append(
+                            f"operator kernel speedup must be CPU E2E / GPU kernel: "
+                            f"{task}/L{index}/{name}"
+                        )
                 number(row, "operator_max_abs")
+                number(row, "operator_max_rel")
+                number(row, "operator_rmse")
+                number(row, "operator_mixed_error")
                 number(row, "e2e_max_abs")
+                number(row, "e2e_max_rel")
+                number(row, "e2e_rmse")
+                number(row, "e2e_mixed_error")
                 error_available += 1
                 if row.get("status") != "PASS":
                     failures.append(f"operator validation failed: {task}/L{index}/{name}")

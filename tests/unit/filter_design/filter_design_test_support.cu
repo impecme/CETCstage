@@ -131,7 +131,7 @@ namespace
         std::string id;
         std::string category;
         std::string input_kind = "real"; // cmplx_sort 使用的输入域
-        int sample_count = 4096; // cmplx_sort 复数性能输入长度
+        int sample_count = 0; // cmplx_sort 复数性能输入长度（必须来自 manifest）
         int numtaps = 0; // firwin / firwin2 的 FIR taps 数
         float attenuation = 0.0; // kaiser_atten / kaiser_beta 的衰减（dB）
         float width = -1.0; // firwin 的过渡带宽度（负值表示禁用）
@@ -598,6 +598,10 @@ namespace
 
     RealSignal sample_values(const RealSignal &values, std::size_t limit = 32)
     {
+        if (cusignal_test::cpu_reference_cache::write_full_outputs())
+        {
+            return values;
+        }
         if (values.size() <= limit)
         {
             return values;
@@ -607,6 +611,10 @@ namespace
 
     ComplexSignal sample_values(const ComplexSignal &values, std::size_t limit = 32)
     {
+        if (cusignal_test::cpu_reference_cache::write_full_outputs())
+        {
+            return values;
+        }
         if (values.size() <= limit)
         {
             return values;
@@ -616,6 +624,10 @@ namespace
 
     IndexVector sample_values(const IndexVector &values, std::size_t limit = 32)
     {
+        if (cusignal_test::cpu_reference_cache::write_full_outputs())
+        {
+            return values;
+        }
         if (values.size() <= limit)
         {
             return values;
@@ -822,11 +834,13 @@ namespace
         std::vector<float> durations;
         for (int iteration = 0; iteration < options.warmup; ++iteration)
         {
+            cusignal::core::benchmark::note_iteration();
             callable();
         }
         for (int iteration = 0; iteration < options.repeat; ++iteration)
         {
             const auto start = std::chrono::high_resolution_clock::now();
+            cusignal::core::benchmark::note_iteration();
             callable();
             const auto stop = std::chrono::high_resolution_clock::now();
             durations.push_back(
@@ -841,11 +855,13 @@ namespace
         std::vector<float> durations;
         for (int iteration = 0; iteration < options.warmup; ++iteration)
         {
+            cusignal::core::benchmark::note_iteration();
             callable();
             (void)cusignal::zx_gpu_backend::filter_design_test_hooks::consume_last_kernel_ms();
         }
         for (int iteration = 0; iteration < options.repeat; ++iteration)
         {
+            cusignal::core::benchmark::note_iteration();
             callable();
             durations.push_back(
                 cusignal::zx_gpu_backend::filter_design_test_hooks::consume_last_kernel_ms());
@@ -1158,7 +1174,7 @@ namespace
             test_case.id = get_string(object, "id");
             test_case.category = category;
             test_case.input_kind = get_optional_string(object, "input_kind").value_or("real"); // cmplx_sort 输入类型：real / complex
-            test_case.sample_count = get_optional_int(object, "sample_count", 4096); // cmplx_sort 复数性能输入长度
+            test_case.sample_count = get_optional_int(object, "sample_count", 0); // cmplx_sort 复数性能输入长度
             test_case.numtaps = get_optional_int(object, "numtaps", 0); // FIR taps 数
             test_case.attenuation = get_optional_number(object, "attenuation", 0.0); // 衰减（dB）
             test_case.width = get_optional_number(object, "width", -1.0); // firwin 过渡带宽度
@@ -1287,6 +1303,25 @@ namespace
     std::size_t value_size(const OutputBundle &bundle)
     {
         return bundle.is_complex ? bundle.complex_values.size() : bundle.real_values.size();
+    }
+
+    std::size_t infer_perf_samples(const std::string &op, const FilterDesignCase &test_case)
+    {
+        if (op == "cmplx_sort")
+        {
+            return test_case.sample_count > 0
+                       ? static_cast<std::size_t>(test_case.sample_count)
+                       : 0;
+        }
+        if (op == "kaiser_beta" || op == "kaiser_atten")
+        {
+            return 1;
+        }
+        if (test_case.numtaps > 0)
+        {
+            return static_cast<std::size_t>(test_case.numtaps);
+        }
+        return 0;
     }
 
     OutputBundle load_expected_bundle(const std::string &op, const FilterDesignCase &test_case)
@@ -1786,7 +1821,7 @@ namespace
         }
         else
         {
-            report.samples = test_case.numtaps > 0 ? static_cast<std::size_t>(test_case.numtaps) : 0;
+            report.samples = infer_perf_samples(op, test_case);
         }
         if (!options.gpu_only_perf)
         {
@@ -1794,11 +1829,17 @@ namespace
             report.cpu_gpu_error = output_error(cpu_output, gpu_output, test_case.atol);
         }
         report.pass = true;
-        if (!options.gpu_only_perf)
+        if (!options.gpu_only_perf && !cusignal::core::benchmark::skip_cpu_timing())
         {
             report.cpu_perf = benchmark_host_latency(options, [&]()
                                                      { (void)runner.cpu(test_case); });
         }
+        const bool independent_kernel =
+            op != "kaiser_beta" && op != "kaiser_atten" && op != "cmplx_sort";
+        const int benchmark_iterations = options.warmup + options.repeat;
+        cusignal::core::benchmark::InputRefreshRun input_refresh(
+            static_cast<std::uint64_t>(benchmark_iterations * (independent_kernel ? 2 : 1)),
+            op == "cmplx_sort");
         report.gpu_e2e_perf = benchmark_host_latency(options, [&]()
                                                      {
                                                          (void)materialize(runner.gpu(test_case));

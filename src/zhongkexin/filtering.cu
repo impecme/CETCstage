@@ -16,16 +16,20 @@
 #include <vector>
 
 #include "cusignal/core/helpers.hpp"
+#include "cusignal/core/benchmark_input_protocol.hpp"
 #include "cusignal/filter_design/filter_design.hpp"
 #include "cusignal/windows/windows.hpp"
 
 #include "../common/filtering_detail.hpp"
+#include "../common/zx_execution_context.hpp"
+#include "../common/zx_tile_policy.hpp"
 
 namespace
 {
     namespace core = cusignal::core;
     namespace cpu_filtering = cusignal::cpu::filtering;
     namespace detail = cusignal::filtering_detail;
+    namespace tile = cusignal::zx_tile;
 
     using core::Complex;
     using core::ComplexArray;
@@ -42,6 +46,10 @@ namespace
     constexpr int kThreadsPerBlock = 256;
     constexpr int kMaxFilterOrder = 256;
     constexpr std::size_t kComplexFirQuadMaxTaps = 193;
+    // ZQ500 rejects the shared FIR grid once the row dimension reaches the
+    // first square2d level above 512.  Keep the tiled path within the
+    // runtime-probed safe range; larger batches use the legacy grid path.
+    constexpr std::size_t kMaxSharedFirLines = 512;
     constexpr int kMaxLfilterZiOrder = 512;
     constexpr int kMaxSosSections = 64;
     constexpr int kMaxRank = 8;
@@ -98,114 +106,58 @@ namespace
     }
 
     template <typename T>
-    class DeviceBuffer
+    using DeviceBuffer = cusignal::zx_execution::ReusableDeviceBuffer<T>;
+
+    struct TimingEvents
     {
-    public:
-        DeviceBuffer() = default;
+        cudaEvent_t start = nullptr;
+        cudaEvent_t stop = nullptr;
 
-        ~DeviceBuffer()
+        ~TimingEvents()
         {
-            release();
-        }
-
-        DeviceBuffer(const DeviceBuffer &) = delete;
-        DeviceBuffer &operator=(const DeviceBuffer &) = delete;
-
-        void reserve(std::size_t size)
-        {
-            if (size <= capacity_)
+            if (start != nullptr)
             {
-                return;
+                cudaEventDestroy(start);
             }
-            release();
-            capacity_ = size;
-            if (capacity_ != 0)
+            if (stop != nullptr)
             {
-                throw_on_zx_gpu_error(cudaMalloc(&data_, capacity_ * sizeof(T)), "cudaMalloc");
+                cudaEventDestroy(stop);
             }
         }
 
-        void copy_from_host(const T *host, std::size_t count, const char *what)
+        void ensure()
         {
-            reserve(count);
-            if (count != 0)
+            if (start == nullptr)
             {
-                throw_on_zx_gpu_error(
-                    cudaMemcpy(data_, host, count * sizeof(T), cudaMemcpyHostToDevice),
-                    what);
+                throw_on_zx_gpu_error(cudaEventCreate(&start), "cudaEventCreate(start)");
+                throw_on_zx_gpu_error(cudaEventCreate(&stop), "cudaEventCreate(stop)");
             }
         }
-
-        void zero(std::size_t count, const char *what)
-        {
-            reserve(count);
-            if (count != 0)
-            {
-                throw_on_zx_gpu_error(cudaMemset(data_, 0, count * sizeof(T)), what);
-            }
-        }
-
-        T *get()
-        {
-            return data_;
-        }
-
-        const T *get() const
-        {
-            return data_;
-        }
-
-    private:
-        void release()
-        {
-            if (data_ != nullptr)
-            {
-                cudaFree(data_);
-                data_ = nullptr;
-            }
-            capacity_ = 0;
-        }
-
-        T *data_ = nullptr;
-        std::size_t capacity_ = 0;
     };
+
+    thread_local TimingEvents g_timing_events;
 
     class ScopedZxGpuEvents
     {
     public:
-        ScopedZxGpuEvents()
-        {
-            throw_on_zx_gpu_error(cudaEventCreate(&start_), "cudaEventCreate(start)");
-            throw_on_zx_gpu_error(cudaEventCreate(&stop_), "cudaEventCreate(stop)");
-        }
-
-        ~ScopedZxGpuEvents()
-        {
-            if (start_ != nullptr)
-            {
-                cudaEventDestroy(start_);
-            }
-            if (stop_ != nullptr)
-            {
-                cudaEventDestroy(stop_);
-            }
-        }
-
         template <typename Callable>
         float measure(Callable callable)
         {
-            throw_on_zx_gpu_error(cudaEventRecord(start_), "cudaEventRecord(start)");
+            g_timing_events.ensure();
+            throw_on_zx_gpu_error(
+                cudaEventRecord(g_timing_events.start), "cudaEventRecord(start)");
             callable();
-            throw_on_zx_gpu_error(cudaEventRecord(stop_), "cudaEventRecord(stop)");
-            throw_on_zx_gpu_error(cudaEventSynchronize(stop_), "cudaEventSynchronize(stop)");
+            throw_on_zx_gpu_error(
+                cudaEventRecord(g_timing_events.stop), "cudaEventRecord(stop)");
+            throw_on_zx_gpu_error(
+                cudaEventSynchronize(g_timing_events.stop), "cudaEventSynchronize(stop)");
             float elapsed_ms = 0.0f;
-            throw_on_zx_gpu_error(cudaEventElapsedTime(&elapsed_ms, start_, stop_), "cudaEventElapsedTime");
+            throw_on_zx_gpu_error(
+                cudaEventElapsedTime(
+                    &elapsed_ms, g_timing_events.start, g_timing_events.stop),
+                "cudaEventElapsedTime");
             return elapsed_ms;
         }
-
-    private:
-        cudaEvent_t start_ = nullptr;
-        cudaEvent_t stop_ = nullptr;
     };
 
     struct LineBasesCache
@@ -1766,6 +1718,140 @@ namespace
         output[base + index * axis_stride] = value;
     }
 
+    __global__ void fir_filter_zero_lines_shared_dual_kernel(
+        const float *b,
+        std::size_t b_size,
+        float a0,
+        const float *input,
+        const std::size_t *line_bases,
+        std::size_t line_count,
+        std::size_t axis_size,
+        std::size_t axis_stride,
+        float *output)
+    {
+        extern __shared__ float real_fir_shared_bytes[];
+        const std::size_t outputs_per_block = 2 * static_cast<std::size_t>(blockDim.x);
+        const std::size_t input_tile_size = outputs_per_block + b_size - 1;
+        float *shared_input = real_fir_shared_bytes;
+        float *shared_taps = shared_input + input_tile_size;
+
+        const std::size_t line = static_cast<std::size_t>(blockIdx.y);
+        if (line >= line_count)
+        {
+            return;
+        }
+        const std::size_t block_start =
+            static_cast<std::size_t>(blockIdx.x) * outputs_per_block;
+        const std::size_t base = line_bases[line];
+        const long input_start =
+            static_cast<long>(block_start) - static_cast<long>(b_size - 1);
+        for (std::size_t local = threadIdx.x; local < input_tile_size; local += blockDim.x)
+        {
+            const long index = input_start + static_cast<long>(local);
+            shared_input[local] = index >= 0 && index < static_cast<long>(axis_size)
+                ? input[base + static_cast<std::size_t>(index) * axis_stride]
+                : 0.0f;
+        }
+        for (std::size_t tap = threadIdx.x; tap < b_size; tap += blockDim.x)
+        {
+            shared_taps[tap] = b[tap] / a0;
+        }
+        __syncthreads();
+
+        const std::size_t index0 = block_start + static_cast<std::size_t>(threadIdx.x);
+        if (index0 >= axis_size)
+        {
+            return;
+        }
+        const std::size_t index1 = index0 + static_cast<std::size_t>(blockDim.x);
+        const std::size_t tap_limit0 = min(b_size, index0 + 1);
+        const std::size_t tap_limit1 = index1 < axis_size ? min(b_size, index1 + 1) : 0;
+        const std::size_t shared_index0 =
+            static_cast<std::size_t>(threadIdx.x) + b_size - 1;
+        float value0 = 0.0f;
+        float value1 = 0.0f;
+        for (std::size_t tap = 0; tap < tap_limit0; ++tap)
+        {
+            const float coefficient = shared_taps[tap];
+            value0 += coefficient * shared_input[shared_index0 - tap];
+            value1 += coefficient * shared_input[shared_index0 + blockDim.x - tap];
+        }
+        for (std::size_t tap = tap_limit0; tap < tap_limit1; ++tap)
+        {
+            value1 += shared_taps[tap] * shared_input[shared_index0 + blockDim.x - tap];
+        }
+        output[base + index0 * axis_stride] = value0;
+        if (index1 < axis_size)
+        {
+            output[base + index1 * axis_stride] = value1;
+        }
+    }
+
+    template <int OutputsPerThread>
+    __global__ void fir_filter_zero_lines_shared_multi_kernel(
+        const float *b,
+        std::size_t b_size,
+        float a0,
+        const float *input,
+        const std::size_t *line_bases,
+        std::size_t line_count,
+        std::size_t axis_size,
+        std::size_t axis_stride,
+        float *output)
+    {
+        extern __shared__ float real_fir_shared_bytes[];
+        const std::size_t outputs_per_block =
+            static_cast<std::size_t>(OutputsPerThread) * static_cast<std::size_t>(blockDim.x);
+        const std::size_t input_tile_size = outputs_per_block + b_size - 1;
+        float *shared_input = real_fir_shared_bytes;
+        float *shared_taps = shared_input + input_tile_size;
+
+        const std::size_t line = static_cast<std::size_t>(blockIdx.y);
+        if (line >= line_count)
+        {
+            return;
+        }
+        const std::size_t block_start =
+            static_cast<std::size_t>(blockIdx.x) * outputs_per_block;
+        const std::size_t base = line_bases[line];
+        const long input_start =
+            static_cast<long>(block_start) - static_cast<long>(b_size - 1);
+        for (std::size_t local = threadIdx.x; local < input_tile_size; local += blockDim.x)
+        {
+            const long index = input_start + static_cast<long>(local);
+            shared_input[local] = index >= 0 && index < static_cast<long>(axis_size)
+                ? input[base + static_cast<std::size_t>(index) * axis_stride]
+                : 0.0f;
+        }
+        for (std::size_t tap = threadIdx.x; tap < b_size; tap += blockDim.x)
+        {
+            shared_taps[tap] = b[tap] / a0;
+        }
+        __syncthreads();
+
+        const std::size_t first_index = block_start + static_cast<std::size_t>(threadIdx.x);
+        const std::size_t first_shared =
+            static_cast<std::size_t>(threadIdx.x) + b_size - 1;
+        for (int output_index = 0; output_index < OutputsPerThread; ++output_index)
+        {
+            const std::size_t index =
+                first_index + static_cast<std::size_t>(output_index) * blockDim.x;
+            if (index >= axis_size)
+            {
+                continue;
+            }
+            const std::size_t tap_limit = min(b_size, index + 1);
+            float value = 0.0f;
+            const std::size_t shared_index =
+                first_shared + static_cast<std::size_t>(output_index) * blockDim.x;
+            for (std::size_t tap = 0; tap < tap_limit; ++tap)
+            {
+                value += shared_taps[tap] * shared_input[shared_index - tap];
+            }
+            output[base + index * axis_stride] = value;
+        }
+    }
+
     __global__ void complex_fir_filter_zero_lines_kernel(
         const float *b,
         std::size_t b_size,
@@ -2031,6 +2117,73 @@ namespace
         if (index3 < axis_size)
         {
             output[base + index3 * axis_stride] = value3;
+        }
+    }
+
+    template <int OutputsPerThread>
+    __global__ void complex_fir_filter_zero_lines_shared_multi_kernel(
+        const float *b,
+        std::size_t b_size,
+        const float2 *input,
+        const std::size_t *line_bases,
+        std::size_t line_count,
+        std::size_t axis_size,
+        std::size_t axis_stride,
+        float2 *output)
+    {
+        extern __shared__ unsigned char shared_bytes[];
+        float2 *shared_input = reinterpret_cast<float2 *>(shared_bytes);
+        const std::size_t outputs_per_block =
+            static_cast<std::size_t>(OutputsPerThread) * static_cast<std::size_t>(blockDim.x);
+        const std::size_t input_tile_size = outputs_per_block + b_size - 1;
+        float *shared_taps = reinterpret_cast<float *>(shared_input + input_tile_size);
+
+        const std::size_t line = static_cast<std::size_t>(blockIdx.y);
+        if (line >= line_count)
+        {
+            return;
+        }
+        const std::size_t block_start =
+            static_cast<std::size_t>(blockIdx.x) * outputs_per_block;
+        const std::size_t base = line_bases[line];
+        const long input_start =
+            static_cast<long>(block_start) - static_cast<long>(b_size - 1);
+        for (std::size_t local = threadIdx.x; local < input_tile_size; local += blockDim.x)
+        {
+            const long index = input_start + static_cast<long>(local);
+            shared_input[local] = index >= 0 && index < static_cast<long>(axis_size)
+                ? input[base + static_cast<std::size_t>(index) * axis_stride]
+                : make_float2(0.0f, 0.0f);
+        }
+        for (std::size_t tap = threadIdx.x; tap < b_size; tap += blockDim.x)
+        {
+            shared_taps[tap] = b[tap];
+        }
+        __syncthreads();
+
+        const std::size_t first_index = block_start + static_cast<std::size_t>(threadIdx.x);
+        const std::size_t first_shared =
+            static_cast<std::size_t>(threadIdx.x) + b_size - 1;
+        for (int output_index = 0; output_index < OutputsPerThread; ++output_index)
+        {
+            const std::size_t index =
+                first_index + static_cast<std::size_t>(output_index) * blockDim.x;
+            if (index >= axis_size)
+            {
+                continue;
+            }
+            const std::size_t tap_limit = min(b_size, index + 1);
+            float2 value = make_float2(0.0f, 0.0f);
+            const std::size_t shared_index =
+                first_shared + static_cast<std::size_t>(output_index) * blockDim.x;
+            for (std::size_t tap = 0; tap < tap_limit; ++tap)
+            {
+                const float coefficient = shared_taps[tap];
+                const float2 sample = shared_input[shared_index - tap];
+                value.x += coefficient * sample.x;
+                value.y += coefficient * sample.y;
+            }
+            output[base + index * axis_stride] = value;
         }
     }
 
@@ -2997,7 +3150,8 @@ namespace
         const ZxGpuRealArray &x,
         int axis,
         const ZxGpuRealArray *zi,
-        ZxGpuRealArray *final_state)
+        ZxGpuRealArray *final_state,
+        const char *operator_id = nullptr)
     {
         const detail::AxisPlan plan = detail::make_axis_plan(x.shape(), axis);
         const std::size_t order = std::max(b.size(), a.size()) - 1;
@@ -3005,9 +3159,32 @@ namespace
         {
             throw std::invalid_argument("filter order exceeds CUDA lfilter limit");
         }
+        tile::PolicyDecision tuning;
+        if (operator_id != nullptr)
+        {
+            tuning = tile::select(
+                tile::make_fir_filter_key(
+                    operator_id,
+                    plan.line_count,
+                    plan.axis_size,
+                    0,
+                    order,
+                    axis,
+                    b.size(),
+                    a.size(),
+                    zi != nullptr || final_state != nullptr,
+                    plan.axis_stride));
+        }
+        else
+        {
+            tuning.config = tile::candidate_config(
+                tile::static_candidate(tile::OperatorFamily::FirFilter));
+        }
+        const tile::ScopedPolicy policy_scope(tuning);
 
         if (zi == nullptr &&
             final_state == nullptr &&
+            tile::optimized_path() &&
             order <= 2 &&
             b.size() <= 3 &&
             a.size() <= 3)
@@ -3043,19 +3220,80 @@ namespace
             a.size() == 1 &&
             b.size() <= static_cast<std::size_t>(kMaxFilterOrder + 1))
         {
-            fir_filter_zero_lines_kernel<<<
-                block_count(plan.line_count * plan.axis_size),
-                kThreadsPerBlock>>>(
-                b.data(),
-                b.size(),
-                a.data(),
-                x.data(),
-                line_bases,
-                plan.line_count,
-                plan.axis_size,
-                plan.axis_stride,
-                output.data());
-            check_kernel_launch("fir_filter_zero_lines_kernel");
+            if (tile::optimized_path() &&
+                plan.axis_stride == 1 &&
+                plan.axis_size >= 1024 &&
+                plan.line_count <= kMaxSharedFirLines)
+            {
+                const int plan_variant = tuning.config.plan_variant;
+                const int outputs_per_thread = plan_variant == 0 ? 2 : plan_variant;
+                const std::size_t kOutputsPerBlock =
+                    static_cast<std::size_t>(outputs_per_thread) *
+                    static_cast<std::size_t>(kThreadsPerBlock);
+                const dim3 grid(
+                    static_cast<unsigned int>(tile::ceil_div(plan.axis_size, kOutputsPerBlock)),
+                    static_cast<unsigned int>(plan.line_count));
+                const std::size_t shared_bytes =
+                    (kOutputsPerBlock + b.size() - 1) * sizeof(float) + b.size() * sizeof(float);
+                if (plan_variant == 0)
+                {
+                    fir_filter_zero_lines_shared_dual_kernel<<<grid, kThreadsPerBlock, shared_bytes>>>(
+                        b.data(),
+                        b.size(),
+                        a.data()[0],
+                        x.data(),
+                        line_bases,
+                        plan.line_count,
+                        plan.axis_size,
+                        plan.axis_stride,
+                        output.data());
+                    check_kernel_launch("fir_filter_zero_lines_shared_dual_kernel");
+                }
+                else if (plan_variant == 1)
+                {
+                    fir_filter_zero_lines_shared_multi_kernel<1><<<grid, kThreadsPerBlock, shared_bytes>>>(
+                        b.data(), b.size(), a.data()[0], x.data(), line_bases,
+                        plan.line_count, plan.axis_size, plan.axis_stride, output.data());
+                    check_kernel_launch("fir_filter_zero_lines_shared_multi_kernel<1>");
+                }
+                else if (plan_variant == 2)
+                {
+                    fir_filter_zero_lines_shared_multi_kernel<2><<<grid, kThreadsPerBlock, shared_bytes>>>(
+                        b.data(), b.size(), a.data()[0], x.data(), line_bases,
+                        plan.line_count, plan.axis_size, plan.axis_stride, output.data());
+                    check_kernel_launch("fir_filter_zero_lines_shared_multi_kernel<2>");
+                }
+                else if (plan_variant == 4)
+                {
+                    fir_filter_zero_lines_shared_multi_kernel<4><<<grid, kThreadsPerBlock, shared_bytes>>>(
+                        b.data(), b.size(), a.data()[0], x.data(), line_bases,
+                        plan.line_count, plan.axis_size, plan.axis_stride, output.data());
+                    check_kernel_launch("fir_filter_zero_lines_shared_multi_kernel<4>");
+                }
+                else
+                {
+                    fir_filter_zero_lines_shared_multi_kernel<8><<<grid, kThreadsPerBlock, shared_bytes>>>(
+                        b.data(), b.size(), a.data()[0], x.data(), line_bases,
+                        plan.line_count, plan.axis_size, plan.axis_stride, output.data());
+                    check_kernel_launch("fir_filter_zero_lines_shared_multi_kernel<8>");
+                }
+            }
+            else
+            {
+                fir_filter_zero_lines_kernel<<<
+                    block_count(plan.line_count * plan.axis_size),
+                    kThreadsPerBlock>>>(
+                    b.data(),
+                    b.size(),
+                    a.data(),
+                    x.data(),
+                    line_bases,
+                    plan.line_count,
+                    plan.axis_size,
+                    plan.axis_stride,
+                    output.data());
+                check_kernel_launch("fir_filter_zero_lines_kernel");
+            }
             return output;
         }
 
@@ -3194,6 +3432,7 @@ namespace
         const detail::AxisPlan plan = detail::make_axis_plan(x.shape(), axis);
         if (zi == nullptr &&
             final_state == nullptr &&
+            tile::optimized_path() &&
             plan.line_count == 1 &&
             plan.axis_stride == 1 &&
             plan.axis_size >= 1024)
@@ -3865,8 +4104,9 @@ namespace
             }
 
             const bool use_windowed_pack =
-                g_resample_path_override == kResamplePathWindowedPack ||
-                (g_resample_path_override == kResamplePathAuto && auto_uses_windowed_pack);
+                tile::optimized_path() &&
+                (g_resample_path_override == kResamplePathWindowedPack ||
+                 (g_resample_path_override == kResamplePathAuto && auto_uses_windowed_pack));
             if (!use_windowed_pack && explicit_window != nullptr && explicit_window->size() != 0)
             {
                 apply_window_direct_kernel<<<block_count(input_plan.axis_size), kThreadsPerBlock>>>(
@@ -3888,9 +4128,10 @@ namespace
             const int m = std::min(num, n_x);
             const int m2 = m / 2 + 1;
             const bool use_fused_pack =
-                use_windowed_pack ||
-                g_resample_path_override == kResamplePathFused ||
-                (g_resample_path_override == kResamplePathAuto && auto_uses_windowed_pack);
+                tile::optimized_path() &&
+                (use_windowed_pack ||
+                 g_resample_path_override == kResamplePathFused ||
+                 (g_resample_path_override == kResamplePathAuto && auto_uses_windowed_pack));
             g_last_resample_path =
                 use_windowed_pack
                     ? kResamplePathWindowedPack
@@ -4299,6 +4540,7 @@ namespace cusignal
                 ScopedZxGpuEvents events;
                 g_last_kernel_ms = static_cast<float>(events.measure([&]() {
                     const bool use_2d_tiled_stats =
+                        tile::optimized_path() &&
                         image_device.rank() == 2 &&
                         mysize[0] % 2 == 1 &&
                         mysize[1] % 2 == 1 &&
@@ -4417,7 +4659,8 @@ namespace cusignal
                 ScopedZxGpuEvents events;
                 ZxGpuRealArray output;
                 g_last_kernel_ms = static_cast<float>(events.measure([&]() {
-                    output = lfilter_impl(b_device, one, x_device, axis, nullptr, nullptr);
+                    output = lfilter_impl(
+                        b_device, one, x_device, axis, nullptr, nullptr, "filtering/firfilter");
                 }));
                 return output;
             }
@@ -4441,6 +4684,19 @@ namespace cusignal
                 }
 
                 const detail::AxisPlan plan = detail::make_axis_plan(x_device.shape(), axis);
+                const tile::PolicyDecision tuning = tile::select(
+                    tile::make_fir_filter_key(
+                        "filtering/firfilter",
+                        plan.line_count,
+                        plan.axis_size,
+                        1,
+                        b_device.size() == 0 ? 0 : b_device.size() - 1,
+                        axis,
+                        b_device.size(),
+                        1,
+                        false,
+                        plan.axis_stride));
+                const tile::ScopedPolicy policy_scope(tuning);
                 const std::size_t *line_bases = upload_line_bases_cached(
                     x_device.shape(),
                     axis,
@@ -4450,11 +4706,18 @@ namespace cusignal
 
                 ScopedZxGpuEvents events;
                 g_last_kernel_ms = static_cast<float>(events.measure([&]() {
-                    if (plan.axis_stride == 1 && plan.axis_size >= 2048 && plan.line_count <= 65535)
+                    if (tile::optimized_path() &&
+                        plan.axis_stride == 1 && plan.axis_size >= 2048 &&
+                        plan.line_count <= kMaxSharedFirLines)
                     {
-                        const bool use_quad_output = b_device.size() <= kComplexFirQuadMaxTaps;
+                        const int plan_variant = tuning.config.plan_variant;
+                        const bool use_quad_output =
+                            plan_variant == 0 && b_device.size() <= kComplexFirQuadMaxTaps;
+                        const int outputs_per_thread =
+                            plan_variant == 0 ? (use_quad_output ? 4 : 2) : plan_variant;
                         const std::size_t outputs_per_block =
-                            (use_quad_output ? 4 : 2) * static_cast<std::size_t>(kThreadsPerBlock);
+                            static_cast<std::size_t>(outputs_per_thread) *
+                            static_cast<std::size_t>(kThreadsPerBlock);
                         const dim3 grid(
                             static_cast<unsigned int>(
                                 (plan.axis_size + outputs_per_block - 1) / outputs_per_block),
@@ -4462,7 +4725,7 @@ namespace cusignal
                         const std::size_t shared_size =
                             (outputs_per_block + b_device.size() - 1) * sizeof(float2) +
                             b_device.size() * sizeof(float);
-                        if (use_quad_output)
+                        if (plan_variant == 0 && use_quad_output)
                         {
                             complex_fir_filter_zero_lines_shared_quad_kernel<<<grid, kThreadsPerBlock, shared_size>>>(
                                 b_device.data(),
@@ -4475,7 +4738,7 @@ namespace cusignal
                                 reinterpret_cast<float2 *>(output.data()));
                             check_kernel_launch("complex_fir_filter_zero_lines_shared_quad_kernel");
                         }
-                        else
+                        else if (plan_variant == 0)
                         {
                             complex_fir_filter_zero_lines_shared_dual_kernel<<<grid, kThreadsPerBlock, shared_size>>>(
                                 b_device.data(),
@@ -4488,8 +4751,66 @@ namespace cusignal
                                 reinterpret_cast<float2 *>(output.data()));
                             check_kernel_launch("complex_fir_filter_zero_lines_shared_dual_kernel");
                         }
+                        else if (plan_variant == 1)
+                        {
+                            complex_fir_filter_zero_lines_shared_multi_kernel<1>
+                                <<<grid, kThreadsPerBlock, shared_size>>>(
+                                    b_device.data(),
+                                    b_device.size(),
+                                    reinterpret_cast<const float2 *>(x_device.data()),
+                                    line_bases,
+                                    plan.line_count,
+                                    plan.axis_size,
+                                    plan.axis_stride,
+                                    reinterpret_cast<float2 *>(output.data()));
+                            check_kernel_launch("complex_fir_filter_zero_lines_shared_multi_kernel<1>");
+                        }
+                        else if (plan_variant == 2)
+                        {
+                            complex_fir_filter_zero_lines_shared_multi_kernel<2>
+                                <<<grid, kThreadsPerBlock, shared_size>>>(
+                                    b_device.data(),
+                                    b_device.size(),
+                                    reinterpret_cast<const float2 *>(x_device.data()),
+                                    line_bases,
+                                    plan.line_count,
+                                    plan.axis_size,
+                                    plan.axis_stride,
+                                    reinterpret_cast<float2 *>(output.data()));
+                            check_kernel_launch("complex_fir_filter_zero_lines_shared_multi_kernel<2>");
+                        }
+                        else if (plan_variant == 4)
+                        {
+                            complex_fir_filter_zero_lines_shared_multi_kernel<4>
+                                <<<grid, kThreadsPerBlock, shared_size>>>(
+                                    b_device.data(),
+                                    b_device.size(),
+                                    reinterpret_cast<const float2 *>(x_device.data()),
+                                    line_bases,
+                                    plan.line_count,
+                                    plan.axis_size,
+                                    plan.axis_stride,
+                                    reinterpret_cast<float2 *>(output.data()));
+                            check_kernel_launch("complex_fir_filter_zero_lines_shared_multi_kernel<4>");
+                        }
+                        else
+                        {
+                            complex_fir_filter_zero_lines_shared_multi_kernel<8>
+                                <<<grid, kThreadsPerBlock, shared_size>>>(
+                                    b_device.data(),
+                                    b_device.size(),
+                                    reinterpret_cast<const float2 *>(x_device.data()),
+                                    line_bases,
+                                    plan.line_count,
+                                    plan.axis_size,
+                                    plan.axis_stride,
+                                    reinterpret_cast<float2 *>(output.data()));
+                            check_kernel_launch("complex_fir_filter_zero_lines_shared_multi_kernel<8>");
+                        }
                     }
-                    else if (plan.axis_stride == 1 && plan.axis_size >= 1024 && plan.line_count <= 65535)
+                    else if (tile::optimized_path() &&
+                             plan.axis_stride == 1 && plan.axis_size >= 1024 &&
+                             plan.line_count <= kMaxSharedFirLines)
                     {
                         const dim3 grid(
                             static_cast<unsigned int>(block_count(plan.axis_size)),
@@ -4540,7 +4861,14 @@ namespace cusignal
                 filtering_api::ZxGpuFilterStateResult result;
                 ScopedZxGpuEvents events;
                 g_last_kernel_ms = static_cast<float>(events.measure([&]() {
-                    result.output = lfilter_impl(b_device, one, x_device, axis, &zi_device, &result.final_state);
+                    result.output = lfilter_impl(
+                        b_device,
+                        one,
+                        x_device,
+                        axis,
+                        &zi_device,
+                        &result.final_state,
+                        "filtering/firfilter");
                 }));
                 return result;
             }
@@ -4557,7 +4885,8 @@ namespace cusignal
                 ScopedZxGpuEvents events;
                 ZxGpuRealArray output;
                 g_last_kernel_ms = static_cast<float>(events.measure([&]() {
-                    output = lfilter_impl(b_device, a_device, x_device, axis, nullptr, nullptr);
+                    output = lfilter_impl(
+                        b_device, a_device, x_device, axis, nullptr, nullptr, "filtering/lfilter");
                 }));
                 return output;
             }
@@ -4576,7 +4905,14 @@ namespace cusignal
                 filtering_api::ZxGpuFilterStateResult result;
                 ScopedZxGpuEvents events;
                 g_last_kernel_ms = static_cast<float>(events.measure([&]() {
-                    result.output = lfilter_impl(b_device, a_device, x_device, axis, &zi_device, &result.final_state);
+                    result.output = lfilter_impl(
+                        b_device,
+                        a_device,
+                        x_device,
+                        axis,
+                        &zi_device,
+                        &result.final_state,
+                        "filtering/lfilter");
                 }));
                 return result;
             }

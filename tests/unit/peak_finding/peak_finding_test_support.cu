@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "../../../include/cusignal/core/helpers.hpp"
+#include "../../../src/common/zx_tile_policy.hpp"
 #include "../../../include/cusignal/peak_finding/peak_finding.hpp"
 #include "../common/live_perf.hpp"
 #include "../common/json.hpp"
@@ -368,6 +369,7 @@ namespace
     {
         for (int index = 0; index < warmup; ++index)
         {
+            cusignal::core::benchmark::note_iteration();
             callable();
         }
         std::vector<float> samples;
@@ -375,6 +377,7 @@ namespace
         for (int index = 0; index < repeat; ++index)
         {
             const auto start = std::chrono::steady_clock::now();
+            cusignal::core::benchmark::note_iteration();
             callable();
             const auto stop = std::chrono::steady_clock::now();
             samples.push_back(
@@ -668,35 +671,66 @@ namespace
             summary.perf_cases = 1;
             const Case perf = perf_case(op == "argrelmin" ? "less" : "greater");
             const ZxGpuRealArray device_data = ZxGpuRealArray::from_host(perf.data);
-            auto gpu_perf = [&]() {
+            const auto run_gpu = [&](const ZxGpuRealArray &input) {
+                if (op == "argrelmin")
+                {
+                    return cusignal::zx_gpu_backend::peak_finding::argrelmin(
+                        input,
+                        perf.axis,
+                        perf.order,
+                        perf.mode);
+                }
+                if (op == "argrelmax")
+                {
+                    return cusignal::zx_gpu_backend::peak_finding::argrelmax(
+                        input,
+                        perf.axis,
+                        perf.order,
+                        perf.mode);
+                }
                 return cusignal::zx_gpu_backend::peak_finding::argrelextrema(
-                    device_data,
+                    input,
                     perf.comparator,
                     perf.axis,
                     perf.order,
                     perf.mode);
             };
-            if (!options.gpu_only_perf)
+            auto gpu_perf = [&]() {
+                return run_gpu(device_data);
+            };
+            if (!options.gpu_only_perf && !cusignal::core::benchmark::skip_cpu_timing())
             {
                 summary.cpu_perf = measure(options.warmup, options.repeat, [&]() {
                     (void)cpu_callable(perf);
                 });
             }
+            cusignal::core::benchmark::InputRefreshRun input_refresh(
+                static_cast<std::uint64_t>(options.warmup + options.repeat), true);
             std::vector<float> kernel_samples;
             summary.gpu_e2e_perf = measure(options.warmup, options.repeat, [&]() {
                 (void)cusignal::zx_gpu_backend::peak_finding_test_hooks::consume_last_kernel_ms();
                 const ZxGpuRealArray fresh_data = ZxGpuRealArray::from_host(perf.data);
-                const auto result = cusignal::zx_gpu_backend::peak_finding::argrelextrema(
-                    fresh_data,
-                    perf.comparator,
-                    perf.axis,
-                    perf.order,
-                    perf.mode);
+                const auto result = run_gpu(fresh_data);
                 (void)to_host(result.indices);
                 cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
                 kernel_samples.push_back(cusignal::zx_gpu_backend::peak_finding_test_hooks::consume_last_kernel_ms());
             });
             summary.gpu_kernel_perf = summarize(std::move(kernel_samples));
+
+            // The report/cache key is the public operator identity, not the
+            // comparator selected by the implementation.  Keep this check at
+            // the real GPU seam so argrelextrema cannot silently publish an
+            // argrelmax/argrelmin trace under the wrong exact key.
+            const auto &tuning_trace = cusignal::zx_tile::policy_trace_snapshot();
+            const std::string expected_tuning_operator = "peak_finding/" + op;
+            if (!tuning_trace.valid || tuning_trace.operator_id != expected_tuning_operator)
+            {
+                summary.pass = false;
+                std::cerr << "[peak_finding/" << op
+                          << "] tuning operator trace mismatch: expected="
+                          << expected_tuning_operator << " got="
+                          << tuning_trace.operator_id << "\n";
+            }
 
             if (options.emit_report)
             {

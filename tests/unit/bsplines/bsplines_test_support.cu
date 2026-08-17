@@ -364,6 +364,10 @@ namespace
 
     RealSignal sample_values(const RealSignal &values, std::size_t limit = 32)
     {
+        if (cusignal_test::cpu_reference_cache::write_full_outputs())
+        {
+            return values;
+        }
         if (values.size() <= limit)
         {
             return values;
@@ -528,6 +532,7 @@ namespace
     {
         for (int warmup = 0; warmup < options.warmup; ++warmup)
         {
+            cusignal::core::benchmark::note_iteration();
             callable();
         }
 
@@ -536,6 +541,7 @@ namespace
         for (int repeat = 0; repeat < options.repeat; ++repeat)
         {
             const auto start = std::chrono::steady_clock::now();
+            cusignal::core::benchmark::note_iteration();
             callable();
             const auto stop = std::chrono::steady_clock::now();
             durations.push_back(std::chrono::duration<float, std::milli>(stop - start).count());
@@ -548,6 +554,7 @@ namespace
     {
         for (int warmup = 0; warmup < options.warmup; ++warmup)
         {
+            cusignal::core::benchmark::note_iteration();
             callable();
             (void)cusignal::zx_gpu_backend::bsplines_test_hooks::consume_last_kernel_ms();
         }
@@ -556,6 +563,7 @@ namespace
         durations.reserve(static_cast<std::size_t>(options.repeat));
         for (int repeat = 0; repeat < options.repeat; ++repeat)
         {
+            cusignal::core::benchmark::note_iteration();
             callable();
             durations.push_back(cusignal::zx_gpu_backend::bsplines_test_hooks::consume_last_kernel_ms());
         }
@@ -991,21 +999,25 @@ namespace
         }
         report.pass = true;
 
-        if (!options.gpu_only_perf)
+        if (!options.gpu_only_perf && !cusignal::core::benchmark::skip_cpu_timing())
         {
             report.cpu_perf = benchmark_host_latency(options, [&]() { (void)runner.cpu(test_case); });
         }
+        const int benchmark_iterations = options.warmup + options.repeat;
+        cusignal::core::benchmark::InputRefreshRun input_refresh(
+            static_cast<std::uint64_t>(2 * benchmark_iterations), true);
         report.gpu_e2e_perf = benchmark_host_latency(options, [&]() {
-            // E2E owns a fresh H2D upload and a host materialization on every
-            // iteration; the kernel benchmark below intentionally reuses the
-            // prepared device input to isolate kernel work.
+            // E2E owns a fresh host-backed device input and a host materialization.
             const ZxGpuRealArray fresh_input = ZxGpuRealArray::from_host(input);
             (void)run_gpu_with_input(op, test_case, fresh_input).get();
             cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
         });
         report.gpu_kernel_perf =
             benchmark_gpu_kernel_latency(options, [&]() {
-                (void)run_gpu_with_input(op, test_case, device_input);
+                // Stage a new input before the kernel event; the hook reports
+                // kernel-only time.
+                const ZxGpuRealArray fresh_input = ZxGpuRealArray::from_host(input);
+                (void)run_gpu_with_input(op, test_case, fresh_input);
             });
 
         if (options.emit_report)

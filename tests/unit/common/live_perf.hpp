@@ -3,6 +3,8 @@
 #include <cstdlib>
 #include <filesystem>
 
+#include "cpu_reference_cache.hpp"
+
 // Unit tests normally read their generated manifests under the source tree.
 // The live presentation may supply a disposable root containing smaller
 // performance inputs. Formal and accuracy manifests are not modified.

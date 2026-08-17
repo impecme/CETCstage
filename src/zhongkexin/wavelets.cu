@@ -10,6 +10,7 @@
 #include "cusignal/core/helpers.hpp"
 
 #include "../common/wavelets_detail.hpp"
+#include "../common/zx_tile_policy.hpp"
 
 namespace
 {
@@ -19,6 +20,7 @@ namespace
     using cusignal::core::ZxGpuRealSignal;
     using cusignal::core::RealSignal;
     namespace detail = cusignal::wavelets_detail;
+    namespace tile = cusignal::zx_tile;
 
     constexpr int kThreadsPerBlock = 256;
     thread_local float g_last_kernel_ms = 0.0;
@@ -28,49 +30,58 @@ namespace
         cusignal::core::throw_on_zx_gpu_error(cudaGetLastError(), what);
     }
 
+    struct TimingEvents
+    {
+        cudaEvent_t start = nullptr;
+        cudaEvent_t stop = nullptr;
+
+        ~TimingEvents()
+        {
+            if (start != nullptr)
+            {
+                cudaEventDestroy(start);
+            }
+            if (stop != nullptr)
+            {
+                cudaEventDestroy(stop);
+            }
+        }
+
+        void ensure()
+        {
+            if (start == nullptr)
+            {
+                cusignal::core::throw_on_zx_gpu_error(
+                    cudaEventCreate(&start), "cudaEventCreate(start)");
+                cusignal::core::throw_on_zx_gpu_error(
+                    cudaEventCreate(&stop), "cudaEventCreate(stop)");
+            }
+        }
+    };
+
+    thread_local TimingEvents g_timing_events;
+
     class ScopedZxGpuEvents
     {
     public:
-        ScopedZxGpuEvents()
-        {
-            cusignal::core::throw_on_zx_gpu_error(
-                cudaEventCreate(&start_), "cudaEventCreate(start)");
-            cusignal::core::throw_on_zx_gpu_error(
-                cudaEventCreate(&stop_), "cudaEventCreate(stop)");
-        }
-
-        ~ScopedZxGpuEvents()
-        {
-            if (start_ != nullptr)
-            {
-                cudaEventDestroy(start_);
-            }
-            if (stop_ != nullptr)
-            {
-                cudaEventDestroy(stop_);
-            }
-        }
-
         template <typename Callable>
         float measure(Callable callable)
         {
+            g_timing_events.ensure();
             cusignal::core::throw_on_zx_gpu_error(
-                cudaEventRecord(start_), "cudaEventRecord(start)");
+                cudaEventRecord(g_timing_events.start), "cudaEventRecord(start)");
             callable();
             cusignal::core::throw_on_zx_gpu_error(
-                cudaEventRecord(stop_), "cudaEventRecord(stop)");
+                cudaEventRecord(g_timing_events.stop), "cudaEventRecord(stop)");
             cusignal::core::throw_on_zx_gpu_error(
-                cudaEventSynchronize(stop_), "cudaEventSynchronize(stop)");
+                cudaEventSynchronize(g_timing_events.stop), "cudaEventSynchronize(stop)");
             float elapsed_ms = 0.0f;
             cusignal::core::throw_on_zx_gpu_error(
-                cudaEventElapsedTime(&elapsed_ms, start_, stop_),
+                cudaEventElapsedTime(
+                    &elapsed_ms, g_timing_events.start, g_timing_events.stop),
                 "cudaEventElapsedTime");
             return elapsed_ms;
         }
-
-    private:
-        cudaEvent_t start_ = nullptr;
-        cudaEvent_t stop_ = nullptr;
     };
 
     struct WaveletsWorkspace
@@ -622,7 +633,8 @@ namespace cusignal
                 ScopedZxGpuEvents events;
                 g_last_kernel_ms = static_cast<float>(events.measure([&]() {
                     constexpr std::size_t kMaxSharedKernelSize = 2048;
-                    if (wavelet == "ricker" &&
+                    if (tile::optimized_path() &&
+                        wavelet == "ricker" &&
                         g_workspace.cwt_cache_max_kernel_size > 0 &&
                         g_workspace.cwt_cache_max_kernel_size <= kMaxSharedKernelSize)
                     {

@@ -1189,7 +1189,8 @@ namespace cusignal_demo::task2_features
     void write_stage_timings_csv(
         const std::vector<StageTiming> &timings,
         float cpu_total_ms,
-        float gpu_total_ms)
+        float gpu_total_ms,
+        float gpu_kernel_total_ms_value)
     {
         const fs::path path = report_root() / "latest_stage_timings.csv";
         fs::create_directories(path.parent_path());
@@ -1208,7 +1209,7 @@ namespace cusignal_demo::task2_features
             output << '\n';
         }
         output << "total," << cpu_total_ms << ',' << gpu_total_ms << ','
-               << gpu_kernel_total_ms(timings) << '\n';
+               << gpu_kernel_total_ms_value << '\n';
     }
 
     void write_task_csv_reports(
@@ -1273,10 +1274,10 @@ namespace cusignal_demo::task2_features
                 << "task2_features,L" << config.scale_level << ',' << config.seed << ',' << warmup << ',' << repeat << ','
                 << (static_cast<long long>(config.num_frames) * config.samples_per_frame) << ','
                 << input_timing.cpu_ms << ',' << input_timing.gpu_ms << ",0," << run.validation_input_d2h_ms
-                << ',' << run.cpu_total_ms << ',' << run.gpu_total_ms << ',' << gpu_kernel_total_ms(run.stage_timings) << ','
+                << ',' << run.cpu_total_ms << ',' << run.gpu_total_ms << ',' << run.gpu_kernel_total_ms << ','
                 << (run.gpu_total_ms > 0.0f ? run.cpu_total_ms / run.gpu_total_ms : 0.0f) << ','
-                << (gpu_kernel_total_ms(run.stage_timings) > 0.0f
-                        ? run.cpu_total_ms / gpu_kernel_total_ms(run.stage_timings) : 0.0f)
+                << (run.gpu_kernel_total_ms > 0.0f
+                        ? run.cpu_total_ms / run.gpu_kernel_total_ms : 0.0f)
                 << ',' << input_error.max_abs << ',' << input_error.max_rel << ',' << input_error.rmse << ','
                 << input_error.mixed_error << ',' << operator_error.max_abs << ',' << operator_error.max_rel << ','
                 << operator_error.rmse << ',' << operator_error.mixed_error << ',' << e2e_error.max_abs << ','
@@ -1544,6 +1545,7 @@ namespace cusignal_demo::task2_features
         const ErrorMetrics &kalman_error,
         float cpu_total_ms,
         float gpu_total_ms,
+        float gpu_kernel_total_ms_value,
         bool cpu_gpu_track_match,
         bool gpu_matches_truth,
         const ValidationResult &validation,
@@ -1594,7 +1596,7 @@ namespace cusignal_demo::task2_features
                    << timing.gpu_kernel_ms << " |\n";
         }
         stream << "| total | " << cpu_total_ms << " | " << gpu_total_ms << " | "
-               << gpu_kernel_total_ms(timings) << " |\n\n";
+               << gpu_kernel_total_ms_value << " |\n\n";
         stream << "## Validation\n\n";
         stream << "- pass: `" << (validation.pass ? "true" : "false") << "`\n";
         stream << "- repeat_runs: `" << iterations.size() << "`\n";
@@ -1623,6 +1625,7 @@ namespace cusignal_demo::task2_features
         const ErrorMetrics &kalman_error,
         float cpu_total_ms,
         float gpu_total_ms,
+        float gpu_kernel_total_ms_value,
         bool cpu_gpu_track_match,
         bool gpu_matches_truth,
         const ValidationResult &validation,
@@ -1689,8 +1692,8 @@ namespace cusignal_demo::task2_features
                << "    \"cpu_e2e\": \"input construction + operator execution + host output materialization\",\n"
                << "    \"gpu_e2e\": \"device waveform/input construction + chained operator execution + final D2H/output\",\n"
                << "    \"task_input_h2d_ms\": 0,\n"
-               << "    \"gpu_kernel\": \"CUDA event median; validation-only H2D/D2H excluded\",\n"
-               << "    \"input_refresh_policy\": \"fresh device waveform and received-frame construction on every measured GPU E2E repeat\",\n"
+               << "    \"gpu_kernel\": \"median of per-repeat CUDA-event stage totals; validation-only H2D/D2H excluded\",\n"
+               << "    \"input_refresh_policy\": \"warmup and every measured repeat regenerate deterministic device inputs from the same seed/config; prior input values are not reused\",\n"
                << "    \"workspace_reuse_policy\": \"device allocation capacity and FFT plan may be reused; input values may not\"\n"
                << "  },\n";
         stream << "  \"timings\": {\n";
@@ -1703,8 +1706,10 @@ namespace cusignal_demo::task2_features
             stream << "},\n";
         }
         stream << "    \"total\": {\"cpu_ms\": " << cpu_total_ms << ", \"gpu_ms\": " << gpu_total_ms
-               << ", \"gpu_kernel_ms\": " << gpu_kernel_total_ms(timings) << "}\n";
+               << ", \"gpu_kernel_ms\": " << gpu_kernel_total_ms_value << "}\n";
         stream << "  },\n";
+        stream << "  \"speedup_definition\": {\"e2e\": \"median(per_repeat_cpu_e2e_ms) / median(per_repeat_gpu_e2e_ms)\", "
+               << "\"kernel\": \"median(per_repeat_cpu_e2e_ms) / median(per_repeat_gpu_kernel_total_ms)\"},\n";
         auto write_signal = [&](const char *name, const RealSignal &values, bool trailing_comma) {
             stream << "  \"" << name << "\": [";
             for (std::size_t index = 0; index < values.size(); ++index)
@@ -1838,6 +1843,7 @@ namespace cusignal_demo::task2_features
             result.cpu_total_ms += timing.cpu_ms;
             result.gpu_total_ms += timing.gpu_ms;
         }
+        result.gpu_kernel_total_ms = gpu_kernel_total_ms(result.stage_timings);
         return result;
     }
 
@@ -1899,18 +1905,33 @@ namespace cusignal_demo::task2_features
         // Persist medians across all measured repeats instead of the last run.
         final_run.stage_timings = cusignal_demo::report::median_stage_timings(repeat_stage_timings);
         final_run.operator_timings = cusignal_demo::report::median_stage_timings(repeat_operator_timings);
-        final_run.cpu_total_ms = 0.0f;
-        final_run.gpu_total_ms = 0.0f;
-        for (const StageTiming &timing : final_run.stage_timings)
+        // Task E2E is the median of complete per-repeat totals.  Summing
+        // medians of individual stages can select different repeat samples
+        // and therefore is not a valid end-to-end statistic.
+        std::vector<double> cpu_totals;
+        std::vector<double> gpu_totals;
+        std::vector<double> gpu_kernel_totals;
+        cpu_totals.reserve(iterations.size());
+        gpu_totals.reserve(iterations.size());
+        gpu_kernel_totals.reserve(iterations.size());
+        for (const IterationSummary &iteration : iterations)
         {
-            final_run.cpu_total_ms += timing.cpu_ms;
-            final_run.gpu_total_ms += timing.gpu_ms;
+            cpu_totals.push_back(iteration.cpu_total_ms);
+            gpu_totals.push_back(iteration.gpu_total_ms);
+            gpu_kernel_totals.push_back(iteration.gpu_kernel_total_ms);
         }
+        final_run.cpu_total_ms = static_cast<float>(median_value(std::move(cpu_totals)));
+        final_run.gpu_total_ms = static_cast<float>(median_value(std::move(gpu_totals)));
+        final_run.gpu_kernel_total_ms = static_cast<float>(median_value(std::move(gpu_kernel_totals)));
         const ResourceSnapshot resource_after = capture_resource_snapshot();
 
         write_generated_inputs(config, final_run.cpu.target_template, final_run.cpu.rx_frames, final_run.cpu.truth_track);
         write_output_samples(final_run.cpu, final_run.gpu);
-        write_stage_timings_csv(final_run.stage_timings, final_run.cpu_total_ms, final_run.gpu_total_ms);
+        write_stage_timings_csv(
+            final_run.stage_timings,
+            final_run.cpu_total_ms,
+            final_run.gpu_total_ms,
+            final_run.gpu_kernel_total_ms);
         write_task_csv_reports(config, final_run, final_validation, options.warmup, options.repeat);
         write_unified_step_metrics(config, final_run, thresholds);
         write_text_file(
@@ -1928,6 +1949,7 @@ namespace cusignal_demo::task2_features
                 final_run.kalman_error,
                 final_run.cpu_total_ms,
                 final_run.gpu_total_ms,
+                final_run.gpu_kernel_total_ms,
                 final_run.cpu_gpu_track_match,
                 final_run.gpu_matches_truth,
                 final_validation,
@@ -1949,6 +1971,7 @@ namespace cusignal_demo::task2_features
                 final_run.kalman_error,
                 final_run.cpu_total_ms,
                 final_run.gpu_total_ms,
+                final_run.gpu_kernel_total_ms,
                 final_run.cpu_gpu_track_match,
                 final_run.gpu_matches_truth,
                 final_validation,
@@ -1996,8 +2019,8 @@ namespace cusignal_demo::task2_features
                   << " template_length=" << config.template_length
                   << " cpu_total_ms=" << final_run.cpu_total_ms
                   << " gpu_total_ms=" << final_run.gpu_total_ms
-                  << " gpu_kernel_total_ms=" << gpu_kernel_total_ms(final_run.stage_timings)
-                  << " speedup=" << speedup << "x\n"
+                  << " gpu_kernel_total_ms=" << final_run.gpu_kernel_total_ms
+                  << " e2e_speedup=" << speedup << "x\n"
                   << "[task2_features] hotspot_gpu_ms filter=" << timing_for("filter").gpu_ms
                   << " correlate=" << timing_for("correlate").gpu_ms
                   << " spectrogram=" << timing_for("spectrogram").gpu_ms

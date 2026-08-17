@@ -26,3 +26,9 @@ data/generated/unit/**/output_samples/
 # Validation writes raw evidence here, then publishes only compact current-code
 # reports under data/reports/.
 data/.reports_staging/
+
+operator_gpu_baseline_75a700d_protocol
+
+data/reports/operator_gpu_rollback_cmplx_sort_20260816
+
+data/cpu_reference_cache_20260816_full

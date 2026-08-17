@@ -9,12 +9,14 @@
 #include <vector>
 
 #include "../common/waveforms_detail.hpp"
+#include "../common/zx_tile_policy.hpp"
 
 namespace
 {
     using cusignal::core::ZxGpuComplexSignal;
     using cusignal::core::ZxGpuRealSignal;
     using cusignal::core::RealSignal;
+    namespace tile = cusignal::zx_tile;
 
     constexpr int kThreadsPerBlock = 256;
 
@@ -33,7 +35,19 @@ namespace
 
     int block_count(std::size_t size)
     {
-        return size == 0 ? 0 : static_cast<int>((size + kThreadsPerBlock - 1) / kThreadsPerBlock);
+        return size == 0
+            ? 0
+            : static_cast<int>(tile::ceil_div(size, static_cast<std::size_t>(tile::linear_shape(size).threads)));
+    }
+
+    int tiled_block_count(std::size_t size, int elements_per_thread)
+    {
+        return size == 0
+            ? 0
+            : static_cast<int>(tile::ceil_div(
+                  size,
+                  static_cast<std::size_t>(kThreadsPerBlock) *
+                      static_cast<std::size_t>(elements_per_thread)));
     }
 
     struct ChirpWorkspace
@@ -237,6 +251,209 @@ namespace
     {
         output[flat_index] = 1.0;
     }
+
+    // Pointwise waveform production has no cross-element dependency.  The
+    // optimized route therefore follows CUTLASS' linear tile mapping: one
+    // block owns a contiguous tile and each thread evaluates a few register
+    // elements.  The one-element kernels above remain the legacy path.
+    __global__ void chirp_real_tiled_kernel(
+        const float *t,
+        std::size_t size,
+        float f0,
+        float t1,
+        float f1,
+        float phi,
+        bool vertex_zero,
+        int method_code,
+        float *output,
+        int elements_per_thread)
+    {
+        const std::size_t tile_begin =
+            static_cast<std::size_t>(blockIdx.x) * blockDim.x *
+            static_cast<std::size_t>(elements_per_thread);
+        const float beta = (f1 - f0) / t1;
+        for (int item = 0; item < elements_per_thread; ++item)
+        {
+            const std::size_t index =
+                tile_begin + static_cast<std::size_t>(threadIdx.x) +
+                static_cast<std::size_t>(item) * blockDim.x;
+            if (index >= size)
+            {
+                continue;
+            }
+            const float time = t[index];
+            float phase = 0.0f;
+            if (method_code == 0)
+            {
+                phase = cusignal::waveforms_detail::linear_phase_from_beta(time, f0, beta);
+            }
+            else if (method_code == 1)
+            {
+                phase = cusignal::waveforms_detail::quadratic_phase(
+                    time, f0, t1, f1, vertex_zero);
+            }
+            else if (method_code == 2)
+            {
+                phase = cusignal::waveforms_detail::logarithmic_phase(
+                    time, f0, t1, f1);
+            }
+            else
+            {
+                phase = cusignal::waveforms_detail::hyperbolic_phase(
+                    time, f0, t1, f1);
+            }
+            output[index] = cos(phase + phi);
+        }
+    }
+
+    __global__ void chirp_complex_tiled_kernel(
+        const float *t,
+        std::size_t size,
+        float f0,
+        float beta,
+        float phi,
+        float2 *output,
+        int elements_per_thread)
+    {
+        const std::size_t tile_begin =
+            static_cast<std::size_t>(blockIdx.x) * blockDim.x *
+            static_cast<std::size_t>(elements_per_thread);
+        for (int item = 0; item < elements_per_thread; ++item)
+        {
+            const std::size_t index =
+                tile_begin + static_cast<std::size_t>(threadIdx.x) +
+                static_cast<std::size_t>(item) * blockDim.x;
+            if (index >= size)
+            {
+                continue;
+            }
+            const float angle =
+                cusignal::waveforms_detail::linear_phase_from_beta(t[index], f0, beta) + phi;
+            output[index] = float2{cos(angle), sin(angle)};
+        }
+    }
+
+    template <bool ReturnQuadrature, bool ReturnEnvelope>
+    __global__ void gausspulse_tiled_kernel(
+        const float *t,
+        std::size_t size,
+        float a,
+        float fc,
+        float *signal,
+        float *quadrature,
+        float *envelope,
+        int elements_per_thread)
+    {
+        const std::size_t tile_begin =
+            static_cast<std::size_t>(blockIdx.x) * blockDim.x *
+            static_cast<std::size_t>(elements_per_thread);
+        for (int item = 0; item < elements_per_thread; ++item)
+        {
+            const std::size_t index =
+                tile_begin + static_cast<std::size_t>(threadIdx.x) +
+                static_cast<std::size_t>(item) * blockDim.x;
+            if (index >= size)
+            {
+                continue;
+            }
+            cusignal::waveforms_detail::gausspulse_components<ReturnQuadrature, ReturnEnvelope>(
+                t[index],
+                a,
+                fc,
+                signal + index,
+                ReturnQuadrature ? quadrature + index : nullptr,
+                ReturnEnvelope ? envelope + index : nullptr);
+        }
+    }
+
+    __global__ void sawtooth_tiled_scalar_kernel(
+        const float *t,
+        std::size_t size,
+        float width,
+        float *output,
+        int elements_per_thread)
+    {
+        const std::size_t tile_begin =
+            static_cast<std::size_t>(blockIdx.x) * blockDim.x *
+            static_cast<std::size_t>(elements_per_thread);
+        for (int item = 0; item < elements_per_thread; ++item)
+        {
+            const std::size_t index =
+                tile_begin + static_cast<std::size_t>(threadIdx.x) +
+                static_cast<std::size_t>(item) * blockDim.x;
+            if (index < size)
+            {
+                output[index] = cusignal::waveforms_detail::sawtooth_value(t[index], width);
+            }
+        }
+    }
+
+    __global__ void sawtooth_tiled_vector_kernel(
+        const float *t,
+        const float *width,
+        std::size_t size,
+        float *output,
+        int elements_per_thread)
+    {
+        const std::size_t tile_begin =
+            static_cast<std::size_t>(blockIdx.x) * blockDim.x *
+            static_cast<std::size_t>(elements_per_thread);
+        for (int item = 0; item < elements_per_thread; ++item)
+        {
+            const std::size_t index =
+                tile_begin + static_cast<std::size_t>(threadIdx.x) +
+                static_cast<std::size_t>(item) * blockDim.x;
+            if (index < size)
+            {
+                output[index] =
+                    cusignal::waveforms_detail::sawtooth_value(t[index], width[index]);
+            }
+        }
+    }
+
+    __global__ void square_tiled_scalar_kernel(
+        const float *t,
+        std::size_t size,
+        float duty,
+        float *output,
+        int elements_per_thread)
+    {
+        const std::size_t tile_begin =
+            static_cast<std::size_t>(blockIdx.x) * blockDim.x *
+            static_cast<std::size_t>(elements_per_thread);
+        for (int item = 0; item < elements_per_thread; ++item)
+        {
+            const std::size_t index =
+                tile_begin + static_cast<std::size_t>(threadIdx.x) +
+                static_cast<std::size_t>(item) * blockDim.x;
+            if (index < size)
+            {
+                output[index] = cusignal::waveforms_detail::square_value(t[index], duty);
+            }
+        }
+    }
+
+    __global__ void square_tiled_vector_kernel(
+        const float *t,
+        const float *duty,
+        std::size_t size,
+        float *output,
+        int elements_per_thread)
+    {
+        const std::size_t tile_begin =
+            static_cast<std::size_t>(blockIdx.x) * blockDim.x *
+            static_cast<std::size_t>(elements_per_thread);
+        for (int item = 0; item < elements_per_thread; ++item)
+        {
+            const std::size_t index =
+                tile_begin + static_cast<std::size_t>(threadIdx.x) +
+                static_cast<std::size_t>(item) * blockDim.x;
+            if (index < size)
+            {
+                output[index] = cusignal::waveforms_detail::square_value(t[index], duty[index]);
+            }
+        }
+    }
 } // namespace
 
 namespace cusignal
@@ -276,19 +493,46 @@ namespace cusignal
 
                 const float phi_radians = degrees_to_radians(phi);
                 const std::size_t size = t_device.size();
-                const int blocks = block_count(size);
+                const tile::PolicyDecision tuning = tile::select(
+                    tile::make_linear_operator_key(
+                        "waveforms/chirp",
+                        size,
+                        normalized_type == "complex" ? 1 : 0,
+                        tile::stable_string_hash(normalized_method),
+                        tile::stable_string_hash(normalized_type)));
+                const tile::ScopedPolicy policy_scope(tuning);
+                const bool use_tiled = tile::optimized_path() && size >= 4096;
+                const int elements_per_thread =
+                    use_tiled ? tile::linear_shape(size).elements_per_thread : 1;
+                const int blocks = use_tiled
+                                       ? tiled_block_count(size, elements_per_thread)
+                                       : block_count(size);
 
                 if (normalized_type == "complex")
                 {
                     const float linear_beta = (f1 - f0) / t1;
                     core::ZxGpuComplexSignal complex_output(size);
-                    chirp_linear_complex_kernel<<<blocks, kThreadsPerBlock>>>(
-                        t_device.data(),
-                        size,
-                        f0,
-                        linear_beta,
-                        phi_radians,
-                        complex_output.data());
+                    if (use_tiled)
+                    {
+                        chirp_complex_tiled_kernel<<<blocks, kThreadsPerBlock>>>(
+                            t_device.data(),
+                            size,
+                            f0,
+                            linear_beta,
+                            phi_radians,
+                            complex_output.data(),
+                            elements_per_thread);
+                    }
+                    else
+                    {
+                        chirp_linear_complex_kernel<<<blocks, kThreadsPerBlock>>>(
+                            t_device.data(),
+                            size,
+                            f0,
+                            linear_beta,
+                            phi_radians,
+                            complex_output.data());
+                    }
                     check_kernel_launch("chirp_linear_complex_kernel");
                     return complex_output;
                 }
@@ -297,50 +541,118 @@ namespace cusignal
                 if (is_linear_method(normalized_method))
                 {
                     const float linear_beta = (f1 - f0) / t1;
-                    chirp_linear_real_kernel<<<blocks, kThreadsPerBlock>>>(
-                        t_device.data(),
-                        size,
-                        f0,
-                        linear_beta,
-                        phi_radians,
-                        output.data());
+                    if (use_tiled)
+                    {
+                        chirp_real_tiled_kernel<<<blocks, kThreadsPerBlock>>>(
+                            t_device.data(),
+                            size,
+                            f0,
+                            t1,
+                            f1,
+                            phi_radians,
+                            vertex_zero,
+                            0,
+                            output.data(),
+                            elements_per_thread);
+                    }
+                    else
+                    {
+                        chirp_linear_real_kernel<<<blocks, kThreadsPerBlock>>>(
+                            t_device.data(),
+                            size,
+                            f0,
+                            linear_beta,
+                            phi_radians,
+                            output.data());
+                    }
                     check_kernel_launch("chirp_linear_real_kernel");
                 }
                 else if (is_quadratic_method(normalized_method))
                 {
-                    chirp_quadratic_kernel<<<blocks, kThreadsPerBlock>>>(
-                        t_device.data(),
-                        size,
-                        f0,
-                        t1,
-                        f1,
-                        phi_radians,
-                        vertex_zero,
-                        output.data());
+                    if (use_tiled)
+                    {
+                        chirp_real_tiled_kernel<<<blocks, kThreadsPerBlock>>>(
+                            t_device.data(),
+                            size,
+                            f0,
+                            t1,
+                            f1,
+                            phi_radians,
+                            vertex_zero,
+                            1,
+                            output.data(),
+                            elements_per_thread);
+                    }
+                    else
+                    {
+                        chirp_quadratic_kernel<<<blocks, kThreadsPerBlock>>>(
+                            t_device.data(),
+                            size,
+                            f0,
+                            t1,
+                            f1,
+                            phi_radians,
+                            vertex_zero,
+                            output.data());
+                    }
                     check_kernel_launch("chirp_quadratic_kernel");
                 }
                 else if (is_logarithmic_method(normalized_method))
                 {
-                    chirp_logarithmic_kernel<<<blocks, kThreadsPerBlock>>>(
-                        t_device.data(),
-                        size,
-                        f0,
-                        t1,
-                        f1,
-                        phi_radians,
-                        output.data());
+                    if (use_tiled)
+                    {
+                        chirp_real_tiled_kernel<<<blocks, kThreadsPerBlock>>>(
+                            t_device.data(),
+                            size,
+                            f0,
+                            t1,
+                            f1,
+                            phi_radians,
+                            vertex_zero,
+                            2,
+                            output.data(),
+                            elements_per_thread);
+                    }
+                    else
+                    {
+                        chirp_logarithmic_kernel<<<blocks, kThreadsPerBlock>>>(
+                            t_device.data(),
+                            size,
+                            f0,
+                            t1,
+                            f1,
+                            phi_radians,
+                            output.data());
+                    }
                     check_kernel_launch("chirp_logarithmic_kernel");
                 }
                 else
                 {
-                    chirp_hyperbolic_kernel<<<blocks, kThreadsPerBlock>>>(
-                        t_device.data(),
-                        size,
-                        f0,
-                        t1,
-                        f1,
-                        phi_radians,
-                        output.data());
+                    if (use_tiled)
+                    {
+                        chirp_real_tiled_kernel<<<blocks, kThreadsPerBlock>>>(
+                            t_device.data(),
+                            size,
+                            f0,
+                            t1,
+                            f1,
+                            phi_radians,
+                            vertex_zero,
+                            3,
+                            output.data(),
+                            elements_per_thread);
+                    }
+                    else
+                    {
+                        chirp_hyperbolic_kernel<<<blocks, kThreadsPerBlock>>>(
+                            t_device.data(),
+                            size,
+                            f0,
+                            t1,
+                            f1,
+                            phi_radians,
+                            output.data());
+                    }
                     check_kernel_launch("chirp_hyperbolic_kernel");
                 }
 
@@ -384,26 +696,124 @@ namespace cusignal
                 core::ZxGpuRealSignal signal(size);
                 core::ZxGpuRealSignal quadrature = retquad ? core::ZxGpuRealSignal(size) : core::ZxGpuRealSignal{};
                 core::ZxGpuRealSignal envelope = retenv ? core::ZxGpuRealSignal(size) : core::ZxGpuRealSignal{};
+                const tile::PolicyDecision tuning = tile::select(
+                    tile::make_linear_operator_key(
+                        "waveforms/gausspulse",
+                        size,
+                        0,
+                        retquad ? 1ULL : 0ULL,
+                        retenv ? 1ULL : 0ULL));
+                const tile::ScopedPolicy policy_scope(tuning);
+                const bool use_tiled = tile::optimized_path() && size >= 4096;
+                const int elements_per_thread =
+                    use_tiled ? tile::linear_shape(size).elements_per_thread : 1;
+                const int blocks = use_tiled
+                                       ? tiled_block_count(size, elements_per_thread)
+                                       : block_count(size);
 
                 if (retquad && retenv)
                 {
-                    gausspulse_kernel<true, true><<<block_count(size), kThreadsPerBlock>>>(
-                        t_device.data(), size, a, fc, signal.data(), quadrature.data(), envelope.data());
+                    if (use_tiled)
+                    {
+                        gausspulse_tiled_kernel<true, true><<<blocks, kThreadsPerBlock>>>(
+                            t_device.data(),
+                            size,
+                            a,
+                            fc,
+                            signal.data(),
+                            quadrature.data(),
+                            envelope.data(),
+                            elements_per_thread);
+                    }
+                    else
+                    {
+                        gausspulse_kernel<true, true><<<blocks, kThreadsPerBlock>>>(
+                            t_device.data(),
+                            size,
+                            a,
+                            fc,
+                            signal.data(),
+                            quadrature.data(),
+                            envelope.data());
+                    }
                 }
                 else if (retquad)
                 {
-                    gausspulse_kernel<true, false><<<block_count(size), kThreadsPerBlock>>>(
-                        t_device.data(), size, a, fc, signal.data(), quadrature.data(), nullptr);
+                    if (use_tiled)
+                    {
+                        gausspulse_tiled_kernel<true, false><<<blocks, kThreadsPerBlock>>>(
+                            t_device.data(),
+                            size,
+                            a,
+                            fc,
+                            signal.data(),
+                            quadrature.data(),
+                            nullptr,
+                            elements_per_thread);
+                    }
+                    else
+                    {
+                        gausspulse_kernel<true, false><<<blocks, kThreadsPerBlock>>>(
+                            t_device.data(),
+                            size,
+                            a,
+                            fc,
+                            signal.data(),
+                            quadrature.data(),
+                            nullptr);
+                    }
                 }
                 else if (retenv)
                 {
-                    gausspulse_kernel<false, true><<<block_count(size), kThreadsPerBlock>>>(
-                        t_device.data(), size, a, fc, signal.data(), nullptr, envelope.data());
+                    if (use_tiled)
+                    {
+                        gausspulse_tiled_kernel<false, true><<<blocks, kThreadsPerBlock>>>(
+                            t_device.data(),
+                            size,
+                            a,
+                            fc,
+                            signal.data(),
+                            nullptr,
+                            envelope.data(),
+                            elements_per_thread);
+                    }
+                    else
+                    {
+                        gausspulse_kernel<false, true><<<blocks, kThreadsPerBlock>>>(
+                            t_device.data(),
+                            size,
+                            a,
+                            fc,
+                            signal.data(),
+                            nullptr,
+                            envelope.data());
+                    }
                 }
                 else
                 {
-                    gausspulse_kernel<false, false><<<block_count(size), kThreadsPerBlock>>>(
-                        t_device.data(), size, a, fc, signal.data(), nullptr, nullptr);
+                    if (use_tiled)
+                    {
+                        gausspulse_tiled_kernel<false, false><<<blocks, kThreadsPerBlock>>>(
+                            t_device.data(),
+                            size,
+                            a,
+                            fc,
+                            signal.data(),
+                            nullptr,
+                            nullptr,
+                            elements_per_thread);
+                    }
+                    else
+                    {
+                        gausspulse_kernel<false, false><<<blocks, kThreadsPerBlock>>>(
+                            t_device.data(),
+                            size,
+                            a,
+                            fc,
+                            signal.data(),
+                            nullptr,
+                            nullptr);
+                    }
                 }
                 check_kernel_launch("gausspulse_kernel");
 
@@ -461,8 +871,29 @@ namespace cusignal
                 }
 
                 core::ZxGpuRealSignal output(t_device.size());
-                sawtooth_scalar_kernel<<<block_count(t_device.size()), kThreadsPerBlock>>>(
-                    t_device.data(), t_device.size(), width, output.data());
+                const tile::PolicyDecision tuning = tile::select(
+                    tile::make_linear_operator_key("waveforms/sawtooth", t_device.size(), 0, 1));
+                const tile::ScopedPolicy policy_scope(tuning);
+                const bool use_tiled = tile::optimized_path() && t_device.size() >= 4096;
+                const int elements_per_thread =
+                    use_tiled ? tile::linear_shape(t_device.size()).elements_per_thread : 1;
+                const int blocks = use_tiled
+                                       ? tiled_block_count(t_device.size(), elements_per_thread)
+                                       : block_count(t_device.size());
+                if (use_tiled)
+                {
+                    sawtooth_tiled_scalar_kernel<<<blocks, kThreadsPerBlock>>>(
+                        t_device.data(),
+                        t_device.size(),
+                        width,
+                        output.data(),
+                        elements_per_thread);
+                }
+                else
+                {
+                    sawtooth_scalar_kernel<<<blocks, kThreadsPerBlock>>>(
+                        t_device.data(), t_device.size(), width, output.data());
+                }
                 check_kernel_launch("sawtooth_scalar_kernel");
                 return output;
             }
@@ -495,8 +926,32 @@ namespace cusignal
                 }
 
                 core::ZxGpuRealSignal output(t_device.size());
-                sawtooth_vector_kernel<<<block_count(t_device.size()), kThreadsPerBlock>>>(
-                    t_device.data(), width_device.data(), t_device.size(), output.data());
+                const tile::PolicyDecision tuning = tile::select(
+                    tile::make_linear_operator_key("waveforms/sawtooth", t_device.size(), 0, 2));
+                const tile::ScopedPolicy policy_scope(tuning);
+                const bool use_tiled = tile::optimized_path() && t_device.size() >= 4096;
+                const int elements_per_thread =
+                    use_tiled ? tile::linear_shape(t_device.size()).elements_per_thread : 1;
+                const int blocks = use_tiled
+                                       ? tiled_block_count(t_device.size(), elements_per_thread)
+                                       : block_count(t_device.size());
+                if (use_tiled)
+                {
+                    sawtooth_tiled_vector_kernel<<<blocks, kThreadsPerBlock>>>(
+                        t_device.data(),
+                        width_device.data(),
+                        t_device.size(),
+                        output.data(),
+                        elements_per_thread);
+                }
+                else
+                {
+                    sawtooth_vector_kernel<<<blocks, kThreadsPerBlock>>>(
+                        t_device.data(),
+                        width_device.data(),
+                        t_device.size(),
+                        output.data());
+                }
                 check_kernel_launch("sawtooth_vector_kernel");
                 return output;
             }
@@ -514,8 +969,29 @@ namespace cusignal
                 }
 
                 core::ZxGpuRealSignal output(t_device.size());
-                square_scalar_kernel<<<block_count(t_device.size()), kThreadsPerBlock>>>(
-                    t_device.data(), t_device.size(), duty, output.data());
+                const tile::PolicyDecision tuning = tile::select(
+                    tile::make_linear_operator_key("waveforms/square", t_device.size(), 0, 1));
+                const tile::ScopedPolicy policy_scope(tuning);
+                const bool use_tiled = tile::optimized_path() && t_device.size() >= 4096;
+                const int elements_per_thread =
+                    use_tiled ? tile::linear_shape(t_device.size()).elements_per_thread : 1;
+                const int blocks = use_tiled
+                                       ? tiled_block_count(t_device.size(), elements_per_thread)
+                                       : block_count(t_device.size());
+                if (use_tiled)
+                {
+                    square_tiled_scalar_kernel<<<blocks, kThreadsPerBlock>>>(
+                        t_device.data(),
+                        t_device.size(),
+                        duty,
+                        output.data(),
+                        elements_per_thread);
+                }
+                else
+                {
+                    square_scalar_kernel<<<blocks, kThreadsPerBlock>>>(
+                        t_device.data(), t_device.size(), duty, output.data());
+                }
                 check_kernel_launch("square_scalar_kernel");
                 return output;
             }
@@ -548,8 +1024,32 @@ namespace cusignal
                 }
 
                 core::ZxGpuRealSignal output(t_device.size());
-                square_vector_kernel<<<block_count(t_device.size()), kThreadsPerBlock>>>(
-                    t_device.data(), duty_device.data(), t_device.size(), output.data());
+                const tile::PolicyDecision tuning = tile::select(
+                    tile::make_linear_operator_key("waveforms/square", t_device.size(), 0, 2));
+                const tile::ScopedPolicy policy_scope(tuning);
+                const bool use_tiled = tile::optimized_path() && t_device.size() >= 4096;
+                const int elements_per_thread =
+                    use_tiled ? tile::linear_shape(t_device.size()).elements_per_thread : 1;
+                const int blocks = use_tiled
+                                       ? tiled_block_count(t_device.size(), elements_per_thread)
+                                       : block_count(t_device.size());
+                if (use_tiled)
+                {
+                    square_tiled_vector_kernel<<<blocks, kThreadsPerBlock>>>(
+                        t_device.data(),
+                        duty_device.data(),
+                        t_device.size(),
+                        output.data(),
+                        elements_per_thread);
+                }
+                else
+                {
+                    square_vector_kernel<<<blocks, kThreadsPerBlock>>>(
+                        t_device.data(),
+                        duty_device.data(),
+                        t_device.size(),
+                        output.data());
+                }
                 check_kernel_launch("square_vector_kernel");
                 return output;
             }

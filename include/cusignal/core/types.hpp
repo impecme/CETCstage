@@ -263,6 +263,20 @@ namespace cusignal
             {
                 return values;
             }
+
+            static void pack_into(
+                const std::vector<T> &values,
+                std::vector<device_value_type> &packed)
+            {
+                packed = values;
+            }
+
+            static void unpack_into(
+                const std::vector<device_value_type> &values,
+                std::vector<T> &unpacked)
+            {
+                unpacked = values;
+            }
         };
 
         /**
@@ -287,6 +301,19 @@ namespace cusignal
                 return packed;
             }
 
+            static void pack_into(
+                const std::vector<Complex> &values,
+                std::vector<device_value_type> &packed)
+            {
+                packed.resize(values.size());
+                for (std::size_t index = 0; index < values.size(); ++index)
+                {
+                    packed[index] = make_cuFloatComplex(
+                        values[index].real(),
+                        values[index].imag());
+                }
+            }
+
             static std::vector<Complex> unpack(const std::vector<device_value_type> &values)
             {
                 std::vector<Complex> unpacked(values.size(), Complex(0.0f, 0.0f));
@@ -297,6 +324,19 @@ namespace cusignal
                         cuCimagf(values[index]));
                 }
                 return unpacked;
+            }
+
+            static void unpack_into(
+                const std::vector<device_value_type> &values,
+                std::vector<Complex> &unpacked)
+            {
+                unpacked.resize(values.size());
+                for (std::size_t index = 0; index < values.size(); ++index)
+                {
+                    unpacked[index] = Complex(
+                        cuCrealf(values[index]),
+                        cuCimagf(values[index]));
+                }
             }
         };
 
@@ -310,6 +350,19 @@ namespace cusignal
 
         namespace detail
         {
+            template <typename T>
+            struct DeviceHostConversionScratch
+            {
+                std::vector<device_value_t<T>> packed;
+            };
+
+            template <typename T>
+            DeviceHostConversionScratch<T> &device_host_conversion_scratch()
+            {
+                thread_local DeviceHostConversionScratch<T> scratch;
+                return scratch;
+            }
+
             struct DeviceStorageCacheStats
             {
                 std::size_t allocation_calls = 0;
@@ -359,7 +412,7 @@ namespace cusignal
             inline std::size_t max_cached_bytes()
             {
                 static const std::size_t value =
-                    env_size_or_default("CUSIGNAL_DEVICE_STORAGE_CACHE_MAX_MB", 512) *
+                    env_size_or_default("CUSIGNAL_DEVICE_STORAGE_CACHE_MAX_MB", 15360) *
                     1024ULL * 1024ULL;
                 return value;
             }
@@ -367,10 +420,13 @@ namespace cusignal
             inline std::size_t max_single_cached_bytes()
             {
                 static const std::size_t value =
-                    env_size_or_default("CUSIGNAL_DEVICE_STORAGE_CACHE_MAX_SINGLE_MB", 256) *
+                    env_size_or_default("CUSIGNAL_DEVICE_STORAGE_CACHE_MAX_SINGLE_MB", 8192) *
                     1024ULL * 1024ULL;
                 return value;
             }
+
+            template <typename T>
+            std::size_t device_storage_bytes(std::size_t capacity);
 
             template <typename T>
             struct DeviceStorage
@@ -664,24 +720,50 @@ namespace cusignal
                     return;
                 }
 
-                const std::vector<device_value_type> packed = DeviceValueTraits<T>::pack(host);
-                platform::copy_host_to_device(
-                    data(),
-                    packed.data(),
-                    packed.size() * sizeof(device_value_type));
+                if constexpr (std::is_same_v<T, device_value_type>)
+                {
+                    platform::copy_host_to_device(
+                        data(),
+                        host.data(),
+                        host.size() * sizeof(T));
+                }
+                else
+                {
+                    auto &scratch = detail::device_host_conversion_scratch<T>();
+                    DeviceValueTraits<T>::pack_into(host, scratch.packed);
+                    platform::copy_host_to_device(
+                        data(),
+                        scratch.packed.data(),
+                        scratch.packed.size() * sizeof(device_value_type));
+                }
             }
 
             host_container_type get() const
             {
-                std::vector<device_value_type> packed(size_);
-                if (size_ != 0)
+                if constexpr (std::is_same_v<T, device_value_type>)
                 {
+                    host_container_type values(size_);
                     platform::copy_device_to_host(
-                        packed.data(),
+                        values.data(),
                         data(),
-                        packed.size() * sizeof(device_value_type));
+                        values.size() * sizeof(T));
+                    return values;
                 }
-                return DeviceValueTraits<T>::unpack(packed);
+                else
+                {
+                    auto &scratch = detail::device_host_conversion_scratch<T>();
+                    scratch.packed.resize(size_);
+                    if (size_ != 0)
+                    {
+                        platform::copy_device_to_host(
+                            scratch.packed.data(),
+                            data(),
+                            scratch.packed.size() * sizeof(device_value_type));
+                    }
+                    host_container_type values;
+                    DeviceValueTraits<T>::unpack_into(scratch.packed, values);
+                    return values;
+                }
             }
 
             device_value_type *data()
@@ -805,26 +887,49 @@ namespace cusignal
                     return;
                 }
 
-                const std::vector<device_value_type> packed = DeviceValueTraits<T>::pack(host.values);
-                platform::copy_host_to_device(
-                    data(),
-                    packed.data(),
-                    packed.size() * sizeof(device_value_type));
+                if constexpr (std::is_same_v<T, device_value_type>)
+                {
+                    platform::copy_host_to_device(
+                        data(),
+                        host.values.data(),
+                        host.values.size() * sizeof(T));
+                }
+                else
+                {
+                    auto &scratch = detail::device_host_conversion_scratch<T>();
+                    DeviceValueTraits<T>::pack_into(host.values, scratch.packed);
+                    platform::copy_host_to_device(
+                        data(),
+                        scratch.packed.data(),
+                        scratch.packed.size() * sizeof(device_value_type));
+                }
             }
 
             host_container_type get() const
             {
                 host_container_type host;
                 host.shape = shape_;
-                std::vector<device_value_type> packed(size_);
-                if (size_ != 0)
+                if constexpr (std::is_same_v<T, device_value_type>)
                 {
+                    host.values.resize(size_);
                     platform::copy_device_to_host(
-                        packed.data(),
+                        host.values.data(),
                         data(),
-                        packed.size() * sizeof(device_value_type));
+                        host.values.size() * sizeof(T));
                 }
-                host.values = DeviceValueTraits<T>::unpack(packed);
+                else
+                {
+                    auto &scratch = detail::device_host_conversion_scratch<T>();
+                    scratch.packed.resize(size_);
+                    if (size_ != 0)
+                    {
+                        platform::copy_device_to_host(
+                            scratch.packed.data(),
+                            data(),
+                            scratch.packed.size() * sizeof(device_value_type));
+                    }
+                    DeviceValueTraits<T>::unpack_into(scratch.packed, host.values);
+                }
                 return host;
             }
 

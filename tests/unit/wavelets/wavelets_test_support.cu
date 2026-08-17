@@ -455,6 +455,10 @@ namespace
 
     RealSignal sample_real_values(const RealSignal &values, std::size_t limit = 32)
     {
+        if (cusignal_test::cpu_reference_cache::write_full_outputs())
+        {
+            return values;
+        }
         if (values.size() <= limit)
         {
             return values;
@@ -464,6 +468,10 @@ namespace
 
     ComplexSignal sample_complex_values(const ComplexSignal &values, std::size_t limit = 32)
     {
+        if (cusignal_test::cpu_reference_cache::write_full_outputs())
+        {
+            return values;
+        }
         if (values.size() <= limit)
         {
             return values;
@@ -818,6 +826,7 @@ namespace
     {
         for (int warmup = 0; warmup < options.warmup; ++warmup)
         {
+            cusignal::core::benchmark::note_iteration();
             callable();
         }
         std::vector<float> durations;
@@ -825,6 +834,7 @@ namespace
         for (int repeat = 0; repeat < options.repeat; ++repeat)
         {
             const auto start = std::chrono::steady_clock::now();
+            cusignal::core::benchmark::note_iteration();
             callable();
             const auto stop = std::chrono::steady_clock::now();
             durations.push_back(std::chrono::duration<float, std::milli>(stop - start).count());
@@ -837,6 +847,7 @@ namespace
     {
         for (int warmup = 0; warmup < options.warmup; ++warmup)
         {
+            cusignal::core::benchmark::note_iteration();
             callable();
             (void)cusignal::zx_gpu_backend::wavelets_test_hooks::consume_last_kernel_ms();
         }
@@ -844,6 +855,7 @@ namespace
         durations.reserve(static_cast<std::size_t>(options.repeat));
         for (int repeat = 0; repeat < options.repeat; ++repeat)
         {
+            cusignal::core::benchmark::note_iteration();
             callable();
             durations.push_back(cusignal::zx_gpu_backend::wavelets_test_hooks::consume_last_kernel_ms());
         }
@@ -1412,20 +1424,37 @@ namespace
         CaseReport report;
         report.case_id = test_case.id;
         report.category = test_case.category;
+        if (op == "qmf")
+        {
+            report.samples = test_case.hk_count;
+        }
+        else if (op == "cwt")
+        {
+            report.samples = test_case.data_count * test_case.widths_count;
+        }
+        else if (op == "morlet" || op == "ricker" || op == "morlet2")
+        {
+            report.samples = test_case.points > 0 ? static_cast<std::size_t>(test_case.points) : 0;
+        }
 
+        std::optional<RealSignal> host_qmf_input;
+        std::optional<RealSignal> host_cwt_data;
+        std::optional<RealSignal> host_cwt_widths;
         std::optional<ZxGpuRealSignal> qmf_device_input;
         if (op == "qmf")
         {
-            qmf_device_input.emplace(ZxGpuRealSignal::from_host(load_hk_signal(test_case)));
+            host_qmf_input.emplace(load_hk_signal(test_case));
+            qmf_device_input.emplace(ZxGpuRealSignal::from_host(*host_qmf_input));
         }
         std::optional<ZxGpuRealSignal> cwt_device_data;
         std::optional<RealSignal> cwt_widths;
         if (op == "cwt")
         {
-            const RealSignal data = load_data_signal(test_case);
-            cwt_widths.emplace(load_widths_signal(test_case));
-            report.samples = data.size() * cwt_widths->size();
-            cwt_device_data.emplace(ZxGpuRealSignal::from_host(data));
+            host_cwt_data.emplace(load_data_signal(test_case));
+            host_cwt_widths.emplace(load_widths_signal(test_case));
+            cwt_widths.emplace(*host_cwt_widths);
+            report.samples = host_cwt_data->size() * cwt_widths->size();
+            cwt_device_data.emplace(ZxGpuRealSignal::from_host(*host_cwt_data));
         }
         auto run_gpu_perf = [&]() {
             if (qmf_device_input.has_value())
@@ -1443,11 +1472,23 @@ namespace
             return runner.gpu(test_case);
         };
 
-        auto run_gpu_e2e = [&]() -> OutputBundle {
+        auto refresh_gpu_operands = [&]() {
             if (qmf_device_input.has_value())
-                qmf_device_input->copy_from(load_hk_signal(test_case));
+            {
+                const RealSignal fresh = *host_qmf_input;
+                qmf_device_input->copy_from(fresh);
+            }
             if (cwt_device_data.has_value())
-                cwt_device_data->copy_from(load_data_signal(test_case));
+            {
+                const RealSignal fresh = *host_cwt_data;
+                cwt_device_data->copy_from(fresh);
+            }
+            if (cwt_widths.has_value())
+                *cwt_widths = *host_cwt_widths;
+        };
+
+        auto run_gpu_e2e = [&]() -> OutputBundle {
+            refresh_gpu_operands();
             return materialize(run_gpu_perf());
         };
 
@@ -1457,10 +1498,6 @@ namespace
             gpu_output = materialize(run_gpu_perf());
             report.samples = output_shape_size(gpu_output);
         }
-        else if (report.samples == 0)
-        {
-            report.samples = 0;
-        }
         if (!options.gpu_only_perf)
         {
             const OutputBundle cpu_output = runner.cpu(test_case);
@@ -1468,16 +1505,27 @@ namespace
         }
         report.pass = true;
 
-        if (!options.gpu_only_perf)
+        if (!options.gpu_only_perf && !cusignal::core::benchmark::skip_cpu_timing())
         {
             report.cpu_perf = benchmark_host_latency(options, [&]() { (void)runner.cpu(test_case); });
         }
+        const int benchmark_iterations = options.warmup + options.repeat;
+        // morlet, morlet2 and ricker are parameter-only generators: every
+        // iteration reconstructs the host-side parameters inside runner.gpu,
+        // but there is no logical input array to upload.  qmf and cwt do have
+        // device-resident data inputs and must prove a complete H2D refresh.
+        const bool requires_h2d = op == "qmf" || op == "cwt";
+        cusignal::core::benchmark::InputRefreshRun input_refresh(
+            static_cast<std::uint64_t>(2 * benchmark_iterations), requires_h2d);
         report.gpu_e2e_perf = benchmark_host_latency(options, [&]() {
             (void)run_gpu_e2e();
             cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
         });
         report.gpu_kernel_perf =
-            benchmark_gpu_kernel_latency(options, [&]() { (void)run_gpu_perf(); });
+            benchmark_gpu_kernel_latency(options, [&]() {
+                refresh_gpu_operands();
+                (void)run_gpu_perf();
+            });
 
         if (options.emit_report)
         {

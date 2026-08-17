@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "../../../include/cusignal/waveforms/waveforms.hpp"
+#include "../../../include/cusignal/core/benchmark_input_protocol.hpp"
 #include "../../../src/common/waveforms_detail.hpp"
 #include "../common/live_perf.hpp"
 #include "../common/json.hpp"
@@ -418,7 +419,9 @@ namespace
             {
                 ComplexSignal sample;
                 const std::size_t limit =
-                    std::min<std::size_t>(kSampleLimit, channel.values.size());
+                    cusignal_test::cpu_reference_cache::write_full_outputs()
+                        ? channel.values.size()
+                        : std::min<std::size_t>(kSampleLimit, channel.values.size());
                 sample.reserve(limit);
                 for (std::size_t index = 0; index < limit; ++index)
                 {
@@ -428,9 +431,11 @@ namespace
             }
             else
             {
-                RealSignal sample(channel.values.begin(),
-                                  channel.values.begin() +
-                                      std::min<std::size_t>(kSampleLimit, channel.values.size()));
+                const std::size_t limit =
+                    cusignal_test::cpu_reference_cache::write_full_outputs()
+                        ? channel.values.size()
+                        : std::min<std::size_t>(kSampleLimit, channel.values.size());
+                RealSignal sample(channel.values.begin(), channel.values.begin() + limit);
                 write_real_csv(path, sample);
             }
 
@@ -641,6 +646,7 @@ namespace
     {
         for (int warmup = 0; warmup < options.warmup; ++warmup)
         {
+            cusignal::core::benchmark::note_iteration();
             callable();
         }
 
@@ -649,6 +655,7 @@ namespace
         for (int repeat = 0; repeat < options.repeat; ++repeat)
         {
             const auto start = std::chrono::steady_clock::now();
+            cusignal::core::benchmark::note_iteration();
             callable();
             const auto stop = std::chrono::steady_clock::now();
             durations.push_back(
@@ -700,6 +707,7 @@ namespace
             {
                 return;
             }
+            cusignal::core::benchmark::note_host_to_device(count * sizeof(T));
             throw_on_zx_gpu_error(
                 cudaMemcpy(data_, host, count * sizeof(T), cudaMemcpyHostToDevice),
                 what);
@@ -901,6 +909,7 @@ namespace
 
         for (int warmup = 0; warmup < options.warmup; ++warmup)
         {
+            cusignal::core::benchmark::note_iteration();
             launch();
         }
         throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize warmup");
@@ -909,6 +918,7 @@ namespace
         samples.reserve(static_cast<std::size_t>(options.repeat));
         for (int repeat = 0; repeat < options.repeat; ++repeat)
         {
+            cusignal::core::benchmark::note_iteration();
             throw_on_zx_gpu_error(cudaEventRecord(start), "cudaEventRecord start");
             launch();
             throw_on_zx_gpu_error(cudaEventRecord(stop), "cudaEventRecord stop");
@@ -1947,8 +1957,6 @@ namespace
             return {};
         }
 
-        DeviceBuffer<float> device_t(test_case.t.size());
-        device_t.copy_from_host(test_case.t.data(), test_case.t.size(), "cudaMemcpy chirp kernel input");
         DeviceBuffer<float> device_output(test_case.type == "complex" ? 0 : test_case.t.size());
         DeviceBuffer<float2> device_complex(test_case.type == "complex" ? test_case.t.size() : 0);
         const float phi = cusignal::waveforms_detail::degrees_to_radians(test_case.phi);
@@ -1956,6 +1964,9 @@ namespace
         const int blocks = block_count(test_case.t.size());
 
         return benchmark_gpu_kernel_latency(options, [&]() {
+            DeviceBuffer<float> device_t(test_case.t.size());
+            device_t.copy_from_host(
+                test_case.t.data(), test_case.t.size(), "cudaMemcpy chirp kernel input");
             const std::string method = cusignal::waveforms_detail::validate_chirp_method(test_case.method);
             if (test_case.type == "complex")
             {
@@ -2021,9 +2032,6 @@ namespace
         {
             return {};
         }
-        DeviceBuffer<float> device_t(test_case.t.size());
-        device_t.copy_from_host(
-            test_case.t.data(), test_case.t.size(), "cudaMemcpy gausspulse kernel input");
         DeviceBuffer<float> signal(test_case.t.size());
         DeviceBuffer<float> quadrature(test_case.retquad ? test_case.t.size() : 0);
         DeviceBuffer<float> envelope(test_case.retenv ? test_case.t.size() : 0);
@@ -2031,6 +2039,9 @@ namespace
             cusignal::waveforms_detail::compute_gausspulse_a(test_case.fc, test_case.bw, test_case.bwr);
 
         return benchmark_gpu_kernel_latency(options, [&]() {
+            DeviceBuffer<float> device_t(test_case.t.size());
+            device_t.copy_from_host(
+                test_case.t.data(), test_case.t.size(), "cudaMemcpy gausspulse kernel input");
             if (test_case.retquad && test_case.retenv)
             {
                 gausspulse_kernel<true, true><<<block_count(test_case.t.size()), kThreadsPerBlock>>>(
@@ -2064,20 +2075,20 @@ namespace
         {
             return {};
         }
-        DeviceBuffer<float> device_t(test_case.t.size());
-        device_t.copy_from_host(
-            test_case.t.data(), test_case.t.size(), "cudaMemcpy sawtooth kernel input");
         DeviceBuffer<float> output(test_case.t.size());
-        DeviceBuffer<float> width(test_case.width_is_vector ? test_case.t.size() : 0);
-        if (test_case.width_is_vector)
-        {
-            width.copy_from_host(
-                test_case.width_values.data(),
-                test_case.width_values.size(),
-                "cudaMemcpy sawtooth kernel width");
-        }
 
         return benchmark_gpu_kernel_latency(options, [&]() {
+            DeviceBuffer<float> device_t(test_case.t.size());
+            device_t.copy_from_host(
+                test_case.t.data(), test_case.t.size(), "cudaMemcpy sawtooth kernel input");
+            DeviceBuffer<float> width(test_case.width_is_vector ? test_case.t.size() : 0);
+            if (test_case.width_is_vector)
+            {
+                width.copy_from_host(
+                    test_case.width_values.data(),
+                    test_case.width_values.size(),
+                    "cudaMemcpy sawtooth kernel width");
+            }
             if (test_case.width_is_vector)
             {
                 sawtooth_vector_kernel<<<block_count(test_case.t.size()), kThreadsPerBlock>>>(
@@ -2097,20 +2108,20 @@ namespace
         {
             return {};
         }
-        DeviceBuffer<float> device_t(test_case.t.size());
-        device_t.copy_from_host(
-            test_case.t.data(), test_case.t.size(), "cudaMemcpy square kernel input");
         DeviceBuffer<float> output(test_case.t.size());
-        DeviceBuffer<float> duty(test_case.duty_is_vector ? test_case.t.size() : 0);
-        if (test_case.duty_is_vector)
-        {
-            duty.copy_from_host(
-                test_case.duty_values.data(),
-                test_case.duty_values.size(),
-                "cudaMemcpy square kernel duty");
-        }
 
         return benchmark_gpu_kernel_latency(options, [&]() {
+            DeviceBuffer<float> device_t(test_case.t.size());
+            device_t.copy_from_host(
+                test_case.t.data(), test_case.t.size(), "cudaMemcpy square kernel input");
+            DeviceBuffer<float> duty(test_case.duty_is_vector ? test_case.t.size() : 0);
+            if (test_case.duty_is_vector)
+            {
+                duty.copy_from_host(
+                    test_case.duty_values.data(),
+                    test_case.duty_values.size(),
+                    "cudaMemcpy square kernel duty");
+            }
             if (test_case.duty_is_vector)
             {
                 square_vector_kernel<<<block_count(test_case.t.size()), kThreadsPerBlock>>>(
@@ -2472,8 +2483,15 @@ namespace
                     report.cpu_gpu_error =
                         compare_output_bundles(gpu_output, cpu_output, test_case.atol, test_case.rtol);
                     report.pass = report.cpu_gpu_error.exact_match;
-                    report.cpu_perf = benchmark_host_latency(options, [&]() { (void)cpu_runner(test_case); });
+                    if (!cusignal::core::benchmark::skip_cpu_timing())
+                    {
+                        report.cpu_perf = benchmark_host_latency(options, [&]() { (void)cpu_runner(test_case); });
+                    }
                 }
+                const int benchmark_iterations = options.warmup + options.repeat;
+                cusignal::core::benchmark::InputRefreshRun input_refresh(
+                    static_cast<std::uint64_t>(2 * benchmark_iterations),
+                    op != "unit_impulse");
                 report.gpu_e2e_perf =
                     benchmark_host_latency(options, [&]() {
                         // E2E invokes the public host-input path every time,

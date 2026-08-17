@@ -692,6 +692,10 @@ namespace
 
     RealSignal sample_real_values(const RealSignal &values, std::size_t limit = 32)
     {
+        if (cusignal_test::cpu_reference_cache::write_full_outputs())
+        {
+            return values;
+        }
         if (values.size() <= limit)
         {
             return values;
@@ -701,6 +705,10 @@ namespace
 
     ComplexSignal sample_complex_values(const ComplexSignal &values, std::size_t limit = 32)
     {
+        if (cusignal_test::cpu_reference_cache::write_full_outputs())
+        {
+            return values;
+        }
         if (values.size() <= limit)
         {
             return values;
@@ -1472,6 +1480,7 @@ namespace
     {
         for (int warmup = 0; warmup < options.warmup; ++warmup)
         {
+            cusignal::core::benchmark::note_iteration();
             callable();
         }
         std::vector<float> durations;
@@ -1479,6 +1488,7 @@ namespace
         for (int repeat = 0; repeat < options.repeat; ++repeat)
         {
             const auto start = std::chrono::steady_clock::now();
+            cusignal::core::benchmark::note_iteration();
             callable();
             const auto stop = std::chrono::steady_clock::now();
             durations.push_back(std::chrono::duration<float, std::milli>(stop - start).count());
@@ -1491,6 +1501,7 @@ namespace
     {
         for (int warmup = 0; warmup < options.warmup; ++warmup)
         {
+            cusignal::core::benchmark::note_iteration();
             callable();
             (void)cusignal::zx_gpu_backend::spectral_test_hooks::consume_last_kernel_ms();
         }
@@ -1498,6 +1509,7 @@ namespace
         durations.reserve(static_cast<std::size_t>(options.repeat));
         for (int repeat = 0; repeat < options.repeat; ++repeat)
         {
+            cusignal::core::benchmark::note_iteration();
             callable();
             durations.push_back(cusignal::zx_gpu_backend::spectral_test_hooks::consume_last_kernel_ms());
         }
@@ -3494,31 +3506,39 @@ namespace
         CaseReport report;
         report.case_id = test_case.id;
         report.category = test_case.category;
+        std::optional<RealArray> host_csd_x;
+        std::optional<RealArray> host_csd_y;
+        std::optional<RealArray> host_spectral_x;
+        std::optional<RealSignal> host_vectorstrength_events;
+        std::optional<RealSignal> host_vectorstrength_periods;
 
         std::optional<ZxGpuRealArray> csd_x;
         std::optional<ZxGpuRealArray> csd_y;
         if (op == "csd")
         {
-            csd_x.emplace(ZxGpuRealArray::from_host(load_x_array(test_case)));
-            csd_y.emplace(ZxGpuRealArray::from_host(load_y_array(test_case)));
+            host_csd_x.emplace(load_x_array(test_case));
+            host_csd_y.emplace(load_y_array(test_case));
+            csd_x.emplace(ZxGpuRealArray::from_host(*host_csd_x));
+            csd_y.emplace(ZxGpuRealArray::from_host(*host_csd_y));
         }
         std::optional<ZxGpuRealArray> spectral_x;
         if (op == "spectrogram" || op == "stft")
         {
-            const RealArray x = load_x_array(test_case);
-            report.samples = x.values.size();
-            spectral_x.emplace(ZxGpuRealArray::from_host(x));
+            host_spectral_x.emplace(load_x_array(test_case));
+            report.samples = host_spectral_x->values.size();
+            spectral_x.emplace(ZxGpuRealArray::from_host(*host_spectral_x));
         }
         std::optional<ZxGpuRealSignal> vectorstrength_events;
         std::optional<RealSignal> vectorstrength_periods;
         if (op == "vectorstrength")
         {
-            const RealSignal events = load_events(test_case);
-            report.samples = events.size();
-            vectorstrength_events.emplace(ZxGpuRealSignal::from_host(events));
+            host_vectorstrength_events.emplace(load_events(test_case));
+            report.samples = host_vectorstrength_events->size();
+            vectorstrength_events.emplace(ZxGpuRealSignal::from_host(*host_vectorstrength_events));
             if (!(test_case.period_scalar > 0.0))
             {
-                vectorstrength_periods.emplace(load_periods(test_case));
+                host_vectorstrength_periods.emplace(load_periods(test_case));
+                vectorstrength_periods.emplace(*host_vectorstrength_periods);
             }
         }
         auto run_gpu_perf = [&]() -> DeviceOutputBundle {
@@ -3583,16 +3603,34 @@ namespace
             return runner.gpu(test_case);
         };
 
-        auto run_gpu_e2e = [&]() -> OutputBundle {
+        auto refresh_gpu_operands = [&]() {
             if (csd_x.has_value())
-                csd_x->copy_from(load_x_array(test_case));
+            {
+                const RealArray fresh = *host_csd_x;
+                csd_x->copy_from(fresh);
+            }
             if (csd_y.has_value())
-                csd_y->copy_from(load_y_array(test_case));
+            {
+                const RealArray fresh = *host_csd_y;
+                csd_y->copy_from(fresh);
+            }
             if (spectral_x.has_value())
-                spectral_x->copy_from(load_x_array(test_case));
+            {
+                const RealArray fresh = *host_spectral_x;
+                spectral_x->copy_from(fresh);
+            }
             if (vectorstrength_events.has_value())
-                vectorstrength_events->copy_from(load_events(test_case));
+            {
+                const RealSignal fresh = *host_vectorstrength_events;
+                vectorstrength_events->copy_from(fresh);
+            }
+            if (vectorstrength_periods.has_value())
+                *vectorstrength_periods = *host_vectorstrength_periods;
             // All output fields are materialized here so D2H is part of E2E.
+        };
+
+        auto run_gpu_e2e = [&]() -> OutputBundle {
+            refresh_gpu_operands();
             return materialize(run_gpu_perf());
         };
 
@@ -3613,15 +3651,21 @@ namespace
             report.cpu_gpu_error = compute_bundle_error(cpu_output, gpu_output, test_case.atol);
         }
         report.pass = true;
-        if (!options.gpu_only_perf)
+        if (!options.gpu_only_perf && !cusignal::core::benchmark::skip_cpu_timing())
         {
             report.cpu_perf = benchmark_host_latency(options, [&]() { (void)runner.cpu(test_case); });
         }
+        const int benchmark_iterations = options.warmup + options.repeat;
+        cusignal::core::benchmark::InputRefreshRun input_refresh(
+            static_cast<std::uint64_t>(2 * benchmark_iterations), true);
         report.gpu_e2e_perf = benchmark_host_latency(options, [&]() {
             (void)run_gpu_e2e();
             cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
         });
-        report.gpu_kernel_perf = benchmark_gpu_kernel_latency(options, [&]() { (void)run_gpu_perf(); });
+        report.gpu_kernel_perf = benchmark_gpu_kernel_latency(options, [&]() {
+            refresh_gpu_operands();
+            (void)run_gpu_perf();
+        });
 
         if (options.emit_report)
         {

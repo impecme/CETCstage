@@ -6,6 +6,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstdio>
+#include <cstdint>
 #include <ctime>
 #include <filesystem>
 #include <fstream>
@@ -17,7 +18,10 @@
 #include <vector>
 
 #include "cusignal/core/types.hpp"
+#include "cusignal/core/benchmark_input_protocol.hpp"
+#include "benchmark_overhead_protocol.hpp"
 #include "json.hpp"
+#include "../../../src/common/zx_tile_policy.hpp"
 
 namespace cusignal_test::report
 {
@@ -144,6 +148,87 @@ namespace cusignal_test::report
             }
         }
         return stream.str();
+    }
+
+    inline std::string build_zx_tuning_json(int indent)
+    {
+        const auto &trace = cusignal::zx_tile::policy_trace_snapshot();
+        const std::string current_indent(static_cast<std::size_t>(indent), ' ');
+        const std::string child_indent(static_cast<std::size_t>(indent + 2), ' ');
+        const std::string device_indent(static_cast<std::size_t>(indent + 4), ' ');
+        const auto &device = trace.device;
+        const auto storage_cache = cusignal::core::device_storage_cache_stats_snapshot();
+        const std::size_t measured_workspace_bytes =
+            trace.config.workspace_bytes != 0
+                ? trace.config.workspace_bytes
+                : storage_cache.peak_cached_bytes;
+        std::ostringstream stream;
+        stream << "{\n";
+        stream << child_indent << "\"registry_version\": \""
+               << cusignal::zx_tile::kRegistryVersion << "\",\n";
+        stream << child_indent << "\"family\": \"" << json_escape(trace.family) << "\",\n";
+        stream << child_indent << "\"operator_id\": \""
+               << json_escape(cusignal::zx_tile::policy_trace_operator_id()) << "\",\n";
+        stream << child_indent << "\"key\": \"" << json_escape(trace.key) << "\",\n";
+        stream << child_indent << "\"candidate\": \"" << json_escape(trace.candidate) << "\",\n";
+        stream << child_indent << "\"source\": \"" << json_escape(trace.source) << "\",\n";
+        stream << child_indent << "\"reason\": \"" << json_escape(trace.reason) << "\",\n";
+        stream << child_indent << "\"config\": {\n";
+        stream << device_indent << "\"threads\": " << trace.config.tile.threads << ",\n";
+        stream << device_indent << "\"tile_rows\": " << trace.config.tile_rows << ",\n";
+        stream << device_indent << "\"tile_cols\": " << trace.config.tile_cols << ",\n";
+        stream << device_indent << "\"elements_per_thread\": "
+               << trace.config.tile.elements_per_thread << ",\n";
+        stream << device_indent << "\"rows_per_block\": "
+               << trace.config.tile.rows_per_block << ",\n";
+        stream << device_indent << "\"vector_width\": "
+               << trace.config.tile.vector_width << ",\n";
+        stream << device_indent << "\"stages\": "
+               << static_cast<int>(trace.config.tile.stages) << ",\n";
+        stream << device_indent << "\"scan_elements\": " << trace.config.scan_elements << ",\n";
+        stream << device_indent << "\"buffer_count\": " << trace.config.buffer_count << ",\n";
+        stream << device_indent << "\"batch_tile\": " << trace.config.batch_tile << ",\n";
+        stream << device_indent << "\"memory_tier\": "
+               << static_cast<int>(trace.config.memory_tier) << ",\n";
+        stream << device_indent << "\"plan_variant\": " << trace.config.plan_variant << ",\n";
+        stream << device_indent << "\"workspace_bytes\": " << measured_workspace_bytes << ",\n";
+        stream << device_indent << "\"workspace_peak_bytes\": " << measured_workspace_bytes << ",\n";
+        stream << device_indent << "\"workspace_measurement\": \"device_storage_cache_peak\"\n";
+        stream << child_indent << "},\n";
+        stream << child_indent << "\"device\": {\n";
+        stream << device_indent << "\"valid\": " << (device.valid ? "true" : "false") << ",\n";
+        stream << device_indent << "\"id\": " << device.id << ",\n";
+        stream << device_indent << "\"name\": \"" << json_escape(device.name) << "\",\n";
+        stream << device_indent << "\"runtime_version\": " << device.runtime_version << ",\n";
+        stream << device_indent << "\"compute_major\": " << device.compute_major << ",\n";
+        stream << device_indent << "\"compute_minor\": " << device.compute_minor << ",\n";
+        stream << device_indent << "\"total_global_mem\": " << device.total_global_mem << ",\n";
+        stream << device_indent << "\"target\": \"" << json_escape(device.target) << "\"\n";
+        stream << child_indent << "}\n";
+        stream << current_indent << '}';
+        return stream.str();
+    }
+
+    inline void append_zx_tuning_field(
+        std::ostringstream &stream,
+        int indent,
+        bool &has_previous_field,
+        const std::string &operator_id = {})
+    {
+        const auto &trace = cusignal::zx_tile::policy_trace_snapshot();
+        if (!trace.valid ||
+            (!operator_id.empty() && !trace.operator_id.empty() &&
+             trace.operator_id != operator_id))
+        {
+            return;
+        }
+        if (has_previous_field)
+        {
+            stream << ",\n";
+        }
+        stream << std::string(static_cast<std::size_t>(indent), ' ')
+               << "\"zx_tuning\": " << build_zx_tuning_json(indent);
+        has_previous_field = true;
     }
 
     inline std::string format_float(float value)
@@ -319,6 +404,71 @@ namespace cusignal_test::report
         has_previous_field = true;
     }
 
+    inline std::string overhead_counter_json(
+        const std::optional<std::uint64_t> &value)
+    {
+        return value.has_value() ? std::to_string(*value) : "\"N/A\"";
+    }
+
+    inline std::string overhead_counter_text(
+        const std::optional<std::uint64_t> &value)
+    {
+        return value.has_value() ? std::to_string(*value) : "N/A";
+    }
+
+    inline std::string build_non_kernel_overhead_json(int indent)
+    {
+        const auto stats = cusignal_test::benchmark_overhead::snapshot();
+        const std::string current_indent(static_cast<std::size_t>(indent), ' ');
+        const std::string child_indent(static_cast<std::size_t>(indent + 2), ' ');
+        std::ostringstream stream;
+        stream << "{\n";
+        stream << child_indent << "\"protocol_version\": 1,\n";
+        stream << child_indent << "\"captured\": "
+               << (stats.captured ? "true" : "false") << ",\n";
+        stream << child_indent << "\"allocation_calls\": "
+               << overhead_counter_json(stats.allocation_calls) << ",\n";
+        stream << child_indent << "\"allocation_bytes\": "
+               << overhead_counter_json(stats.allocation_bytes) << ",\n";
+        stream << child_indent << "\"plan_create_calls\": "
+               << overhead_counter_json(stats.plan_create_calls) << ",\n";
+        stream << child_indent << "\"plan_destroy_calls\": "
+               << overhead_counter_json(stats.plan_destroy_calls) << ",\n";
+        stream << child_indent << "\"event_create_calls\": "
+               << overhead_counter_json(stats.event_create_calls) << ",\n";
+        stream << child_indent << "\"event_destroy_calls\": "
+               << overhead_counter_json(stats.event_destroy_calls) << ",\n";
+        stream << child_indent << "\"explicit_device_sync_calls\": "
+               << overhead_counter_json(stats.explicit_device_sync_calls) << ",\n";
+        stream << child_indent << "\"h2d_calls\": "
+               << overhead_counter_json(stats.h2d_calls) << ",\n";
+        stream << child_indent << "\"h2d_bytes\": "
+               << overhead_counter_json(stats.h2d_bytes) << ",\n";
+        stream << child_indent << "\"d2h_calls\": "
+               << overhead_counter_json(stats.d2h_calls) << ",\n";
+        stream << child_indent << "\"d2h_bytes\": "
+               << overhead_counter_json(stats.d2h_bytes) << ",\n";
+        stream << child_indent << "\"materialize_calls\": "
+               << overhead_counter_json(stats.materialize_calls) << '\n';
+        stream << current_indent << '}';
+        return stream.str();
+    }
+
+    inline void append_non_kernel_overhead_field(
+        std::ostringstream &stream,
+        int indent,
+        bool &has_previous_field)
+    {
+        if (has_previous_field)
+        {
+            stream << ",\n";
+        }
+        stream << std::string(static_cast<std::size_t>(indent), ' ')
+               << "\"non_kernel_overhead\": "
+               << build_non_kernel_overhead_json(indent);
+        has_previous_field = true;
+    }
+
     inline const cusignal_test::json::Object &as_object(
         const cusignal_test::json::Value &value)
     {
@@ -400,18 +550,40 @@ namespace cusignal_test::report
                    << "\n";
             stream << "- gpu_e2e p95_ms: " << format_fixed(summary.gpu_e2e_perf->p95_ms)
                    << "\n";
-            stream << "- gpu_e2e speedup: "
-                   << format_fixed(median_speedup(summary.cpu_perf, summary.gpu_e2e_perf))
-                   << "x\n";
+            stream << "- gpu_e2e speedup: ";
+            if (valid_timing(summary.cpu_perf))
+            {
+                stream << format_fixed(median_speedup(summary.cpu_perf, summary.gpu_e2e_perf)) << "x\n";
+            }
+            else
+            {
+                stream << "N/A (CPU median supplied by frozen comparison)\n";
+            }
         }
         if (valid_timing(summary.gpu_kernel_perf))
         {
             stream << "- gpu_kernel median_ms: "
                    << format_fixed(summary.gpu_kernel_perf->median_ms) << "\n";
-            stream << "- gpu_kernel speedup: "
-                   << format_fixed(median_speedup(summary.cpu_perf, summary.gpu_kernel_perf))
-                   << "x\n";
+            stream << "- gpu_kernel speedup: ";
+            if (valid_timing(summary.cpu_perf))
+            {
+                stream << format_fixed(median_speedup(summary.cpu_perf, summary.gpu_kernel_perf)) << "x\n";
+            }
+            else
+            {
+                stream << "N/A (CPU median supplied by frozen comparison)\n";
+            }
         }
+        const auto input_refresh = cusignal::core::benchmark::input_refresh_snapshot();
+        stream << "- input_refresh: " << (input_refresh.pass ? "PASS" : "FAIL")
+               << " (expected=" << input_refresh.expected_iterations
+               << ", observed=" << input_refresh.observed_iterations
+               << ", h2d_calls=" << input_refresh.h2d_copy_calls
+               << ", h2d_bytes=" << input_refresh.h2d_bytes
+               << ", iterations_with_h2d=" << input_refresh.iterations_with_h2d
+               << ", min_h2d_bytes_per_iteration=" << input_refresh.min_h2d_bytes_per_iteration
+               << ", max_h2d_bytes_per_iteration=" << input_refresh.max_h2d_bytes_per_iteration
+               << ")\n";
         const auto cache_stats = cusignal::core::device_storage_cache_stats_snapshot();
         stream << "- device_cache allocations: " << cache_stats.allocation_calls
                << " calls, " << format_fixed(static_cast<float>(bytes_to_mib(cache_stats.allocation_bytes)))
@@ -421,6 +593,22 @@ namespace cusignal_test::report
         stream << "- device_cache recycled: " << cache_stats.recycled_blocks
                << " blocks, " << format_fixed(static_cast<float>(bytes_to_mib(cache_stats.recycled_bytes)))
                << " MiB\n";
+        const auto overhead = cusignal_test::benchmark_overhead::snapshot();
+        stream << "- non_kernel_overhead: allocation_calls="
+               << overhead_counter_text(overhead.allocation_calls)
+               << ", allocation_bytes=" << overhead_counter_text(overhead.allocation_bytes)
+               << ", plan_create_calls=" << overhead_counter_text(overhead.plan_create_calls)
+               << ", plan_destroy_calls=" << overhead_counter_text(overhead.plan_destroy_calls)
+               << ", event_create_calls=" << overhead_counter_text(overhead.event_create_calls)
+               << ", event_destroy_calls=" << overhead_counter_text(overhead.event_destroy_calls)
+               << ", explicit_device_sync_calls="
+               << overhead_counter_text(overhead.explicit_device_sync_calls)
+               << ", h2d_calls=" << overhead_counter_text(overhead.h2d_calls)
+               << ", h2d_bytes=" << overhead_counter_text(overhead.h2d_bytes)
+               << ", d2h_calls=" << overhead_counter_text(overhead.d2h_calls)
+               << ", d2h_bytes=" << overhead_counter_text(overhead.d2h_bytes)
+               << ", materialize_calls=" << overhead_counter_text(overhead.materialize_calls)
+               << "\n";
         stream << "\n## Cases\n\n";
         for (const CaseT &report : cases)
         {
@@ -540,6 +728,7 @@ namespace cusignal_test::report
         stream << "  },\n";
         stream << "  \"summary\": {\n";
         stream << "    \"pass\": " << (summary.pass ? "true" : "false") << ",\n";
+        stream << "    \"case_set\": \"" << json_escape(options.case_set) << "\",\n";
         stream << "    \"accuracy_cases\": " << summary.accuracy_cases << ",\n";
         stream << "    \"perf_cases\": " << summary.perf_cases << ",\n";
         stream << "    \"max_abs_error\": " << summary.cpu_gpu_error.max_abs_error << ",\n";
@@ -555,6 +744,7 @@ namespace cusignal_test::report
         stream << "    \"path_kind\": \""
                << (valid_timing(summary.gpu_kernel_perf) ? "gpu_kernel" : "cpu_or_no_independent_kernel")
                << "\",\n";
+        stream << "    \"speedup_definition\": \"cpu_perf.median_ms / gpu_e2e_perf.median_ms\",\n";
         const bool input_free_e2e =
             module == "windows" ||
             (module == "filter_design" && op != "cmplx_sort") ||
@@ -568,8 +758,25 @@ namespace cusignal_test::report
                        : "host input construction + fresh H2D + compute + D2H/output materialization")
                << "\",\n";
         stream << "    \"gpu_kernel_scope\": \"prepared device input + CUDA events; H2D/D2H excluded\"";
-        stream << ",\n    \"input_refresh_policy\": \"fresh host values and H2D on every measured GPU E2E repeat\",\n";
-        stream << "    \"workspace_reuse_policy\": \"device allocation capacity and FFT plan may be reused; input values may not\"";
+        stream << ",\n    \"input_refresh_policy\": \""
+               << (input_free_e2e
+                       ? "reconstruct host parameters on every warmup/repeat; no input H2D"
+                       : "reconstruct input object and perform full H2D on every warmup/repeat")
+               << "\",\n";
+        stream << "    \"workspace_reuse_policy\": \"device allocation capacity and FFT plan may be reused; input object may not\",\n";
+        const auto input_refresh = cusignal::core::benchmark::input_refresh_snapshot();
+        stream << "    \"input_refresh_values_policy\": \"manifest_clone; values may be identical across iterations\",\n";
+        stream << "    \"input_refresh\": {\n"
+               << "      \"expected_iterations\": " << input_refresh.expected_iterations << ",\n"
+               << "      \"observed_iterations\": " << input_refresh.observed_iterations << ",\n"
+               << "      \"h2d_copy_calls\": " << input_refresh.h2d_copy_calls << ",\n"
+               << "      \"h2d_bytes\": " << input_refresh.h2d_bytes << ",\n"
+               << "      \"iterations_with_h2d\": " << input_refresh.iterations_with_h2d << ",\n"
+               << "      \"min_h2d_bytes_per_iteration\": " << input_refresh.min_h2d_bytes_per_iteration << ",\n"
+               << "      \"max_h2d_bytes_per_iteration\": " << input_refresh.max_h2d_bytes_per_iteration << ",\n"
+               << "      \"requires_h2d\": " << (input_refresh.requires_h2d ? "true" : "false") << ",\n"
+               << "      \"pass\": " << (input_refresh.pass ? "true" : "false") << "\n"
+               << "    }";
         bool has_summary_field = true;
         append_timing_stats_field(
             stream, "cpu_perf", summary.cpu_perf, options.warmup, options.repeat, 4, has_summary_field);
@@ -588,6 +795,8 @@ namespace cusignal_test::report
                                   4,
                                   has_summary_field);
         append_device_storage_cache_stats_field(stream, 4, has_summary_field);
+        append_non_kernel_overhead_field(stream, 4, has_summary_field);
+        append_zx_tuning_field(stream, 4, has_summary_field, module + "/" + op);
         stream << "\n";
         stream << "  },\n";
         stream << "  \"cases\": [\n";
@@ -693,6 +902,7 @@ namespace cusignal_test::report
         stream << "  },\n";
         stream << "  \"summary\": {\n";
         stream << "    \"pass\": " << (summary.pass ? "true" : "false") << ",\n";
+        stream << "    \"case_set\": \"" << json_escape(options.case_set) << "\",\n";
         stream << "    \"accuracy_cases\": " << summary.accuracy_cases << ",\n";
         stream << "    \"perf_cases\": " << summary.perf_cases << ",\n";
         stream << "    \"max_abs_error\": " << summary.cpu_gpu_error.max_abs_error << ",\n";
@@ -708,6 +918,7 @@ namespace cusignal_test::report
         stream << "    \"path_kind\": \""
                << (valid_timing(summary.gpu_kernel_perf) ? "gpu_kernel" : "cpu_or_no_independent_kernel")
                << "\",\n";
+        stream << "    \"speedup_definition\": \"cpu_perf.median_ms / gpu_e2e_perf.median_ms\",\n";
         const bool input_free_e2e =
             module == "windows" ||
             (module == "filter_design" && op != "cmplx_sort") ||
@@ -721,8 +932,25 @@ namespace cusignal_test::report
                        : "host input construction + fresh H2D + compute + D2H/output materialization")
                << "\",\n";
         stream << "    \"gpu_kernel_scope\": \"prepared device input + CUDA events; H2D/D2H excluded\"";
-        stream << ",\n    \"input_refresh_policy\": \"fresh host values and H2D on every measured GPU E2E repeat\",\n";
-        stream << "    \"workspace_reuse_policy\": \"device allocation capacity and FFT plan may be reused; input values may not\"";
+        stream << ",\n    \"input_refresh_policy\": \""
+               << (input_free_e2e
+                       ? "reconstruct host parameters on every warmup/repeat; no input H2D"
+                       : "reconstruct input object and perform full H2D on every warmup/repeat")
+               << "\",\n";
+        stream << "    \"workspace_reuse_policy\": \"device allocation capacity and FFT plan may be reused; input object may not\",\n";
+        const auto input_refresh = cusignal::core::benchmark::input_refresh_snapshot();
+        stream << "    \"input_refresh_values_policy\": \"manifest_clone; values may be identical across iterations\",\n";
+        stream << "    \"input_refresh\": {\n"
+               << "      \"expected_iterations\": " << input_refresh.expected_iterations << ",\n"
+               << "      \"observed_iterations\": " << input_refresh.observed_iterations << ",\n"
+               << "      \"h2d_copy_calls\": " << input_refresh.h2d_copy_calls << ",\n"
+               << "      \"h2d_bytes\": " << input_refresh.h2d_bytes << ",\n"
+               << "      \"iterations_with_h2d\": " << input_refresh.iterations_with_h2d << ",\n"
+               << "      \"min_h2d_bytes_per_iteration\": " << input_refresh.min_h2d_bytes_per_iteration << ",\n"
+               << "      \"max_h2d_bytes_per_iteration\": " << input_refresh.max_h2d_bytes_per_iteration << ",\n"
+               << "      \"requires_h2d\": " << (input_refresh.requires_h2d ? "true" : "false") << ",\n"
+               << "      \"pass\": " << (input_refresh.pass ? "true" : "false") << "\n"
+               << "    }";
         bool has_summary_field = true;
         append_timing_stats_field(
             stream, "cpu_perf", summary.cpu_perf, options.warmup, options.repeat, 4, has_summary_field);
@@ -741,6 +969,8 @@ namespace cusignal_test::report
                                   4,
                                   has_summary_field);
         append_device_storage_cache_stats_field(stream, 4, has_summary_field);
+        append_non_kernel_overhead_field(stream, 4, has_summary_field);
+        append_zx_tuning_field(stream, 4, has_summary_field, module + "/" + op);
         stream << "\n";
         stream << "  },\n";
         stream << "  \"cases\": []\n";

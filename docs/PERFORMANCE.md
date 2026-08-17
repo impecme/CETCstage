@@ -21,6 +21,12 @@
 scripts/performance.sh [选择器] [--scale L1|L2|L3|L4|L5|L6|all]
 ```
 
+正式性能口径默认使用 `--case-set full`：同一次运行同时执行 accuracy 和 perf，报告中的
+`cpu_gpu_*` 误差只来自当前规模 perf case 的 CPU/GPU 对比（不把固定 accuracy case 的误差
+混入规模行），且 `summary.pass` 具备正确性含义。
+`--case-set perf` 仅用于明确标记的 timing-only 探针，此时正确性状态必须视为
+`NOT_REPORTED`，不能作为正式基线或优化验收依据；`--case-set smoke` 只做 L3 烟测。
+
 选择器可以是算子集合、模块、单个 `module/operator`、Task1、Task2 或两者：
 
 ```bash
@@ -32,8 +38,25 @@ scripts/performance.sh --tasks --task both --scale L6
 scripts/performance.sh --all --scale all
 ```
 
+若只验收优化后的公共算子，使用冻结 GPU baseline 的专用入口。该入口直接复用
+`operator_gpu_baseline_75a700d_protocol/inputs/` 中的 486 个 manifest，不重新运行或
+修改 baseline；CPU reference 也只取 frozen CSV 中已保存的值：
+
+```bash
+scripts/run_optimized_operators_against_frozen.sh \
+  --output-root data/reports/operator_gpu_optimized_frozen_latest
+```
+
+结果写入 `output-root/units/benchmarks/`，配对结果写入
+`output-root/comparison/operator_gpu_comparison.{csv,json,md}`。主验收指标是优化版本与
+frozen baseline 使用同一 CPU reference 计算出的 CPU→GPU E2E 加速比是否变大；缺失
+kernel 时间记为 `N/A`，不使用 E2E 时间代替。`--frozen-baseline PATH` 也可直接传给
+`scripts/performance.sh`，但只允许 operator-only 运行。
+
 不传选择器时执行 `all81` 和两个任务；不传规模时执行 L1～L6。自定义规模暂不支持，
-脚本会在启动阶段拒绝 `--scale custom`。默认 `warmup=5/repeat=30`，已有二进制可用
+脚本会在启动阶段拒绝 `--scale custom`。默认 `warmup=5/repeat=30`，warmup 和 measured
+repeat 使用同一确定性 seed/config 生成的逻辑输入，但每次 E2E 都刷新 host-backed device
+input；kernel 计时复用预上传 device input，从而不把 H2D/D2H 混入 kernel。已有二进制可用
 `--no-build`。
 
 正确性烟测使用同一组选择器，但固定代表性 L3：
@@ -65,7 +88,13 @@ scripts/smoke.sh --tasks --task both
 阶段保持为空/`null`，不从端到端耗时反推；无独立 GPU Kernel 的算子同样使用空值和
 “—/不适用”。
 
+容量感知显存/分块策略在 ZQ500 的 all81×L1/L3/L6 代表集上做过 GPU-only 验证，
+但 CPU→GPU E2E 加速比没有整体变大，未保留为生产路径；当前代码不依赖该策略，也不以
+显存占用率替代 E2E 加速比作为验收标准。
+
 任务报告记录 CPU total、GPU total、任务步骤 kernel 总时延、正确性和无效输入检查。
+任务 E2E 加速比严格按每个完整 measured repeat 的总耗时先取中位数，再计算
+`median(cpu_e2e_repeat_total) / median(gpu_e2e_repeat_total)`；不能用各阶段中位数之和替代。
 
 任务级 GPU E2E 每个正式 repeat 都在 Device 端重新生成波形、目标回波/帧和噪声；任务链内部的
 Device 输出直接传给下一算子，链尾统一执行 D2H/输出物化。CPU 和 GPU 使用相同场景参数、seed、索引映射和计数式 RNG，但分别持有各自输入。允许复用的是“容量”而非

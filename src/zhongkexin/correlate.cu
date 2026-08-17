@@ -13,6 +13,7 @@
 #include "cusignal/core/platform_zx_gpu_libraries.hpp"
 
 #include "../common/correlate_detail.hpp"
+#include "../common/zx_tile_policy.hpp"
 
 namespace
 {
@@ -23,8 +24,13 @@ namespace
     using cusignal::core::IndexVector;
     using cusignal::core::Shape;
     namespace detail = cusignal::correlate_detail;
+    namespace tile = cusignal::zx_tile;
 
     constexpr int kThreadsPerBlock = 256;
+    constexpr int kCorrelationTileRows = 16;
+    constexpr int kCorrelationTileCols = 16;
+    constexpr int kCorrelationMaxSharedKernelRows = 15;
+    constexpr int kCorrelationMaxSharedKernelCols = 15;
     thread_local float g_last_kernel_ms = 0.0f;
     thread_local bool g_last_correlation_used_fft = false;
 
@@ -41,42 +47,56 @@ namespace
         throw_on_zx_gpu_error(cudaGetLastError(), what);
     }
 
+    struct TimingEvents
+    {
+        cudaEvent_t start = nullptr;
+        cudaEvent_t stop = nullptr;
+
+        ~TimingEvents()
+        {
+            if (start != nullptr)
+            {
+                cudaEventDestroy(start);
+            }
+            if (stop != nullptr)
+            {
+                cudaEventDestroy(stop);
+            }
+        }
+
+        void ensure()
+        {
+            if (start == nullptr)
+            {
+                throw_on_zx_gpu_error(cudaEventCreate(&start), "cudaEventCreate(start)");
+                throw_on_zx_gpu_error(cudaEventCreate(&stop), "cudaEventCreate(stop)");
+            }
+        }
+    };
+
+    thread_local TimingEvents g_timing_events;
+
     class ScopedZxGpuEvents
     {
     public:
-        ScopedZxGpuEvents()
-        {
-            throw_on_zx_gpu_error(cudaEventCreate(&start_), "cudaEventCreate(start)");
-            throw_on_zx_gpu_error(cudaEventCreate(&stop_), "cudaEventCreate(stop)");
-        }
-
-        ~ScopedZxGpuEvents()
-        {
-            if (start_ != nullptr)
-            {
-                cudaEventDestroy(start_);
-            }
-            if (stop_ != nullptr)
-            {
-                cudaEventDestroy(stop_);
-            }
-        }
-
         template <typename Callable>
         float measure(Callable callable)
         {
-            throw_on_zx_gpu_error(cudaEventRecord(start_), "cudaEventRecord(start)");
+            g_timing_events.ensure();
+            throw_on_zx_gpu_error(
+                cudaEventRecord(g_timing_events.start), "cudaEventRecord(start)");
             callable();
-            throw_on_zx_gpu_error(cudaEventRecord(stop_), "cudaEventRecord(stop)");
-            throw_on_zx_gpu_error(cudaEventSynchronize(stop_), "cudaEventSynchronize(stop)");
+            throw_on_zx_gpu_error(
+                cudaEventRecord(g_timing_events.stop), "cudaEventRecord(stop)");
+            throw_on_zx_gpu_error(
+                cudaEventSynchronize(g_timing_events.stop), "cudaEventSynchronize(stop)");
             float elapsed_ms = 0.0f;
-            throw_on_zx_gpu_error(cudaEventElapsedTime(&elapsed_ms, start_, stop_), "cudaEventElapsedTime");
+            throw_on_zx_gpu_error(
+                cudaEventElapsedTime(
+                    &elapsed_ms, g_timing_events.start, g_timing_events.stop),
+                "cudaEventElapsedTime");
             return elapsed_ms;
         }
-
-    private:
-        cudaEvent_t start_ = nullptr;
-        cudaEvent_t stop_ = nullptr;
     };
 
     struct GenericPlan
@@ -681,6 +701,214 @@ namespace
         output[flat_index] = accum;
     }
 
+    // CUTLASS-inspired dataflow for the direct 2D route: one output tile per
+    // block, with the input halo and filter coefficients reused from shared
+    // memory.  The fill boundary is handled while loading the halo, so the
+    // public boundary semantics and the accumulation order remain unchanged.
+    template <int TileRows, int TileCols>
+    __global__ void correlate2d_real_shared_tile_kernel(
+        float *output,
+        const float *left,
+        const float *right,
+        int out_rows,
+        int out_cols,
+        int rows1,
+        int cols1,
+        int rows2,
+        int cols2,
+        int start_row,
+        int start_col,
+        float fillvalue)
+    {
+        extern __shared__ float real_shared_input[];
+        const int shared_cols = TileCols + cols2 - 1;
+        const int shared_rows = TileRows + rows2 - 1;
+        const int linear_thread = threadIdx.y * blockDim.x + threadIdx.x;
+        const int thread_count = blockDim.x * blockDim.y;
+        const int shared_count = shared_rows * shared_cols;
+        const int tile_row = static_cast<int>(blockIdx.y) * TileRows;
+        const int tile_col = static_cast<int>(blockIdx.x) * TileCols;
+        const int input_origin_row = tile_row + start_row - (rows2 - 1);
+        const int input_origin_col = tile_col + start_col - (cols2 - 1);
+
+        for (int local = linear_thread; local < shared_count; local += thread_count)
+        {
+            const int local_row = local / shared_cols;
+            const int local_col = local % shared_cols;
+            const int input_row = input_origin_row + local_row;
+            const int input_col = input_origin_col + local_col;
+            real_shared_input[local] =
+                input_row >= 0 && input_row < rows1 && input_col >= 0 && input_col < cols1
+                    ? left[static_cast<std::size_t>(input_row) * static_cast<std::size_t>(cols1) +
+                           static_cast<std::size_t>(input_col)]
+                    : fillvalue;
+        }
+        __syncthreads();
+
+        const int row = tile_row + static_cast<int>(threadIdx.y);
+        const int col = tile_col + static_cast<int>(threadIdx.x);
+        if (row >= out_rows || col >= out_cols)
+        {
+            return;
+        }
+
+        float accum = 0.0f;
+        const int local_row = static_cast<int>(threadIdx.y);
+        const int local_col = static_cast<int>(threadIdx.x);
+        for (int kr = 0; kr < rows2; ++kr)
+        {
+            for (int kc = 0; kc < cols2; ++kc)
+            {
+                accum += real_shared_input[(local_row + kr) * shared_cols + local_col + kc] *
+                         right[static_cast<std::size_t>(kr) * static_cast<std::size_t>(cols2) +
+                               static_cast<std::size_t>(kc)];
+            }
+        }
+        output[static_cast<std::size_t>(row) * static_cast<std::size_t>(out_cols) +
+               static_cast<std::size_t>(col)] = accum;
+    }
+
+    template <int TileRows, int TileCols>
+    __global__ void correlate2d_complex_shared_tile_kernel(
+        float2 *output,
+        const float2 *left,
+        const float2 *right,
+        int out_rows,
+        int out_cols,
+        int rows1,
+        int cols1,
+        int rows2,
+        int cols2,
+        int start_row,
+        int start_col,
+        float fillvalue)
+    {
+        extern __shared__ float2 complex_shared_input[];
+        const int shared_cols = TileCols + cols2 - 1;
+        const int shared_rows = TileRows + rows2 - 1;
+        const int linear_thread = threadIdx.y * blockDim.x + threadIdx.x;
+        const int thread_count = blockDim.x * blockDim.y;
+        const int shared_count = shared_rows * shared_cols;
+        const int tile_row = static_cast<int>(blockIdx.y) * TileRows;
+        const int tile_col = static_cast<int>(blockIdx.x) * TileCols;
+        const int input_origin_row = tile_row + start_row - (rows2 - 1);
+        const int input_origin_col = tile_col + start_col - (cols2 - 1);
+
+        for (int local = linear_thread; local < shared_count; local += thread_count)
+        {
+            const int local_row = local / shared_cols;
+            const int local_col = local % shared_cols;
+            const int input_row = input_origin_row + local_row;
+            const int input_col = input_origin_col + local_col;
+            complex_shared_input[local] =
+                input_row >= 0 && input_row < rows1 && input_col >= 0 && input_col < cols1
+                    ? left[static_cast<std::size_t>(input_row) * static_cast<std::size_t>(cols1) +
+                           static_cast<std::size_t>(input_col)]
+                    : float2{fillvalue, 0.0f};
+        }
+        __syncthreads();
+
+        const int row = tile_row + static_cast<int>(threadIdx.y);
+        const int col = tile_col + static_cast<int>(threadIdx.x);
+        if (row >= out_rows || col >= out_cols)
+        {
+            return;
+        }
+
+        float2 accum{0.0f, 0.0f};
+        const int local_row = static_cast<int>(threadIdx.y);
+        const int local_col = static_cast<int>(threadIdx.x);
+        for (int kr = 0; kr < rows2; ++kr)
+        {
+            for (int kc = 0; kc < cols2; ++kc)
+            {
+                const float2 sample = complex_shared_input[(local_row + kr) * shared_cols + local_col + kc];
+                const float2 kernel = complex_conj(
+                    right[static_cast<std::size_t>(kr) * static_cast<std::size_t>(cols2) +
+                          static_cast<std::size_t>(kc)]);
+                accum = complex_add(accum, complex_mul(sample, kernel));
+            }
+        }
+        output[static_cast<std::size_t>(row) * static_cast<std::size_t>(out_cols) +
+               static_cast<std::size_t>(col)] = accum;
+    }
+
+    template <int TileRows, int TileCols>
+    void launch_correlate2d_real_shared_tile(
+        float *output,
+        const float *left,
+        const float *right,
+        int out_rows,
+        int out_cols,
+        int rows1,
+        int cols1,
+        int rows2,
+        int cols2,
+        int start_row,
+        int start_col,
+        float fillvalue)
+    {
+        const dim3 block(TileCols, TileRows);
+        const dim3 grid(
+            static_cast<unsigned int>(tile::ceil_div(static_cast<std::size_t>(out_cols), TileCols)),
+            static_cast<unsigned int>(tile::ceil_div(static_cast<std::size_t>(out_rows), TileRows)));
+        const std::size_t shared_bytes =
+            static_cast<std::size_t>(TileRows + rows2 - 1) *
+            static_cast<std::size_t>(TileCols + cols2 - 1) * sizeof(float);
+        correlate2d_real_shared_tile_kernel<TileRows, TileCols><<<grid, block, shared_bytes>>>(
+            output,
+            left,
+            right,
+            out_rows,
+            out_cols,
+            rows1,
+            cols1,
+            rows2,
+            cols2,
+            start_row,
+            start_col,
+            fillvalue);
+        check_kernel_launch("correlate2d_real_shared_tile_kernel");
+    }
+
+    template <int TileRows, int TileCols>
+    void launch_correlate2d_complex_shared_tile(
+        float2 *output,
+        const float2 *left,
+        const float2 *right,
+        int out_rows,
+        int out_cols,
+        int rows1,
+        int cols1,
+        int rows2,
+        int cols2,
+        int start_row,
+        int start_col,
+        float fillvalue)
+    {
+        const dim3 block(TileCols, TileRows);
+        const dim3 grid(
+            static_cast<unsigned int>(tile::ceil_div(static_cast<std::size_t>(out_cols), TileCols)),
+            static_cast<unsigned int>(tile::ceil_div(static_cast<std::size_t>(out_rows), TileRows)));
+        const std::size_t shared_bytes =
+            static_cast<std::size_t>(TileRows + rows2 - 1) *
+            static_cast<std::size_t>(TileCols + cols2 - 1) * sizeof(float2);
+        correlate2d_complex_shared_tile_kernel<TileRows, TileCols><<<grid, block, shared_bytes>>>(
+            output,
+            left,
+            right,
+            out_rows,
+            out_cols,
+            rows1,
+            cols1,
+            rows2,
+            cols2,
+            start_row,
+            start_col,
+            fillvalue);
+        check_kernel_launch("correlate2d_complex_shared_tile_kernel");
+    }
+
     __global__ void correlation_lags_kernel(int *output, int count, int start)
     {
         const int index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -859,23 +1087,95 @@ namespace cusignal
                     boundary_mode = 2;
                 }
 
+                const tile::PolicyDecision tuning = tile::select(
+                    tile::make_correlate_2d_key(
+                        left.shape()[0],
+                        left.shape()[1],
+                        right.shape()[0],
+                        right.shape()[1],
+                        0,
+                        normalized_mode,
+                        normalized_boundary,
+                        fillvalue));
+
                 ScopedZxGpuEvents events;
                 g_last_kernel_ms = events.measure([&]() {
-                    correlate2d_real_kernel<<<block_count(output.size()), kThreadsPerBlock>>>(
-                        output.data(),
-                        left.data(),
-                        right.data(),
-                        static_cast<int>(output_shape[0]),
-                        static_cast<int>(output_shape[1]),
-                        static_cast<int>(left.shape()[0]),
-                        static_cast<int>(left.shape()[1]),
-                        static_cast<int>(right.shape()[0]),
-                        static_cast<int>(right.shape()[1]),
-                        static_cast<int>(start[0]),
-                        static_cast<int>(start[1]),
-                        boundary_mode,
-                        fillvalue);
-                    check_kernel_launch("correlate2d_real_kernel");
+                    const bool use_shared_tile =
+                        tuning.config.shared_halo &&
+                        tuning.config.optimized_route &&
+                        boundary_mode == 0 &&
+                        output_shape[0] >= static_cast<std::size_t>(tuning.config.tile_rows) &&
+                        output_shape[1] >= static_cast<std::size_t>(tuning.config.tile_cols) &&
+                        right.shape()[0] <= kCorrelationMaxSharedKernelRows &&
+                        right.shape()[1] <= kCorrelationMaxSharedKernelCols;
+                    if (use_shared_tile)
+                    {
+                        const int tile_rows = tuning.config.tile_rows;
+                        const int tile_cols = tuning.config.tile_cols;
+                        if (tile_rows == 8 && tile_cols == 32)
+                        {
+                            launch_correlate2d_real_shared_tile<8, 32>(
+                                output.data(), left.data(), right.data(),
+                                static_cast<int>(output_shape[0]), static_cast<int>(output_shape[1]),
+                                static_cast<int>(left.shape()[0]), static_cast<int>(left.shape()[1]),
+                                static_cast<int>(right.shape()[0]), static_cast<int>(right.shape()[1]),
+                                static_cast<int>(start[0]), static_cast<int>(start[1]), fillvalue);
+                        }
+                        else if (tile_rows == 32 && tile_cols == 8)
+                        {
+                            launch_correlate2d_real_shared_tile<32, 8>(
+                                output.data(), left.data(), right.data(),
+                                static_cast<int>(output_shape[0]), static_cast<int>(output_shape[1]),
+                                static_cast<int>(left.shape()[0]), static_cast<int>(left.shape()[1]),
+                                static_cast<int>(right.shape()[0]), static_cast<int>(right.shape()[1]),
+                                static_cast<int>(start[0]), static_cast<int>(start[1]), fillvalue);
+                        }
+                        else if (tile_rows == 16 && tile_cols == 32)
+                        {
+                            launch_correlate2d_real_shared_tile<16, 32>(
+                                output.data(), left.data(), right.data(),
+                                static_cast<int>(output_shape[0]), static_cast<int>(output_shape[1]),
+                                static_cast<int>(left.shape()[0]), static_cast<int>(left.shape()[1]),
+                                static_cast<int>(right.shape()[0]), static_cast<int>(right.shape()[1]),
+                                static_cast<int>(start[0]), static_cast<int>(start[1]), fillvalue);
+                        }
+                        else if (tile_rows == 32 && tile_cols == 16)
+                        {
+                            launch_correlate2d_real_shared_tile<32, 16>(
+                                output.data(), left.data(), right.data(),
+                                static_cast<int>(output_shape[0]), static_cast<int>(output_shape[1]),
+                                static_cast<int>(left.shape()[0]), static_cast<int>(left.shape()[1]),
+                                static_cast<int>(right.shape()[0]), static_cast<int>(right.shape()[1]),
+                                static_cast<int>(start[0]), static_cast<int>(start[1]), fillvalue);
+                        }
+                        else
+                        {
+                            launch_correlate2d_real_shared_tile<16, 16>(
+                                output.data(), left.data(), right.data(),
+                                static_cast<int>(output_shape[0]), static_cast<int>(output_shape[1]),
+                                static_cast<int>(left.shape()[0]), static_cast<int>(left.shape()[1]),
+                                static_cast<int>(right.shape()[0]), static_cast<int>(right.shape()[1]),
+                                static_cast<int>(start[0]), static_cast<int>(start[1]), fillvalue);
+                        }
+                    }
+                    else
+                    {
+                        correlate2d_real_kernel<<<block_count(output.size()), kThreadsPerBlock>>>(
+                            output.data(),
+                            left.data(),
+                            right.data(),
+                            static_cast<int>(output_shape[0]),
+                            static_cast<int>(output_shape[1]),
+                            static_cast<int>(left.shape()[0]),
+                            static_cast<int>(left.shape()[1]),
+                            static_cast<int>(right.shape()[0]),
+                            static_cast<int>(right.shape()[1]),
+                            static_cast<int>(start[0]),
+                            static_cast<int>(start[1]),
+                            boundary_mode,
+                            fillvalue);
+                        check_kernel_launch("correlate2d_real_kernel");
+                    }
                 });
                 return output;
             }
@@ -920,23 +1220,105 @@ namespace cusignal
                     boundary_mode = 2;
                 }
 
+                const tile::PolicyDecision tuning = tile::select(
+                    tile::make_correlate_2d_key(
+                        left.shape()[0],
+                        left.shape()[1],
+                        right.shape()[0],
+                        right.shape()[1],
+                        1,
+                        normalized_mode,
+                        normalized_boundary,
+                        fillvalue));
+
                 ScopedZxGpuEvents events;
                 g_last_kernel_ms = events.measure([&]() {
-                    correlate2d_complex_kernel<<<block_count(output.size()), kThreadsPerBlock>>>(
-                        output.data(),
-                        left.data(),
-                        right.data(),
-                        static_cast<int>(output_shape[0]),
-                        static_cast<int>(output_shape[1]),
-                        static_cast<int>(left.shape()[0]),
-                        static_cast<int>(left.shape()[1]),
-                        static_cast<int>(right.shape()[0]),
-                        static_cast<int>(right.shape()[1]),
-                        static_cast<int>(start[0]),
-                        static_cast<int>(start[1]),
-                        boundary_mode,
-                        fillvalue);
-                    check_kernel_launch("correlate2d_complex_kernel");
+                    const bool use_shared_tile =
+                        tuning.config.shared_halo &&
+                        tuning.config.optimized_route &&
+                        boundary_mode == 0 &&
+                        output_shape[0] >= static_cast<std::size_t>(tuning.config.tile_rows) &&
+                        output_shape[1] >= static_cast<std::size_t>(tuning.config.tile_cols) &&
+                        right.shape()[0] <= kCorrelationMaxSharedKernelRows &&
+                        right.shape()[1] <= kCorrelationMaxSharedKernelCols;
+                    if (use_shared_tile)
+                    {
+                        const int tile_rows = tuning.config.tile_rows;
+                        const int tile_cols = tuning.config.tile_cols;
+                        if (tile_rows == 8 && tile_cols == 32)
+                        {
+                            launch_correlate2d_complex_shared_tile<8, 32>(
+                                reinterpret_cast<float2 *>(output.data()),
+                                reinterpret_cast<const float2 *>(left.data()),
+                                reinterpret_cast<const float2 *>(right.data()),
+                                static_cast<int>(output_shape[0]), static_cast<int>(output_shape[1]),
+                                static_cast<int>(left.shape()[0]), static_cast<int>(left.shape()[1]),
+                                static_cast<int>(right.shape()[0]), static_cast<int>(right.shape()[1]),
+                                static_cast<int>(start[0]), static_cast<int>(start[1]), fillvalue);
+                        }
+                        else if (tile_rows == 32 && tile_cols == 8)
+                        {
+                            launch_correlate2d_complex_shared_tile<32, 8>(
+                                reinterpret_cast<float2 *>(output.data()),
+                                reinterpret_cast<const float2 *>(left.data()),
+                                reinterpret_cast<const float2 *>(right.data()),
+                                static_cast<int>(output_shape[0]), static_cast<int>(output_shape[1]),
+                                static_cast<int>(left.shape()[0]), static_cast<int>(left.shape()[1]),
+                                static_cast<int>(right.shape()[0]), static_cast<int>(right.shape()[1]),
+                                static_cast<int>(start[0]), static_cast<int>(start[1]), fillvalue);
+                        }
+                        else if (tile_rows == 16 && tile_cols == 32)
+                        {
+                            launch_correlate2d_complex_shared_tile<16, 32>(
+                                reinterpret_cast<float2 *>(output.data()),
+                                reinterpret_cast<const float2 *>(left.data()),
+                                reinterpret_cast<const float2 *>(right.data()),
+                                static_cast<int>(output_shape[0]), static_cast<int>(output_shape[1]),
+                                static_cast<int>(left.shape()[0]), static_cast<int>(left.shape()[1]),
+                                static_cast<int>(right.shape()[0]), static_cast<int>(right.shape()[1]),
+                                static_cast<int>(start[0]), static_cast<int>(start[1]), fillvalue);
+                        }
+                        else if (tile_rows == 32 && tile_cols == 16)
+                        {
+                            launch_correlate2d_complex_shared_tile<32, 16>(
+                                reinterpret_cast<float2 *>(output.data()),
+                                reinterpret_cast<const float2 *>(left.data()),
+                                reinterpret_cast<const float2 *>(right.data()),
+                                static_cast<int>(output_shape[0]), static_cast<int>(output_shape[1]),
+                                static_cast<int>(left.shape()[0]), static_cast<int>(left.shape()[1]),
+                                static_cast<int>(right.shape()[0]), static_cast<int>(right.shape()[1]),
+                                static_cast<int>(start[0]), static_cast<int>(start[1]), fillvalue);
+                        }
+                        else
+                        {
+                            launch_correlate2d_complex_shared_tile<16, 16>(
+                                reinterpret_cast<float2 *>(output.data()),
+                                reinterpret_cast<const float2 *>(left.data()),
+                                reinterpret_cast<const float2 *>(right.data()),
+                                static_cast<int>(output_shape[0]), static_cast<int>(output_shape[1]),
+                                static_cast<int>(left.shape()[0]), static_cast<int>(left.shape()[1]),
+                                static_cast<int>(right.shape()[0]), static_cast<int>(right.shape()[1]),
+                                static_cast<int>(start[0]), static_cast<int>(start[1]), fillvalue);
+                        }
+                    }
+                    else
+                    {
+                        correlate2d_complex_kernel<<<block_count(output.size()), kThreadsPerBlock>>>(
+                            output.data(),
+                            left.data(),
+                            right.data(),
+                            static_cast<int>(output_shape[0]),
+                            static_cast<int>(output_shape[1]),
+                            static_cast<int>(left.shape()[0]),
+                            static_cast<int>(left.shape()[1]),
+                            static_cast<int>(right.shape()[0]),
+                            static_cast<int>(right.shape()[1]),
+                            static_cast<int>(start[0]),
+                            static_cast<int>(start[1]),
+                            boundary_mode,
+                            fillvalue);
+                        check_kernel_launch("correlate2d_complex_kernel");
+                    }
                 });
                 return output;
             }

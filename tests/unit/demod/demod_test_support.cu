@@ -236,6 +236,7 @@ namespace
     {
         for (int index = 0; index < warmup; ++index)
         {
+            cusignal::core::benchmark::note_iteration();
             callable();
         }
         std::vector<float> samples;
@@ -243,6 +244,7 @@ namespace
         for (int index = 0; index < repeat; ++index)
         {
             const auto start = std::chrono::steady_clock::now();
+            cusignal::core::benchmark::note_iteration();
             callable();
             const auto stop = std::chrono::steady_clock::now();
             samples.push_back(
@@ -555,13 +557,15 @@ int run_fm_demod_tests(int argc, char **argv)
             auto gpu_perf = [&]() {
                 return cusignal::zx_gpu_backend::demod::fm_demod(device_input, perf.axis);
             };
-            if (!options.gpu_only_perf)
+            if (!options.gpu_only_perf && !cusignal::core::benchmark::skip_cpu_timing())
             {
                 summary.cpu_perf = measure(options.warmup, options.repeat, [&]() {
                     (void)cusignal::cpu::demod::fm_demod(perf.input, perf.axis);
                 });
         }
 
+        cusignal::core::benchmark::InputRefreshRun input_refresh(
+            static_cast<std::uint64_t>(options.warmup + options.repeat), true);
         std::vector<float> kernel_samples;
             summary.gpu_e2e_perf = measure(options.warmup, options.repeat, [&]() {
                 (void)cusignal::zx_gpu_backend::demod_test_hooks::consume_last_kernel_ms();

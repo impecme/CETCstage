@@ -238,6 +238,9 @@ namespace cusignal_demo::task2_features
         float validation_input_d2h_ms = 0.0f;
         float cpu_total_ms = 0.0f;
         float gpu_total_ms = 0.0f;
+        // Median of the per-repeat sum of CUDA-event stage timings.  This is
+        // deliberately kept separate from the sum of per-stage medians.
+        float gpu_kernel_total_ms = 0.0f;
         bool cpu_gpu_track_match = false;
         bool gpu_matches_truth = false;
     };

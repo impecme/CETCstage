@@ -279,6 +279,7 @@ namespace
     {
         for (int index = 0; index < warmup; ++index)
         {
+            cusignal::core::benchmark::note_iteration();
             callable();
         }
         std::vector<float> samples;
@@ -286,6 +287,7 @@ namespace
         for (int index = 0; index < repeat; ++index)
         {
             const auto start = std::chrono::steady_clock::now();
+            cusignal::core::benchmark::note_iteration();
             callable();
             const auto stop = std::chrono::steady_clock::now();
             samples.push_back(
@@ -795,7 +797,7 @@ namespace
                 }
             }
 
-            if (!options.gpu_only_perf)
+            if (!options.gpu_only_perf && !cusignal::core::benchmark::skip_cpu_timing())
             {
                 summary.cpu_perf = measure(options.warmup, options.repeat, [&]() {
                     cusignal::cpu::estimation::KalmanFilter filter(
@@ -811,6 +813,8 @@ namespace
                 });
             }
 
+            cusignal::core::benchmark::InputRefreshRun input_refresh(
+                static_cast<std::uint64_t>(options.warmup + options.repeat), true);
             std::vector<float> kernel_samples;
             cusignal::zx_gpu_backend::estimation::KalmanFilter gpu_filter(
                 perf.dim_x,

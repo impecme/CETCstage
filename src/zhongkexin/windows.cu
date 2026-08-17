@@ -11,6 +11,8 @@
 #include <vector>
 
 #include "../common/windows_detail.hpp"
+#include "../common/zx_execution_context.hpp"
+#include "../common/zx_tile_policy.hpp"
 
 namespace
 {
@@ -21,6 +23,7 @@ namespace
     using cusignal::core::NamedTaylorParameter;
     using cusignal::core::RealSignal;
     namespace detail = cusignal::windows_detail;
+    namespace tile = cusignal::zx_tile;
 
     constexpr int kThreadsPerBlock = 256;
     thread_local float g_last_kernel_ms = 0.0;
@@ -56,84 +59,7 @@ namespace
     }
 
     template <typename T>
-    class DeviceBuffer
-    {
-    public:
-        DeviceBuffer() = default;
-
-        ~DeviceBuffer()
-        {
-            release();
-        }
-
-        DeviceBuffer(const DeviceBuffer &) = delete;
-        DeviceBuffer &operator=(const DeviceBuffer &) = delete;
-
-        void reserve(std::size_t size)
-        {
-            if (size <= size_)
-            {
-                return;
-            }
-
-            release();
-            size_ = size;
-            if (size_ == 0)
-            {
-                return;
-            }
-            throw_on_zx_gpu_error(cudaMalloc(&data_, size_ * sizeof(T)), "cudaMalloc");
-        }
-
-        void copy_from_host(const T *host, std::size_t count, const char *what)
-        {
-            if (count == 0)
-            {
-                return;
-            }
-            reserve(count);
-            throw_on_zx_gpu_error(
-                cudaMemcpy(data_, host, count * sizeof(T), cudaMemcpyHostToDevice),
-                what);
-        }
-
-        std::vector<T> copy_to_host(std::size_t count, const char *what) const
-        {
-            std::vector<T> host(count);
-            if (count == 0)
-            {
-                return host;
-            }
-            throw_on_zx_gpu_error(
-                cudaMemcpy(host.data(), data_, count * sizeof(T), cudaMemcpyDeviceToHost),
-                what);
-            return host;
-        }
-
-        T *get()
-        {
-            return data_;
-        }
-
-        const T *get() const
-        {
-            return data_;
-        }
-
-    private:
-        void release()
-        {
-            if (data_ != nullptr)
-            {
-                cudaFree(data_);
-                data_ = nullptr;
-            }
-            size_ = 0;
-        }
-
-        T *data_ = nullptr;
-        std::size_t size_ = 0;
-    };
+    using DeviceBuffer = cusignal::zx_execution::ReusableDeviceBuffer<T>;
 
     struct WindowWorkspace
     {
@@ -199,50 +125,61 @@ namespace
 
     int block_count(std::size_t size)
     {
-        return size == 0 ? 0 : static_cast<int>((size + kThreadsPerBlock - 1) / kThreadsPerBlock);
+        return size == 0
+            ? 0
+            : static_cast<int>(tile::ceil_div(size, static_cast<std::size_t>(tile::linear_shape(size).threads)));
     }
+
+    struct TimingEvents
+    {
+        cudaEvent_t start = nullptr;
+        cudaEvent_t stop = nullptr;
+
+        ~TimingEvents()
+        {
+            if (start != nullptr)
+            {
+                cudaEventDestroy(start);
+            }
+            if (stop != nullptr)
+            {
+                cudaEventDestroy(stop);
+            }
+        }
+
+        void ensure()
+        {
+            if (start == nullptr)
+            {
+                throw_on_zx_gpu_error(cudaEventCreate(&start), "cudaEventCreate(start)");
+                throw_on_zx_gpu_error(cudaEventCreate(&stop), "cudaEventCreate(stop)");
+            }
+        }
+    };
+
+    thread_local TimingEvents g_timing_events;
 
     class ScopedZxGpuEvents
     {
     public:
-        ScopedZxGpuEvents()
-        {
-            throw_on_zx_gpu_error(cudaEventCreate(&start_), "cudaEventCreate(start)");
-            throw_on_zx_gpu_error(cudaEventCreate(&stop_), "cudaEventCreate(stop)");
-        }
-
-        ~ScopedZxGpuEvents()
-        {
-            if (start_ != nullptr)
-            {
-                cudaEventDestroy(start_);
-            }
-            if (stop_ != nullptr)
-            {
-                cudaEventDestroy(stop_);
-            }
-        }
-
-        ScopedZxGpuEvents(const ScopedZxGpuEvents &) = delete;
-        ScopedZxGpuEvents &operator=(const ScopedZxGpuEvents &) = delete;
-
         template <typename Callable>
         float measure(Callable callable)
         {
-            throw_on_zx_gpu_error(cudaEventRecord(start_), "cudaEventRecord(start)");
+            g_timing_events.ensure();
+            throw_on_zx_gpu_error(
+                cudaEventRecord(g_timing_events.start), "cudaEventRecord(start)");
             callable();
-            throw_on_zx_gpu_error(cudaEventRecord(stop_), "cudaEventRecord(stop)");
-            throw_on_zx_gpu_error(cudaEventSynchronize(stop_), "cudaEventSynchronize(stop)");
+            throw_on_zx_gpu_error(
+                cudaEventRecord(g_timing_events.stop), "cudaEventRecord(stop)");
+            throw_on_zx_gpu_error(
+                cudaEventSynchronize(g_timing_events.stop), "cudaEventSynchronize(stop)");
             float elapsed_ms = 0.0f;
             throw_on_zx_gpu_error(
-                cudaEventElapsedTime(&elapsed_ms, start_, stop_),
+                cudaEventElapsedTime(
+                    &elapsed_ms, g_timing_events.start, g_timing_events.stop),
                 "cudaEventElapsedTime");
             return elapsed_ms;
         }
-
-    private:
-        cudaEvent_t start_ = nullptr;
-        cudaEvent_t stop_ = nullptr;
     };
 
     __device__ float general_cosine_value_fast(
@@ -1837,7 +1774,8 @@ namespace
         const detail::ExtendedLength extended = detail::extend(size, sym);
         static thread_local WindowWorkspace workspace;
         ZxGpuRealSignal result(static_cast<std::size_t>(size), false);
-        if (workspace.chebwin_final_valid &&
+        if (tile::optimized_path() &&
+            workspace.chebwin_final_valid &&
             workspace.chebwin_final_size == size &&
             workspace.chebwin_final_at == at &&
             workspace.chebwin_final_sym == sym)
@@ -1861,7 +1799,8 @@ namespace
         workspace.spectrum.reserve(static_cast<std::size_t>(extended.size));
         workspace.spectrum_template.reserve(static_cast<std::size_t>(extended.size));
         workspace.chebwin_final_template.reserve(static_cast<std::size_t>(size));
-        if (!workspace.chebwin_template_valid ||
+        if (!tile::optimized_path() ||
+            !workspace.chebwin_template_valid ||
             workspace.chebwin_template_size != extended.size ||
             workspace.chebwin_template_at != at ||
             workspace.chebwin_template_sym != sym)

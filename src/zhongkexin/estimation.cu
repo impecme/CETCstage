@@ -9,12 +9,14 @@
 #include "cusignal/core/helpers.hpp"
 
 #include "../common/estimation_detail.hpp"
+#include "../common/zx_tile_policy.hpp"
 
 namespace
 {
     using cusignal::core::ZxGpuRealArray;
     using cusignal::core::Shape;
     namespace detail = cusignal::estimation_detail;
+    namespace tile = cusignal::zx_tile;
 
     constexpr int kThreadsPerBlock = 64;
     thread_local float g_last_kernel_ms = 0.0f;
@@ -32,42 +34,56 @@ namespace
         throw_on_zx_gpu_error(cudaGetLastError(), what);
     }
 
+    struct TimingEvents
+    {
+        cudaEvent_t start = nullptr;
+        cudaEvent_t stop = nullptr;
+
+        ~TimingEvents()
+        {
+            if (start != nullptr)
+            {
+                cudaEventDestroy(start);
+            }
+            if (stop != nullptr)
+            {
+                cudaEventDestroy(stop);
+            }
+        }
+
+        void ensure()
+        {
+            if (start == nullptr)
+            {
+                throw_on_zx_gpu_error(cudaEventCreate(&start), "cudaEventCreate(start)");
+                throw_on_zx_gpu_error(cudaEventCreate(&stop), "cudaEventCreate(stop)");
+            }
+        }
+    };
+
+    thread_local TimingEvents g_timing_events;
+
     class ScopedZxGpuEvents
     {
     public:
-        ScopedZxGpuEvents()
-        {
-            throw_on_zx_gpu_error(cudaEventCreate(&start_), "cudaEventCreate(start)");
-            throw_on_zx_gpu_error(cudaEventCreate(&stop_), "cudaEventCreate(stop)");
-        }
-
-        ~ScopedZxGpuEvents()
-        {
-            if (start_ != nullptr)
-            {
-                cudaEventDestroy(start_);
-            }
-            if (stop_ != nullptr)
-            {
-                cudaEventDestroy(stop_);
-            }
-        }
-
         template <typename Callable>
         float measure(Callable callable)
         {
-            throw_on_zx_gpu_error(cudaEventRecord(start_), "cudaEventRecord(start)");
+            g_timing_events.ensure();
+            throw_on_zx_gpu_error(
+                cudaEventRecord(g_timing_events.start), "cudaEventRecord(start)");
             callable();
-            throw_on_zx_gpu_error(cudaEventRecord(stop_), "cudaEventRecord(stop)");
-            throw_on_zx_gpu_error(cudaEventSynchronize(stop_), "cudaEventSynchronize(stop)");
+            throw_on_zx_gpu_error(
+                cudaEventRecord(g_timing_events.stop), "cudaEventRecord(stop)");
+            throw_on_zx_gpu_error(
+                cudaEventSynchronize(g_timing_events.stop), "cudaEventSynchronize(stop)");
             float elapsed_ms = 0.0f;
-            throw_on_zx_gpu_error(cudaEventElapsedTime(&elapsed_ms, start_, stop_), "cudaEventElapsedTime");
+            throw_on_zx_gpu_error(
+                cudaEventElapsedTime(
+                    &elapsed_ms, g_timing_events.start, g_timing_events.stop),
+                "cudaEventElapsedTime");
             return elapsed_ms;
         }
-
-    private:
-        cudaEvent_t start_ = nullptr;
-        cudaEvent_t stop_ = nullptr;
     };
 
     struct EstimationWorkspace
@@ -89,7 +105,11 @@ namespace
 
     inline int block_count(int count)
     {
-        return count == 0 ? 0 : (count + kThreadsPerBlock - 1) / kThreadsPerBlock;
+        return count == 0
+            ? 0
+            : static_cast<int>(tile::ceil_div(
+                  static_cast<std::size_t>(count),
+                  static_cast<std::size_t>(tile::linear_shape(static_cast<std::size_t>(count), kThreadsPerBlock).threads)));
     }
 
     void copy_device_array(const ZxGpuRealArray &src, ZxGpuRealArray &dst)
@@ -1130,7 +1150,7 @@ namespace cusignal
             {
                 validate_filter_state(*this);
 
-                if (dim_x_ <= 4 && dim_u_ <= 2)
+                if (tile::optimized_path() && dim_x_ <= 4 && dim_u_ <= 2)
                 {
                     ScopedZxGpuEvents events;
                     g_last_kernel_ms = events.measure([&]() {
@@ -1222,7 +1242,7 @@ namespace cusignal
                     detail::state_vector_shape(points_, dim_u_),
                     "control");
                 validate_filter_state(*this);
-                if (dim_x_ <= 4 && dim_u_ <= 2)
+                if (tile::optimized_path() && dim_x_ <= 4 && dim_u_ <= 2)
                 {
                     ScopedZxGpuEvents events;
                     g_last_kernel_ms = events.measure([&]() {
@@ -1288,7 +1308,7 @@ namespace cusignal
                     "measurement");
                 validate_filter_state(*this);
 
-                if (dim_x_ <= 4 && dim_z_ <= 2)
+                if (tile::optimized_path() && dim_x_ <= 4 && dim_z_ <= 2)
                 {
                     ScopedZxGpuEvents events;
                     g_last_kernel_ms = events.measure([&]() {

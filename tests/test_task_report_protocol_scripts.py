@@ -38,6 +38,14 @@ class ConsolidatedScriptInterfaceTest(unittest.TestCase):
         for option in ("--operator-set", "--module", "--operator", "--task", "--scale"):
             self.assertIn(option, result.stdout)
         self.assertIn("L1|L2|L3|L4|L5|L6|all", result.stdout)
+        self.assertIn("--case-set SET", result.stdout)
+        self.assertIn("--frozen-baseline PATH", result.stdout)
+
+    def test_performance_defaults_to_full_correctness_protocol(self) -> None:
+        source = PERFORMANCE_SCRIPT.read_text(encoding="utf-8")
+        self.assertIn('CASE_SET="full"', source)
+        self.assertIn('case_set == "full"', source)
+        self.assertIn("NOT_REPORTED", source)
 
     def test_performance_rejects_custom_scale_without_building(self) -> None:
         result = subprocess.run(

@@ -508,22 +508,23 @@ namespace
         }
         if (op == "firfilter_zi")
         {
-            test_case.generated_b = make_lowpass_like_taps(33);
+            if (test_case.filter_order <= 0)
+            {
+                throw std::runtime_error("firfilter_zi perf case requires a positive filter_order");
+            }
+            const std::size_t order = static_cast<std::size_t>(test_case.filter_order);
+            test_case.generated_b = make_lowpass_like_taps(order + 1);
             return;
         }
         if (op == "lfilter_zi")
         {
-            if (test_case.filter_order > 0)
+            if (test_case.filter_order <= 0)
             {
-                const std::size_t order = static_cast<std::size_t>(test_case.filter_order);
-                test_case.generated_b = make_stable_fir_b_from_order(order);
-                test_case.generated_a = make_unity_feedback_from_order(order);
+                throw std::runtime_error("lfilter_zi perf case requires a positive filter_order");
             }
-            else
-            {
-                test_case.generated_b = make_stable_iir_b();
-                test_case.generated_a = make_stable_iir_a();
-            }
+            const std::size_t order = static_cast<std::size_t>(test_case.filter_order);
+            test_case.generated_b = make_stable_fir_b_from_order(order);
+            test_case.generated_a = make_unity_feedback_from_order(order);
             return;
         }
         if (op == "firfilter2")
@@ -930,6 +931,10 @@ namespace
 
     RealSignal sample_values(const RealSignal &values, std::size_t limit = 32)
     {
+        if (cusignal_test::cpu_reference_cache::write_full_outputs())
+        {
+            return values;
+        }
         if (values.size() <= limit)
         {
             return values;
@@ -939,6 +944,10 @@ namespace
 
     ComplexSignal sample_values(const ComplexSignal &values, std::size_t limit = 32)
     {
+        if (cusignal_test::cpu_reference_cache::write_full_outputs())
+        {
+            return values;
+        }
         if (values.size() <= limit)
         {
             return values;
@@ -1369,11 +1378,13 @@ namespace
         std::vector<float> durations;
         for (int iteration = 0; iteration < options.warmup; ++iteration)
         {
+            cusignal::core::benchmark::note_iteration();
             callable();
         }
         for (int iteration = 0; iteration < options.repeat; ++iteration)
         {
             const auto start = std::chrono::high_resolution_clock::now();
+            cusignal::core::benchmark::note_iteration();
             callable();
             const auto stop = std::chrono::high_resolution_clock::now();
             durations.push_back(std::chrono::duration<float, std::milli>(stop - start).count());
@@ -1387,11 +1398,13 @@ namespace
         std::vector<float> durations;
         for (int iteration = 0; iteration < options.warmup; ++iteration)
         {
+            cusignal::core::benchmark::note_iteration();
             callable();
             (void)cusignal::zx_gpu_backend::filtering_test_hooks::consume_last_kernel_ms();
         }
         for (int iteration = 0; iteration < options.repeat; ++iteration)
         {
+            cusignal::core::benchmark::note_iteration();
             callable();
             durations.push_back(cusignal::zx_gpu_backend::filtering_test_hooks::consume_last_kernel_ms());
         }
@@ -3514,6 +3527,10 @@ namespace
         {
             return data;
         }
+        if (test_case.filter_order > 0)
+        {
+            return static_cast<std::size_t>(test_case.filter_order);
+        }
         return 0;
     }
 
@@ -3701,29 +3718,39 @@ namespace
         CaseReport report;
         report.case_id = test_case.id;
         report.category = test_case.category;
+        std::optional<RealArray> host_detrend_data;
+        std::optional<ComplexArray> host_freq_shift_x;
+        std::optional<ComplexSignal> host_channelize_x;
+        std::optional<RealSignal> host_channelize_h;
+        std::optional<RealArray> host_filtering_x;
+        std::optional<RealSignal> host_filtering_b;
+        std::optional<RealSignal> host_filtering_h;
+        std::optional<RealArray> host_filtering_sos;
+        std::optional<RealArray> host_filtering_zi;
+        std::optional<RealSignal> host_filtering_t;
         std::optional<ZxGpuRealArray> detrend_device_data;
         if (op == "detrend")
         {
-            const RealArray data = get_data_array(test_case);
-            report.samples = data.values.size();
-            detrend_device_data.emplace(ZxGpuRealArray::from_host(data));
+            host_detrend_data.emplace(get_data_array(test_case));
+            report.samples = host_detrend_data->values.size();
+            detrend_device_data.emplace(ZxGpuRealArray::from_host(*host_detrend_data));
         }
         std::optional<ZxGpuComplexArray> freq_shift_x;
         if (op == "freq_shift")
         {
-            const ComplexArray x = get_x_complex(test_case);
-            report.samples = x.values.size();
-            freq_shift_x.emplace(ZxGpuComplexArray::from_host(x));
+            host_freq_shift_x.emplace(get_x_complex(test_case));
+            report.samples = host_freq_shift_x->values.size();
+            freq_shift_x.emplace(ZxGpuComplexArray::from_host(*host_freq_shift_x));
         }
         std::optional<ZxGpuComplexSignal> channelize_x;
         std::optional<ZxGpuRealSignal> channelize_h;
         if (op == "channelize_poly")
         {
-            const ComplexSignal x = flatten(get_x_complex(test_case));
-            const RealSignal h = get_h_signal(test_case);
-            report.samples = x.size();
-            channelize_x.emplace(ZxGpuComplexSignal::from_host(x));
-            channelize_h.emplace(ZxGpuRealSignal::from_host(h));
+            host_channelize_x.emplace(flatten(get_x_complex(test_case)));
+            host_channelize_h.emplace(get_h_signal(test_case));
+            report.samples = host_channelize_x->size();
+            channelize_x.emplace(ZxGpuComplexSignal::from_host(*host_channelize_x));
+            channelize_h.emplace(ZxGpuRealSignal::from_host(*host_channelize_h));
         }
         std::optional<ZxGpuRealArray> filtering_x;
         std::optional<ZxGpuRealSignal> filtering_b;
@@ -3734,35 +3761,40 @@ namespace
             op == "hilbert" || op == "hilbert2" || op == "wiener" ||
             op == "resample" || op == "resample_poly")
         {
-            const RealArray x = get_x_real(test_case);
-            report.samples = x.values.size();
-            filtering_x.emplace(ZxGpuRealArray::from_host(x));
+            host_filtering_x.emplace(get_x_real(test_case));
+            report.samples = host_filtering_x->values.size();
+            filtering_x.emplace(ZxGpuRealArray::from_host(*host_filtering_x));
         }
         if (op == "firfilter" || op == "firfilter2")
         {
-            filtering_b.emplace(ZxGpuRealSignal::from_host(get_b_signal(test_case)));
+            host_filtering_b.emplace(get_b_signal(test_case));
+            filtering_b.emplace(ZxGpuRealSignal::from_host(*host_filtering_b));
         }
         if (op == "firfilter" && !test_case.zi_file.empty())
         {
-            filtering_zi.emplace(ZxGpuRealArray::from_host(get_zi_array(test_case)));
+            host_filtering_zi.emplace(get_zi_array(test_case));
+            filtering_zi.emplace(ZxGpuRealArray::from_host(*host_filtering_zi));
         }
         if (op == "sosfilt")
         {
-            const RealArray x = get_x_real(test_case);
-            report.samples = x.values.size();
-            filtering_x.emplace(ZxGpuRealArray::from_host(x));
-            filtering_sos.emplace(ZxGpuRealArray::from_host(get_sos_array(test_case)));
+            host_filtering_x.emplace(get_x_real(test_case));
+            report.samples = host_filtering_x->values.size();
+            filtering_x.emplace(ZxGpuRealArray::from_host(*host_filtering_x));
+            host_filtering_sos.emplace(get_sos_array(test_case));
+            filtering_sos.emplace(ZxGpuRealArray::from_host(*host_filtering_sos));
             if (!test_case.zi_file.empty())
             {
-                filtering_zi.emplace(ZxGpuRealArray::from_host(get_zi_array(test_case)));
+                host_filtering_zi.emplace(get_zi_array(test_case));
+                filtering_zi.emplace(ZxGpuRealArray::from_host(*host_filtering_zi));
             }
         }
         if (op == "upfirdn")
         {
-            const RealArray x = get_x_real(test_case);
-            report.samples = x.values.size();
-            filtering_x.emplace(ZxGpuRealArray::from_host(x));
-            filtering_h.emplace(ZxGpuRealSignal::from_host(get_h_signal(test_case)));
+            host_filtering_x.emplace(get_x_real(test_case));
+            report.samples = host_filtering_x->values.size();
+            filtering_x.emplace(ZxGpuRealArray::from_host(*host_filtering_x));
+            host_filtering_h.emplace(get_h_signal(test_case));
+            filtering_h.emplace(ZxGpuRealSignal::from_host(*host_filtering_h));
         }
         std::optional<ZxGpuRealSignal> filtering_t;
         std::optional<ZxGpuRealSignal> filtering_window_signal;
@@ -3771,7 +3803,8 @@ namespace
             filtering_window_signal);
         if (op == "resample" && !test_case.t_file.empty())
         {
-            filtering_t.emplace(ZxGpuRealSignal::from_host(get_t_signal(test_case)));
+            host_filtering_t.emplace(get_t_signal(test_case));
+            filtering_t.emplace(ZxGpuRealSignal::from_host(*host_filtering_t));
         }
         auto run_gpu_perf = [&]() -> DeviceOutputBundle {
             if (detrend_device_data.has_value())
@@ -3920,37 +3953,68 @@ namespace
             return runner.gpu(test_case);
         };
 
-        auto run_gpu_e2e = [&]() -> OutputBundle {
-            // Refresh every host-backed operand before each E2E sample.  The
-            // kernel benchmark deliberately uses the already prepared device
-            // operands in run_gpu_perf() so its CUDA-event value is kernel-only.
+        auto refresh_gpu_operands = [&]() {
             if (detrend_device_data.has_value())
-                detrend_device_data->copy_from(get_data_array(test_case));
+            {
+                const RealArray fresh = *host_detrend_data;
+                detrend_device_data->copy_from(fresh);
+            }
             if (freq_shift_x.has_value())
-                freq_shift_x->copy_from(get_x_complex(test_case));
+            {
+                const ComplexArray fresh = *host_freq_shift_x;
+                freq_shift_x->copy_from(fresh);
+            }
             if (channelize_x.has_value())
             {
-                channelize_x->copy_from(flatten(get_x_complex(test_case)));
-                channelize_h->copy_from(get_h_signal(test_case));
+                const ComplexSignal fresh_x = *host_channelize_x;
+                const RealSignal fresh_h = *host_channelize_h;
+                channelize_x->copy_from(fresh_x);
+                channelize_h->copy_from(fresh_h);
             }
             if (filtering_x.has_value())
-                filtering_x->copy_from(get_x_real(test_case));
+            {
+                const RealArray fresh = *host_filtering_x;
+                filtering_x->copy_from(fresh);
+            }
             if (filtering_b.has_value())
-                filtering_b->copy_from(get_b_signal(test_case));
+            {
+                const RealSignal fresh = *host_filtering_b;
+                filtering_b->copy_from(fresh);
+            }
             if (filtering_sos.has_value())
-                filtering_sos->copy_from(get_sos_array(test_case));
+            {
+                const RealArray fresh = *host_filtering_sos;
+                filtering_sos->copy_from(fresh);
+            }
             if (filtering_zi.has_value())
-                filtering_zi->copy_from(get_zi_array(test_case));
+            {
+                const RealArray fresh = *host_filtering_zi;
+                filtering_zi->copy_from(fresh);
+            }
             if (filtering_h.has_value())
-                filtering_h->copy_from(get_h_signal(test_case));
+            {
+                const RealSignal fresh = *host_filtering_h;
+                filtering_h->copy_from(fresh);
+            }
             if (filtering_t.has_value())
-                filtering_t->copy_from(get_t_signal(test_case));
+            {
+                const RealSignal fresh = *host_filtering_t;
+                filtering_t->copy_from(fresh);
+            }
             if (const auto *window_values = std::get_if<RealSignal>(&test_case.window))
             {
+                const RealSignal fresh_window = *window_values;
                 filtering_window_signal.reset();
                 filtering_window = to_zx_gpu_window_spec_with_device_array(
-                    *window_values, filtering_window_signal);
+                    fresh_window, filtering_window_signal);
             }
+        };
+
+        auto run_gpu_e2e = [&]() -> OutputBundle {
+            // Each iteration gets new host-backed device objects.  Capacity
+            // reuse inside the allocator is allowed; input contents are
+            // copied in full before the call.
+            refresh_gpu_operands();
             return materialize(run_gpu_perf());
         };
 
@@ -3970,15 +4034,21 @@ namespace
             report.cpu_gpu_error = output_error(cpu_output, gpu_output, test_case.atol);
         }
         report.pass = true;
-        if (!options.gpu_only_perf)
+        if (!options.gpu_only_perf && !cusignal::core::benchmark::skip_cpu_timing())
         {
             report.cpu_perf = benchmark_host_latency(options, [&]() { (void)runner.cpu(test_case); });
         }
+        const int benchmark_iterations = options.warmup + options.repeat;
+        cusignal::core::benchmark::InputRefreshRun input_refresh(
+            static_cast<std::uint64_t>(2 * benchmark_iterations), true);
         report.gpu_e2e_perf = benchmark_host_latency(options, [&]() {
             (void)run_gpu_e2e();
             cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
         });
-        report.gpu_kernel_perf = benchmark_gpu_kernel_latency(options, [&]() { (void)run_gpu_perf(); });
+        report.gpu_kernel_perf = benchmark_gpu_kernel_latency(options, [&]() {
+            refresh_gpu_operands();
+            (void)run_gpu_perf();
+        });
         if (options.emit_report)
         {
             if (!options.gpu_only_perf)

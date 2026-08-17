@@ -415,6 +415,10 @@ namespace
 
     RealSignal sample_values(const RealSignal &values, std::size_t limit = 32)
     {
+        if (cusignal_test::cpu_reference_cache::write_full_outputs())
+        {
+            return values;
+        }
         if (values.size() <= limit)
         {
             return values;
@@ -567,6 +571,7 @@ namespace
     {
         for (int warmup = 0; warmup < options.warmup; ++warmup)
         {
+            cusignal::core::benchmark::note_iteration();
             callable();
         }
 
@@ -575,6 +580,7 @@ namespace
         for (int repeat = 0; repeat < options.repeat; ++repeat)
         {
             const auto start = std::chrono::steady_clock::now();
+            cusignal::core::benchmark::note_iteration();
             callable();
             const auto stop = std::chrono::steady_clock::now();
             durations.push_back(
@@ -588,6 +594,7 @@ namespace
     {
         for (int warmup = 0; warmup < options.warmup; ++warmup)
         {
+            cusignal::core::benchmark::note_iteration();
             callable();
             (void)cusignal::zx_gpu_backend::windows_test_hooks::consume_last_kernel_ms();
         }
@@ -596,6 +603,7 @@ namespace
         durations.reserve(static_cast<std::size_t>(options.repeat));
         for (int repeat = 0; repeat < options.repeat; ++repeat)
         {
+            cusignal::core::benchmark::note_iteration();
             callable();
             durations.push_back(cusignal::zx_gpu_backend::windows_test_hooks::consume_last_kernel_ms());
         }
@@ -1173,6 +1181,7 @@ namespace
                << "  \"generated_at\": \"" << json_escape(current_timestamp()) << "\",\n"
                << "  \"summary\": {\n"
                << "    \"pass\": " << (summary.pass ? "true" : "false") << ",\n"
+               << "    \"case_set\": \"" << json_escape(options.case_set) << "\",\n"
                << "    \"accuracy_cases\": " << summary.accuracy_cases << ",\n"
                << "    \"perf_cases\": " << summary.perf_cases << ",\n"
                << "    \"max_abs_error\": " << summary.cpu_gpu_error.max_abs_error << ",\n"
@@ -1192,10 +1201,11 @@ namespace
                        ? "gpu_kernel"
                        : "cpu_or_no_independent_kernel")
                << "\",\n"
+               << "    \"speedup_definition\": \"cpu_perf.median_ms / gpu_e2e_perf.median_ms\",\n"
                << "    \"input_kind\": \"parameter_only\",\n"
                << "    \"gpu_e2e_scope\": \"host parameter construction + GPU generation + D2H/output materialization\",\n"
                << "    \"gpu_kernel_scope\": \"prepared device input + CUDA events; H2D/D2H excluded\",\n"
-               << "    \"input_refresh_policy\": \"fresh host values and H2D on every measured GPU E2E repeat\",\n"
+               << "    \"input_refresh_policy\": \"reconstruct host parameters on every measured GPU E2E repeat; no input H2D\",\n"
                << "    \"workspace_reuse_policy\": \"device allocation capacity and FFT plan may be reused; input values may not\"";
 
         if (summary.reference_error.has_value())
@@ -1537,10 +1547,13 @@ namespace
         }
         report.pass = true;
 
-        if (!options.gpu_only_perf)
+        if (!options.gpu_only_perf && !cusignal::core::benchmark::skip_cpu_timing())
         {
             report.cpu_perf = benchmark_host_latency(options, [&]() { (void)runner.cpu(test_case); });
         }
+        const int benchmark_iterations = options.warmup + options.repeat;
+        cusignal::core::benchmark::InputRefreshRun input_refresh(
+            static_cast<std::uint64_t>(2 * benchmark_iterations), false);
         report.gpu_e2e_perf = benchmark_host_latency(options, [&]() {
             (void)runner.gpu(test_case).get();
             cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");

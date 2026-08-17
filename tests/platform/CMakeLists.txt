@@ -116,6 +116,65 @@ if(ZX_COMPAT_INPUTS_AVAILABLE)
 endif()
 
 add_test(NAME zx_compat_runtime_safe COMMAND zx_compat_runtime_probes)
+
+# Explicit, opt-in C500 offline autotuning target.  It depends on the unit
+# operator binaries discovered from tests/unit, but is never part of the
+# default build or ctest suite.  The script runs performance.sh with the
+# frozen baseline and writes the device-specific JSON outside the source tree.
+set(
+    ZX_AUTOTUNE_BASELINE
+    "${CMAKE_SOURCE_DIR}/operator_gpu_baseline_75a700d_protocol"
+    CACHE PATH
+    "Frozen operator baseline used by zx_operator_autotune"
+)
+set(
+    ZX_AUTOTUNE_OUTPUT_ROOT
+    "${CMAKE_BINARY_DIR}/reports/zx_operator_autotune"
+    CACHE PATH
+    "Working reports for zx_operator_autotune"
+)
+set(
+    ZX_AUTOTUNE_CACHE_OUTPUT
+    "${CMAKE_BINARY_DIR}/zx_tuning.json"
+    CACHE FILEPATH
+    "External device-specific cache emitted by zx_operator_autotune"
+)
+set(ZX_AUTOTUNE_WARMUP 5 CACHE STRING "Offline autotuning warmup iterations")
+set(ZX_AUTOTUNE_REPEAT 30 CACHE STRING "Offline autotuning measured repetitions")
+file(GLOB ZX_AUTOTUNE_TEST_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_SOURCE_DIR}/tests/unit/*/test_*.cpp"
+)
+set(ZX_AUTOTUNE_TEST_TARGETS)
+foreach(test_source IN LISTS ZX_AUTOTUNE_TEST_SOURCES)
+    get_filename_component(test_module_dir "${test_source}" DIRECTORY)
+    get_filename_component(test_module "${test_module_dir}" NAME)
+    get_filename_component(test_name "${test_source}" NAME_WE)
+    string(REGEX REPLACE "^test_" "" test_operator "${test_name}")
+    set(test_target "${test_module}_test_${test_operator}")
+    if(TARGET "${test_target}")
+        list(APPEND ZX_AUTOTUNE_TEST_TARGETS "${test_target}")
+    endif()
+endforeach()
+list(REMOVE_DUPLICATES ZX_AUTOTUNE_TEST_TARGETS)
+add_custom_target(
+    zx_operator_autotune
+    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/scripts/zx_operator_autotune.py"
+        --frozen-baseline "${ZX_AUTOTUNE_BASELINE}"
+        --output-root "${ZX_AUTOTUNE_OUTPUT_ROOT}"
+        --cache-output "${ZX_AUTOTUNE_CACHE_OUTPUT}"
+        --build-dir "${CMAKE_BINARY_DIR}"
+        --warmup "${ZX_AUTOTUNE_WARMUP}"
+        --repeat "${ZX_AUTOTUNE_REPEAT}"
+        --skip-cpu-timing
+        --selection-validation "winner-against-static"
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+    DEPENDS
+        ${ZX_AUTOTUNE_TEST_TARGETS}
+        "${CMAKE_SOURCE_DIR}/scripts/zx_operator_autotune.py"
+    COMMENT "Running the opt-in C500 offline operator autotuner"
+    VERBATIM
+)
+
 add_test(
     NAME zx_compat_fixture_validation_test
     COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/test_validate_zx_compat_fixtures.py"

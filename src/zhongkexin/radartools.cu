@@ -10,7 +10,10 @@
 #include <complex>
 #include <cstring>
 #include <cstdlib>
+#include <limits>
+#include <sstream>
 #include <stdexcept>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -18,6 +21,8 @@
 #include "cusignal/windows/windows.hpp"
 
 #include "../common/radartools_detail.hpp"
+#include "../common/zx_execution_context.hpp"
+#include "../common/zx_tile_policy.hpp"
 
 namespace
 {
@@ -33,11 +38,13 @@ namespace
     using cusignal::core::ZxGpuWindowSpec;
     using cusignal::core::RealArrayLike;
     namespace detail = cusignal::radartools_detail;
+    namespace tile = cusignal::zx_tile;
 
     constexpr int kThreadsPerBlock = 256;
     constexpr int kCfarFftWindowThreshold = 256;
     constexpr int kCfarFftMinSize = 4096;
     constexpr int kCfarSmall2dFootprint = 256;
+    constexpr int kCfarScanTileElements = 2 * kThreadsPerBlock;
     constexpr int kDetectPeakMaxBlocks = 256;
     constexpr int kMvdrSmallMaxSensors = 8;
     constexpr std::size_t kPulseHostInputCacheMaxElements = 1U << 20;
@@ -91,74 +98,27 @@ namespace
                std::strcmp(value, "FALSE") != 0;
     }
 
+    bool use_legacy_p0_path(const char *name)
+    {
+        const char *value = std::getenv(name);
+        if (value == nullptr)
+        {
+            return false;
+        }
+        return std::strcmp(value, "1") == 0 ||
+               std::strcmp(value, "true") == 0 ||
+               std::strcmp(value, "TRUE") == 0 ||
+               std::strcmp(value, "legacy") == 0 ||
+               std::strcmp(value, "LEGACY") == 0;
+    }
+
     void check_kernel_launch(const char *what)
     {
         throw_on_zx_gpu_error(cudaGetLastError(), what);
     }
 
     template <typename T>
-    class DeviceBuffer
-    {
-    public:
-        DeviceBuffer() = default;
-
-        ~DeviceBuffer()
-        {
-            release();
-        }
-
-        DeviceBuffer(const DeviceBuffer &) = delete;
-        DeviceBuffer &operator=(const DeviceBuffer &) = delete;
-
-        void reserve(std::size_t size)
-        {
-            if (size <= capacity_)
-            {
-                return;
-            }
-            release();
-            if (size == 0)
-            {
-                return;
-            }
-            throw_on_zx_gpu_error(cudaMalloc(&data_, size * sizeof(T)), "cudaMalloc");
-            capacity_ = size;
-        }
-
-        void zero(std::size_t size)
-        {
-            if (size == 0)
-            {
-                return;
-            }
-            reserve(size);
-            throw_on_zx_gpu_error(cudaMemset(data_, 0, size * sizeof(T)), "cudaMemset");
-        }
-
-        T *get()
-        {
-            return data_;
-        }
-
-        const T *get() const
-        {
-            return data_;
-        }
-
-    private:
-        void release()
-        {
-            if (data_ != nullptr)
-            {
-                cudaFree(data_);
-                data_ = nullptr;
-            }
-            capacity_ = 0;
-        }
-
-        T *data_ = nullptr;
-        std::size_t capacity_ = 0;
-    };
+    using DeviceBuffer = cusignal::zx_execution::ReusableDeviceBuffer<T>;
 
     struct GenericPlan
     {
@@ -193,42 +153,129 @@ namespace
         }
     };
 
+    struct StridedPlan
+    {
+        cufftHandle handle = 0;
+        int size = 0;
+        int batch = 0;
+        int input_stride = 0;
+        int input_distance = 0;
+        int output_stride = 0;
+        int output_distance = 0;
+        bool unavailable = false;
+
+        ~StridedPlan()
+        {
+            if (handle != 0)
+            {
+                cufftDestroy(handle);
+            }
+        }
+
+        bool ensure(
+            int n,
+            int b,
+            int istride,
+            int idist,
+            int ostride,
+            int odist)
+        {
+            if (unavailable)
+            {
+                return false;
+            }
+            if (handle != 0 && size == n && batch == b &&
+                input_stride == istride && input_distance == idist &&
+                output_stride == ostride && output_distance == odist)
+            {
+                return true;
+            }
+            if (handle != 0)
+            {
+                throw_on_cufft_error(cufftDestroy(handle), "cufftDestroy(strided)");
+                handle = 0;
+            }
+
+            int transform[1] = {n};
+            int input_embed[1] = {n};
+            int output_embed[1] = {n};
+            const cufftResult status = cufftPlanMany(
+                &handle,
+                1,
+                transform,
+                input_embed,
+                istride,
+                idist,
+                output_embed,
+                ostride,
+                odist,
+                CUFFT_C2C,
+                b);
+            if (status != CUFFT_SUCCESS)
+            {
+                handle = 0;
+                unavailable = true;
+                return false;
+            }
+            size = n;
+            batch = b;
+            input_stride = istride;
+            input_distance = idist;
+            output_stride = ostride;
+            output_distance = odist;
+            return true;
+        }
+    };
+
+    struct TimingEvents
+    {
+        cudaEvent_t start = nullptr;
+        cudaEvent_t stop = nullptr;
+
+        ~TimingEvents()
+        {
+            if (start != nullptr)
+            {
+                cudaEventDestroy(start);
+            }
+            if (stop != nullptr)
+            {
+                cudaEventDestroy(stop);
+            }
+        }
+
+        void ensure()
+        {
+            if (start == nullptr)
+            {
+                throw_on_zx_gpu_error(cudaEventCreate(&start), "cudaEventCreate(start)");
+            }
+            if (stop == nullptr)
+            {
+                throw_on_zx_gpu_error(cudaEventCreate(&stop), "cudaEventCreate(stop)");
+            }
+        }
+    };
+
+    thread_local TimingEvents g_timing_events;
+
     class ScopedZxGpuEvents
     {
     public:
-        ScopedZxGpuEvents()
-        {
-            throw_on_zx_gpu_error(cudaEventCreate(&start_), "cudaEventCreate(start)");
-            throw_on_zx_gpu_error(cudaEventCreate(&stop_), "cudaEventCreate(stop)");
-        }
-
-        ~ScopedZxGpuEvents()
-        {
-            if (start_ != nullptr)
-            {
-                cudaEventDestroy(start_);
-            }
-            if (stop_ != nullptr)
-            {
-                cudaEventDestroy(stop_);
-            }
-        }
-
         template <typename Callable>
         float measure(Callable callable)
         {
-            throw_on_zx_gpu_error(cudaEventRecord(start_), "cudaEventRecord(start)");
+            g_timing_events.ensure();
+            throw_on_zx_gpu_error(cudaEventRecord(g_timing_events.start), "cudaEventRecord(start)");
             callable();
-            throw_on_zx_gpu_error(cudaEventRecord(stop_), "cudaEventRecord(stop)");
-            throw_on_zx_gpu_error(cudaEventSynchronize(stop_), "cudaEventSynchronize(stop)");
+            throw_on_zx_gpu_error(cudaEventRecord(g_timing_events.stop), "cudaEventRecord(stop)");
+            throw_on_zx_gpu_error(cudaEventSynchronize(g_timing_events.stop), "cudaEventSynchronize(stop)");
             float elapsed_ms = 0.0f;
-            throw_on_zx_gpu_error(cudaEventElapsedTime(&elapsed_ms, start_, stop_), "cudaEventElapsedTime");
+            throw_on_zx_gpu_error(
+                cudaEventElapsedTime(&elapsed_ms, g_timing_events.start, g_timing_events.stop),
+                "cudaEventElapsedTime");
             return elapsed_ms;
         }
-
-    private:
-        cudaEvent_t start_ = nullptr;
-        cudaEvent_t stop_ = nullptr;
     };
 
     struct PulseWorkspace
@@ -237,8 +284,11 @@ namespace
         ZxGpuComplexSignal templ_storage;
         DeviceBuffer<cufftComplex> template_fft;
         DeviceBuffer<cufftComplex> doppler_transposed;
-        GenericPlan pulse_plan;
+        GenericPlan legacy_pulse_plan;
+        GenericPlan template_plan;
+        GenericPlan data_plan;
         GenericPlan doppler_plan;
+        StridedPlan doppler_strided_plan;
         ComplexArray cached_host_input;
         ComplexSignal cached_host_template;
         std::string cached_window_name;
@@ -270,6 +320,7 @@ namespace
     {
         ZxGpuRealArray array_storage;
         DeviceBuffer<float> row_prefix;
+        DeviceBuffer<float> row_tile_sums;
         DeviceBuffer<float> integral;
         DeviceBuffer<cufftComplex> fft_signal;
         DeviceBuffer<cufftComplex> fft_kernel;
@@ -496,6 +547,12 @@ namespace
         return size == 0 ? 0 : static_cast<int>((size + kThreadsPerBlock - 1) / kThreadsPerBlock);
     }
 
+    int block_count(std::size_t size, int threads)
+    {
+        const std::size_t width = threads > 0 ? static_cast<std::size_t>(threads) : 1;
+        return size == 0 ? 0 : static_cast<int>((size + width - 1) / width);
+    }
+
     const ZxGpuComplexArray &as_cached_mvdr_device_array(
         const ComplexArrayLike &input,
         ZxGpuComplexArray &device_storage,
@@ -701,6 +758,70 @@ namespace
         transposed[col * static_cast<std::size_t>(padded_pulses) + row].y = value.y;
     }
 
+    __global__ void pack_pulse_doppler_rows_kernel(
+        const float2 *input,
+        std::size_t pulses,
+        std::size_t samples,
+        int padded_pulses,
+        const float *window,
+        bool use_window,
+        float2 *output)
+    {
+        const std::size_t flat =
+            static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+        const std::size_t total = static_cast<std::size_t>(padded_pulses) * samples;
+        if (flat >= total)
+        {
+            return;
+        }
+        const std::size_t row = flat / samples;
+        const std::size_t col = flat % samples;
+        if (row >= pulses)
+        {
+            output[flat] = make_complex(0.0, 0.0);
+            return;
+        }
+        float2 value = input[row * samples + col];
+        if (use_window)
+        {
+            value.x *= window[row];
+            value.y *= window[row];
+        }
+        output[flat] = value;
+    }
+
+    __global__ void pack_pulse_doppler_transposed_full_kernel(
+        const float2 *input,
+        std::size_t pulses,
+        std::size_t samples,
+        int padded_pulses,
+        const float *window,
+        bool use_window,
+        cufftComplex *transposed)
+    {
+        const std::size_t flat =
+            static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+        const std::size_t total = static_cast<std::size_t>(padded_pulses) * samples;
+        if (flat >= total)
+        {
+            return;
+        }
+        const std::size_t col = flat / static_cast<std::size_t>(padded_pulses);
+        const std::size_t row = flat % static_cast<std::size_t>(padded_pulses);
+        if (row >= pulses)
+        {
+            transposed[flat] = make_complex(0.0, 0.0);
+            return;
+        }
+        float2 value = input[row * samples + col];
+        if (use_window)
+        {
+            value.x *= window[row];
+            value.y *= window[row];
+        }
+        transposed[flat] = make_complex(value.x, value.y);
+    }
+
     __global__ void zero_complex_rows_kernel(
         cufftComplex *buffer,
         std::size_t rows,
@@ -743,6 +864,26 @@ namespace
             ? (row + static_cast<std::size_t>(nfft) / 2) % static_cast<std::size_t>(nfft)
             : row;
         output[output_row * samples + col] = make_complex(value.x, value.y);
+    }
+
+    __global__ void shift_doppler_rows_kernel(
+        const float2 *input,
+        std::size_t samples,
+        int nfft,
+        float2 *output)
+    {
+        const std::size_t flat =
+            static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+        const std::size_t total = static_cast<std::size_t>(nfft) * samples;
+        if (flat >= total)
+        {
+            return;
+        }
+        const std::size_t row = flat / samples;
+        const std::size_t col = flat % samples;
+        const std::size_t output_row =
+            (row + static_cast<std::size_t>(nfft) / 2) % static_cast<std::size_t>(nfft);
+        output[output_row * samples + col] = input[flat];
     }
 
     __global__ void copy_scale_complex_kernel(
@@ -1304,6 +1445,284 @@ namespace
         }
     }
 
+    template <int Threads, int ElementsPerThread>
+    __global__ void cfar_2d_row_prefix_scan_single_kernel(
+        const float *array,
+        std::size_t rows,
+        std::size_t cols,
+        float *row_prefix)
+    {
+        constexpr int kElements = Threads * ElementsPerThread;
+        __shared__ float scan[kElements];
+        const std::size_t row = static_cast<std::size_t>(blockIdx.x);
+        if (row >= rows)
+        {
+            return;
+        }
+
+        const std::size_t row_offset = row * cols;
+        for (int element = 0; element < ElementsPerThread; ++element)
+        {
+            const std::size_t index = static_cast<std::size_t>(threadIdx.x) +
+                                      static_cast<std::size_t>(element * Threads);
+            scan[index] = index < cols ? array[row_offset + index] : 0.0f;
+        }
+        __syncthreads();
+
+        for (int offset = 1; offset < kElements; offset <<= 1)
+        {
+            float adds[ElementsPerThread];
+            for (int element = 0; element < ElementsPerThread; ++element)
+            {
+                const std::size_t index = static_cast<std::size_t>(threadIdx.x) +
+                                          static_cast<std::size_t>(element * Threads);
+                adds[element] = index >= static_cast<std::size_t>(offset)
+                                    ? scan[index - static_cast<std::size_t>(offset)]
+                                    : 0.0f;
+            }
+            __syncthreads();
+            for (int element = 0; element < ElementsPerThread; ++element)
+            {
+                const std::size_t index = static_cast<std::size_t>(threadIdx.x) +
+                                          static_cast<std::size_t>(element * Threads);
+                if (index >= static_cast<std::size_t>(offset))
+                {
+                    scan[index] += adds[element];
+                }
+            }
+            __syncthreads();
+        }
+
+        const std::size_t stride = cols + 1;
+        if (threadIdx.x == 0)
+        {
+            row_prefix[row * stride] = 0.0f;
+        }
+        for (int element = 0; element < ElementsPerThread; ++element)
+        {
+            const std::size_t index = static_cast<std::size_t>(threadIdx.x) +
+                                      static_cast<std::size_t>(element * Threads);
+            if (index < cols)
+            {
+                row_prefix[row * stride + index + 1] = scan[index];
+            }
+        }
+    }
+
+    template <int Threads, int ElementsPerThread>
+    __global__ void cfar_2d_row_prefix_scan_tiles_kernel(
+        const float *array,
+        std::size_t rows,
+        std::size_t cols,
+        int tile_count,
+        float *row_prefix,
+        float *tile_sums)
+    {
+        constexpr int kElements = Threads * ElementsPerThread;
+        __shared__ float scan[kElements];
+        const std::size_t block = static_cast<std::size_t>(blockIdx.x);
+        const std::size_t tile = block % static_cast<std::size_t>(tile_count);
+        const std::size_t row = block / static_cast<std::size_t>(tile_count);
+        if (row >= rows)
+        {
+            return;
+        }
+
+        const std::size_t tile_base = tile * static_cast<std::size_t>(kElements);
+        const std::size_t row_offset = row * cols;
+        for (int element = 0; element < ElementsPerThread; ++element)
+        {
+            const std::size_t index = static_cast<std::size_t>(threadIdx.x) +
+                                      static_cast<std::size_t>(element * Threads);
+            const std::size_t column = tile_base + index;
+            scan[index] = column < cols ? array[row_offset + column] : 0.0f;
+        }
+        __syncthreads();
+
+        for (int offset = 1; offset < kElements; offset <<= 1)
+        {
+            float adds[ElementsPerThread];
+            for (int element = 0; element < ElementsPerThread; ++element)
+            {
+                const std::size_t index = static_cast<std::size_t>(threadIdx.x) +
+                                          static_cast<std::size_t>(element * Threads);
+                adds[element] = index >= static_cast<std::size_t>(offset)
+                                    ? scan[index - static_cast<std::size_t>(offset)]
+                                    : 0.0f;
+            }
+            __syncthreads();
+            for (int element = 0; element < ElementsPerThread; ++element)
+            {
+                const std::size_t index = static_cast<std::size_t>(threadIdx.x) +
+                                          static_cast<std::size_t>(element * Threads);
+                if (index >= static_cast<std::size_t>(offset))
+                {
+                    scan[index] += adds[element];
+                }
+            }
+            __syncthreads();
+        }
+
+        const std::size_t stride = cols + 1;
+        const std::size_t valid_count =
+            tile_base < cols ? std::min<std::size_t>(kElements, cols - tile_base) : 0;
+        if (tile == 0 && threadIdx.x == 0)
+        {
+            row_prefix[row * stride] = 0.0f;
+        }
+        for (int element = 0; element < ElementsPerThread; ++element)
+        {
+            const std::size_t index = static_cast<std::size_t>(threadIdx.x) +
+                                      static_cast<std::size_t>(element * Threads);
+            const std::size_t column = tile_base + index;
+            if (column < cols)
+            {
+                row_prefix[row * stride + column + 1] = scan[index];
+            }
+        }
+        if (threadIdx.x == 0)
+        {
+            tile_sums[row * static_cast<std::size_t>(tile_count) + tile] =
+                valid_count == 0 ? 0.0f : scan[valid_count - 1];
+        }
+    }
+
+    template <int Threads, int ElementsPerThread>
+    __global__ void cfar_2d_row_prefix_scan_tile_offsets_kernel(
+        std::size_t rows,
+        int tile_count,
+        float *tile_sums)
+    {
+        constexpr int kElements = Threads * ElementsPerThread;
+        __shared__ float scan[kElements];
+        const std::size_t row = static_cast<std::size_t>(blockIdx.x);
+        if (row >= rows)
+        {
+            return;
+        }
+
+        const std::size_t row_offset = row * static_cast<std::size_t>(tile_count);
+        for (int element = 0; element < ElementsPerThread; ++element)
+        {
+            const std::size_t index = static_cast<std::size_t>(threadIdx.x) +
+                                      static_cast<std::size_t>(element * Threads);
+            scan[index] = index < static_cast<std::size_t>(tile_count)
+                              ? tile_sums[row_offset + index]
+                              : 0.0f;
+        }
+        __syncthreads();
+
+        for (int offset = 1; offset < kElements; offset <<= 1)
+        {
+            float adds[ElementsPerThread];
+            for (int element = 0; element < ElementsPerThread; ++element)
+            {
+                const std::size_t index = static_cast<std::size_t>(threadIdx.x) +
+                                          static_cast<std::size_t>(element * Threads);
+                adds[element] = index >= static_cast<std::size_t>(offset)
+                                    ? scan[index - static_cast<std::size_t>(offset)]
+                                    : 0.0f;
+            }
+            __syncthreads();
+            for (int element = 0; element < ElementsPerThread; ++element)
+            {
+                const std::size_t index = static_cast<std::size_t>(threadIdx.x) +
+                                          static_cast<std::size_t>(element * Threads);
+                if (index >= static_cast<std::size_t>(offset))
+                {
+                    scan[index] += adds[element];
+                }
+            }
+            __syncthreads();
+        }
+
+        for (int element = 0; element < ElementsPerThread; ++element)
+        {
+            const std::size_t index = static_cast<std::size_t>(threadIdx.x) +
+                                      static_cast<std::size_t>(element * Threads);
+            if (index < static_cast<std::size_t>(tile_count))
+            {
+                tile_sums[row_offset + index] = index == 0 ? 0.0f : scan[index - 1];
+            }
+        }
+    }
+
+    template <int Threads, int ElementsPerThread>
+    __global__ void cfar_2d_row_prefix_add_tile_offsets_kernel(
+        std::size_t rows,
+        std::size_t cols,
+        int tile_count,
+        const float *tile_sums,
+        float *row_prefix)
+    {
+        const std::size_t block = static_cast<std::size_t>(blockIdx.x);
+        const std::size_t tile = block % static_cast<std::size_t>(tile_count);
+        const std::size_t row = block / static_cast<std::size_t>(tile_count);
+        if (row >= rows)
+        {
+            return;
+        }
+
+        const float offset = tile_sums[row * static_cast<std::size_t>(tile_count) + tile];
+        constexpr int kElements = Threads * ElementsPerThread;
+        const std::size_t tile_base = tile * static_cast<std::size_t>(kElements);
+        const std::size_t stride = cols + 1;
+        for (int element = 0; element < ElementsPerThread; ++element)
+        {
+            const std::size_t column = tile_base + static_cast<std::size_t>(threadIdx.x) +
+                                       static_cast<std::size_t>(element * Threads);
+            if (column < cols)
+            {
+                row_prefix[row * stride + column + 1] += offset;
+            }
+        }
+    }
+
+    template <int Threads, int ElementsPerThread>
+    void launch_cfar_tiled_scan(
+        const float *array,
+        std::size_t rows,
+        std::size_t cols,
+        int tile_count,
+        float *row_prefix,
+        float *tile_sums)
+    {
+        if (tile_count == 1)
+        {
+            cfar_2d_row_prefix_scan_single_kernel<Threads, ElementsPerThread><<<
+                static_cast<unsigned int>(rows), Threads>>>(
+                array,
+                rows,
+                cols,
+                row_prefix);
+            check_kernel_launch("cfar_2d_row_prefix_scan_single_kernel");
+            return;
+        }
+        cfar_2d_row_prefix_scan_tiles_kernel<Threads, ElementsPerThread><<<
+            static_cast<unsigned int>(rows * static_cast<std::size_t>(tile_count)), Threads>>>(
+            array,
+            rows,
+            cols,
+            tile_count,
+            row_prefix,
+            tile_sums);
+        check_kernel_launch("cfar_2d_row_prefix_scan_tiles_kernel");
+        cfar_2d_row_prefix_scan_tile_offsets_kernel<Threads, ElementsPerThread><<<
+            static_cast<unsigned int>(rows), Threads>>>(
+            rows,
+            tile_count,
+            tile_sums);
+        check_kernel_launch("cfar_2d_row_prefix_scan_tile_offsets_kernel");
+        cfar_2d_row_prefix_add_tile_offsets_kernel<Threads, ElementsPerThread><<<
+            static_cast<unsigned int>(rows * static_cast<std::size_t>(tile_count)), Threads>>>(
+            rows,
+            cols,
+            tile_count,
+            tile_sums,
+            row_prefix);
+        check_kernel_launch("cfar_2d_row_prefix_add_tile_offsets_kernel");
+    }
+
     __device__ float cfar_integral_rect_sum(
         const float *integral,
         std::size_t stride,
@@ -1692,6 +2111,45 @@ namespace
         }
         return cusignal::zx_gpu_backend::windows::get_window(std::move(window), size, false);
     }
+
+    std::string window_signature(const ZxGpuWindowSpec &window)
+    {
+        return std::visit(
+            [](const auto &value) {
+                using T = std::decay_t<decltype(value)>;
+                std::ostringstream stream;
+                if constexpr (std::is_same_v<T, std::string>)
+                {
+                    stream << "string:" << value;
+                }
+                else if constexpr (std::is_same_v<T, float>)
+                {
+                    stream << "float:" << value;
+                }
+                else if constexpr (std::is_same_v<T, cusignal::core::NamedFloatParameter>)
+                {
+                    stream << "named_float:" << value.name << ':' << value.value;
+                }
+                else if constexpr (std::is_same_v<T, cusignal::core::NamedFloatPairParameter>)
+                {
+                    stream << "named_pair:" << value.name << ':' << value.first << ':' << value.second;
+                }
+                else if constexpr (std::is_same_v<T, cusignal::core::NamedTaylorParameter>)
+                {
+                    stream << "taylor:" << value.name << ':' << value.nbar << ':' << value.sll << ':' << value.norm;
+                }
+                else if constexpr (std::is_same_v<T, cusignal::core::RealSignal>)
+                {
+                    stream << "host_signal:" << value.size();
+                }
+                else
+                {
+                    stream << "device_signal:" << value.size();
+                }
+                return stream.str();
+            },
+            window);
+    }
 } // namespace
 
 namespace cusignal
@@ -1843,6 +2301,16 @@ namespace cusignal
                 const std::size_t num_pulses = x_device->shape()[0];
                 const std::size_t samples = x_device->shape()[1];
                 const int resolved_nfft = nfft > 0 ? nfft : static_cast<int>(samples);
+                const std::string window_key = window_signature(window);
+                const tile::PolicyDecision tuning = tile::select(
+                    tile::make_pulse_compression_key(
+                        num_pulses,
+                        samples,
+                        template_size,
+                        resolved_nfft,
+                        normalize,
+                        window_key));
+                const int launch_threads = tuning.config.tile.threads;
                 ZxGpuComplexArray output(core::Shape{num_pulses, static_cast<std::size_t>(resolved_nfft)}, false);
                 g_workspace.pulse.template_fft.reserve(static_cast<std::size_t>(resolved_nfft));
 
@@ -1877,10 +2345,20 @@ namespace cusignal
 
                 ScopedZxGpuEvents events;
                 bool template_prepared = false;
+                const bool legacy_plan =
+                    tile::legacy_path() ||
+                    use_legacy_p0_path("CUSIGNAL_ZX_PULSE_PLAN") ||
+                    tuning.config.id == tile::CandidateId::PulseCompressionLegacy;
+                GenericPlan &template_plan = legacy_plan
+                                                ? g_workspace.pulse.legacy_pulse_plan
+                                                : g_workspace.pulse.template_plan;
+                GenericPlan &data_plan = legacy_plan
+                                             ? g_workspace.pulse.legacy_pulse_plan
+                                             : g_workspace.pulse.data_plan;
                 g_last_kernel_ms = static_cast<float>(events.measure([&]() {
                     if (!template_cache_hit)
                     {
-                        pack_template_kernel<<<block_count(static_cast<std::size_t>(resolved_nfft)), kThreadsPerBlock>>>(
+                        pack_template_kernel<<<block_count(static_cast<std::size_t>(resolved_nfft), launch_threads), launch_threads>>>(
                             reinterpret_cast<const float2 *>(template_device->data()),
                             use_window ? window_signal.data() : nullptr,
                             template_size,
@@ -1904,17 +2382,17 @@ namespace cusignal
                             {
                                 throw std::invalid_argument("template norm must be > 0");
                             }
-                            scale_complex_kernel<<<block_count(static_cast<std::size_t>(resolved_nfft)), kThreadsPerBlock>>>(
+                            scale_complex_kernel<<<block_count(static_cast<std::size_t>(resolved_nfft), launch_threads), launch_threads>>>(
                                 reinterpret_cast<float2 *>(g_workspace.pulse.template_fft.get()),
                                 static_cast<std::size_t>(resolved_nfft),
                                 1.0 / norm);
                             check_kernel_launch("scale_complex_kernel(template)");
                         }
 
-                        g_workspace.pulse.pulse_plan.ensure(resolved_nfft, 1);
+                        template_plan.ensure(resolved_nfft, 1);
                         throw_on_cufft_error(
                             cufftExecC2C(
-                                g_workspace.pulse.pulse_plan.handle,
+                                template_plan.handle,
                                 g_workspace.pulse.template_fft.get(),
                                 g_workspace.pulse.template_fft.get(),
                                 CUFFT_FORWARD),
@@ -1922,7 +2400,7 @@ namespace cusignal
                         template_prepared = true;
                     }
 
-                    pack_pulse_rows_kernel<<<block_count(num_pulses * static_cast<std::size_t>(resolved_nfft)), kThreadsPerBlock>>>(
+                    pack_pulse_rows_kernel<<<block_count(num_pulses * static_cast<std::size_t>(resolved_nfft), launch_threads), launch_threads>>>(
                         reinterpret_cast<const float2 *>(x_device->data()),
                         num_pulses,
                         samples,
@@ -1930,16 +2408,16 @@ namespace cusignal
                         reinterpret_cast<float2 *>(output.data()));
                     check_kernel_launch("pack_pulse_rows_kernel");
 
-                    g_workspace.pulse.pulse_plan.ensure(resolved_nfft, static_cast<int>(num_pulses));
+                    data_plan.ensure(resolved_nfft, static_cast<int>(num_pulses));
                     throw_on_cufft_error(
                         cufftExecC2C(
-                            g_workspace.pulse.pulse_plan.handle,
+                            data_plan.handle,
                             reinterpret_cast<cufftComplex *>(output.data()),
                             reinterpret_cast<cufftComplex *>(output.data()),
                             CUFFT_FORWARD),
                         "cufftExecC2C(pulse forward)");
 
-                    multiply_conj_template_kernel<<<block_count(output.size()), kThreadsPerBlock>>>(
+                    multiply_conj_template_kernel<<<block_count(output.size(), launch_threads), launch_threads>>>(
                         reinterpret_cast<float2 *>(output.data()),
                         g_workspace.pulse.template_fft.get(),
                         output.size(),
@@ -1949,7 +2427,7 @@ namespace cusignal
 
                     throw_on_cufft_error(
                         cufftExecC2C(
-                            g_workspace.pulse.pulse_plan.handle,
+                            data_plan.handle,
                             reinterpret_cast<cufftComplex *>(output.data()),
                             reinterpret_cast<cufftComplex *>(output.data()),
                             CUFFT_INVERSE),
@@ -1983,51 +2461,151 @@ namespace cusignal
                 const std::size_t pulses = x_device.shape()[0];
                 const std::size_t samples = x_device.shape()[1];
                 const int resolved_nfft = nfft > 0 ? nfft : static_cast<int>(pulses);
+                const std::string window_key = window_signature(window);
                 const ZxGpuRealSignal window_signal = resolve_window_signal(std::move(window), static_cast<int>(pulses));
                 const bool use_window = !window_signal.empty();
-
-                ZxGpuComplexArray output = core::make_zx_gpu_complex_array(
-                    core::Shape{static_cast<std::size_t>(resolved_nfft), samples});
-                g_workspace.pulse.doppler_transposed.reserve(samples * static_cast<std::size_t>(resolved_nfft));
-
-                ScopedZxGpuEvents events;
-                g_last_kernel_ms = static_cast<float>(events.measure([&]() {
-                    if (static_cast<std::size_t>(resolved_nfft) > pulses)
-                    {
-                        g_workspace.pulse.doppler_transposed.zero(samples * static_cast<std::size_t>(resolved_nfft));
-                    }
-                    else
-                    {
-                        g_workspace.pulse.doppler_transposed.reserve(samples * static_cast<std::size_t>(resolved_nfft));
-                    }
-                    const std::size_t packed_rows =
-                        std::min(pulses, static_cast<std::size_t>(resolved_nfft));
-                    pack_pulse_doppler_kernel<<<block_count(packed_rows * samples), kThreadsPerBlock>>>(
-                        reinterpret_cast<const float2 *>(x_device.data()),
+                const tile::PolicyDecision tuning = tile::select(
+                    tile::make_pulse_doppler_key(
                         pulses,
                         samples,
                         resolved_nfft,
-                        use_window ? window_signal.data() : nullptr,
-                        use_window,
-                        g_workspace.pulse.doppler_transposed.get());
-                    check_kernel_launch("pack_pulse_doppler_kernel");
-
-                    g_workspace.pulse.doppler_plan.ensure(resolved_nfft, static_cast<int>(samples));
-                    throw_on_cufft_error(
-                        cufftExecC2C(
-                            g_workspace.pulse.doppler_plan.handle,
-                            g_workspace.pulse.doppler_transposed.get(),
-                            g_workspace.pulse.doppler_transposed.get(),
-                            CUFFT_FORWARD),
-                        "cufftExecC2C(pulse_doppler forward)");
-
-                    transpose_doppler_output_kernel<<<block_count(output.size()), kThreadsPerBlock>>>(
-                        g_workspace.pulse.doppler_transposed.get(),
-                        samples,
-                        resolved_nfft,
                         shift_output,
-                        reinterpret_cast<float2 *>(output.data()));
-                    check_kernel_launch("transpose_doppler_output_kernel");
+                        use_window,
+                        window_key));
+                const int launch_threads = tuning.config.tile.threads;
+
+                ZxGpuComplexArray output = core::make_zx_gpu_complex_array(
+                    core::Shape{static_cast<std::size_t>(resolved_nfft), samples});
+                const std::size_t transform_elements =
+                    samples * static_cast<std::size_t>(resolved_nfft);
+                const bool legacy_path =
+                    tile::legacy_path() ||
+                    use_legacy_p0_path("CUSIGNAL_ZX_DOPPLER_PATH") ||
+                    tuning.config.id == tile::CandidateId::PulseDopplerLegacy;
+                const char *plan_many_env = std::getenv("CUSIGNAL_ZX_DOPPLER_PLAN_MANY");
+                const bool plan_many_opt_in =
+                    plan_many_env != nullptr &&
+                    (std::strcmp(plan_many_env, "1") == 0 ||
+                     std::strcmp(plan_many_env, "true") == 0 ||
+                     std::strcmp(plan_many_env, "TRUE") == 0);
+                const bool plan_many_dimensions_fit =
+                    samples <= static_cast<std::size_t>(std::numeric_limits<int>::max()) &&
+                    resolved_nfft <= std::numeric_limits<int>::max();
+
+                ScopedZxGpuEvents events;
+                g_last_kernel_ms = static_cast<float>(events.measure([&]() {
+                    if (!legacy_path && plan_many_opt_in && plan_many_dimensions_fit &&
+                        g_workspace.pulse.doppler_strided_plan.ensure(
+                            resolved_nfft,
+                            static_cast<int>(samples),
+                            static_cast<int>(samples),
+                            1,
+                            static_cast<int>(samples),
+                            1))
+                    {
+                        float2 *transform_buffer = nullptr;
+                        if (shift_output)
+                        {
+                            g_workspace.pulse.doppler_transposed.reserve(transform_elements);
+                            transform_buffer = reinterpret_cast<float2 *>(
+                                g_workspace.pulse.doppler_transposed.get());
+                        }
+                        else
+                        {
+                            transform_buffer = reinterpret_cast<float2 *>(output.data());
+                        }
+
+                        const bool direct_input =
+                            !use_window && static_cast<std::size_t>(resolved_nfft) <= pulses;
+                        if (!direct_input)
+                        {
+                            pack_pulse_doppler_rows_kernel<<<
+                                block_count(transform_elements, launch_threads), launch_threads>>>(
+                                reinterpret_cast<const float2 *>(x_device.data()),
+                                pulses,
+                                samples,
+                                resolved_nfft,
+                                use_window ? window_signal.data() : nullptr,
+                                use_window,
+                                transform_buffer);
+                            check_kernel_launch("pack_pulse_doppler_rows_kernel");
+                        }
+
+                        throw_on_cufft_error(
+                            cufftExecC2C(
+                                g_workspace.pulse.doppler_strided_plan.handle,
+                                reinterpret_cast<cufftComplex *>(direct_input
+                                                                     ? const_cast<float2 *>(
+                                                                           reinterpret_cast<const float2 *>(x_device.data()))
+                                                                     : transform_buffer),
+                                reinterpret_cast<cufftComplex *>(transform_buffer),
+                                CUFFT_FORWARD),
+                            "cufftExecC2C(pulse_doppler strided forward)");
+
+                        if (shift_output)
+                        {
+                            shift_doppler_rows_kernel<<<
+                                block_count(transform_elements, launch_threads), launch_threads>>>(
+                                transform_buffer,
+                                samples,
+                                resolved_nfft,
+                                reinterpret_cast<float2 *>(output.data()));
+                            check_kernel_launch("shift_doppler_rows_kernel");
+                        }
+                    }
+                    else
+                    {
+                        g_workspace.pulse.doppler_transposed.reserve(transform_elements);
+                        if (legacy_path)
+                        {
+                            if (static_cast<std::size_t>(resolved_nfft) > pulses)
+                            {
+                                g_workspace.pulse.doppler_transposed.zero(transform_elements);
+                            }
+                            const std::size_t packed_rows =
+                                std::min(pulses, static_cast<std::size_t>(resolved_nfft));
+                            pack_pulse_doppler_kernel<<<
+                                block_count(packed_rows * samples, launch_threads), launch_threads>>>(
+                                reinterpret_cast<const float2 *>(x_device.data()),
+                                pulses,
+                                samples,
+                                resolved_nfft,
+                                use_window ? window_signal.data() : nullptr,
+                                use_window,
+                                g_workspace.pulse.doppler_transposed.get());
+                            check_kernel_launch("pack_pulse_doppler_kernel");
+                        }
+                        else
+                        {
+                            pack_pulse_doppler_transposed_full_kernel<<<
+                                block_count(transform_elements, launch_threads), launch_threads>>>(
+                                reinterpret_cast<const float2 *>(x_device.data()),
+                                pulses,
+                                samples,
+                                resolved_nfft,
+                                use_window ? window_signal.data() : nullptr,
+                                use_window,
+                                g_workspace.pulse.doppler_transposed.get());
+                            check_kernel_launch("pack_pulse_doppler_transposed_full_kernel");
+                        }
+
+                        g_workspace.pulse.doppler_plan.ensure(resolved_nfft, static_cast<int>(samples));
+                        throw_on_cufft_error(
+                            cufftExecC2C(
+                                g_workspace.pulse.doppler_plan.handle,
+                                g_workspace.pulse.doppler_transposed.get(),
+                                g_workspace.pulse.doppler_transposed.get(),
+                                CUFFT_FORWARD),
+                            "cufftExecC2C(pulse_doppler forward)");
+
+                        transpose_doppler_output_kernel<<<block_count(output.size(), launch_threads), launch_threads>>>(
+                            g_workspace.pulse.doppler_transposed.get(),
+                            samples,
+                            resolved_nfft,
+                            shift_output,
+                            reinterpret_cast<float2 *>(output.data()));
+                        check_kernel_launch("transpose_doppler_output_kernel");
+                    }
                 }));
 
                 return output;
@@ -2427,6 +3005,13 @@ namespace cusignal
                     throw std::invalid_argument("Array too small for given parameters");
                 }
                 const float alpha = cfar_alpha(pfa, 2 * reference_cells);
+                const tile::PolicyDecision tuning = tile::select(
+                    tile::make_cfar_1d_key(
+                        size,
+                        guard_cells,
+                        reference_cells,
+                        alpha,
+                        2 * reference_cells));
                 radartools_api::ZxGpuCfarResult result;
                 result.threshold = core::make_zx_gpu_real_array_like(array_device);
                 result.detections = core::make_zx_gpu_real_array_like(array_device);
@@ -2541,6 +3126,16 @@ namespace cusignal
                 const int cells = 2 * rcx * (2 * rcy + 2 * gcy + 1) +
                                   2 * (2 * gcx + 1) * rcy;
                 const float alpha = cfar_alpha(pfa, cells);
+                const tile::PolicyDecision tuning = tile::select(
+                    tile::make_cfar_2d_key(
+                        rows,
+                        cols,
+                        gcx,
+                        gcy,
+                        rcx,
+                        rcy,
+                        alpha,
+                        cells));
                 radartools_api::ZxGpuCfarResult result;
                 result.threshold = core::make_zx_gpu_real_array_like(array_device);
                 result.detections = core::make_zx_gpu_real_array_like(array_device);
@@ -2570,7 +3165,59 @@ namespace cusignal
                         const std::size_t stride = cols + 1;
                         g_workspace.cfar.row_prefix.reserve(rows * stride);
                         g_workspace.cfar.integral.reserve((rows + 1) * stride);
-                        if (rows >= 128 && cols >= 1024 && cols <= 2048)
+                        const bool legacy_scan =
+                            tile::legacy_path() ||
+                            use_legacy_p0_path("CUSIGNAL_ZX_CFAR_PATH") ||
+                            tuning.config.id == tile::CandidateId::CfarLegacy;
+                        const int scan_elements =
+                            tuning.config.scan_elements > 0 ? tuning.config.scan_elements : kCfarScanTileElements;
+                        const std::size_t tile_count =
+                            tile::ceil_div(cols, static_cast<std::size_t>(scan_elements));
+                        const bool tiled_scan =
+                            !legacy_scan && tuning.config.optimized_route &&
+                            tile::cfar_tiled_candidate(tuning.config.id) &&
+                            rows >= 32 && cols >= 512 &&
+                            tile_count <= static_cast<std::size_t>(scan_elements) &&
+                            (tuning.config.id != tile::CandidateId::CfarStatic ||
+                             cols <= static_cast<std::size_t>(scan_elements) || cols > 2048);
+                        if (tiled_scan)
+                        {
+                            const int integer_tile_count = static_cast<int>(tile_count);
+                            if (tuning.config.tile.threads == 128 && tuning.config.tile.elements_per_thread == 1)
+                            {
+                                g_workspace.cfar.row_tile_sums.reserve(rows * tile_count);
+                                launch_cfar_tiled_scan<128, 1>(
+                                    array_device.data(),
+                                    rows,
+                                    cols,
+                                    integer_tile_count,
+                                    g_workspace.cfar.row_prefix.get(),
+                                    g_workspace.cfar.row_tile_sums.get());
+                            }
+                            else if (tuning.config.tile.threads == 512 && tuning.config.tile.elements_per_thread == 2)
+                            {
+                                g_workspace.cfar.row_tile_sums.reserve(rows * tile_count);
+                                launch_cfar_tiled_scan<512, 2>(
+                                    array_device.data(),
+                                    rows,
+                                    cols,
+                                    integer_tile_count,
+                                    g_workspace.cfar.row_prefix.get(),
+                                    g_workspace.cfar.row_tile_sums.get());
+                            }
+                            else
+                            {
+                                g_workspace.cfar.row_tile_sums.reserve(rows * tile_count);
+                                launch_cfar_tiled_scan<256, 2>(
+                                    array_device.data(),
+                                    rows,
+                                    cols,
+                                    integer_tile_count,
+                                    g_workspace.cfar.row_prefix.get(),
+                                    g_workspace.cfar.row_tile_sums.get());
+                            }
+                        }
+                        else if (rows >= 128 && cols >= 1024 && cols <= 2048)
                         {
                             cfar_2d_row_prefix_parallel_kernel<<<
                                 static_cast<unsigned int>(rows), kThreadsPerBlock>>>(

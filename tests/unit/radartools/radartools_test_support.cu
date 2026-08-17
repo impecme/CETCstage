@@ -621,6 +621,10 @@ namespace
 
     RealSignal sample_real_values(const RealSignal &values, std::size_t limit = 32)
     {
+        if (cusignal_test::cpu_reference_cache::write_full_outputs())
+        {
+            return values;
+        }
         if (values.size() <= limit)
         {
             return values;
@@ -630,6 +634,10 @@ namespace
 
     ComplexSignal sample_complex_values(const ComplexSignal &values, std::size_t limit = 32)
     {
+        if (cusignal_test::cpu_reference_cache::write_full_outputs())
+        {
+            return values;
+        }
         if (values.size() <= limit)
         {
             return values;
@@ -1280,6 +1288,7 @@ namespace
     {
         for (int warmup = 0; warmup < options.warmup; ++warmup)
         {
+            cusignal::core::benchmark::note_iteration();
             callable();
         }
         std::vector<float> durations;
@@ -1287,6 +1296,7 @@ namespace
         for (int repeat = 0; repeat < options.repeat; ++repeat)
         {
             const auto start = std::chrono::steady_clock::now();
+            cusignal::core::benchmark::note_iteration();
             callable();
             const auto stop = std::chrono::steady_clock::now();
             durations.push_back(std::chrono::duration<float, std::milli>(stop - start).count());
@@ -1299,6 +1309,7 @@ namespace
     {
         for (int warmup = 0; warmup < options.warmup; ++warmup)
         {
+            cusignal::core::benchmark::note_iteration();
             callable();
             (void)cusignal::zx_gpu_backend::radartools_test_hooks::consume_last_kernel_ms();
         }
@@ -1306,6 +1317,7 @@ namespace
         durations.reserve(static_cast<std::size_t>(options.repeat));
         for (int repeat = 0; repeat < options.repeat; ++repeat)
         {
+            cusignal::core::benchmark::note_iteration();
             callable();
             durations.push_back(cusignal::zx_gpu_backend::radartools_test_hooks::consume_last_kernel_ms());
         }
@@ -1874,6 +1886,10 @@ namespace
 
     std::size_t infer_perf_samples(const std::string &op, const RadarCase &test_case)
     {
+        if (op == "cfar_alpha")
+        {
+            return 1;
+        }
         if (op == "pulse_doppler" && test_case.x_shape.size() >= 2)
         {
             return static_cast<std::size_t>(resolved_nfft(op, test_case)) * test_case.x_shape[1];
@@ -2068,32 +2084,44 @@ namespace
         CaseReport report;
         report.case_id = test_case.id;
         report.category = test_case.category;
+        std::optional<ComplexArray> host_pulse_compression_x;
+        std::optional<ComplexSignal> host_pulse_compression_template;
+        std::optional<ComplexArray> host_pulse_doppler_x;
+        std::optional<RealArray> host_ca_cfar_x;
+        std::optional<ComplexSignal> host_ambgfun_x;
+        std::optional<ComplexSignal> host_ambgfun_y;
 
         std::optional<ZxGpuComplexArray> pulse_compression_x;
         std::optional<ZxGpuComplexSignal> pulse_compression_template;
         if (op == "pulse_compression")
         {
-            pulse_compression_x.emplace(ZxGpuComplexArray::from_host(load_complex_array_x(test_case)));
-            pulse_compression_template.emplace(ZxGpuComplexSignal::from_host(load_template(test_case)));
+            host_pulse_compression_x.emplace(load_complex_array_x(test_case));
+            host_pulse_compression_template.emplace(load_template(test_case));
+            pulse_compression_x.emplace(ZxGpuComplexArray::from_host(*host_pulse_compression_x));
+            pulse_compression_template.emplace(ZxGpuComplexSignal::from_host(*host_pulse_compression_template));
         }
         std::optional<ZxGpuComplexArray> pulse_doppler_x;
         if (op == "pulse_doppler")
         {
-            pulse_doppler_x.emplace(ZxGpuComplexArray::from_host(load_complex_array_x(test_case)));
+            host_pulse_doppler_x.emplace(load_complex_array_x(test_case));
+            pulse_doppler_x.emplace(ZxGpuComplexArray::from_host(*host_pulse_doppler_x));
         }
         std::optional<ZxGpuRealArray> ca_cfar_x;
         if (op == "ca_cfar")
         {
-            ca_cfar_x.emplace(ZxGpuRealArray::from_host(load_real_array_x(test_case)));
+            host_ca_cfar_x.emplace(load_real_array_x(test_case));
+            ca_cfar_x.emplace(ZxGpuRealArray::from_host(*host_ca_cfar_x));
         }
         std::optional<ZxGpuComplexSignal> ambgfun_x;
         std::optional<ZxGpuComplexSignal> ambgfun_y;
         if (op == "ambgfun" && options.gpu_only_perf)
         {
-            ambgfun_x.emplace(ZxGpuComplexSignal::from_host(load_complex_signal_x(test_case)));
+            host_ambgfun_x.emplace(load_complex_signal_x(test_case));
+            ambgfun_x.emplace(ZxGpuComplexSignal::from_host(*host_ambgfun_x));
             if (!test_case.y_file.empty() || test_case.generated_y.has_value())
             {
-                ambgfun_y.emplace(ZxGpuComplexSignal::from_host(load_y_signal(test_case)));
+                host_ambgfun_y.emplace(load_y_signal(test_case));
+                ambgfun_y.emplace(ZxGpuComplexSignal::from_host(*host_ambgfun_y));
             }
         }
         auto run_gpu_perf = [&]() -> DeviceOutputBundle {
@@ -2151,24 +2179,40 @@ namespace
             return runner.gpu(test_case);
         };
 
-        auto run_gpu_e2e = [&]() -> OutputBundle {
-            // Refresh every operand for the E2E sample.  The prepared device
-            // operands remain reserved for the kernel-only benchmark.
+        auto refresh_gpu_operands = [&]() {
             if (pulse_compression_x.has_value())
             {
-                pulse_compression_x->copy_from(load_complex_array_x(test_case));
-                pulse_compression_template->copy_from(load_template(test_case));
+                const ComplexArray fresh_x = *host_pulse_compression_x;
+                const ComplexSignal fresh_template = *host_pulse_compression_template;
+                pulse_compression_x->copy_from(fresh_x);
+                pulse_compression_template->copy_from(fresh_template);
             }
             if (pulse_doppler_x.has_value())
-                pulse_doppler_x->copy_from(load_complex_array_x(test_case));
+            {
+                const ComplexArray fresh = *host_pulse_doppler_x;
+                pulse_doppler_x->copy_from(fresh);
+            }
             if (ca_cfar_x.has_value())
-                ca_cfar_x->copy_from(load_real_array_x(test_case));
+            {
+                const RealArray fresh = *host_ca_cfar_x;
+                ca_cfar_x->copy_from(fresh);
+            }
             if (ambgfun_x.has_value())
             {
-                ambgfun_x->copy_from(load_complex_signal_x(test_case));
+                const ComplexSignal fresh_x = *host_ambgfun_x;
+                ambgfun_x->copy_from(fresh_x);
                 if (ambgfun_y.has_value())
-                    ambgfun_y->copy_from(load_y_signal(test_case));
+                {
+                    const ComplexSignal fresh_y = *host_ambgfun_y;
+                    ambgfun_y->copy_from(fresh_y);
+                }
             }
+        };
+
+        auto run_gpu_e2e = [&]() -> OutputBundle {
+            // Reconstruct each logical input object before the call.  The
+            // allocator may recycle capacity, but the full input is uploaded.
+            refresh_gpu_operands();
             return materialize(run_gpu_perf());
         };
 
@@ -2188,10 +2232,15 @@ namespace
             report.cpu_gpu_error = compute_bundle_error(cpu_output, gpu_output);
         }
         report.pass = true;
-        if (!options.gpu_only_perf)
+        if (!options.gpu_only_perf && !cusignal::core::benchmark::skip_cpu_timing())
         {
             report.cpu_perf = benchmark_host_latency(options, [&]() { (void)runner.cpu(test_case); });
         }
+        const int benchmark_iterations = options.warmup + options.repeat;
+        const bool independent_kernel = op != "cfar_alpha";
+        cusignal::core::benchmark::InputRefreshRun input_refresh(
+            static_cast<std::uint64_t>(benchmark_iterations * (independent_kernel ? 2 : 1)),
+            op != "cfar_alpha");
         report.gpu_e2e_perf = benchmark_host_latency(options, [&]() {
             (void)run_gpu_e2e();
             cusignal::core::throw_on_zx_gpu_error(cudaDeviceSynchronize(), "cudaDeviceSynchronize gpu e2e");
@@ -2202,7 +2251,10 @@ namespace
         if (op != "cfar_alpha")
         {
             report.gpu_kernel_perf =
-                benchmark_gpu_kernel_latency(options, [&]() { (void)run_gpu_perf(); });
+                benchmark_gpu_kernel_latency(options, [&]() {
+                    refresh_gpu_operands();
+                    (void)run_gpu_perf();
+                });
         }
         else
         {

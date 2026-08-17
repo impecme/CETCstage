@@ -8,6 +8,8 @@
 auto_git.sh                         根目录自动提交辅助脚本，保留
 scripts/build.sh                    唯一构建入口
 scripts/performance.sh              唯一性能测试入口
+scripts/run_optimized_operators_against_frozen.sh
+                                    只运行优化算子并与冻结 GPU 基线配对
 scripts/smoke.sh                    正确性烟测入口
 scripts/clean.sh                    清理可再生运行数据
 scripts/sync_to_container.sh        宿主机同步源码到容器
