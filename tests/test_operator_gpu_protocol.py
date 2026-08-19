@@ -19,7 +19,7 @@ from compare_operator_gpu_baseline import compare  # noqa: E402
 from operator_gpu_protocol import ProtocolError, validate_frozen_baseline  # noqa: E402
 
 
-BASELINE_ROOT = REPO_ROOT / "operator_gpu_baseline_75a700d_protocol"
+BASELINE_ROOT = REPO_ROOT / "data" / "baseline"
 BASELINE_CSV = BASELINE_ROOT / "gpu_baseline.csv"
 
 

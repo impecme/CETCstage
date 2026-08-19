@@ -15,7 +15,7 @@
 | 任务 demo | `demo/task1_radar/`、`demo/task2_features/` | 两条端到端任务链及分步验收 |
 | 单元测试 | `tests/unit/` | 12 模块、81 个注册算子的独立测试入口 |
 | 平台测试 | `tests/platform/` | ZQ500 compile/runtime/library probe 和禁止 API 扫描 |
-| 数据与证据 | `data/reference/`、`data/generated/`、`data/reports/` | 固定参考数据、可再生输入和终版结构化报告 |
+| 数据与证据 | `data/reference/`、`data/generated/`、`data/baseline/`、`data/reports/` | 固定参考数据、可再生输入、CPU/GPU 基线和终版结构化报告 |
 | 工具脚本 | `scripts/*.sh` | 构建、验证、演示、同步、取回和运行产物清理 |
 
 顶层 CMake 只接受 `CUSIGNAL_PLATFORM=ZHONGKEXIN`，并生成两个核心静态库：
@@ -186,12 +186,13 @@ Task2 mixed 8 步，共 14 个计算步骤。
 3. `all81 x L1-L6` 性能 runner 与平台 telemetry。
 4. Task1/Task2 L1-L6、14 步 timing/accuracy 和最终演示。
 
-`data/reports/` 在当前代码完整验证通过后发布。它以 `summary.md/json` 为入口，
-按 `units/<module>/<operator>/` 保存 81 个算子的必要报告，按
-`units/benchmarks/summary.json` 保存全量性能汇总，按 `demo/` 保存两个任务的
-最终场景与 L1-L6 数据，并在 `validation/` 保存静态和平台审计；`FILES.sha256`
-覆盖报告目录中除自身外的全部普通文件。逐轮 console、候选/探针、历史版本逐文件
-副本、图件和外层归档不属于最终仓库。V6 的 486/486 是 runner 用例门，不应被解释为
+`data/reports/autotune/` 保存当前默认 Auto 结果：正式算子汇总位于
+`units/benchmarks/`，单算子明细按 `units/<module>/<operator>/<L1-L6>/` 保存
+`metrics.json`、`cases.csv`、`summary.md`，两个任务的最终场景与 L1-L6 数据位于 `demo/`。
+运行期原始文件仍先写入 `data/.reports_staging/.../raw/reports/<scale>/<module>/<operator>/`。
+`data/reports/zx_operator_gpu_final_static/` 是静态策略 A/B 对照报告；GPU 冻结
+基线和原始 CPU/GPU 参考数据位于 `data/baseline/`。逐轮 console、候选/探针、历史版本
+逐文件副本、图件和外层归档不属于最终仓库。V6 的 486/486 是 runner 用例门，不应被解释为
 所有 benchmark 诊断值均无异常；完整证据能力边界
 见 `docs/PERFORMANCE.md`。
 

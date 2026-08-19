@@ -40,13 +40,13 @@ namespace
             : static_cast<int>(tile::ceil_div(size, static_cast<std::size_t>(tile::linear_shape(size).threads)));
     }
 
-    int tiled_block_count(std::size_t size, int elements_per_thread)
+    int tiled_block_count(std::size_t size, int elements_per_thread, int threads)
     {
         return size == 0
             ? 0
             : static_cast<int>(tile::ceil_div(
                   size,
-                  static_cast<std::size_t>(kThreadsPerBlock) *
+                  static_cast<std::size_t>(threads) *
                       static_cast<std::size_t>(elements_per_thread)));
     }
 
@@ -501,11 +501,12 @@ namespace cusignal
                         tile::stable_string_hash(normalized_method),
                         tile::stable_string_hash(normalized_type)));
                 const tile::ScopedPolicy policy_scope(tuning);
+                const int launch_threads = tuning.config.tile.threads;
                 const bool use_tiled = tile::optimized_path() && size >= 4096;
                 const int elements_per_thread =
                     use_tiled ? tile::linear_shape(size).elements_per_thread : 1;
                 const int blocks = use_tiled
-                                       ? tiled_block_count(size, elements_per_thread)
+                                       ? tiled_block_count(size, elements_per_thread, launch_threads)
                                        : block_count(size);
 
                 if (normalized_type == "complex")
@@ -514,7 +515,7 @@ namespace cusignal
                     core::ZxGpuComplexSignal complex_output(size);
                     if (use_tiled)
                     {
-                        chirp_complex_tiled_kernel<<<blocks, kThreadsPerBlock>>>(
+                        chirp_complex_tiled_kernel<<<blocks, launch_threads>>>(
                             t_device.data(),
                             size,
                             f0,
@@ -525,7 +526,7 @@ namespace cusignal
                     }
                     else
                     {
-                        chirp_linear_complex_kernel<<<blocks, kThreadsPerBlock>>>(
+                        chirp_linear_complex_kernel<<<blocks, launch_threads>>>(
                             t_device.data(),
                             size,
                             f0,
@@ -543,7 +544,7 @@ namespace cusignal
                     const float linear_beta = (f1 - f0) / t1;
                     if (use_tiled)
                     {
-                        chirp_real_tiled_kernel<<<blocks, kThreadsPerBlock>>>(
+                        chirp_real_tiled_kernel<<<blocks, launch_threads>>>(
                             t_device.data(),
                             size,
                             f0,
@@ -557,7 +558,7 @@ namespace cusignal
                     }
                     else
                     {
-                        chirp_linear_real_kernel<<<blocks, kThreadsPerBlock>>>(
+                        chirp_linear_real_kernel<<<blocks, launch_threads>>>(
                             t_device.data(),
                             size,
                             f0,
@@ -571,7 +572,7 @@ namespace cusignal
                 {
                     if (use_tiled)
                     {
-                        chirp_real_tiled_kernel<<<blocks, kThreadsPerBlock>>>(
+                        chirp_real_tiled_kernel<<<blocks, launch_threads>>>(
                             t_device.data(),
                             size,
                             f0,
@@ -585,7 +586,7 @@ namespace cusignal
                     }
                     else
                     {
-                        chirp_quadratic_kernel<<<blocks, kThreadsPerBlock>>>(
+                        chirp_quadratic_kernel<<<blocks, launch_threads>>>(
                             t_device.data(),
                             size,
                             f0,
@@ -601,7 +602,7 @@ namespace cusignal
                 {
                     if (use_tiled)
                     {
-                        chirp_real_tiled_kernel<<<blocks, kThreadsPerBlock>>>(
+                        chirp_real_tiled_kernel<<<blocks, launch_threads>>>(
                             t_device.data(),
                             size,
                             f0,
@@ -615,7 +616,7 @@ namespace cusignal
                     }
                     else
                     {
-                        chirp_logarithmic_kernel<<<blocks, kThreadsPerBlock>>>(
+                        chirp_logarithmic_kernel<<<blocks, launch_threads>>>(
                             t_device.data(),
                             size,
                             f0,
@@ -630,7 +631,7 @@ namespace cusignal
                 {
                     if (use_tiled)
                     {
-                        chirp_real_tiled_kernel<<<blocks, kThreadsPerBlock>>>(
+                        chirp_real_tiled_kernel<<<blocks, launch_threads>>>(
                             t_device.data(),
                             size,
                             f0,
@@ -644,7 +645,7 @@ namespace cusignal
                     }
                     else
                     {
-                        chirp_hyperbolic_kernel<<<blocks, kThreadsPerBlock>>>(
+                        chirp_hyperbolic_kernel<<<blocks, launch_threads>>>(
                             t_device.data(),
                             size,
                             f0,
@@ -704,18 +705,19 @@ namespace cusignal
                         retquad ? 1ULL : 0ULL,
                         retenv ? 1ULL : 0ULL));
                 const tile::ScopedPolicy policy_scope(tuning);
+                const int launch_threads = tuning.config.tile.threads;
                 const bool use_tiled = tile::optimized_path() && size >= 4096;
                 const int elements_per_thread =
                     use_tiled ? tile::linear_shape(size).elements_per_thread : 1;
                 const int blocks = use_tiled
-                                       ? tiled_block_count(size, elements_per_thread)
+                                       ? tiled_block_count(size, elements_per_thread, launch_threads)
                                        : block_count(size);
 
                 if (retquad && retenv)
                 {
                     if (use_tiled)
                     {
-                        gausspulse_tiled_kernel<true, true><<<blocks, kThreadsPerBlock>>>(
+                        gausspulse_tiled_kernel<true, true><<<blocks, launch_threads>>>(
                             t_device.data(),
                             size,
                             a,
@@ -727,7 +729,7 @@ namespace cusignal
                     }
                     else
                     {
-                        gausspulse_kernel<true, true><<<blocks, kThreadsPerBlock>>>(
+                        gausspulse_kernel<true, true><<<blocks, launch_threads>>>(
                             t_device.data(),
                             size,
                             a,
@@ -741,7 +743,7 @@ namespace cusignal
                 {
                     if (use_tiled)
                     {
-                        gausspulse_tiled_kernel<true, false><<<blocks, kThreadsPerBlock>>>(
+                        gausspulse_tiled_kernel<true, false><<<blocks, launch_threads>>>(
                             t_device.data(),
                             size,
                             a,
@@ -753,7 +755,7 @@ namespace cusignal
                     }
                     else
                     {
-                        gausspulse_kernel<true, false><<<blocks, kThreadsPerBlock>>>(
+                        gausspulse_kernel<true, false><<<blocks, launch_threads>>>(
                             t_device.data(),
                             size,
                             a,
@@ -767,7 +769,7 @@ namespace cusignal
                 {
                     if (use_tiled)
                     {
-                        gausspulse_tiled_kernel<false, true><<<blocks, kThreadsPerBlock>>>(
+                        gausspulse_tiled_kernel<false, true><<<blocks, launch_threads>>>(
                             t_device.data(),
                             size,
                             a,
@@ -779,7 +781,7 @@ namespace cusignal
                     }
                     else
                     {
-                        gausspulse_kernel<false, true><<<blocks, kThreadsPerBlock>>>(
+                        gausspulse_kernel<false, true><<<blocks, launch_threads>>>(
                             t_device.data(),
                             size,
                             a,
@@ -793,7 +795,7 @@ namespace cusignal
                 {
                     if (use_tiled)
                     {
-                        gausspulse_tiled_kernel<false, false><<<blocks, kThreadsPerBlock>>>(
+                        gausspulse_tiled_kernel<false, false><<<blocks, launch_threads>>>(
                             t_device.data(),
                             size,
                             a,
@@ -805,7 +807,7 @@ namespace cusignal
                     }
                     else
                     {
-                        gausspulse_kernel<false, false><<<blocks, kThreadsPerBlock>>>(
+                        gausspulse_kernel<false, false><<<blocks, launch_threads>>>(
                             t_device.data(),
                             size,
                             a,
@@ -874,15 +876,16 @@ namespace cusignal
                 const tile::PolicyDecision tuning = tile::select(
                     tile::make_linear_operator_key("waveforms/sawtooth", t_device.size(), 0, 1));
                 const tile::ScopedPolicy policy_scope(tuning);
+                const int launch_threads = tuning.config.tile.threads;
                 const bool use_tiled = tile::optimized_path() && t_device.size() >= 4096;
                 const int elements_per_thread =
                     use_tiled ? tile::linear_shape(t_device.size()).elements_per_thread : 1;
                 const int blocks = use_tiled
-                                       ? tiled_block_count(t_device.size(), elements_per_thread)
+                                       ? tiled_block_count(t_device.size(), elements_per_thread, launch_threads)
                                        : block_count(t_device.size());
                 if (use_tiled)
                 {
-                    sawtooth_tiled_scalar_kernel<<<blocks, kThreadsPerBlock>>>(
+                    sawtooth_tiled_scalar_kernel<<<blocks, launch_threads>>>(
                         t_device.data(),
                         t_device.size(),
                         width,
@@ -891,7 +894,7 @@ namespace cusignal
                 }
                 else
                 {
-                    sawtooth_scalar_kernel<<<blocks, kThreadsPerBlock>>>(
+                    sawtooth_scalar_kernel<<<blocks, launch_threads>>>(
                         t_device.data(), t_device.size(), width, output.data());
                 }
                 check_kernel_launch("sawtooth_scalar_kernel");
@@ -929,15 +932,16 @@ namespace cusignal
                 const tile::PolicyDecision tuning = tile::select(
                     tile::make_linear_operator_key("waveforms/sawtooth", t_device.size(), 0, 2));
                 const tile::ScopedPolicy policy_scope(tuning);
+                const int launch_threads = tuning.config.tile.threads;
                 const bool use_tiled = tile::optimized_path() && t_device.size() >= 4096;
                 const int elements_per_thread =
                     use_tiled ? tile::linear_shape(t_device.size()).elements_per_thread : 1;
                 const int blocks = use_tiled
-                                       ? tiled_block_count(t_device.size(), elements_per_thread)
+                                       ? tiled_block_count(t_device.size(), elements_per_thread, launch_threads)
                                        : block_count(t_device.size());
                 if (use_tiled)
                 {
-                    sawtooth_tiled_vector_kernel<<<blocks, kThreadsPerBlock>>>(
+                    sawtooth_tiled_vector_kernel<<<blocks, launch_threads>>>(
                         t_device.data(),
                         width_device.data(),
                         t_device.size(),
@@ -946,7 +950,7 @@ namespace cusignal
                 }
                 else
                 {
-                    sawtooth_vector_kernel<<<blocks, kThreadsPerBlock>>>(
+                    sawtooth_vector_kernel<<<blocks, launch_threads>>>(
                         t_device.data(),
                         width_device.data(),
                         t_device.size(),
@@ -972,15 +976,16 @@ namespace cusignal
                 const tile::PolicyDecision tuning = tile::select(
                     tile::make_linear_operator_key("waveforms/square", t_device.size(), 0, 1));
                 const tile::ScopedPolicy policy_scope(tuning);
+                const int launch_threads = tuning.config.tile.threads;
                 const bool use_tiled = tile::optimized_path() && t_device.size() >= 4096;
                 const int elements_per_thread =
                     use_tiled ? tile::linear_shape(t_device.size()).elements_per_thread : 1;
                 const int blocks = use_tiled
-                                       ? tiled_block_count(t_device.size(), elements_per_thread)
+                                       ? tiled_block_count(t_device.size(), elements_per_thread, launch_threads)
                                        : block_count(t_device.size());
                 if (use_tiled)
                 {
-                    square_tiled_scalar_kernel<<<blocks, kThreadsPerBlock>>>(
+                    square_tiled_scalar_kernel<<<blocks, launch_threads>>>(
                         t_device.data(),
                         t_device.size(),
                         duty,
@@ -989,7 +994,7 @@ namespace cusignal
                 }
                 else
                 {
-                    square_scalar_kernel<<<blocks, kThreadsPerBlock>>>(
+                    square_scalar_kernel<<<blocks, launch_threads>>>(
                         t_device.data(), t_device.size(), duty, output.data());
                 }
                 check_kernel_launch("square_scalar_kernel");
@@ -1027,15 +1032,16 @@ namespace cusignal
                 const tile::PolicyDecision tuning = tile::select(
                     tile::make_linear_operator_key("waveforms/square", t_device.size(), 0, 2));
                 const tile::ScopedPolicy policy_scope(tuning);
+                const int launch_threads = tuning.config.tile.threads;
                 const bool use_tiled = tile::optimized_path() && t_device.size() >= 4096;
                 const int elements_per_thread =
                     use_tiled ? tile::linear_shape(t_device.size()).elements_per_thread : 1;
                 const int blocks = use_tiled
-                                       ? tiled_block_count(t_device.size(), elements_per_thread)
+                                       ? tiled_block_count(t_device.size(), elements_per_thread, launch_threads)
                                        : block_count(t_device.size());
                 if (use_tiled)
                 {
-                    square_tiled_vector_kernel<<<blocks, kThreadsPerBlock>>>(
+                    square_tiled_vector_kernel<<<blocks, launch_threads>>>(
                         t_device.data(),
                         duty_device.data(),
                         t_device.size(),
@@ -1044,7 +1050,7 @@ namespace cusignal
                 }
                 else
                 {
-                    square_vector_kernel<<<blocks, kThreadsPerBlock>>>(
+                    square_vector_kernel<<<blocks, launch_threads>>>(
                         t_device.data(),
                         duty_device.data(),
                         t_device.size(),

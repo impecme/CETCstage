@@ -13,6 +13,12 @@ SPEC.loader.exec_module(MODULE)
 
 
 class ZxOperatorAutotuneTests(unittest.TestCase):
+    def test_default_cache_is_repository_owned(self):
+        self.assertEqual(
+            MODULE.cache_default_path(),
+            MODULE.project_root() / "data" / "tuning" / "zx_tuning.json",
+        )
+
     def test_registry_is_finite_and_matches_runtime_names(self):
         for family, definition in MODULE.FAMILIES.items():
             names = MODULE.all_candidate_names(family)

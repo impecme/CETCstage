@@ -14,6 +14,7 @@
 #include "cusignal/core/types.hpp"
 #include "../../src/common/demod_detail.hpp"
 #include "../../src/common/wavelets_detail.hpp"
+#include "../../src/common/zx_tile_policy.hpp"
 
 namespace cusignal_demo::task2_features
 {
@@ -27,6 +28,7 @@ namespace cusignal_demo::task2_features
         using cusignal::core::ZxGpuRealSignal;
         using cusignal::core::RealSignal;
         using cusignal::core::Shape;
+        namespace tile = cusignal::zx_tile;
 
         constexpr int kThreadsPerBlock = 256;
         constexpr std::size_t kTask2FixedFftMinRows = 48;
@@ -92,8 +94,8 @@ namespace cusignal_demo::task2_features
 
         std::size_t block_count(std::size_t total)
         {
-            return total == 0 ? 0 : (total + static_cast<std::size_t>(kThreadsPerBlock) - 1) /
-                static_cast<std::size_t>(kThreadsPerBlock);
+            const std::size_t threads = static_cast<std::size_t>(tile::task_threads());
+            return total == 0 ? 0 : (total + threads - 1) / threads;
         }
 
         bool environment_flag_enabled(const char *name)
@@ -2532,7 +2534,7 @@ namespace cusignal_demo::task2_features
         ZxGpuRealArray output = cusignal::core::make_zx_gpu_real_array(input.shape());
         if (!input.empty())
         {
-            extract_real_part_kernel<<<block_count(input.size()), kThreadsPerBlock>>>(
+            extract_real_part_kernel<<<block_count(input.size()), tile::task_threads()>>>(
                 reinterpret_cast<const float2 *>(input.data()),
                 output.data(),
                 input.size());
@@ -2546,7 +2548,7 @@ namespace cusignal_demo::task2_features
         ZxGpuRealArray output = cusignal::core::make_zx_gpu_real_array(input.shape());
         if (!input.empty())
         {
-            extract_imag_part_kernel<<<block_count(input.size()), kThreadsPerBlock>>>(
+            extract_imag_part_kernel<<<block_count(input.size()), tile::task_threads()>>>(
                 reinterpret_cast<const float2 *>(input.data()),
                 output.data(),
                 input.size());
@@ -2566,7 +2568,7 @@ namespace cusignal_demo::task2_features
         ZxGpuComplexArray output = cusignal::core::make_zx_gpu_complex_array(real_part.shape());
         if (!real_part.empty())
         {
-            combine_complex_kernel<<<block_count(real_part.size()), kThreadsPerBlock>>>(
+            combine_complex_kernel<<<block_count(real_part.size()), tile::task_threads()>>>(
                 real_part.data(),
                 imag_part.data(),
                 reinterpret_cast<float2 *>(output.data()),
@@ -2605,7 +2607,7 @@ namespace cusignal_demo::task2_features
                 reinterpret_cast<float2 *>(g_workspace.fixed_fft_output.data());
             pack_task2_filter_fft_kernel<<<
                 block_count((rows + 1) * fft_size_u),
-                kThreadsPerBlock>>>(
+                tile::task_threads()>>>(
                 reinterpret_cast<const float2 *>(input.data()),
                 taps.data(),
                 rows,
@@ -2617,7 +2619,7 @@ namespace cusignal_demo::task2_features
             launch_task2_fixed_fft(fft_input, fft_output, fft_size, rows + 1, false);
             multiply_task2_fft_kernel<<<
                 block_count(rows * fft_size_u),
-                kThreadsPerBlock>>>(
+                tile::task_threads()>>>(
                 fft_output,
                 rows,
                 fft_size_u,
@@ -2626,7 +2628,7 @@ namespace cusignal_demo::task2_features
             launch_task2_fixed_fft(fft_input, fft_output, fft_size, rows, true);
             extract_task2_filter_fft_kernel<<<
                 block_count(output.size()),
-                kThreadsPerBlock>>>(
+                tile::task_threads()>>>(
                 fft_output,
                 rows,
                 cols,
@@ -2646,7 +2648,7 @@ namespace cusignal_demo::task2_features
     bool task2_fixed_fft_filter_enabled_zx_gpu()
     {
         return environment_flag_enabled("CUSIGNAL_TASK2_ENABLE_FIXED_FFT_FILTER") &&
-            !task2_fixed_fft_filter_disabled();
+            !task2_fixed_fft_filter_disabled() && tile::task_route() != 1;
     }
 
     ZxGpuComplexArray extract_row_complex_zx_gpu(const ZxGpuComplexArray &input, int row_index)
@@ -2656,7 +2658,7 @@ namespace cusignal_demo::task2_features
             throw std::invalid_argument("extract_row_complex_zx_gpu expects rank-2 input");
         }
         ZxGpuComplexArray output = cusignal::core::make_zx_gpu_complex_array(Shape{input.shape()[1]});
-        extract_row_complex_kernel<<<block_count(input.shape()[1]), kThreadsPerBlock>>>(
+        extract_row_complex_kernel<<<block_count(input.shape()[1]), tile::task_threads()>>>(
             reinterpret_cast<const float2 *>(input.data()),
             input.shape()[0],
             input.shape()[1],
@@ -2673,7 +2675,7 @@ namespace cusignal_demo::task2_features
             throw std::invalid_argument("extract_row_real_zx_gpu expects rank-2 input");
         }
         ZxGpuRealArray output = cusignal::core::make_zx_gpu_real_array(Shape{input.shape()[1]});
-        extract_row_real_kernel<<<block_count(input.shape()[1]), kThreadsPerBlock>>>(
+        extract_row_real_kernel<<<block_count(input.shape()[1]), tile::task_threads()>>>(
             input.data(),
             input.shape()[0],
             input.shape()[1],
@@ -2690,7 +2692,7 @@ namespace cusignal_demo::task2_features
             throw std::invalid_argument("extract_row_real_signal_zx_gpu expects rank-2 input");
         }
         ZxGpuRealSignal output(input.shape()[1], false);
-        extract_row_real_kernel<<<block_count(input.shape()[1]), kThreadsPerBlock>>>(
+        extract_row_real_kernel<<<block_count(input.shape()[1]), tile::task_threads()>>>(
             input.data(),
             input.shape()[0],
             input.shape()[1],
@@ -2707,7 +2709,7 @@ namespace cusignal_demo::task2_features
             throw std::invalid_argument("extract_frame_real_3d_zx_gpu expects rank-3 input");
         }
         ZxGpuRealArray output = cusignal::core::make_zx_gpu_real_array(Shape{input.shape()[1], input.shape()[2]});
-        extract_frame_real_3d_kernel<<<block_count(output.size()), kThreadsPerBlock>>>(
+        extract_frame_real_3d_kernel<<<block_count(output.size()), tile::task_threads()>>>(
             input.data(),
             input.shape()[0],
             input.shape()[1],
@@ -2735,7 +2737,7 @@ namespace cusignal_demo::task2_features
         {
             throw std::invalid_argument("store_row_real_zx_gpu row index out of range");
         }
-        store_row_real_kernel<<<block_count(row.shape()[0]), kThreadsPerBlock>>>(
+        store_row_real_kernel<<<block_count(row.shape()[0]), tile::task_threads()>>>(
             row.data(),
             row.shape()[0],
             row_index,
@@ -2748,7 +2750,7 @@ namespace cusignal_demo::task2_features
         ZxGpuRealArray output = cusignal::core::make_zx_gpu_real_array(input.shape());
         if (!input.empty())
         {
-            complex_abs_kernel<<<block_count(input.size()), kThreadsPerBlock>>>(
+            complex_abs_kernel<<<block_count(input.size()), tile::task_threads()>>>(
                 reinterpret_cast<const float2 *>(input.data()),
                 output.data(),
                 input.size());
@@ -2760,7 +2762,7 @@ namespace cusignal_demo::task2_features
     ZxGpuRealArray pad_last_value_zx_gpu(const ZxGpuRealArray &input, std::size_t target_len)
     {
         ZxGpuRealArray output = cusignal::core::make_zx_gpu_real_array(Shape{target_len});
-        pad_last_value_kernel<<<block_count(target_len), kThreadsPerBlock>>>(
+        pad_last_value_kernel<<<block_count(target_len), tile::task_threads()>>>(
             input.data(),
             input.size(),
             output.data(),
@@ -2778,9 +2780,9 @@ namespace cusignal_demo::task2_features
         }
 
         g_workspace.temp_signal.resize(1, false);
-        max_reduce_kernel<<<1, kThreadsPerBlock>>>(input.data(), input.size(), g_workspace.temp_signal.data());
+        max_reduce_kernel<<<1, tile::task_threads()>>>(input.data(), input.size(), g_workspace.temp_signal.data());
         check_kernel_launch("max_reduce_kernel");
-        normalize_kernel<<<block_count(input.size()), kThreadsPerBlock>>>(
+        normalize_kernel<<<block_count(input.size()), tile::task_threads()>>>(
             input.data(),
             input.size(),
             g_workspace.temp_signal.data(),
@@ -2798,7 +2800,7 @@ namespace cusignal_demo::task2_features
         ZxGpuRealArray output = cusignal::core::make_zx_gpu_real_array(input.shape());
         if (!input.empty())
         {
-            normalize_rows_kernel<<<input.shape()[0], kThreadsPerBlock>>>(
+            normalize_rows_kernel<<<input.shape()[0], tile::task_threads()>>>(
                 input.data(),
                 input.shape()[0],
                 input.shape()[1],
@@ -2817,7 +2819,7 @@ namespace cusignal_demo::task2_features
         ZxGpuRealArray output = cusignal::core::make_zx_gpu_real_array(input.shape());
         if (!input.empty())
         {
-            batched_demod_score_kernel<<<input.shape()[0], kThreadsPerBlock>>>(
+            batched_demod_score_kernel<<<input.shape()[0], tile::task_threads()>>>(
                 reinterpret_cast<const float2 *>(input.data()),
                 input.shape()[0],
                 input.shape()[1],
@@ -2849,7 +2851,7 @@ namespace cusignal_demo::task2_features
         const std::size_t full_size = cols + templ_len - 1;
         const int crop_start = static_cast<int>(full_size / 2 - cols / 2);
         const std::size_t rows = frames.shape()[0];
-        if (!task2_fixed_fft_correlate_disabled() &&
+        if (tile::task_route() != 1 && !task2_fixed_fft_correlate_disabled() &&
             rows >= kTask2FixedFftMinRows &&
             cols >= kTask2FixedFftMinCols &&
             templ_len >= 256)
@@ -2874,7 +2876,7 @@ namespace cusignal_demo::task2_features
                 float2 *template_spectrum = fft_input + rows * fft_size_u;
                 pack_task2_correlate_template_fft_kernel<<<
                     block_count(fft_size_u),
-                    kThreadsPerBlock>>>(
+                    tile::task_threads()>>>(
                     reinterpret_cast<const float2 *>(templ.data()),
                     templ_len,
                     fft_size_u,
@@ -2888,7 +2890,7 @@ namespace cusignal_demo::task2_features
                     false);
                 multiply_task2_fft_kernel<<<
                     block_count(rows * fft_size_u),
-                    kThreadsPerBlock>>>(
+                    tile::task_threads()>>>(
                     fft_input,
                     rows,
                     fft_size_u,
@@ -2901,7 +2903,7 @@ namespace cusignal_demo::task2_features
             {
                 pack_task2_correlate_fft_kernel<<<
                     block_count((rows + 1) * fft_size_u),
-                    kThreadsPerBlock>>>(
+                    tile::task_threads()>>>(
                     reinterpret_cast<const float2 *>(frames.data()),
                     reinterpret_cast<const float2 *>(templ.data()),
                     rows,
@@ -2913,7 +2915,7 @@ namespace cusignal_demo::task2_features
                 launch_task2_fixed_fft(fft_input, fft_output, fft_size, rows + 1, false);
                 multiply_task2_fft_kernel<<<
                     block_count(rows * fft_size_u),
-                    kThreadsPerBlock>>>(
+                    tile::task_threads()>>>(
                     fft_output,
                     rows,
                     fft_size_u,
@@ -2924,7 +2926,7 @@ namespace cusignal_demo::task2_features
             }
             extract_task2_correlate_fft_kernel<<<
                 block_count(output.size()),
-                kThreadsPerBlock>>>(
+                tile::task_threads()>>>(
                 inverse_output,
                 rows,
                 cols,
@@ -2956,7 +2958,7 @@ namespace cusignal_demo::task2_features
         }
         else
         {
-            batched_correlate_score_kernel<<<output.size(), kThreadsPerBlock>>>(
+            batched_correlate_score_kernel<<<output.size(), tile::task_threads()>>>(
                 reinterpret_cast<const float2 *>(frames.data()),
                 reinterpret_cast<const float2 *>(templ.data()),
                 rows,
@@ -2985,7 +2987,7 @@ namespace cusignal_demo::task2_features
         const std::size_t freq_count = values.shape()[0];
         const std::size_t time_count = values.shape()[1];
         g_workspace.temp_storage_a.resize(Shape{time_count}, false);
-        spectrogram_band_energy_kernel<<<block_count(time_count), kThreadsPerBlock>>>(
+        spectrogram_band_energy_kernel<<<block_count(time_count), tile::task_threads()>>>(
             values.data(),
             freqs.data(),
             freq_count,
@@ -2996,7 +2998,7 @@ namespace cusignal_demo::task2_features
         check_kernel_launch("spectrogram_band_energy_kernel");
 
         ZxGpuRealArray output = cusignal::core::make_zx_gpu_real_array(Shape{static_cast<std::size_t>(sample_count)});
-        map_time_energy_kernel<<<block_count(static_cast<std::size_t>(sample_count)), kThreadsPerBlock>>>(
+        map_time_energy_kernel<<<block_count(static_cast<std::size_t>(sample_count)), tile::task_threads()>>>(
             g_workspace.temp_storage_a.data(),
             times.data(),
             time_count,
@@ -3031,7 +3033,7 @@ namespace cusignal_demo::task2_features
             Shape{frames, static_cast<std::size_t>(sample_count)});
         if (!output.empty())
         {
-            batched_spectrogram_band_score_kernel<<<block_count(output.size()), kThreadsPerBlock>>>(
+            batched_spectrogram_band_score_kernel<<<block_count(output.size()), tile::task_threads()>>>(
                 values.data(),
                 freqs.data(),
                 times.data(),
@@ -3090,7 +3092,7 @@ namespace cusignal_demo::task2_features
 
         const std::size_t segment_count =
             frame_count * static_cast<std::size_t>(nseg);
-        if (!task2_fixed_fft_spectrogram_disabled() &&
+        if (tile::task_route() != 1 && !task2_fixed_fft_spectrogram_disabled() &&
             frame_count >= kTask2FixedFftMinRows &&
             nfft >= 256 &&
             is_power_of_two(nfft) &&
@@ -3111,7 +3113,7 @@ namespace cusignal_demo::task2_features
                 reinterpret_cast<float2 *>(g_workspace.fixed_fft_output.data());
             pack_task2_spectrogram_fft_kernel<<<
                 static_cast<unsigned int>(segment_count),
-                kThreadsPerBlock>>>(
+                tile::task_threads()>>>(
                 frames.data(),
                 window.data(),
                 sample_count,
@@ -3132,7 +3134,7 @@ namespace cusignal_demo::task2_features
                 false);
             reduce_task2_spectrogram_fft_kernel<<<
                 static_cast<unsigned int>(segment_count),
-                kThreadsPerBlock>>>(
+                tile::task_threads()>>>(
                 fft_output,
                 segment_count,
                 nfft,
@@ -3143,7 +3145,7 @@ namespace cusignal_demo::task2_features
             check_kernel_launch("reduce_task2_spectrogram_fft_kernel");
             map_batched_time_energy_kernel<<<
                 block_count(output.size()),
-                kThreadsPerBlock>>>(
+                tile::task_threads()>>>(
                 g_workspace.temp_storage_a.data(),
                 frame_count,
                 nseg,
@@ -3161,7 +3163,7 @@ namespace cusignal_demo::task2_features
         g_workspace.temp_storage_a.resize(Shape{frame_count, static_cast<std::size_t>(nseg)}, false);
         if (nperseg >= 256)
         {
-            direct_spectrogram_segment_energy_grouped_kernel<<<g_workspace.temp_storage_a.size(), kThreadsPerBlock>>>(
+            direct_spectrogram_segment_energy_grouped_kernel<<<g_workspace.temp_storage_a.size(), tile::task_threads()>>>(
                 frames.data(),
                 g_workspace.direct_cos_table.data(),
                 g_workspace.direct_sin_table.data(),
@@ -3176,7 +3178,7 @@ namespace cusignal_demo::task2_features
         }
         else
         {
-            direct_spectrogram_segment_energy_kernel<<<g_workspace.temp_storage_a.size(), kThreadsPerBlock>>>(
+            direct_spectrogram_segment_energy_kernel<<<g_workspace.temp_storage_a.size(), tile::task_threads()>>>(
                 frames.data(),
                 g_workspace.direct_cos_table.data(),
                 g_workspace.direct_sin_table.data(),
@@ -3190,7 +3192,7 @@ namespace cusignal_demo::task2_features
             check_kernel_launch("direct_spectrogram_segment_energy_kernel");
         }
 
-        map_batched_time_energy_kernel<<<block_count(output.size()), kThreadsPerBlock>>>(
+        map_batched_time_energy_kernel<<<block_count(output.size()), tile::task_threads()>>>(
             g_workspace.temp_storage_a.data(),
             frame_count,
             nseg,
@@ -3318,7 +3320,7 @@ namespace cusignal_demo::task2_features
         }
         else
         {
-            batched_cwt_max_score_fused_kernel<<<block_count(output.size()), kThreadsPerBlock>>>(
+            batched_cwt_max_score_fused_kernel<<<block_count(output.size()), tile::task_threads()>>>(
                 frames.data(),
                 frame_count,
                 sample_count,
@@ -3341,7 +3343,7 @@ namespace cusignal_demo::task2_features
             throw std::invalid_argument("cwt values must be rank-2");
         }
         ZxGpuRealArray output = cusignal::core::make_zx_gpu_real_array(Shape{values.shape()[1]});
-        cwt_max_kernel<<<block_count(values.shape()[1]), kThreadsPerBlock>>>(
+        cwt_max_kernel<<<block_count(values.shape()[1]), tile::task_threads()>>>(
             reinterpret_cast<const float2 *>(values.data()),
             values.shape()[0],
             values.shape()[1],
@@ -3367,7 +3369,7 @@ namespace cusignal_demo::task2_features
             throw std::invalid_argument("weighted_sum_zx_gpu input shape mismatch");
         }
         ZxGpuRealArray output = cusignal::core::make_zx_gpu_real_array(corr_score.shape());
-        weighted_sum_kernel<<<block_count(corr_score.size()), kThreadsPerBlock>>>(
+        weighted_sum_kernel<<<block_count(corr_score.size()), tile::task_threads()>>>(
             corr_score.data(),
             demod_score.data(),
             wavelet_score.data(),
@@ -3385,7 +3387,7 @@ namespace cusignal_demo::task2_features
     ZxGpuRealArray smooth_with_weights_zx_gpu(const ZxGpuRealArray &input, const ZxGpuRealSignal &weights)
     {
         ZxGpuRealArray output = cusignal::core::make_zx_gpu_real_array(input.shape());
-        smooth_kernel<<<block_count(input.size()), kThreadsPerBlock>>>(
+        smooth_kernel<<<block_count(input.size()), tile::task_threads()>>>(
             input.data(),
             input.size(),
             weights.data(),
@@ -3460,12 +3462,12 @@ namespace cusignal_demo::task2_features
             }
         };
         const float smooth_ms = timed_launch([&]() {
-            fused_feature_smooth_kernel<<<block_count(corr_score.size()), kThreadsPerBlock>>>(
+            fused_feature_smooth_kernel<<<block_count(corr_score.size()), tile::task_threads()>>>(
                 corr_score.data(), demod_score.data(), wavelet_score.data(), spectrogram_score.data(),
                 weights.data(), weights.size(), rows, cols, feature_scores.data());
         }, "fused_feature_smooth_kernel");
         const float peak_ms = timed_launch([&]() {
-            row_peak_track_kernel<<<rows, kThreadsPerBlock>>>(
+            row_peak_track_kernel<<<rows, tile::task_threads()>>>(
                 feature_scores.data(), rows, cols, peak_order, peak_track.data());
         }, "row_peak_track_kernel");
         if (kernel_timing != nullptr)
@@ -3494,7 +3496,7 @@ namespace cusignal_demo::task2_features
         ZxGpuRealSignal output = cusignal::core::make_zx_gpu_real_signal(peak_track.size(), 0.0f);
         if (!peak_track.empty())
         {
-            copy_measurement_track_kernel<<<block_count(peak_track.size()), kThreadsPerBlock>>>(
+            copy_measurement_track_kernel<<<block_count(peak_track.size()), tile::task_threads()>>>(
                 peak_track.data(),
                 peak_track.size(),
                 output.data());
@@ -3506,7 +3508,7 @@ namespace cusignal_demo::task2_features
     ZxGpuIndexSignal argmax_all_zx_gpu(const ZxGpuRealArray &score)
     {
         ZxGpuIndexSignal output(1, false);
-        argmax_all_kernel<<<1, kThreadsPerBlock>>>(score.data(), score.size(), output.data());
+        argmax_all_kernel<<<1, tile::task_threads()>>>(score.data(), score.size(), output.data());
         check_kernel_launch("argmax_all_kernel");
         return output;
     }
@@ -3520,7 +3522,7 @@ namespace cusignal_demo::task2_features
             return argmax_all_zx_gpu(score);
         }
         ZxGpuIndexSignal output(1, false);
-        argmax_candidates_kernel<<<1, kThreadsPerBlock>>>(
+        argmax_candidates_kernel<<<1, tile::task_threads()>>>(
             score.data(),
             candidates.data(),
             candidates.size(),
@@ -3545,7 +3547,7 @@ namespace cusignal_demo::task2_features
         {
             throw std::invalid_argument("initialize_state_from_index_zx_gpu requires non-empty state");
         }
-        initialize_state_from_index_kernel<<<block_count(state.size()), kThreadsPerBlock>>>(
+        initialize_state_from_index_kernel<<<block_count(state.size()), tile::task_threads()>>>(
             index.data(),
             state.data(),
             state.size());

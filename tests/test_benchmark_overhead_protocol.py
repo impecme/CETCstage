@@ -100,6 +100,8 @@ class BenchmarkOverheadProtocolTests(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
+            (report_dir / "latest_cases.csv").write_text("case_id\nperf\n", encoding="utf-8")
+            (report_dir / "latest_summary.md").write_text("# synthetic\n", encoding="utf-8")
             output = root / "published"
             result = subprocess.run(
                 [
@@ -132,6 +134,10 @@ class BenchmarkOverheadProtocolTests(unittest.TestCase):
                 (output / "operator_scales.json").read_text(encoding="utf-8")
             )
             self.assertEqual(published["non_kernel_overhead_missing_value"], "N/A")
+            unit_root = output / "units" / "demo" / "op" / "L1"
+            self.assertEqual((unit_root / "metrics.json").read_text(encoding="utf-8"), (report_dir / "latest_metrics.json").read_text(encoding="utf-8"))
+            self.assertEqual((unit_root / "cases.csv").read_text(encoding="utf-8"), "case_id\nperf\n")
+            self.assertEqual((unit_root / "summary.md").read_text(encoding="utf-8"), "# synthetic\n")
 
     def test_all81_report_shape_remains_486_workload_keys(self) -> None:
         contract = json.loads(

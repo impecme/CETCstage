@@ -77,8 +77,9 @@ scripts/performance.sh --tasks --task both --scale L6
 scripts/performance.sh --all --scale all
 ```
 
-默认将汇总结果写入 `data/reports/units/benchmarks/`，任务结果写入
-`data/reports/demo/<task>/summary.csv`、公共注册算子 `operators/L1.csv` ... `L6.csv` 和任务阶段
+默认将汇总结果写入 `data/reports/autotune/units/benchmarks/`，每个规模的单算子明细写入
+`data/reports/autotune/units/<module>/<operator>/<L1-L6>/`，任务结果写入
+`data/reports/autotune/demo/<task>/summary.csv`、公共注册算子 `operators/L1.csv` ... `L6.csv` 和任务阶段
 `stages/L1.csv` ... `L6.csv`；其中 Task1 每个规模 5 个公共算子、Task2 每个规模 14 个公共算子，
 阶段/私有 Helper 不计入公共算子数量。原始中间文件写入
 `data/.reports_staging/performance/run_<timestamp>_<pid>/`。性能报告中分别保留 CPU

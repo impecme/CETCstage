@@ -1,0 +1,10 @@
+task,scale,stage,record_kind,helper_names,public_operator_links,cpu_ms,gpu_e2e_ms,gpu_kernel_ms,counted_in_task_e2e
+task1_radar,L6,input_construction,task_stage,build_time_axis_kernel;build_rx_matrix_kernel,waveforms/chirp,28.001819611,0.803525984,0.795038998,true
+task1_radar,L6,pulse_compression,task_stage,,radartools/pulse_compression,20.252227783,1.068791389,1.029030085,true
+task1_radar,L6,pulse_doppler,task_stage,fftshift_rows,radartools/pulse_doppler,75.686676025,1.268885970,1.227995992,true
+task1_radar,L6,power_map,task_stage,power_map,,0.275940001,0.192045495,0.157247007,true
+task1_radar,L6,ca_cfar,task_stage,,radartools/ca_cfar,2.253012180,0.851256013,0.808026016,true
+task1_radar,L6,ambgfun,task_stage,,radartools/ambgfun,107.384994507,3.018268108,2.980049133,true
+task1_radar,L6,final_detection,task_stage,detect_peak,,0.411370516,0.291199982,0.172210008,true
+task1_radar,L6,final_output,task_stage,materialize_gpu_artifacts,,10.935235977,25.395355225,,true
+task1_radar,L6,h2d,task_stage,,,0.000000000,0.000000000,,true

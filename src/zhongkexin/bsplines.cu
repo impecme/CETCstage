@@ -85,13 +85,13 @@ namespace
 
     thread_local BsplinesWorkspace g_workspace;
 
-    int block_count(std::size_t size, int elements_per_thread = 1)
+    int block_count(std::size_t size, int elements_per_thread = 1, int threads = kThreadsPerBlock)
     {
         return size == 0
             ? 0
             : static_cast<int>(tile::ceil_div(
                   size,
-                  static_cast<std::size_t>(kThreadsPerBlock) *
+                  static_cast<std::size_t>(threads) *
                       static_cast<std::size_t>(elements_per_thread)));
     }
 
@@ -251,6 +251,7 @@ namespace
         const int elements_per_thread = use_tiled
                                             ? tile::linear_shape(input.size()).elements_per_thread
                                             : 1;
+        const int threads = tuning.config.tile.threads;
         ScopedZxGpuEvents events;
         g_last_kernel_ms = static_cast<float>(events.measure([&]() {
             launch(
@@ -258,7 +259,8 @@ namespace
                 output.data(),
                 input.size(),
                 elements_per_thread,
-                block_count(input.size(), elements_per_thread),
+                block_count(input.size(), elements_per_thread, threads),
+                threads,
                 use_tiled);
             check_kernel_launch("bsplines_kernel");
         }));
@@ -286,15 +288,16 @@ namespace cusignal
                        std::size_t count,
                        int elements_per_thread,
                        int blocks,
+                       int threads,
                        bool use_tiled) {
                         if (use_tiled)
                         {
-                            cubic_tiled_kernel<<<blocks, kThreadsPerBlock>>>(
+                            cubic_tiled_kernel<<<blocks, threads>>>(
                                 in, out, count, elements_per_thread);
                         }
                         else
                         {
-                            cubic_kernel<<<blocks, kThreadsPerBlock>>>(in, out, count);
+                            cubic_kernel<<<blocks, threads>>>(in, out, count);
                         }
                     });
             }
@@ -316,10 +319,11 @@ namespace cusignal
                                                      std::size_t count,
                                                      int elements_per_thread,
                                                      int blocks,
+                                                     int threads,
                                                      bool use_tiled) {
                         if (use_tiled)
                         {
-                            gauss_spline_tiled_kernel<<<blocks, kThreadsPerBlock>>>(
+                            gauss_spline_tiled_kernel<<<blocks, threads>>>(
                                 in,
                                 out,
                                 count,
@@ -329,7 +333,7 @@ namespace cusignal
                         }
                         else
                         {
-                            gauss_spline_kernel<<<blocks, kThreadsPerBlock>>>(
+                            gauss_spline_kernel<<<blocks, threads>>>(
                                 in, out, count, inv_sigma_factor, norm_factor);
                         }
                     });
@@ -348,15 +352,16 @@ namespace cusignal
                        std::size_t count,
                        int elements_per_thread,
                        int blocks,
+                       int threads,
                        bool use_tiled) {
                         if (use_tiled)
                         {
-                            quadratic_tiled_kernel<<<blocks, kThreadsPerBlock>>>(
+                            quadratic_tiled_kernel<<<blocks, threads>>>(
                                 in, out, count, elements_per_thread);
                         }
                         else
                         {
-                            quadratic_kernel<<<blocks, kThreadsPerBlock>>>(
+                            quadratic_kernel<<<blocks, threads>>>(
                                 in, out, count);
                         }
                     });

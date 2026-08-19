@@ -120,24 +120,25 @@ add_test(NAME zx_compat_runtime_safe COMMAND zx_compat_runtime_probes)
 # Explicit, opt-in C500 offline autotuning target.  It depends on the unit
 # operator binaries discovered from tests/unit, but is never part of the
 # default build or ctest suite.  The script runs performance.sh with the
-# frozen baseline and writes the device-specific JSON outside the source tree.
+# frozen baseline and writes the device-specific JSON into repository-owned
+# data directories by default.
 set(
     ZX_AUTOTUNE_BASELINE
-    "${CMAKE_SOURCE_DIR}/operator_gpu_baseline_75a700d_protocol"
+    "${CMAKE_SOURCE_DIR}/data/baseline"
     CACHE PATH
     "Frozen operator baseline used by zx_operator_autotune"
 )
 set(
     ZX_AUTOTUNE_OUTPUT_ROOT
-    "${CMAKE_BINARY_DIR}/reports/zx_operator_autotune"
+    "${CMAKE_SOURCE_DIR}/data/reports/autotune/tuning_runs"
     CACHE PATH
     "Working reports for zx_operator_autotune"
 )
 set(
     ZX_AUTOTUNE_CACHE_OUTPUT
-    "${CMAKE_BINARY_DIR}/zx_tuning.json"
+    "${CMAKE_SOURCE_DIR}/data/tuning/zx_tuning.json"
     CACHE FILEPATH
-    "External device-specific cache emitted by zx_operator_autotune"
+    "Repository-owned device-specific cache emitted by zx_operator_autotune"
 )
 set(ZX_AUTOTUNE_WARMUP 5 CACHE STRING "Offline autotuning warmup iterations")
 set(ZX_AUTOTUNE_REPEAT 30 CACHE STRING "Offline autotuning measured repetitions")

@@ -16,8 +16,8 @@
 
 - `data/generated/demo/task2_features/input/`
 - `data/generated/demo/task2_features/output_samples/`
-- `data/reports/demo/task2_features/summary.csv`
-- `data/reports/demo/task2_features/operators/L1.csv` ... `L6.csv`
+- `data/reports/autotune/demo/task2_features/summary.csv`
+- `data/reports/autotune/demo/task2_features/operators/L1.csv` ... `L6.csv`
 
 GPU 正式路径在 Device 端生成 chirp、gausspulse、干扰波形、目标帧和噪声；CPU/GPU 使用相同 seed 和计数式 RNG。
 `summary.csv` 同时记录 input/operator/e2e 三类误差，算子 CSV 记录各实际算子的 CPU/GPU 时间和误差。

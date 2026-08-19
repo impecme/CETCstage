@@ -192,11 +192,11 @@ namespace
 
     thread_local PeakFindingWorkspace g_workspace;
 
-    int block_count(std::size_t count)
+    int block_count(std::size_t count, int threads = kThreadsPerBlock)
     {
         return count == 0
             ? 0
-            : static_cast<int>(tile::ceil_div(count, static_cast<std::size_t>(tile::linear_shape(count).threads)));
+            : static_cast<int>(tile::ceil_div(count, static_cast<std::size_t>(threads)));
     }
 
     void check_kernel_launch(const char *what)
@@ -444,6 +444,7 @@ namespace cusignal
                             static_cast<std::uint64_t>(plan.axis + 1),
                             static_cast<std::uint64_t>(order)));
                     const tile::ScopedPolicy policy_scope(tuning);
+                    const int launch_threads = tuning.config.tile.threads;
                 // The shared DeviceStorage path amortizes allocator overhead
                 // for large masks, while the legacy direct buffer remains the
                 // lower-overhead route for tiny workloads where cache bookkeeping
@@ -487,7 +488,7 @@ namespace cusignal
                             tile::row_shape(plan.axis_size, plan.line_count).elements_per_thread;
                         extrema_mask_contiguous_row_tile_kernel<<<
                             static_cast<int>(plan.line_count),
-                            kThreadsPerBlock>>>(
+                            launch_threads>>>(
                             device_data.data(),
                             plan.axis_size,
                             plan.line_count,
@@ -500,7 +501,7 @@ namespace cusignal
                     }
                     else
                     {
-                        extrema_mask_kernel<<<block_count(total), kThreadsPerBlock>>>(
+                        extrema_mask_kernel<<<block_count(total, launch_threads), launch_threads>>>(
                             device_data.data(),
                             static_cast<int>(device_data.rank()),
                             g_workspace.shape_storage.data(),
@@ -520,7 +521,7 @@ namespace cusignal
                     cusignal::core::throw_on_zx_gpu_error(
                         cudaMemset(g_workspace.hit_count_storage.get(), 0, sizeof(int)),
                         "cudaMemset hit_count");
-                    compact_flagged_indices_kernel<<<block_count(total), kThreadsPerBlock>>>(
+                    compact_flagged_indices_kernel<<<block_count(total, launch_threads), launch_threads>>>(
                         g_workspace.mask_storage.get(),
                         total,
                         g_workspace.flat_hits_storage.data(),

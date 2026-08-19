@@ -15,6 +15,7 @@
 #include "cusignal/core/types.hpp"
 #include "cusignal/radartools/radartools.hpp"
 #include "cusignal/waveforms/waveforms.hpp"
+#include "../../src/common/zx_tile_policy.hpp"
 
 namespace cusignal_demo::task1_radar
 {
@@ -25,10 +26,32 @@ namespace cusignal_demo::task1_radar
         using cusignal::core::ZxGpuComplexSignal;
         using cusignal::core::ZxGpuRealSignal;
         using ZxGpuAmbgfunSurfaceResult = cusignal::radartools_api::ZxGpuAmbgfunSurfaceResult;
+        namespace tile = cusignal::zx_tile;
 
-        std::size_t block_count(std::size_t size)
+        std::size_t block_count(std::size_t size, int threads)
         {
-            return size == 0 ? 0 : (size + kThreadsPerBlock - 1U) / kThreadsPerBlock;
+            return size == 0 ? 0 : (size + static_cast<std::size_t>(threads) - 1U) /
+                static_cast<std::size_t>(threads);
+        }
+
+        tile::TaskTuningKey task_tuning_key(const ScenarioConfig &config)
+        {
+            return tile::make_task_key(
+                tile::TaskScope::Task1Radar,
+                "task1_radar",
+                config.scale_level,
+                {static_cast<std::size_t>(config.num_pulses),
+                 static_cast<std::size_t>(config.samples_per_pulse),
+                 static_cast<std::size_t>(config.template_length),
+                 static_cast<std::size_t>(config.pulse_doppler_nfft), 0, 0},
+                4,
+                {static_cast<std::uint64_t>(config.delay_samples),
+                 static_cast<std::uint64_t>(config.pulse_compression_nfft),
+                 static_cast<std::uint64_t>(config.pulse_doppler_nfft),
+                 tile::stable_string_hash(config.pulse_compression_window),
+                 tile::stable_string_hash(config.pulse_doppler_window), 0, 0, 0, 0, 0},
+                5,
+                1);
         }
 
         void check_kernel_launch(const char *what)
@@ -88,7 +111,8 @@ namespace cusignal_demo::task1_radar
         {
             GpuTaskInputs inputs;
             ZxGpuRealSignal time(static_cast<std::size_t>(config.template_length), false);
-            build_time_axis_kernel<<<block_count(time.size()), kThreadsPerBlock>>>(
+            const int threads = tile::task_threads();
+            build_time_axis_kernel<<<block_count(time.size(), threads), threads>>>(
                 time.data(), time.size(), 1.0f / config.fs);
             check_kernel_launch("task1 build time axis");
 
@@ -122,7 +146,7 @@ namespace cusignal_demo::task1_radar
             const float noise_sigma = include_noise
                 ? config.target_amplitude / std::sqrt(2.0f * linear_snr)
                 : 0.0f;
-            build_rx_matrix_kernel<<<block_count(inputs.rx_matrix.size()), kThreadsPerBlock>>>(
+            build_rx_matrix_kernel<<<block_count(inputs.rx_matrix.size(), threads), threads>>>(
                 reinterpret_cast<const float2 *>(inputs.tx_template.data()),
                 inputs.tx_template.size(),
                 config.num_pulses,
@@ -239,6 +263,8 @@ namespace cusignal_demo::task1_radar
 
     void warmup_gpu_task(const ScenarioConfig &config)
     {
+        const tile::TaskPolicyDecision task_tuning = tile::select_task(task_tuning_key(config));
+        const tile::ScopedTaskPolicy task_scope(task_tuning);
         const GpuTaskInputs inputs = build_gpu_task_inputs_device(config, true);
         auto pipeline = run_gpu_pipeline(config, inputs);
         GpuArtifacts &artifacts = pipeline.first;
@@ -255,6 +281,8 @@ namespace cusignal_demo::task1_radar
 
     GpuTaskRun run_gpu_task(const ScenarioConfig &config)
     {
+        const tile::TaskPolicyDecision task_tuning = tile::select_task(task_tuning_key(config));
+        const tile::ScopedTaskPolicy task_scope(task_tuning);
         GpuTaskRun result;
         const bool trace_storage_reuse = environment_flag_enabled("CUSIGNAL_TASK1_TRACE_STORAGE_REUSE");
         const auto cache_before = cusignal::core::device_storage_cache_stats_snapshot();
@@ -338,6 +366,8 @@ namespace cusignal_demo::task1_radar
 
     GpuValidationRun run_gpu_validation(const ScenarioConfig &config, const TaskInputs &host_inputs)
     {
+        const tile::TaskPolicyDecision task_tuning = tile::select_task(task_tuning_key(config));
+        const tile::ScopedTaskPolicy task_scope(task_tuning);
         GpuValidationRun result;
         auto upload = measure_cpu_ms([&]() { return upload_validation_inputs(host_inputs); });
         GpuTaskInputs inputs = std::move(upload.first);

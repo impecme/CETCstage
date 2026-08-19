@@ -7,7 +7,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-BASELINE_ROOT="$PROJECT_ROOT/operator_gpu_baseline_75a700d_protocol"
+BASELINE_ROOT="$PROJECT_ROOT/data/baseline"
 OUTPUT_ROOT=""
 BUILD_DIR=""
 JOBS=""

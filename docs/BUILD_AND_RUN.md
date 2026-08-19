@@ -87,8 +87,8 @@ scripts/sync_to_container.sh --container gpu_04 --replace
 暂未提供，脚本会拒绝 `--scale custom`。性能默认 `warmup=5/repeat=30`，可使用
 `--warmup`、`--repeat` 和 `--no-build`。
 
-汇总结果写入 `data/reports/units/benchmarks/`，任务各规模结果写入
-`data/reports/demo/<task>/summary.csv` 与 `operators/L1.csv` ... `L6.csv`；原始中间文件写入
+汇总结果写入 `data/reports/autotune/units/benchmarks/`，任务各规模结果写入
+`data/reports/autotune/demo/<task>/summary.csv` 与 `operators/L1.csv` ... `L6.csv`；原始中间文件写入
 `data/.reports_staging/performance/` 下的本次运行目录。算子规模定义由 `tests/contracts/operator_scale_profiles.json` 提供，
 不再由外部 benchmark 包装脚本拼接。
 
@@ -125,16 +125,17 @@ scripts/pull_results.sh --container gpu_04 --sync-reports
 
 ## 7. 报告与清理
 
-性能入口的最终汇总位于 `data/reports/units/benchmarks/`；原始中间文件位于：
+性能入口的默认最终汇总位于 `data/reports/autotune/units/benchmarks/`，单算子明细位于
+`data/reports/autotune/units/<module>/<operator>/<L1-L6>/`；原始中间文件位于：
 
 ```text
 data/.reports_staging/performance/run_<timestamp>_<pid>/
-├── raw/reports/<scale>/<module>/<operator>/  # 算子原始 metrics
+├── raw/reports/<scale>/<module>/<operator>/  # 算子原始 metrics/cases/summary
 └── tasks/<task>/<scale>/                     # 任务 metrics 和输入快照
 ```
 
 任务 demo 自身仍会在 `data/.reports_staging/demo/` 写入其 latest 报告，性能入口随后将
-选定规模汇总到 `data/reports/demo/<task>/summary.csv` 和 `operators/`。报告由运行二进制生成；本架构不再
+选定规模汇总到 `data/reports/autotune/demo/<task>/summary.csv` 和 `operators/`。报告由运行二进制生成；本架构不再
 保留独立的 finalizer 或 PPT 包装脚本。
 
 运行结束后：

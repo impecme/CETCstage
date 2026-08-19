@@ -6,7 +6,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 GENERATED_ROOT="${PROJECT_ROOT}/data/generated"
-REPORTS_ROOT="${PROJECT_ROOT}/data/reports"
 DRY_RUN=0
 REMOVED_COUNT=0
 
@@ -20,7 +19,7 @@ Deletes runtime-generated data under:
 
 Does not touch:
   - data/reference
-  - data/reports/ (published current-code reports)
+  - data/reports/ (published current-code reports, including autotune/)
 EOF
 }
 

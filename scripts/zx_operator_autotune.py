@@ -3,8 +3,8 @@
 
 The script deliberately delegates execution to performance.sh.  It never
 benchmarks from the production library and never changes the frozen baseline.
-The generated JSON is an external, device-specific lookup cache consumed by
-src/common/zx_tile_policy.hpp.
+The generated JSON is a repository-owned, device-specific lookup cache consumed
+by src/common/zx_tile_policy.hpp.
 """
 
 from __future__ import annotations
@@ -19,14 +19,114 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
 
-REGISTRY_VERSION = "zx-c500-all81-v2"
-CACHE_SCHEMA_VERSION = 2
+REGISTRY_VERSION = "zx-c500-all81-task-v3"
+CACHE_SCHEMA_VERSION = 3
 LEVELS = [f"L{index}" for index in range(1, 7)]
 SELECTION_VALIDATION_WINNER = "winner-against-static"
 
 
 def candidate(name: str, **config: int) -> Dict[str, Any]:
     return {"candidate": name, "config": config}
+
+
+def _generated_candidates(prefix: str) -> List[Dict[str, Any]]:
+    """Return finite names understood by CandidateId::*Generated.
+
+    These are not arbitrary JSON knobs: the C++ policy parser accepts only
+    this grammar and the corresponding existing kernels consume the fields.
+    The matrix is intentionally broad enough to search C500 launch behavior,
+    while avoiding a full unsafe Cartesian product.
+    """
+    result: List[Dict[str, Any]] = []
+    threads_values = (64, 128, 256, 512)
+    if prefix == "linear":
+        tiers = (
+            (50, ((1, 1, 1, 1, 1), (2, 2, 1, 1, 1), (4, 4, 1, 1, 1), (8, 4, 1, 1, 1))),
+            (75, ((2, 2, 2, 2, 2), (4, 4, 2, 2, 2), (8, 4, 2, 2, 2), (4, 2, 2, 4, 2))),
+            (90, ((4, 4, 2, 4, 2), (8, 4, 2, 4, 2), (8, 4, 2, 8, 2))),
+        )
+        for threads in threads_values:
+            for memory_tier, specs in tiers:
+                for elements, vector, stages, batch, buffers in specs:
+                    name = (
+                        f"linear_t{threads}_e{elements}_v{vector}_s{stages}_"
+                        f"b{batch}_buf{buffers}_m{memory_tier}"
+                    )
+                    result.append(candidate(
+                        name,
+                        threads=threads,
+                        tile_rows=1,
+                        tile_cols=1,
+                        elements_per_thread=elements,
+                        rows_per_block=1,
+                        vector_width=vector,
+                        stages=stages,
+                        scan_elements=0,
+                        batch_tile=batch,
+                        buffer_count=buffers,
+                        memory_tier=memory_tier,
+                        plan_variant=0,
+                    ))
+        return result
+    if prefix == "row_reduction":
+        tiers = (
+            (50, ((1, 1, 1, 1, 1), (2, 2, 2, 1, 1), (4, 4, 2, 1, 1), (8, 4, 4, 1, 1))),
+            (75, ((2, 2, 2, 2, 2), (4, 4, 4, 2, 2), (8, 4, 4, 2, 2), (4, 4, 8, 2, 2))),
+            (90, ((4, 4, 4, 4, 2), (8, 4, 4, 4, 2), (8, 4, 8, 4, 2))),
+        )
+        for threads in threads_values:
+            for memory_tier, specs in tiers:
+                for elements, vector, rows, batch, buffers in specs:
+                    name = (
+                        f"row_t{threads}_e{elements}_r{rows}_v{vector}_s"
+                        f"{2 if memory_tier != 50 else 1}_b{batch}_buf{buffers}_m{memory_tier}"
+                    )
+                    result.append(candidate(
+                        name,
+                        threads=threads,
+                        tile_rows=rows,
+                        tile_cols=1,
+                        elements_per_thread=elements,
+                        rows_per_block=rows,
+                        vector_width=vector,
+                        stages=2 if memory_tier != 50 else 1,
+                        scan_elements=0,
+                        batch_tile=batch,
+                        buffer_count=buffers,
+                        memory_tier=memory_tier,
+                        plan_variant=0,
+                    ))
+        return result
+    if prefix == "fir_filter":
+        specs = (
+            (50, ((1, 1, 1, 1), (2, 1, 1, 1), (4, 1, 1, 1), (8, 1, 1, 1))),
+            (75, ((2, 2, 2, 2), (4, 2, 2, 2), (8, 2, 2, 2))),
+            (90, ((4, 4, 2, 2), (8, 4, 2, 2), (8, 2, 2, 2))),
+        )
+        for threads in threads_values:
+            for memory_tier, variants in specs:
+                for rows, batch, stages, buffers in variants:
+                    name = (
+                        f"fir_filter_t{threads}_r{rows}_b{batch}_s{stages}_"
+                        f"buf{buffers}_m{memory_tier}"
+                    )
+                    result.append(candidate(
+                        name,
+                        threads=threads,
+                        tile_rows=rows,
+                        tile_cols=1,
+                        elements_per_thread=1,
+                        rows_per_block=rows,
+                        vector_width=1,
+                        stages=stages,
+                        scan_elements=0,
+                        batch_tile=batch,
+                        buffer_count=buffers,
+                        memory_tier=memory_tier,
+                        plan_variant=rows,
+                    ))
+        return result
+    raise ValueError(f"unknown generated candidate class: {prefix}")
 
 
 def _class_candidates(prefix: str) -> List[Dict[str, Any]]:
@@ -44,7 +144,7 @@ def _class_candidates(prefix: str) -> List[Dict[str, Any]]:
             ("linear_m90_t256_e8_v4_b4", dict(threads=256, elements_per_thread=8, vector_width=4, stages=2, batch_tile=4, buffer_count=2, memory_tier=90)),
             ("linear_m90_t256_e8_v4_b8", dict(threads=256, elements_per_thread=8, vector_width=4, stages=2, batch_tile=8, buffer_count=2, memory_tier=90)),
         ]
-        return [candidate(name, **config) for name, config in names]
+        return [candidate(name, **config) for name, config in names] + _generated_candidates(prefix)
     if prefix == "row_reduction":
         names = [
             ("row_m50_t256_e1_r1_v1", dict(threads=256, elements_per_thread=1, rows_per_block=1, vector_width=1, stages=1, batch_tile=1, buffer_count=1, memory_tier=50)),
@@ -60,7 +160,7 @@ def _class_candidates(prefix: str) -> List[Dict[str, Any]]:
             ("row_m90_t256_e8_r8_v4", dict(threads=256, elements_per_thread=8, rows_per_block=8, vector_width=4, stages=2, batch_tile=4, buffer_count=2, memory_tier=90)),
             ("row_m90_t256_e8_r8_v4_b4", dict(threads=256, elements_per_thread=8, rows_per_block=8, vector_width=4, stages=2, batch_tile=4, buffer_count=2, memory_tier=90)),
         ]
-        return [candidate(name, **config) for name, config in names]
+        return [candidate(name, **config) for name, config in names] + _generated_candidates(prefix)
     if prefix == "fft_batch":
         names = [
             ("fft_batch_m50_b1", dict(threads=256, batch_tile=1, buffer_count=1, memory_tier=50)),
@@ -92,7 +192,7 @@ def _class_candidates(prefix: str) -> List[Dict[str, Any]]:
             ("fir_filter_m90_r8_b2", dict(threads=256, rows_per_block=8, plan_variant=8, buffer_count=2, batch_tile=2, stages=2, memory_tier=90)),
             ("fir_filter_m90_r8_b4", dict(threads=256, rows_per_block=8, plan_variant=8, buffer_count=2, batch_tile=4, stages=2, memory_tier=90)),
         ]
-        return [candidate(name, **config) for name, config in names]
+        return [candidate(name, **config) for name, config in names] + _generated_candidates(prefix)
     raise ValueError(f"unknown candidate class: {prefix}")
 
 
@@ -170,6 +270,39 @@ STATIC_CANDIDATE_NAMES = {
     "fir_filter": "fir_filter_static",
 }
 
+STATIC_ONLY_REASON = {
+    "filter_design": "host-side coefficient/design contract; no independent safe C500 launch variant",
+    "spectral": "public spectral plan/layout variants are not independently bound; failed PlanMany remains disabled",
+    "windows": "window kernels use fixed shared-memory layout; no independently validated launch variant",
+    "wavelets": "wavelet shared-table variants require a separate correctness probe before registration",
+    "estimation": "stateful Kalman path has no independently validated parallel launch variant",
+    "correlate": "generic/lag paths have no independently validated alternate C500 dispatch",
+    "radartools": "non-hotspot radar paths have no independently validated alternate C500 dispatch",
+}
+
+
+TASKS: Dict[str, Dict[str, Any]] = {
+    "task1_radar": {
+        "scope": "task1_radar",
+        "static": "task1_static",
+        "candidates": [
+            candidate("task1_input_t128", threads=128, route=1, stages=1, buffer_count=1, batch_tile=1, memory_tier=50),
+            candidate("task1_input_t256", threads=256, route=1, stages=1, buffer_count=1, batch_tile=1, memory_tier=50),
+            candidate("task1_input_t512", threads=512, route=1, stages=1, buffer_count=1, batch_tile=1, memory_tier=50),
+        ],
+    },
+    "task2_features": {
+        "scope": "task2_features",
+        "static": "task2_static",
+        "candidates": [
+            candidate("task2_direct_t128", threads=128, route=1, stages=1, buffer_count=1, batch_tile=1, memory_tier=50),
+            candidate("task2_direct_t256", threads=256, route=1, stages=1, buffer_count=1, batch_tile=1, memory_tier=50),
+            candidate("task2_fft_t128", threads=128, route=2, stages=1, buffer_count=2, batch_tile=1, memory_tier=75),
+            candidate("task2_fft_t256", threads=256, route=2, stages=1, buffer_count=2, batch_tile=1, memory_tier=75),
+        ],
+    },
+}
+
 
 def _register_all81() -> List[str]:
     operators = _load_operator_contract()
@@ -195,6 +328,7 @@ def _register_all81() -> List[str]:
         else:
             policy_family = "static"
             candidates = []
+        module_name = operator.split("/", 1)[0]
         FAMILIES[operator] = {
             "operator": operator,
             "policy_family": policy_family,
@@ -204,6 +338,10 @@ def _register_all81() -> List[str]:
                 else "static_operator"
             ),
             "candidates": candidates,
+            "static_only_reason": (
+                STATIC_ONLY_REASON.get(module_name, "no independently validated safe precompiled C500 variant")
+                if not candidates else "",
+            ),
         }
         keys.append(operator)
     return keys
@@ -213,6 +351,8 @@ OPERATOR_KEYS = _register_all81()
 OPERATOR_ID_TO_FAMILY = {
     definition["operator"]: family for family, definition in FAMILIES.items()
 }
+
+TASK_ID_TO_SCOPE = {name: definition["scope"] for name, definition in TASKS.items()}
 
 
 def project_root() -> Path:
@@ -233,7 +373,9 @@ def iter_workloads(families: Iterable[str]) -> Iterable[tuple[str, str, str]]:
 
 
 def cache_default_path() -> Path:
-    return Path.home() / ".cache" / "cusignal" / "zq500" / "zx_tuning.json"
+    # Keep the final offline artifact with the repository so runtime Auto mode
+    # does not depend on a user-specific home-directory cache.
+    return project_root() / "data" / "tuning" / "zx_tuning.json"
 
 
 def resolve_families(
@@ -613,7 +755,7 @@ def select_cache_entries(
             }
 
         # A cache entry is an optimization only.  Static behavior remains the
-        # safe fallback and is not duplicated in the external cache.
+        # safe fallback and is not duplicated in the repository cache.
         if winner["candidate"] == static_name or winner["gpu_e2e_median_ms"] >= static["gpu_e2e_median_ms"]:
             continue
         config = dict(winner.get("config", {}))
@@ -729,7 +871,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="exact operator to tune; repeatable",
     )
     parser.add_argument("--frozen-baseline", type=Path, required=False)
-    parser.add_argument("--output-root", type=Path, default=project_root() / "data/reports/zx_operator_autotune")
+    parser.add_argument("--output-root", type=Path, default=project_root() / "data/reports/autotune/tuning_runs")
     parser.add_argument("--cache-output", type=Path, default=cache_default_path())
     parser.add_argument("--build-dir", type=Path, default=project_root() / "build-zx")
     parser.add_argument("--warmup", type=int, default=5)

@@ -384,6 +384,7 @@ namespace cusignal
                         static_cast<std::uint64_t>(normalized_axis + 1),
                         static_cast<std::uint64_t>(device_x.rank())));
                 const tile::ScopedPolicy policy_scope(tuning);
+                const int launch_threads = tuning.config.tile.threads;
                 const bool contiguous_last_axis =
                     normalized_axis + 1 == device_x.rank() && axis_stride == 1;
                 const bool use_row_tile =
@@ -400,7 +401,7 @@ namespace cusignal
                     {
                         fm_demod_contiguous_row_tile_kernel<<<
                             static_cast<int>(line_count),
-                            kThreadsPerBlock>>>(
+                            launch_threads>>>(
                             reinterpret_cast<const float2 *>(device_x.data()),
                             line_count,
                             axis_length,
@@ -411,8 +412,10 @@ namespace cusignal
                     else
                     {
                         fm_demod_phase_difference_kernel<<<
-                            block_count(line_count * (axis_length - 1)),
-                            kThreadsPerBlock>>>(
+                            static_cast<int>(tile::ceil_div(
+                                line_count * (axis_length - 1),
+                                static_cast<std::size_t>(launch_threads))),
+                            launch_threads>>>(
                             reinterpret_cast<const float2 *>(device_x.data()),
                             static_cast<int>(device_x.rank()),
                             g_workspace.shape_storage.data(),

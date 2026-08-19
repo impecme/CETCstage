@@ -22,7 +22,9 @@
 - `scripts/sync_to_container.sh`、`replace_container_project.sh`、`pull_results.sh`：
   容器工作流；
 - `data/reference/`、`data/generated/**/manifest.json`：参考数据和输入契约；
-- `data/reports/`：已有结果目录；
+- `data/baseline/`：CPU/GPU 冻结结果表、原始复现数据和完整参考缓存；
+- `data/reports/autotune/`：Auto 算子报告和 Task1/Task2 任务报告；
+- `data/reports/static/`：静态算子报告和 Task1/Task2 静态对照，目录层级与 Auto 对齐；
 - `DELIVERY_FILES.txt`：容器同步白名单。
 
 旧的分散构建、算子测试、任务 demo、六规模 benchmark、报告 finalizer、PPT 包装和
@@ -30,9 +32,11 @@
 
 ## 报告边界
 
-`performance.sh` 将最终结果写入 `data/reports/units/benchmarks/` 和
-`data/reports/demo/<task>/summary.csv` 与 `operators/`；算子和任务二进制负责生成正式 CSV
-报告。每次运行的原始中间文件另写入
+`performance.sh` 默认将 Auto 结果写入 `data/reports/autotune/units/benchmarks/`、
+`data/reports/autotune/units/<module>/<operator>/<L1-L6>/` 和
+`data/reports/autotune/demo/<task>/summary.csv` 与 `operators/`；算子和任务二进制负责生成正式
+报告。静态对照使用同一层级的 `data/reports/static/units/benchmarks/` 和
+`data/reports/static/demo/<task>/`。每次运行的原始中间文件另写入
 `data/.reports_staging/performance/run_<timestamp>_<pid>/`。当前架构不再保留独立报告
 finalizer。
 
@@ -57,8 +61,9 @@ scripts/smoke.sh --all
 scripts/performance.sh --all --scale all
 ```
 
-本轮已在 `gpu_04` 容器完成契约审计、目标构建、相关算子定向性能和两个任务 L3 烟测；
-未在本轮执行 81 个算子六级全量性能复测，也未将容器报告再次拉回宿主机。
+本轮已在 `gpu_04` 容器完成目标构建，以及 Task1/Task2 的 Auto 和静态策略 L1-L6
+性能测试（`warmup=5/repeat=30`）；报告已按 `data/reports/autotune/` 与
+`data/reports/static/` 的同构目录保存。全量 81 个算子六级性能复测不属于本轮任务报告更新。
 
 ## 受保护项
 

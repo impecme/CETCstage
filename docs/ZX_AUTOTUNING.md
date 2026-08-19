@@ -13,23 +13,23 @@ cmake --build build-zx --target zx_operator_autotune
 `tests/contracts/operator_sets.json` 的 81 个算子、L1-L6 六个精确规模；当前
 dry-run 共展开 248 个候选/算子组合。正式调优第一轮测量全部候选，第二轮只
 复测每个算子的静态路径和第一轮胜者；只有第二轮仍然更快的候选才写入 cache。
-结果目录按 `round1/` 和 `round2_winner_against_static/` 分开保存，外部查表
-cache 不写入源码树。也可以直接运行脚本：
+结果目录按 `round1/` 和 `round2_winner_against_static/` 分开保存，最终查表 cache
+和可发布报告保存在仓库 `data/` 目录。也可以直接运行脚本：
 
 ```bash
 python3 scripts/zx_operator_autotune.py \
-  --frozen-baseline /home/usr_04/CETC/operator_gpu_baseline_75a700d_protocol \
-  --output-root /some/external/report-root \
-  --cache-output /some/external/zx_tuning.json \
+  --frozen-baseline data/baseline \
+  --output-root data/reports/autotune/tuning_runs \
+  --cache-output data/tuning/zx_tuning.json \
   --warmup 5 --repeat 30 --skip-cpu-timing \
   --selection-validation winner-against-static
 
 # 只跑一个精确算子的全部候选，适合先做 L1/L3/L6 代表性验证
 python3 scripts/zx_operator_autotune.py \
   --operator waveforms/chirp \
-  --frozen-baseline /home/usr_04/CETC/operator_gpu_baseline_75a700d_protocol \
-  --output-root /some/external/chirp-report-root \
-  --cache-output /some/external/chirp-zx_tuning.json
+  --frozen-baseline data/baseline \
+  --output-root data/reports/autotune/tuning_runs_chirp \
+  --cache-output data/tuning/zx_tuning.json
 ```
 
 每个候选按 L1-L6 执行 `warmup=5/repeat=30`，报告必须同时满足：
@@ -47,11 +47,12 @@ key 只有在第二轮候选比静态策略更快且全部检查通过时写入�
 
 ## 运行时查表
 
-默认不启用外部缓存，因此现有静态策略不变。启用缓存：
+默认不启用 Auto，因此现有静态策略不变。启用 Auto 后，仓库脚本会自动读取
+`data/tuning/zx_tuning.json`；也可以显式指定同一个仓库内路径：
 
 ```bash
 export CUSIGNAL_ZX_TUNING_MODE=auto
-export CUSIGNAL_ZX_TUNING_CACHE=/some/external/zx_tuning.json
+export CUSIGNAL_ZX_TUNING_CACHE="$PWD/data/tuning/zx_tuning.json"
 ```
 
 运行时使用完整 shape、语义参数、dtype/layout、设备指纹和 registry version

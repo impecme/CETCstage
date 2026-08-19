@@ -10,7 +10,7 @@
 - `tests/contracts/operator_type_contracts.json`
 - `tests/tools/dtype_contract_audit.py`
 - `data/reference/unit/*/*/manifest.json`
-- 当前容器验证发布后的 `data/reports/validation/`
+- 当前容器验证使用的 dtype 合同与测试输出（不再发布到已删除的 `data/reports/validation/`）
 
 ## 1. 总体结论
 

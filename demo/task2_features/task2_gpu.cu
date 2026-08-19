@@ -24,6 +24,7 @@
 #include "cusignal/wavelets/wavelets.hpp"
 #include "cusignal/windows/windows.hpp"
 #include "cusignal/waveforms/waveforms.hpp"
+#include "../../src/common/zx_tile_policy.hpp"
 
 namespace cusignal_demo::task2_features
 {
@@ -34,6 +35,7 @@ namespace cusignal_demo::task2_features
         using cusignal::core::ZxGpuComplexSignal;
         using cusignal::core::ZxGpuRealArray;
         using cusignal::core::ZxGpuRealSignal;
+        namespace tile = cusignal::zx_tile;
 
         struct GpuPipelineInputs
         {
@@ -60,9 +62,31 @@ namespace cusignal_demo::task2_features
             ZxGpuRealSignal kalman_track;
         };
 
-        std::size_t block_count(std::size_t size)
+        std::size_t block_count(std::size_t size, int threads)
         {
-            return size == 0 ? 0 : (size + kThreadsPerBlock - 1U) / kThreadsPerBlock;
+            return size == 0 ? 0 : (size + static_cast<std::size_t>(threads) - 1U) /
+                static_cast<std::size_t>(threads);
+        }
+
+        tile::TaskTuningKey task_tuning_key(const ScenarioConfig &config)
+        {
+            return tile::make_task_key(
+                tile::TaskScope::Task2Features,
+                "task2_features",
+                config.scale_level,
+                {static_cast<std::size_t>(config.num_frames),
+                 static_cast<std::size_t>(config.samples_per_frame),
+                 static_cast<std::size_t>(config.template_length),
+                 static_cast<std::size_t>(config.filter_numtaps),
+                 static_cast<std::size_t>(config.spectrogram_nperseg),
+                 static_cast<std::size_t>(config.spectrogram_nfft)},
+                6,
+                {static_cast<std::uint64_t>(config.spectrogram_noverlap),
+                 static_cast<std::uint64_t>(config.peak_order),
+                 static_cast<std::uint64_t>(config.representative_frame_index),
+                 0, 0, 0, 0, 0, 0, 0},
+                3,
+                1);
         }
 
         void check_kernel_launch(const char *what)
@@ -205,9 +229,9 @@ namespace cusignal_demo::task2_features
             const float template_t1 = static_cast<float>(config.template_length - 1) / config.fs;
             ZxGpuRealSignal time(static_cast<std::size_t>(config.template_length), false);
             ZxGpuRealSignal env_time(static_cast<std::size_t>(config.template_length), false);
-            build_time_axis_kernel<<<block_count(time.size()), kThreadsPerBlock>>>(
+            build_time_axis_kernel<<<block_count(time.size(), tile::task_threads()), tile::task_threads()>>>(
                 time.data(), time.size(), 0.0f, template_step);
-            build_time_axis_kernel<<<block_count(env_time.size()), kThreadsPerBlock>>>(
+            build_time_axis_kernel<<<block_count(env_time.size(), tile::task_threads()), tile::task_threads()>>>(
                 env_time.data(), env_time.size(), -0.5f * template_t1, template_step);
             check_kernel_launch("task2 build target time axes");
 
@@ -248,7 +272,7 @@ namespace cusignal_demo::task2_features
 
             ZxGpuRealSignal phase(static_cast<std::size_t>(config.interferer_length), false);
             ZxGpuRealSignal phase_alt(static_cast<std::size_t>(config.interferer_length), false);
-            build_interferer_phase_kernel<<<block_count(phase.size()), kThreadsPerBlock>>>(
+            build_interferer_phase_kernel<<<block_count(phase.size(), tile::task_threads()), tile::task_threads()>>>(
                 phase.data(), phase_alt.data(), phase.size(), config.fs,
                 config.interferer_f0, config.interferer_f1);
             check_kernel_launch("task2 build interferer phases");
@@ -270,7 +294,7 @@ namespace cusignal_demo::task2_features
             const ZxGpuRealSignal saw = std::move(saw_measured.first);
             const ZxGpuRealSignal square = std::move(square_measured.first);
             ZxGpuComplexSignal interferer(static_cast<std::size_t>(config.interferer_length), false);
-            combine_interferer_kernel<<<block_count(interferer.size()), kThreadsPerBlock>>>(
+            combine_interferer_kernel<<<block_count(interferer.size(), tile::task_threads()), tile::task_threads()>>>(
                 saw.data(), square.data(), interferer.size(), config.interferer_amplitude,
                 reinterpret_cast<float2 *>(interferer.data()));
             check_kernel_launch("task2 build interferer");
@@ -280,7 +304,7 @@ namespace cusignal_demo::task2_features
                       static_cast<std::size_t>(config.samples_per_frame)}, false);
             const float linear_snr = std::pow(10.0f, config.snr_db / 10.0f);
             const float noise_sigma = config.target_amplitude / std::sqrt(2.0f * linear_snr);
-            build_rx_frames_kernel<<<block_count(inputs.rx_frames.size()), kThreadsPerBlock>>>(
+            build_rx_frames_kernel<<<block_count(inputs.rx_frames.size(), tile::task_threads()), tile::task_threads()>>>(
                 reinterpret_cast<const float2 *>(inputs.target_template.data()),
                 inputs.target_template.size(),
                 reinterpret_cast<const float2 *>(interferer.data()),
@@ -327,7 +351,7 @@ namespace cusignal_demo::task2_features
             GpuPipelineInputs inputs;
             inputs.widths_host = even_range(4.0f, 32.0f, 2.0f);
             inputs.widths = ZxGpuRealSignal(inputs.widths_host.size(), false);
-            fill_widths_kernel<<<block_count(inputs.widths.size()), kThreadsPerBlock>>>(
+            fill_widths_kernel<<<block_count(inputs.widths.size(), tile::task_threads()), tile::task_threads()>>>(
                 inputs.widths.data(), inputs.widths.size(), 4.0f, 2.0f);
             check_kernel_launch("task2 fill widths");
 
@@ -562,6 +586,8 @@ namespace cusignal_demo::task2_features
 
     void warmup_gpu_task(const ScenarioConfig &config)
     {
+        const tile::TaskPolicyDecision task_tuning = tile::select_task(task_tuning_key(config));
+        const tile::ScopedTaskPolicy task_scope(task_tuning);
         GpuPipelineInputs inputs = build_gpu_pipeline_parameters_device(config);
         build_gpu_signal_inputs_device(config, inputs);
         auto warmup = run_gpu_pipeline(config, inputs);
@@ -571,6 +597,8 @@ namespace cusignal_demo::task2_features
 
     GpuTaskRun run_gpu_task(const ScenarioConfig &config)
     {
+        const tile::TaskPolicyDecision task_tuning = tile::select_task(task_tuning_key(config));
+        const tile::ScopedTaskPolicy task_scope(task_tuning);
         GpuTaskRun result;
 
         // Formal GPU E2E starts from a fresh device-generated input. Warmup is
@@ -616,6 +644,8 @@ namespace cusignal_demo::task2_features
 
     GpuValidationRun run_gpu_validation(const ScenarioConfig &config, const TaskInputs &host_inputs)
     {
+        const tile::TaskPolicyDecision task_tuning = tile::select_task(task_tuning_key(config));
+        const tile::ScopedTaskPolicy task_scope(task_tuning);
         GpuValidationRun result;
         auto parameters = measure_cpu_ms([&]() {
             return build_gpu_pipeline_parameters_device(config);

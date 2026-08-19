@@ -1,0 +1,12 @@
+task,scale,stage,record_kind,helper_names,public_operator_links,cpu_ms,gpu_e2e_ms,gpu_kernel_ms,counted_in_task_e2e
+task2_features,L5,input_construction,task_stage,build_target_template_kernel;build_rx_frames_kernel,waveforms/chirp;waveforms/gausspulse;waveforms/sawtooth;waveforms/square,16.643144608,2.340199471,2.274997950,true
+task2_features,L5,h2d,task_stage,,,0.000000000,0.000000000,,true
+task2_features,L5,filter,task_stage,extract_real_part_zx_gpu,filtering/firfilter;filter_design/firwin,32.573097229,1.754799008,1.722859979,true
+task2_features,L5,demod,task_stage,batched_demod_score_zx_gpu,demod/fm_demod,11.049247742,0.260042489,0.226327002,true
+task2_features,L5,correlate,task_stage,batched_correlate_score_zx_gpu;normalize_rows_nonnegative_zx_gpu,correlate/correlate,7517.692382812,1.758292913,1.693124056,true
+task2_features,L5,spectrogram,task_stage,direct_spectrogram_band_score_zx_gpu;normalize_rows_nonnegative_zx_gpu,spectral/spectrogram;windows/get_window,45.315929413,2.976597548,2.869458914,true
+task2_features,L5,cwt,task_stage,batched_cwt_max_score_zx_gpu;normalize_rows_nonnegative_zx_gpu,wavelets/cwt,3462.462890625,9.546415329,9.479461670,true
+task2_features,L5,feature_fusion,task_stage,fuse_feature_scores_zx_gpu;row_peak_track_kernel,bsplines/cubic;peak_finding/argrelmax,1.640479803,0.689316988,0.652406991,true
+task2_features,L5,measurement_conversion,task_stage,copy_measurement_track_zx_gpu,,0.000105000,0.133486003,0.102526002,true
+task2_features,L5,kalman,task_stage,kalman_track_from_peaks_zx_gpu,estimation/kalman_filter,0.136316001,0.076205999,0.045649998,true
+task2_features,L5,final_output,task_stage,materialize_gpu_artifacts,,0.000000000,6.809308052,,true

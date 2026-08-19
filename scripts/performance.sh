@@ -3,6 +3,17 @@ set -euo pipefail
 
 SCRIPT_DIR="$(\cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(\cd "$SCRIPT_DIR/.." && pwd)"
+
+# Auto mode is repository-self-contained by default.  An explicit cache path
+# still wins, while a missing repository cache safely falls back to static
+# dispatch in the runtime policy.
+if [[ "${CUSIGNAL_ZX_TUNING_MODE:-}" == "auto" && -z "${CUSIGNAL_ZX_TUNING_CACHE:-}" ]]; then
+  repo_tuning_cache="$PROJECT_ROOT/data/tuning/zx_tuning.json"
+  if [[ -f "$repo_tuning_cache" ]]; then
+    export CUSIGNAL_ZX_TUNING_CACHE="$repo_tuning_cache"
+  fi
+fi
+
 CONTRACT="$PROJECT_ROOT/tests/contracts/operator_sets.json"
 PROFILES="$PROJECT_ROOT/tests/contracts/operator_scale_profiles.json"
 
@@ -55,7 +66,7 @@ Execution:
   --case-set SET           full (default), perf (timing-only), or smoke
   --frozen-baseline PATH   Reuse the immutable baseline inputs; run optimized operators only
   --no-build               Reuse existing binaries
-  --output-root PATH       Result directory (default: data/reports)
+  --output-root PATH       Result directory (default: data/reports/autotune)
   --cpu-reference-cache PATH
                            Save complete CPU outputs and CPU medians for a full all81 run
   --help                   Show this help
@@ -376,11 +387,15 @@ run_operator_tests() {
 
   levels=(L1 L2 L3 L4 L5 L6)
   [[ "$SCALE_SELECTION" == all ]] || levels=("$SCALE_SELECTION")
+  gpu_reference_root="$FROZEN_BASELINE_ROOT"
+  if [[ -n "$FROZEN_BASELINE_ROOT" && -d "$FROZEN_BASELINE_ROOT/gpu_reference" ]]; then
+    gpu_reference_root="$FROZEN_BASELINE_ROOT/gpu_reference"
+  fi
   for level in "${levels[@]}"; do
     manifest_root="$raw_root/manifests/$level"
     if [[ -n "$FROZEN_BASELINE_ROOT" ]]; then
-      frozen_manifest_root="$FROZEN_BASELINE_ROOT/inputs/$level"
-      frozen_metadata="$FROZEN_BASELINE_ROOT/inputs/${level}_scale_metadata.json"
+      frozen_manifest_root="$gpu_reference_root/inputs/$level"
+      frozen_metadata="$gpu_reference_root/inputs/${level}_scale_metadata.json"
       [[ -d "$frozen_manifest_root" ]] || die "missing frozen manifest root: $frozen_manifest_root"
       [[ -f "$frozen_metadata" ]] || die "missing frozen scale metadata: $frozen_metadata"
       mkdir -p "$manifest_root"
@@ -425,6 +440,12 @@ run_operator_tests() {
       [[ -f "$source_metrics" ]] || die "missing operator report: $source_metrics"
       mkdir -p "$raw_root/reports/$level/$module/$operator"
       cp "$source_metrics" "$raw_root/reports/$level/$module/$operator/latest_metrics.json"
+      for artifact in latest_cases.csv latest_summary.md; do
+        source_artifact="$PROJECT_ROOT/data/.reports_staging/unit/$module/$operator/$artifact"
+        if [[ -f "$source_artifact" ]]; then
+          cp "$source_artifact" "$raw_root/reports/$level/$module/$operator/$artifact"
+        fi
+      done
       if [[ -n "$CPU_REFERENCE_CACHE_ROOT" ]]; then
         cp "$source_metrics" "$run_manifest_root/$module/$operator/latest_metrics.json"
       fi
@@ -830,6 +851,25 @@ if selection == "all" and expected_operators is not None:
             f"operators={actual_operators}/{expected_operators} rows={len(rows)}/{expected_rows}"
         )
 output_root.mkdir(parents=True, exist_ok=True)
+# Keep the aggregate report and the historical per-operator artifacts under
+# the same formal output root.  The direct-writer unit test passes a generic
+# output directory instead of the production */units/benchmarks directory.
+units_root = output_root.parent if output_root.name == "benchmarks" else output_root / "units"
+for row in rows:
+    source_root = raw_root / row["scale_level"] / row["module"] / row["name"]
+    unit_root = units_root / row["module"] / row["name"] / row["scale_level"]
+    unit_root.mkdir(parents=True, exist_ok=True)
+    for source_name, published_name in (
+        ("latest_metrics.json", "metrics.json"),
+        ("latest_cases.csv", "cases.csv"),
+        ("latest_summary.md", "summary.md"),
+    ):
+        destination = unit_root / published_name
+        if destination.exists():
+            destination.unlink()
+        source = source_root / source_name
+        if source.is_file():
+            destination.write_bytes(source.read_bytes())
 # Remove the pre-unified aggregate names so a rerun cannot leave two
 # competing performance versions in the published directory.
 for legacy in (output_root / "summary.csv", output_root / "summary.json"):
@@ -1087,7 +1127,7 @@ main() {
     set -u
   fi
   if [[ -z "$OUTPUT_ROOT" ]]; then
-    OUTPUT_ROOT="$PROJECT_ROOT/data/reports"
+    OUTPUT_ROOT="$PROJECT_ROOT/data/reports/autotune"
   fi
   mkdir -p "$OUTPUT_ROOT"
   raw_root="$PROJECT_ROOT/data/.reports_staging/performance/run_$(date +%Y%m%d_%H%M%S)_$$"

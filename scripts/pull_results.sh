@@ -38,8 +38,7 @@ Options:
   --include-generated    Also retrieve data/generated/demo
   --sync-reports         Incrementally copy container data/reports directly into
                          this repository's data/reports; preserves host files not
-                         present in the container and does not require full
-                         validation.
+                         present in the container.
   --allow-missing        Return success when requested paths are missing; missing
                          paths are still recorded in TRANSFER_STATUS.txt
   --dry-run              Print the transfer plan without using Docker
@@ -299,43 +298,35 @@ container_byte_count="$(find "${STAGE}" -type f -printf '%s\n' | awk '{total += 
 if [[ "${SYNC_REPORTS}" -eq 1 ]]; then
   [[ "${#missing_paths[@]}" -eq 0 ]] || \
     die "cannot synchronize reports from a partial transfer"
-  PULLED_REPORTS="${STAGE}/data/reports"
-  [[ -d "${PULLED_REPORTS}" && ! -L "${PULLED_REPORTS}" ]] || \
-    die "pulled report directory is missing or unsafe: ${PULLED_REPORTS}"
-  if find "${PULLED_REPORTS}" -type l -print -quit | grep -q .; then
-    die "pulled report directory contains a symbolic link"
+  if [[ -d "${STAGE}/data/reports" ]]; then
+    PULLED_REPORTS="${STAGE}/data/reports"
+    [[ ! -L "${PULLED_REPORTS}" ]] || die "pulled report directory is a symbolic link"
+    if find "${PULLED_REPORTS}" -type l -print -quit | grep -q .; then
+      die "pulled report directory contains a symbolic link"
+    fi
+
+    REPORTS_ROOT="${PROJECT_ROOT}/data/reports"
+    [[ -d "${REPORTS_ROOT}" && ! -L "${REPORTS_ROOT}" ]] || \
+      die "host report directory is missing or unsafe: ${REPORTS_ROOT}"
+    # Task1/Task2 reports are replacement-style formal outputs.  Remove only
+    # those two explicitly scoped task directories before copying the new
+    # summary.csv/operators tree, so legacy scales/final Host+H2D artifacts
+    # cannot survive an otherwise incremental report pull.
+    for task_root in demo autotune/demo; do
+      for task_report in task1_radar task2_features; do
+        pulled_task="${PULLED_REPORTS}/${task_root}/${task_report}"
+        host_task="${REPORTS_ROOT}/${task_root}/${task_report}"
+        if [[ -d "${pulled_task}" ]]; then
+          [[ ! -L "${pulled_task}" && ! -L "${host_task}" ]] || \
+            die "task report path is a symbolic link: ${task_root}/${task_report}"
+          rm -rf "${host_task}"
+        fi
+      done
+    done
+    rsync -a "${PULLED_REPORTS}/" "${REPORTS_ROOT}/"
   fi
 
-  REPORTS_ROOT="${PROJECT_ROOT}/data/reports"
-  [[ -d "${REPORTS_ROOT}" && ! -L "${REPORTS_ROOT}" ]] || \
-    die "host report directory is missing or unsafe: ${REPORTS_ROOT}"
-  # Task1/Task2 reports are replacement-style formal outputs.  Remove only
-  # those two explicitly scoped task directories before copying the new
-  # summary.csv/operators tree, so legacy scales/final Host+H2D artifacts
-  # cannot survive an otherwise incremental report pull.
-  for task_report in task1_radar task2_features; do
-    pulled_task="${PULLED_REPORTS}/demo/${task_report}"
-    host_task="${REPORTS_ROOT}/demo/${task_report}"
-    if [[ -d "${pulled_task}" ]]; then
-      [[ ! -L "${pulled_task}" && ! -L "${host_task}" ]] || \
-        die "task report path is a symbolic link: ${task_report}"
-      rm -rf "${host_task}"
-    fi
-  done
-  rsync -a "${PULLED_REPORTS}/" "${REPORTS_ROOT}/"
-
-  REPORT_HASH_STAGE="$(mktemp "${HOST_PARENT}/.reports-hash.XXXXXX")"
-  (
-    cd "${REPORTS_ROOT}"
-    find . -type f ! -name FILES.sha256 -printf '%P\0' \
-      | LC_ALL=C sort -z \
-      | xargs -0 -r sha256sum
-  ) >"${REPORT_HASH_STAGE}"
-  mv "${REPORT_HASH_STAGE}" "${REPORTS_ROOT}/FILES.sha256"
-  REPORT_HASH_STAGE=""
-
   echo "[container-pull] synchronized ${container_file_count} container files into ${REPORTS_ROOT}"
-  echo "[container-pull] refreshed ${REPORTS_ROOT}/FILES.sha256"
   exit 0
 fi
 

@@ -1,0 +1,1563 @@
+{
+  "schema_version": 2,
+  "registry_version": "zx-c500-all81-v2",
+  "platform": "zhongkexin-c500",
+  "created_at": "2026-08-17T09:39:19.481565+00:00",
+  "device": {
+    "id": 0,
+    "name": "ZQ500-Q QUAD-0",
+    "runtime_version": 11070,
+    "compute_major": 7,
+    "compute_minor": 0,
+    "total_global_mem": 17179869184,
+    "target": "c500"
+  },
+  "selection_policy": "exact_key;correctness_pass;input_refresh_pass;candidate_applied;gpu_e2e_median_min;winner_against_static_round2",
+  "entries": [
+    {
+      "family": "linear",
+      "policy_family": "linear",
+      "operator_id": "waveforms/chirp",
+      "key": "linear|operator=waveforms/chirp|dtype=0|layout=0|batch=1|shape=2097152|semantic=8872413518413201086,5200396667997086015",
+      "key_fields": {
+        "family": "linear",
+        "operator_id": "waveforms/chirp",
+        "dtype": 0,
+        "layout": 0,
+        "batch": 1,
+        "shape": [
+          2097152
+        ],
+        "semantic_parameters": [
+          8872413518413201086,
+          5200396667997086015
+        ]
+      },
+      "candidate": "linear_m90_t256_e8_v4_b8",
+      "config": {
+        "threads": 256,
+        "tile_rows": 1,
+        "tile_cols": 1,
+        "elements_per_thread": 8,
+        "rows_per_block": 1,
+        "vector_width": 4,
+        "stages": 2,
+        "scan_elements": 0,
+        "workspace_bytes": 16777264,
+        "buffer_count": 2,
+        "batch_tile": 8,
+        "memory_tier": 90,
+        "plan_variant": 0,
+        "workspace_peak_bytes": 16777264
+      },
+      "gpu_e2e_median_ms": 35.929046630859375,
+      "gpu_kernel_median_ms": 7.667819976806641,
+      "correctness_status": "PASS",
+      "input_refresh_status": "PASS",
+      "selection": {
+        "static_candidate": "linear_static",
+        "static_gpu_e2e_median_ms": 36.157676696777344,
+        "winner_gpu_e2e_median_ms": 35.929046630859375,
+        "validation_round": "winner-against-static",
+        "round1_static_gpu_e2e_median_ms": 34.297157287597656,
+        "round1_winner_candidate": "linear_m90_t256_e8_v4_b8",
+        "round1_winner_gpu_e2e_median_ms": 32.88201904296875
+      }
+    },
+    {
+      "family": "linear",
+      "policy_family": "linear",
+      "operator_id": "waveforms/chirp",
+      "key": "linear|operator=waveforms/chirp|dtype=0|layout=0|batch=1|shape=4194304|semantic=8872413518413201086,5200396667997086015",
+      "key_fields": {
+        "family": "linear",
+        "operator_id": "waveforms/chirp",
+        "dtype": 0,
+        "layout": 0,
+        "batch": 1,
+        "shape": [
+          4194304
+        ],
+        "semantic_parameters": [
+          8872413518413201086,
+          5200396667997086015
+        ]
+      },
+      "candidate": "linear_m90_t256_e4_v4_b4",
+      "config": {
+        "threads": 256,
+        "tile_rows": 1,
+        "tile_cols": 1,
+        "elements_per_thread": 4,
+        "rows_per_block": 1,
+        "vector_width": 4,
+        "stages": 2,
+        "scan_elements": 0,
+        "workspace_bytes": 33554480,
+        "buffer_count": 2,
+        "batch_tile": 4,
+        "memory_tier": 90,
+        "plan_variant": 0,
+        "workspace_peak_bytes": 33554480
+      },
+      "gpu_e2e_median_ms": 90.27239990234375,
+      "gpu_kernel_median_ms": 19.005260467529297,
+      "correctness_status": "PASS",
+      "input_refresh_status": "PASS",
+      "selection": {
+        "static_candidate": "linear_static",
+        "static_gpu_e2e_median_ms": 92.8720703125,
+        "winner_gpu_e2e_median_ms": 90.27239990234375,
+        "validation_round": "winner-against-static",
+        "round1_static_gpu_e2e_median_ms": 69.28240203857422,
+        "round1_winner_candidate": "linear_m90_t256_e4_v4_b4",
+        "round1_winner_gpu_e2e_median_ms": 66.56333923339844
+      }
+    },
+    {
+      "family": "linear",
+      "policy_family": "linear",
+      "operator_id": "waveforms/chirp",
+      "key": "linear|operator=waveforms/chirp|dtype=0|layout=0|batch=1|shape=8388608|semantic=8872413518413201086,5200396667997086015",
+      "key_fields": {
+        "family": "linear",
+        "operator_id": "waveforms/chirp",
+        "dtype": 0,
+        "layout": 0,
+        "batch": 1,
+        "shape": [
+          8388608
+        ],
+        "semantic_parameters": [
+          8872413518413201086,
+          5200396667997086015
+        ]
+      },
+      "candidate": "linear_m50_t256_e8_v4",
+      "config": {
+        "threads": 256,
+        "tile_rows": 1,
+        "tile_cols": 1,
+        "elements_per_thread": 8,
+        "rows_per_block": 1,
+        "vector_width": 4,
+        "stages": 1,
+        "scan_elements": 0,
+        "workspace_bytes": 67108912,
+        "buffer_count": 1,
+        "batch_tile": 1,
+        "memory_tier": 50,
+        "plan_variant": 0,
+        "workspace_peak_bytes": 67108912
+      },
+      "gpu_e2e_median_ms": 117.7047119140625,
+      "gpu_kernel_median_ms": 29.788280487060547,
+      "correctness_status": "PASS",
+      "input_refresh_status": "PASS",
+      "selection": {
+        "static_candidate": "linear_static",
+        "static_gpu_e2e_median_ms": 119.11698913574219,
+        "winner_gpu_e2e_median_ms": 117.7047119140625,
+        "validation_round": "winner-against-static",
+        "round1_static_gpu_e2e_median_ms": 145.57205200195312,
+        "round1_winner_candidate": "linear_m50_t256_e8_v4",
+        "round1_winner_gpu_e2e_median_ms": 135.5934600830078
+      }
+    },
+    {
+      "family": "linear",
+      "policy_family": "linear",
+      "operator_id": "waveforms/gausspulse",
+      "key": "linear|operator=waveforms/gausspulse|dtype=0|layout=0|batch=1|shape=2097152|semantic=",
+      "key_fields": {
+        "family": "linear",
+        "operator_id": "waveforms/gausspulse",
+        "dtype": 0,
+        "layout": 0,
+        "batch": 1,
+        "shape": [
+          2097152
+        ],
+        "semantic_parameters": []
+      },
+      "candidate": "linear_m50_t256_e2_v2",
+      "config": {
+        "threads": 256,
+        "tile_rows": 1,
+        "tile_cols": 1,
+        "elements_per_thread": 2,
+        "rows_per_block": 1,
+        "vector_width": 2,
+        "stages": 1,
+        "scan_elements": 0,
+        "workspace_bytes": 16777264,
+        "buffer_count": 1,
+        "batch_tile": 1,
+        "memory_tier": 50,
+        "plan_variant": 0,
+        "workspace_peak_bytes": 16777264
+      },
+      "gpu_e2e_median_ms": 32.58180236816406,
+      "gpu_kernel_median_ms": 7.312980651855469,
+      "correctness_status": "PASS",
+      "input_refresh_status": "PASS",
+      "selection": {
+        "static_candidate": "linear_static",
+        "static_gpu_e2e_median_ms": 35.673095703125,
+        "winner_gpu_e2e_median_ms": 32.58180236816406,
+        "validation_round": "winner-against-static",
+        "round1_static_gpu_e2e_median_ms": 30.426883697509766,
+        "round1_winner_candidate": "linear_m50_t256_e2_v2",
+        "round1_winner_gpu_e2e_median_ms": 29.005615234375
+      }
+    },
+    {
+      "family": "linear",
+      "policy_family": "linear",
+      "operator_id": "waveforms/gausspulse",
+      "key": "linear|operator=waveforms/gausspulse|dtype=0|layout=0|batch=1|shape=524288|semantic=",
+      "key_fields": {
+        "family": "linear",
+        "operator_id": "waveforms/gausspulse",
+        "dtype": 0,
+        "layout": 0,
+        "batch": 1,
+        "shape": [
+          524288
+        ],
+        "semantic_parameters": []
+      },
+      "candidate": "linear_m50_t256_e1_v1",
+      "config": {
+        "threads": 256,
+        "tile_rows": 1,
+        "tile_cols": 1,
+        "elements_per_thread": 1,
+        "rows_per_block": 1,
+        "vector_width": 1,
+        "stages": 1,
+        "scan_elements": 0,
+        "workspace_bytes": 4194352,
+        "buffer_count": 1,
+        "batch_tile": 1,
+        "memory_tier": 50,
+        "plan_variant": 0,
+        "workspace_peak_bytes": 4194352
+      },
+      "gpu_e2e_median_ms": 4.037329196929932,
+      "gpu_kernel_median_ms": 0.6432839632034302,
+      "correctness_status": "PASS",
+      "input_refresh_status": "PASS",
+      "selection": {
+        "static_candidate": "linear_static",
+        "static_gpu_e2e_median_ms": 4.044919967651367,
+        "winner_gpu_e2e_median_ms": 4.037329196929932,
+        "validation_round": "winner-against-static",
+        "round1_static_gpu_e2e_median_ms": 3.9992735385894775,
+        "round1_winner_candidate": "linear_m50_t256_e1_v1",
+        "round1_winner_gpu_e2e_median_ms": 3.9174370765686035
+      }
+    },
+    {
+      "family": "linear",
+      "policy_family": "linear",
+      "operator_id": "waveforms/gausspulse",
+      "key": "linear|operator=waveforms/gausspulse|dtype=0|layout=0|batch=1|shape=8388608|semantic=",
+      "key_fields": {
+        "family": "linear",
+        "operator_id": "waveforms/gausspulse",
+        "dtype": 0,
+        "layout": 0,
+        "batch": 1,
+        "shape": [
+          8388608
+        ],
+        "semantic_parameters": []
+      },
+      "candidate": "linear_m50_t256_e4_v4",
+      "config": {
+        "threads": 256,
+        "tile_rows": 1,
+        "tile_cols": 1,
+        "elements_per_thread": 4,
+        "rows_per_block": 1,
+        "vector_width": 4,
+        "stages": 1,
+        "scan_elements": 0,
+        "workspace_bytes": 67108912,
+        "buffer_count": 1,
+        "batch_tile": 1,
+        "memory_tier": 50,
+        "plan_variant": 0,
+        "workspace_peak_bytes": 67108912
+      },
+      "gpu_e2e_median_ms": 116.9908676147461,
+      "gpu_kernel_median_ms": 29.78473663330078,
+      "correctness_status": "PASS",
+      "input_refresh_status": "PASS",
+      "selection": {
+        "static_candidate": "linear_static",
+        "static_gpu_e2e_median_ms": 161.7007598876953,
+        "winner_gpu_e2e_median_ms": 116.9908676147461,
+        "validation_round": "winner-against-static",
+        "round1_static_gpu_e2e_median_ms": 165.121826171875,
+        "round1_winner_candidate": "linear_m50_t256_e4_v4",
+        "round1_winner_gpu_e2e_median_ms": 128.73191833496094
+      }
+    },
+    {
+      "family": "linear",
+      "policy_family": "linear",
+      "operator_id": "waveforms/sawtooth",
+      "key": "linear|operator=waveforms/sawtooth|dtype=0|layout=0|batch=1|shape=1048576|semantic=1",
+      "key_fields": {
+        "family": "linear",
+        "operator_id": "waveforms/sawtooth",
+        "dtype": 0,
+        "layout": 0,
+        "batch": 1,
+        "shape": [
+          1048576
+        ],
+        "semantic_parameters": [
+          1
+        ]
+      },
+      "candidate": "linear_m50_t256_e8_v4",
+      "config": {
+        "threads": 256,
+        "tile_rows": 1,
+        "tile_cols": 1,
+        "elements_per_thread": 8,
+        "rows_per_block": 1,
+        "vector_width": 4,
+        "stages": 1,
+        "scan_elements": 0,
+        "workspace_bytes": 8388652,
+        "buffer_count": 1,
+        "batch_tile": 1,
+        "memory_tier": 50,
+        "plan_variant": 0,
+        "workspace_peak_bytes": 8388652
+      },
+      "gpu_e2e_median_ms": 9.9326810836792,
+      "gpu_kernel_median_ms": 1.3340270519256592,
+      "correctness_status": "PASS",
+      "input_refresh_status": "PASS",
+      "selection": {
+        "static_candidate": "linear_static",
+        "static_gpu_e2e_median_ms": 11.065418243408203,
+        "winner_gpu_e2e_median_ms": 9.9326810836792,
+        "validation_round": "winner-against-static",
+        "round1_static_gpu_e2e_median_ms": 12.983147621154785,
+        "round1_winner_candidate": "linear_m50_t256_e8_v4",
+        "round1_winner_gpu_e2e_median_ms": 12.55992317199707
+      }
+    },
+    {
+      "family": "linear",
+      "policy_family": "linear",
+      "operator_id": "waveforms/sawtooth",
+      "key": "linear|operator=waveforms/sawtooth|dtype=0|layout=0|batch=1|shape=2097152|semantic=1",
+      "key_fields": {
+        "family": "linear",
+        "operator_id": "waveforms/sawtooth",
+        "dtype": 0,
+        "layout": 0,
+        "batch": 1,
+        "shape": [
+          2097152
+        ],
+        "semantic_parameters": [
+          1
+        ]
+      },
+      "candidate": "linear_m90_t256_e8_v4_b4",
+      "config": {
+        "threads": 256,
+        "tile_rows": 1,
+        "tile_cols": 1,
+        "elements_per_thread": 8,
+        "rows_per_block": 1,
+        "vector_width": 4,
+        "stages": 2,
+        "scan_elements": 0,
+        "workspace_bytes": 16777260,
+        "buffer_count": 2,
+        "batch_tile": 4,
+        "memory_tier": 90,
+        "plan_variant": 0,
+        "workspace_peak_bytes": 16777260
+      },
+      "gpu_e2e_median_ms": 29.84560775756836,
+      "gpu_kernel_median_ms": 7.324301719665527,
+      "correctness_status": "PASS",
+      "input_refresh_status": "PASS",
+      "selection": {
+        "static_candidate": "linear_static",
+        "static_gpu_e2e_median_ms": 33.52104949951172,
+        "winner_gpu_e2e_median_ms": 29.84560775756836,
+        "validation_round": "winner-against-static",
+        "round1_static_gpu_e2e_median_ms": 34.08632278442383,
+        "round1_winner_candidate": "linear_m90_t256_e8_v4_b4",
+        "round1_winner_gpu_e2e_median_ms": 28.85184097290039
+      }
+    },
+    {
+      "family": "linear",
+      "policy_family": "linear",
+      "operator_id": "waveforms/sawtooth",
+      "key": "linear|operator=waveforms/sawtooth|dtype=0|layout=0|batch=1|shape=262144|semantic=1",
+      "key_fields": {
+        "family": "linear",
+        "operator_id": "waveforms/sawtooth",
+        "dtype": 0,
+        "layout": 0,
+        "batch": 1,
+        "shape": [
+          262144
+        ],
+        "semantic_parameters": [
+          1
+        ]
+      },
+      "candidate": "linear_m90_t256_e4_v4_b4",
+      "config": {
+        "threads": 256,
+        "tile_rows": 1,
+        "tile_cols": 1,
+        "elements_per_thread": 4,
+        "rows_per_block": 1,
+        "vector_width": 4,
+        "stages": 2,
+        "scan_elements": 0,
+        "workspace_bytes": 2097196,
+        "buffer_count": 2,
+        "batch_tile": 4,
+        "memory_tier": 90,
+        "plan_variant": 0,
+        "workspace_peak_bytes": 2097196
+      },
+      "gpu_e2e_median_ms": 1.661487102508545,
+      "gpu_kernel_median_ms": 0.4133409857749939,
+      "correctness_status": "PASS",
+      "input_refresh_status": "PASS",
+      "selection": {
+        "static_candidate": "linear_static",
+        "static_gpu_e2e_median_ms": 1.6877150535583496,
+        "winner_gpu_e2e_median_ms": 1.661487102508545,
+        "validation_round": "winner-against-static",
+        "round1_static_gpu_e2e_median_ms": 1.6317229270935059,
+        "round1_winner_candidate": "linear_m90_t256_e4_v4_b4",
+        "round1_winner_gpu_e2e_median_ms": 1.566098928451538
+      }
+    },
+    {
+      "family": "linear",
+      "policy_family": "linear",
+      "operator_id": "waveforms/sawtooth",
+      "key": "linear|operator=waveforms/sawtooth|dtype=0|layout=0|batch=1|shape=4194304|semantic=1",
+      "key_fields": {
+        "family": "linear",
+        "operator_id": "waveforms/sawtooth",
+        "dtype": 0,
+        "layout": 0,
+        "batch": 1,
+        "shape": [
+          4194304
+        ],
+        "semantic_parameters": [
+          1
+        ]
+      },
+      "candidate": "linear_m50_t256_e8_v4",
+      "config": {
+        "threads": 256,
+        "tile_rows": 1,
+        "tile_cols": 1,
+        "elements_per_thread": 8,
+        "rows_per_block": 1,
+        "vector_width": 4,
+        "stages": 1,
+        "scan_elements": 0,
+        "workspace_bytes": 33554476,
+        "buffer_count": 1,
+        "batch_tile": 1,
+        "memory_tier": 50,
+        "plan_variant": 0,
+        "workspace_peak_bytes": 33554476
+      },
+      "gpu_e2e_median_ms": 69.6202392578125,
+      "gpu_kernel_median_ms": 16.16828155517578,
+      "correctness_status": "PASS",
+      "input_refresh_status": "PASS",
+      "selection": {
+        "static_candidate": "linear_static",
+        "static_gpu_e2e_median_ms": 81.54801940917969,
+        "winner_gpu_e2e_median_ms": 69.6202392578125,
+        "validation_round": "winner-against-static",
+        "round1_static_gpu_e2e_median_ms": 68.52574157714844,
+        "round1_winner_candidate": "linear_m50_t256_e8_v4",
+        "round1_winner_gpu_e2e_median_ms": 62.42413330078125
+      }
+    },
+    {
+      "family": "linear",
+      "policy_family": "linear",
+      "operator_id": "waveforms/sawtooth",
+      "key": "linear|operator=waveforms/sawtooth|dtype=0|layout=0|batch=1|shape=524288|semantic=1",
+      "key_fields": {
+        "family": "linear",
+        "operator_id": "waveforms/sawtooth",
+        "dtype": 0,
+        "layout": 0,
+        "batch": 1,
+        "shape": [
+          524288
+        ],
+        "semantic_parameters": [
+          1
+        ]
+      },
+      "candidate": "linear_m90_t256_e4_v4_b4",
+      "config": {
+        "threads": 256,
+        "tile_rows": 1,
+        "tile_cols": 1,
+        "elements_per_thread": 4,
+        "rows_per_block": 1,
+        "vector_width": 4,
+        "stages": 2,
+        "scan_elements": 0,
+        "workspace_bytes": 4194348,
+        "buffer_count": 2,
+        "batch_tile": 4,
+        "memory_tier": 90,
+        "plan_variant": 0,
+        "workspace_peak_bytes": 4194348
+      },
+      "gpu_e2e_median_ms": 4.136941909790039,
+      "gpu_kernel_median_ms": 0.6359239816665649,
+      "correctness_status": "PASS",
+      "input_refresh_status": "PASS",
+      "selection": {
+        "static_candidate": "linear_static",
+        "static_gpu_e2e_median_ms": 4.509617805480957,
+        "winner_gpu_e2e_median_ms": 4.136941909790039,
+        "validation_round": "winner-against-static",
+        "round1_static_gpu_e2e_median_ms": 4.827008247375488,
+        "round1_winner_candidate": "linear_m90_t256_e4_v4_b4",
+        "round1_winner_gpu_e2e_median_ms": 4.563164710998535
+      }
+    },
+    {
+      "family": "linear",
+      "policy_family": "linear",
+      "operator_id": "waveforms/square",
+      "key": "linear|operator=waveforms/square|dtype=0|layout=0|batch=1|shape=2097152|semantic=1",
+      "key_fields": {
+        "family": "linear",
+        "operator_id": "waveforms/square",
+        "dtype": 0,
+        "layout": 0,
+        "batch": 1,
+        "shape": [
+          2097152
+        ],
+        "semantic_parameters": [
+          1
+        ]
+      },
+      "candidate": "linear_m50_t256_e2_v2",
+      "config": {
+        "threads": 256,
+        "tile_rows": 1,
+        "tile_cols": 1,
+        "elements_per_thread": 2,
+        "rows_per_block": 1,
+        "vector_width": 2,
+        "stages": 1,
+        "scan_elements": 0,
+        "workspace_bytes": 16777260,
+        "buffer_count": 1,
+        "batch_tile": 1,
+        "memory_tier": 50,
+        "plan_variant": 0,
+        "workspace_peak_bytes": 16777260
+      },
+      "gpu_e2e_median_ms": 29.639305114746094,
+      "gpu_kernel_median_ms": 7.079547882080078,
+      "correctness_status": "PASS",
+      "input_refresh_status": "PASS",
+      "selection": {
+        "static_candidate": "linear_static",
+        "static_gpu_e2e_median_ms": 35.64141082763672,
+        "winner_gpu_e2e_median_ms": 29.639305114746094,
+        "validation_round": "winner-against-static",
+        "round1_static_gpu_e2e_median_ms": 34.08498001098633,
+        "round1_winner_candidate": "linear_m50_t256_e2_v2",
+        "round1_winner_gpu_e2e_median_ms": 30.4404354095459
+      }
+    },
+    {
+      "family": "linear",
+      "policy_family": "linear",
+      "operator_id": "waveforms/square",
+      "key": "linear|operator=waveforms/square|dtype=0|layout=0|batch=1|shape=262144|semantic=1",
+      "key_fields": {
+        "family": "linear",
+        "operator_id": "waveforms/square",
+        "dtype": 0,
+        "layout": 0,
+        "batch": 1,
+        "shape": [
+          262144
+        ],
+        "semantic_parameters": [
+          1
+        ]
+      },
+      "candidate": "linear_m50_t256_e8_v4",
+      "config": {
+        "threads": 256,
+        "tile_rows": 1,
+        "tile_cols": 1,
+        "elements_per_thread": 8,
+        "rows_per_block": 1,
+        "vector_width": 4,
+        "stages": 1,
+        "scan_elements": 0,
+        "workspace_bytes": 2097196,
+        "buffer_count": 1,
+        "batch_tile": 1,
+        "memory_tier": 50,
+        "plan_variant": 0,
+        "workspace_peak_bytes": 2097196
+      },
+      "gpu_e2e_median_ms": 1.6348395347595215,
+      "gpu_kernel_median_ms": 0.4039660096168518,
+      "correctness_status": "PASS",
+      "input_refresh_status": "PASS",
+      "selection": {
+        "static_candidate": "linear_static",
+        "static_gpu_e2e_median_ms": 1.655540943145752,
+        "winner_gpu_e2e_median_ms": 1.6348395347595215,
+        "validation_round": "winner-against-static",
+        "round1_static_gpu_e2e_median_ms": 1.5703010559082031,
+        "round1_winner_candidate": "linear_m50_t256_e8_v4",
+        "round1_winner_gpu_e2e_median_ms": 1.565053939819336
+      }
+    },
+    {
+      "family": "linear",
+      "policy_family": "linear",
+      "operator_id": "waveforms/square",
+      "key": "linear|operator=waveforms/square|dtype=0|layout=0|batch=1|shape=4194304|semantic=1",
+      "key_fields": {
+        "family": "linear",
+        "operator_id": "waveforms/square",
+        "dtype": 0,
+        "layout": 0,
+        "batch": 1,
+        "shape": [
+          4194304
+        ],
+        "semantic_parameters": [
+          1
+        ]
+      },
+      "candidate": "linear_m90_t256_e8_v4_b8",
+      "config": {
+        "threads": 256,
+        "tile_rows": 1,
+        "tile_cols": 1,
+        "elements_per_thread": 8,
+        "rows_per_block": 1,
+        "vector_width": 4,
+        "stages": 2,
+        "scan_elements": 0,
+        "workspace_bytes": 33554476,
+        "buffer_count": 2,
+        "batch_tile": 8,
+        "memory_tier": 90,
+        "plan_variant": 0,
+        "workspace_peak_bytes": 33554476
+      },
+      "gpu_e2e_median_ms": 71.9264907836914,
+      "gpu_kernel_median_ms": 14.073816299438477,
+      "correctness_status": "PASS",
+      "input_refresh_status": "PASS",
+      "selection": {
+        "static_candidate": "linear_static",
+        "static_gpu_e2e_median_ms": 78.96382141113281,
+        "winner_gpu_e2e_median_ms": 71.9264907836914,
+        "validation_round": "winner-against-static",
+        "round1_static_gpu_e2e_median_ms": 69.39997863769531,
+        "round1_winner_candidate": "linear_m90_t256_e8_v4_b8",
+        "round1_winner_gpu_e2e_median_ms": 55.43488311767578
+      }
+    },
+    {
+      "family": "linear",
+      "policy_family": "linear",
+      "operator_id": "waveforms/square",
+      "key": "linear|operator=waveforms/square|dtype=0|layout=0|batch=1|shape=8388608|semantic=1",
+      "key_fields": {
+        "family": "linear",
+        "operator_id": "waveforms/square",
+        "dtype": 0,
+        "layout": 0,
+        "batch": 1,
+        "shape": [
+          8388608
+        ],
+        "semantic_parameters": [
+          1
+        ]
+      },
+      "candidate": "linear_m90_t256_e8_v4_b8",
+      "config": {
+        "threads": 256,
+        "tile_rows": 1,
+        "tile_cols": 1,
+        "elements_per_thread": 8,
+        "rows_per_block": 1,
+        "vector_width": 4,
+        "stages": 2,
+        "scan_elements": 0,
+        "workspace_bytes": 67108908,
+        "buffer_count": 2,
+        "batch_tile": 8,
+        "memory_tier": 90,
+        "plan_variant": 0,
+        "workspace_peak_bytes": 67108908
+      },
+      "gpu_e2e_median_ms": 117.96482849121094,
+      "gpu_kernel_median_ms": 29.117921829223633,
+      "correctness_status": "PASS",
+      "input_refresh_status": "PASS",
+      "selection": {
+        "static_candidate": "linear_static",
+        "static_gpu_e2e_median_ms": 126.16227722167969,
+        "winner_gpu_e2e_median_ms": 117.96482849121094,
+        "validation_round": "winner-against-static",
+        "round1_static_gpu_e2e_median_ms": 145.81500244140625,
+        "round1_winner_candidate": "linear_m90_t256_e8_v4_b8",
+        "round1_winner_gpu_e2e_median_ms": 129.23146057128906
+      }
+    },
+    {
+      "family": "linear",
+      "policy_family": "linear",
+      "operator_id": "bsplines/cubic",
+      "key": "linear|operator=bsplines/cubic|dtype=0|layout=0|batch=1|shape=1048576|semantic=",
+      "key_fields": {
+        "family": "linear",
+        "operator_id": "bsplines/cubic",
+        "dtype": 0,
+        "layout": 0,
+        "batch": 1,
+        "shape": [
+          1048576
+        ],
+        "semantic_parameters": []
+      },
+      "candidate": "linear_m50_t256_e8_v4",
+      "config": {
+        "threads": 256,
+        "tile_rows": 1,
+        "tile_cols": 1,
+        "elements_per_thread": 8,
+        "rows_per_block": 1,
+        "vector_width": 4,
+        "stages": 1,
+        "scan_elements": 0,
+        "workspace_bytes": 12583048,
+        "buffer_count": 1,
+        "batch_tile": 1,
+        "memory_tier": 50,
+        "plan_variant": 0,
+        "workspace_peak_bytes": 12583048
+      },
+      "gpu_e2e_median_ms": 3.3329989910125732,
+      "gpu_kernel_median_ms": 0.13798001408576965,
+      "correctness_status": "PASS",
+      "input_refresh_status": "PASS",
+      "selection": {
+        "static_candidate": "linear_static",
+        "static_gpu_e2e_median_ms": 3.3338325023651123,
+        "winner_gpu_e2e_median_ms": 3.3329989910125732,
+        "validation_round": "winner-against-static",
+        "round1_static_gpu_e2e_median_ms": 5.638764381408691,
+        "round1_winner_candidate": "linear_m50_t256_e8_v4",
+        "round1_winner_gpu_e2e_median_ms": 5.608380317687988
+      }
+    },
+    {
+      "family": "linear",
+      "policy_family": "linear",
+      "operator_id": "bsplines/quadratic",
+      "key": "linear|operator=bsplines/quadratic|dtype=0|layout=0|batch=1|shape=1048576|semantic=",
+      "key_fields": {
+        "family": "linear",
+        "operator_id": "bsplines/quadratic",
+        "dtype": 0,
+        "layout": 0,
+        "batch": 1,
+        "shape": [
+          1048576
+        ],
+        "semantic_parameters": []
+      },
+      "candidate": "linear_m75_t256_e4_v4",
+      "config": {
+        "threads": 256,
+        "tile_rows": 1,
+        "tile_cols": 1,
+        "elements_per_thread": 4,
+        "rows_per_block": 1,
+        "vector_width": 4,
+        "stages": 2,
+        "scan_elements": 0,
+        "workspace_bytes": 12583060,
+        "buffer_count": 2,
+        "batch_tile": 2,
+        "memory_tier": 75,
+        "plan_variant": 0,
+        "workspace_peak_bytes": 12583060
+      },
+      "gpu_e2e_median_ms": 3.3754730224609375,
+      "gpu_kernel_median_ms": 0.15596599876880646,
+      "correctness_status": "PASS",
+      "input_refresh_status": "PASS",
+      "selection": {
+        "static_candidate": "linear_static",
+        "static_gpu_e2e_median_ms": 3.460052967071533,
+        "winner_gpu_e2e_median_ms": 3.3754730224609375,
+        "validation_round": "winner-against-static",
+        "round1_static_gpu_e2e_median_ms": 5.759156227111816,
+        "round1_winner_candidate": "linear_m75_t256_e4_v4",
+        "round1_winner_gpu_e2e_median_ms": 5.673501014709473
+      }
+    },
+    {
+      "family": "linear",
+      "policy_family": "linear",
+      "operator_id": "bsplines/quadratic",
+      "key": "linear|operator=bsplines/quadratic|dtype=0|layout=0|batch=1|shape=2097152|semantic=",
+      "key_fields": {
+        "family": "linear",
+        "operator_id": "bsplines/quadratic",
+        "dtype": 0,
+        "layout": 0,
+        "batch": 1,
+        "shape": [
+          2097152
+        ],
+        "semantic_parameters": []
+      },
+      "candidate": "linear_m75_t256_e8_v4",
+      "config": {
+        "threads": 256,
+        "tile_rows": 1,
+        "tile_cols": 1,
+        "elements_per_thread": 8,
+        "rows_per_block": 1,
+        "vector_width": 4,
+        "stages": 2,
+        "scan_elements": 0,
+        "workspace_bytes": 25165972,
+        "buffer_count": 2,
+        "batch_tile": 2,
+        "memory_tier": 75,
+        "plan_variant": 0,
+        "workspace_peak_bytes": 25165972
+      },
+      "gpu_e2e_median_ms": 17.473758697509766,
+      "gpu_kernel_median_ms": 0.29718899726867676,
+      "correctness_status": "PASS",
+      "input_refresh_status": "PASS",
+      "selection": {
+        "static_candidate": "linear_static",
+        "static_gpu_e2e_median_ms": 17.480039596557617,
+        "winner_gpu_e2e_median_ms": 17.473758697509766,
+        "validation_round": "winner-against-static",
+        "round1_static_gpu_e2e_median_ms": 19.36791229248047,
+        "round1_winner_candidate": "linear_m75_t256_e8_v4",
+        "round1_winner_gpu_e2e_median_ms": 16.96183204650879
+      }
+    },
+    {
+      "family": "linear",
+      "policy_family": "linear",
+      "operator_id": "bsplines/quadratic",
+      "key": "linear|operator=bsplines/quadratic|dtype=0|layout=0|batch=1|shape=4194304|semantic=",
+      "key_fields": {
+        "family": "linear",
+        "operator_id": "bsplines/quadratic",
+        "dtype": 0,
+        "layout": 0,
+        "batch": 1,
+        "shape": [
+          4194304
+        ],
+        "semantic_parameters": []
+      },
+      "candidate": "linear_m50_t256_e4_v4",
+      "config": {
+        "threads": 256,
+        "tile_rows": 1,
+        "tile_cols": 1,
+        "elements_per_thread": 4,
+        "rows_per_block": 1,
+        "vector_width": 4,
+        "stages": 1,
+        "scan_elements": 0,
+        "workspace_bytes": 50331796,
+        "buffer_count": 1,
+        "batch_tile": 1,
+        "memory_tier": 50,
+        "plan_variant": 0,
+        "workspace_peak_bytes": 50331796
+      },
+      "gpu_e2e_median_ms": 27.578529357910156,
+      "gpu_kernel_median_ms": 0.5210130214691162,
+      "correctness_status": "PASS",
+      "input_refresh_status": "PASS",
+      "selection": {
+        "static_candidate": "linear_static",
+        "static_gpu_e2e_median_ms": 35.723045349121094,
+        "winner_gpu_e2e_median_ms": 27.578529357910156,
+        "validation_round": "winner-against-static",
+        "round1_static_gpu_e2e_median_ms": 40.94084167480469,
+        "round1_winner_candidate": "linear_m50_t256_e4_v4",
+        "round1_winner_gpu_e2e_median_ms": 34.837554931640625
+      }
+    },
+    {
+      "family": "linear",
+      "policy_family": "linear",
+      "operator_id": "bsplines/quadratic",
+      "key": "linear|operator=bsplines/quadratic|dtype=0|layout=0|batch=1|shape=8388608|semantic=",
+      "key_fields": {
+        "family": "linear",
+        "operator_id": "bsplines/quadratic",
+        "dtype": 0,
+        "layout": 0,
+        "batch": 1,
+        "shape": [
+          8388608
+        ],
+        "semantic_parameters": []
+      },
+      "candidate": "linear_m75_t256_e4_v2_b4",
+      "config": {
+        "threads": 256,
+        "tile_rows": 1,
+        "tile_cols": 1,
+        "elements_per_thread": 4,
+        "rows_per_block": 1,
+        "vector_width": 2,
+        "stages": 2,
+        "scan_elements": 0,
+        "workspace_bytes": 100663444,
+        "buffer_count": 2,
+        "batch_tile": 4,
+        "memory_tier": 75,
+        "plan_variant": 0,
+        "workspace_peak_bytes": 100663444
+      },
+      "gpu_e2e_median_ms": 65.87562561035156,
+      "gpu_kernel_median_ms": 1.0501110553741455,
+      "correctness_status": "PASS",
+      "input_refresh_status": "PASS",
+      "selection": {
+        "static_candidate": "linear_static",
+        "static_gpu_e2e_median_ms": 83.16849517822266,
+        "winner_gpu_e2e_median_ms": 65.87562561035156,
+        "validation_round": "winner-against-static",
+        "round1_static_gpu_e2e_median_ms": 88.89350891113281,
+        "round1_winner_candidate": "linear_m75_t256_e4_v2_b4",
+        "round1_winner_gpu_e2e_median_ms": 77.8153076171875
+      }
+    },
+    {
+      "family": "fir_filter",
+      "policy_family": "fir_filter",
+      "operator_id": "filtering/firfilter",
+      "key": "fir_filter|operator=filtering/firfilter|dtype=0|layout=0|batch=1|shape=4096x4096|semantic=32,0,33,1,0,1",
+      "key_fields": {
+        "family": "fir_filter",
+        "operator_id": "filtering/firfilter",
+        "dtype": 0,
+        "layout": 0,
+        "batch": 1,
+        "shape": [
+          4096,
+          4096
+        ],
+        "semantic_parameters": [
+          32,
+          0,
+          33,
+          1,
+          0,
+          1
+        ]
+      },
+      "candidate": "fir_filter_m75_r8_b2",
+      "config": {
+        "threads": 256,
+        "tile_rows": 1,
+        "tile_cols": 1,
+        "elements_per_thread": 1,
+        "rows_per_block": 8,
+        "vector_width": 1,
+        "stages": 2,
+        "scan_elements": 0,
+        "workspace_bytes": 134330328,
+        "buffer_count": 2,
+        "batch_tile": 2,
+        "memory_tier": 75,
+        "plan_variant": 8,
+        "workspace_peak_bytes": 134330328
+      },
+      "gpu_e2e_median_ms": 175.7899169921875,
+      "gpu_kernel_median_ms": 17.524808883666992,
+      "correctness_status": "PASS",
+      "input_refresh_status": "PASS",
+      "selection": {
+        "static_candidate": "fir_filter_static",
+        "static_gpu_e2e_median_ms": 178.53094482421875,
+        "winner_gpu_e2e_median_ms": 175.7899169921875,
+        "validation_round": "winner-against-static",
+        "round1_static_gpu_e2e_median_ms": 219.15484619140625,
+        "round1_winner_candidate": "fir_filter_m75_r8_b2",
+        "round1_winner_gpu_e2e_median_ms": 196.96185302734375
+      }
+    },
+    {
+      "family": "pulse_doppler",
+      "policy_family": "pulse_doppler",
+      "operator_id": "radartools/pulse_doppler",
+      "key": "pulse_doppler|dtype=1|layout=0|batch=1|shape=16384x256|semantic=128,0,0,3603147092346651252",
+      "key_fields": {
+        "family": "pulse_doppler",
+        "operator_id": "",
+        "dtype": 1,
+        "layout": 0,
+        "batch": 1,
+        "shape": [
+          16384,
+          256
+        ],
+        "semantic_parameters": [
+          128,
+          0,
+          0,
+          3603147092346651252
+        ]
+      },
+      "candidate": "pulse_doppler_legacy",
+      "config": {
+        "threads": 256,
+        "tile_rows": 1,
+        "tile_cols": 1,
+        "elements_per_thread": 1,
+        "rows_per_block": 1,
+        "vector_width": 1,
+        "stages": 1,
+        "scan_elements": 0,
+        "workspace_bytes": 33817744,
+        "buffer_count": 1,
+        "batch_tile": 1,
+        "memory_tier": 50,
+        "plan_variant": 0,
+        "workspace_peak_bytes": 33817744
+      },
+      "gpu_e2e_median_ms": 74.43313598632812,
+      "gpu_kernel_median_ms": 0.29654598236083984,
+      "correctness_status": "PASS",
+      "input_refresh_status": "PASS",
+      "selection": {
+        "static_candidate": "pulse_doppler_static",
+        "static_gpu_e2e_median_ms": 75.52132415771484,
+        "winner_gpu_e2e_median_ms": 74.43313598632812,
+        "validation_round": "winner-against-static",
+        "round1_static_gpu_e2e_median_ms": 67.58506774902344,
+        "round1_winner_candidate": "pulse_doppler_legacy",
+        "round1_winner_gpu_e2e_median_ms": 66.32215881347656
+      }
+    },
+    {
+      "family": "pulse_doppler",
+      "policy_family": "pulse_doppler",
+      "operator_id": "radartools/pulse_doppler",
+      "key": "pulse_doppler|dtype=1|layout=0|batch=1|shape=512x256|semantic=128,0,0,3603147092346651252",
+      "key_fields": {
+        "family": "pulse_doppler",
+        "operator_id": "",
+        "dtype": 1,
+        "layout": 0,
+        "batch": 1,
+        "shape": [
+          512,
+          256
+        ],
+        "semantic_parameters": [
+          128,
+          0,
+          0,
+          3603147092346651252
+        ]
+      },
+      "candidate": "pulse_doppler_fused_t128",
+      "config": {
+        "threads": 128,
+        "tile_rows": 1,
+        "tile_cols": 1,
+        "elements_per_thread": 1,
+        "rows_per_block": 1,
+        "vector_width": 1,
+        "stages": 1,
+        "scan_elements": 0,
+        "workspace_bytes": 1311888,
+        "buffer_count": 1,
+        "batch_tile": 1,
+        "memory_tier": 50,
+        "plan_variant": 0,
+        "workspace_peak_bytes": 1311888
+      },
+      "gpu_e2e_median_ms": 0.884814977645874,
+      "gpu_kernel_median_ms": 0.14533500373363495,
+      "correctness_status": "PASS",
+      "input_refresh_status": "PASS",
+      "selection": {
+        "static_candidate": "pulse_doppler_static",
+        "static_gpu_e2e_median_ms": 1.0435434579849243,
+        "winner_gpu_e2e_median_ms": 0.884814977645874,
+        "validation_round": "winner-against-static",
+        "round1_static_gpu_e2e_median_ms": 1.0486130714416504,
+        "round1_winner_candidate": "pulse_doppler_fused_t128",
+        "round1_winner_gpu_e2e_median_ms": 0.9193919897079468
+      }
+    },
+    {
+      "family": "pulse_doppler",
+      "policy_family": "pulse_doppler",
+      "operator_id": "radartools/pulse_doppler",
+      "key": "pulse_doppler|dtype=1|layout=0|batch=1|shape=8192x256|semantic=128,0,0,3603147092346651252",
+      "key_fields": {
+        "family": "pulse_doppler",
+        "operator_id": "",
+        "dtype": 1,
+        "layout": 0,
+        "batch": 1,
+        "shape": [
+          8192,
+          256
+        ],
+        "semantic_parameters": [
+          128,
+          0,
+          0,
+          3603147092346651252
+        ]
+      },
+      "candidate": "pulse_doppler_fused_t128",
+      "config": {
+        "threads": 128,
+        "tile_rows": 1,
+        "tile_cols": 1,
+        "elements_per_thread": 1,
+        "rows_per_block": 1,
+        "vector_width": 1,
+        "stages": 1,
+        "scan_elements": 0,
+        "workspace_bytes": 17040528,
+        "buffer_count": 1,
+        "batch_tile": 1,
+        "memory_tier": 50,
+        "plan_variant": 0,
+        "workspace_peak_bytes": 17040528
+      },
+      "gpu_e2e_median_ms": 31.844879150390625,
+      "gpu_kernel_median_ms": 0.3989099860191345,
+      "correctness_status": "PASS",
+      "input_refresh_status": "PASS",
+      "selection": {
+        "static_candidate": "pulse_doppler_static",
+        "static_gpu_e2e_median_ms": 32.249420166015625,
+        "winner_gpu_e2e_median_ms": 31.844879150390625,
+        "validation_round": "winner-against-static",
+        "round1_static_gpu_e2e_median_ms": 29.13739776611328,
+        "round1_winner_candidate": "pulse_doppler_fused_t128",
+        "round1_winner_gpu_e2e_median_ms": 28.9495792388916
+      }
+    },
+    {
+      "family": "ca_cfar",
+      "policy_family": "ca_cfar",
+      "operator_id": "radartools/ca_cfar",
+      "key": "ca_cfar|dtype=0|layout=0|batch=1|shape=1024x2048|semantic=2,2,4,8,1088432104,248",
+      "key_fields": {
+        "family": "ca_cfar",
+        "operator_id": "",
+        "dtype": 0,
+        "layout": 0,
+        "batch": 1,
+        "shape": [
+          1024,
+          2048
+        ],
+        "semantic_parameters": [
+          2,
+          2,
+          4,
+          8,
+          1088432104,
+          248
+        ]
+      },
+      "candidate": "ca_cfar_legacy",
+      "config": {
+        "threads": 256,
+        "tile_rows": 1,
+        "tile_cols": 1,
+        "elements_per_thread": 2,
+        "rows_per_block": 1,
+        "vector_width": 1,
+        "stages": 1,
+        "scan_elements": 512,
+        "workspace_bytes": 25168256,
+        "buffer_count": 1,
+        "batch_tile": 1,
+        "memory_tier": 50,
+        "plan_variant": 0,
+        "workspace_peak_bytes": 25168256
+      },
+      "gpu_e2e_median_ms": 37.506526947021484,
+      "gpu_kernel_median_ms": 1.8040039539337158,
+      "correctness_status": "PASS",
+      "input_refresh_status": "PASS",
+      "selection": {
+        "static_candidate": "ca_cfar_static",
+        "static_gpu_e2e_median_ms": 37.511436462402344,
+        "winner_gpu_e2e_median_ms": 37.506526947021484,
+        "validation_round": "winner-against-static",
+        "round1_static_gpu_e2e_median_ms": 39.60027313232422,
+        "round1_winner_candidate": "ca_cfar_legacy",
+        "round1_winner_gpu_e2e_median_ms": 38.132476806640625
+      }
+    },
+    {
+      "family": "correlate2d",
+      "policy_family": "correlate2d",
+      "operator_id": "correlate/correlate2d",
+      "key": "correlate2d|dtype=0|layout=0|batch=1|shape=64x64x7x7|semantic=4774493095891779773,7084605124626290738,0",
+      "key_fields": {
+        "family": "correlate2d",
+        "operator_id": "",
+        "dtype": 0,
+        "layout": 0,
+        "batch": 1,
+        "shape": [
+          64,
+          64,
+          7,
+          7
+        ],
+        "semantic_parameters": [
+          4774493095891779773,
+          7084605124626290738,
+          0
+        ]
+      },
+      "candidate": "correlate2d_shared_16x32",
+      "config": {
+        "threads": 512,
+        "tile_rows": 16,
+        "tile_cols": 32,
+        "elements_per_thread": 1,
+        "rows_per_block": 16,
+        "vector_width": 32,
+        "stages": 2,
+        "scan_elements": 0,
+        "workspace_bytes": 33136,
+        "buffer_count": 1,
+        "batch_tile": 1,
+        "memory_tier": 50,
+        "plan_variant": 0,
+        "workspace_peak_bytes": 33136
+      },
+      "gpu_e2e_median_ms": 0.3457910120487213,
+      "gpu_kernel_median_ms": 0.042034998536109924,
+      "correctness_status": "PASS",
+      "input_refresh_status": "PASS",
+      "selection": {
+        "static_candidate": "correlate2d_static",
+        "static_gpu_e2e_median_ms": 0.35122150182724,
+        "winner_gpu_e2e_median_ms": 0.3457910120487213,
+        "validation_round": "winner-against-static",
+        "round1_static_gpu_e2e_median_ms": 0.29688599705696106,
+        "round1_winner_candidate": "correlate2d_shared_16x32",
+        "round1_winner_gpu_e2e_median_ms": 0.2726919949054718
+      }
+    },
+    {
+      "family": "row_reduction",
+      "policy_family": "row_reduction",
+      "operator_id": "demod/fm_demod",
+      "key": "row_reduction|operator=demod/fm_demod|dtype=1|layout=0|batch=1|shape=4096x8192|semantic=2,2",
+      "key_fields": {
+        "family": "row_reduction",
+        "operator_id": "demod/fm_demod",
+        "dtype": 1,
+        "layout": 0,
+        "batch": 1,
+        "shape": [
+          4096,
+          8192
+        ],
+        "semantic_parameters": [
+          2,
+          2
+        ]
+      },
+      "candidate": "row_m50_t256_e4_r2_v4",
+      "config": {
+        "threads": 256,
+        "tile_rows": 2,
+        "tile_cols": 1,
+        "elements_per_thread": 4,
+        "rows_per_block": 2,
+        "vector_width": 4,
+        "stages": 1,
+        "scan_elements": 0,
+        "workspace_bytes": 671088760,
+        "buffer_count": 1,
+        "batch_tile": 1,
+        "memory_tier": 50,
+        "plan_variant": 0,
+        "workspace_peak_bytes": 671088760
+      },
+      "gpu_e2e_median_ms": 435.876220703125,
+      "gpu_kernel_median_ms": 7.00513219833374,
+      "correctness_status": "PASS",
+      "input_refresh_status": "PASS",
+      "selection": {
+        "static_candidate": "row_static",
+        "static_gpu_e2e_median_ms": 443.4608154296875,
+        "winner_gpu_e2e_median_ms": 435.876220703125,
+        "validation_round": "winner-against-static",
+        "round1_static_gpu_e2e_median_ms": 565.7045288085938,
+        "round1_winner_candidate": "row_m50_t256_e4_r2_v4",
+        "round1_winner_gpu_e2e_median_ms": 505.8417053222656
+      }
+    },
+    {
+      "family": "row_reduction",
+      "policy_family": "row_reduction",
+      "operator_id": "peak_finding/argrelextrema",
+      "key": "row_reduction|operator=peak_finding/argrelextrema|dtype=0|layout=0|batch=1|shape=4096x8192|semantic=2,2",
+      "key_fields": {
+        "family": "row_reduction",
+        "operator_id": "peak_finding/argrelextrema",
+        "dtype": 0,
+        "layout": 0,
+        "batch": 1,
+        "shape": [
+          4096,
+          8192
+        ],
+        "semantic_parameters": [
+          2,
+          2
+        ]
+      },
+      "candidate": "row_m90_t256_e8_r4_v4",
+      "config": {
+        "threads": 256,
+        "tile_rows": 4,
+        "tile_cols": 1,
+        "elements_per_thread": 8,
+        "rows_per_block": 4,
+        "vector_width": 4,
+        "stages": 2,
+        "scan_elements": 0,
+        "workspace_bytes": 268435617,
+        "buffer_count": 2,
+        "batch_tile": 4,
+        "memory_tier": 90,
+        "plan_variant": 0,
+        "workspace_peak_bytes": 268435617
+      },
+      "gpu_e2e_median_ms": 153.32057189941406,
+      "gpu_kernel_median_ms": 12.169779777526855,
+      "correctness_status": "PASS",
+      "input_refresh_status": "PASS",
+      "selection": {
+        "static_candidate": "row_static",
+        "static_gpu_e2e_median_ms": 155.10206604003906,
+        "winner_gpu_e2e_median_ms": 153.32057189941406,
+        "validation_round": "winner-against-static",
+        "round1_static_gpu_e2e_median_ms": 169.5421142578125,
+        "round1_winner_candidate": "row_m90_t256_e8_r4_v4",
+        "round1_winner_gpu_e2e_median_ms": 121.37100219726562
+      }
+    },
+    {
+      "family": "row_reduction",
+      "policy_family": "row_reduction",
+      "operator_id": "peak_finding/argrelmin",
+      "key": "row_reduction|operator=peak_finding/argrelmin|dtype=0|layout=0|batch=1|shape=4096x8192|semantic=2,2",
+      "key_fields": {
+        "family": "row_reduction",
+        "operator_id": "peak_finding/argrelmin",
+        "dtype": 0,
+        "layout": 0,
+        "batch": 1,
+        "shape": [
+          4096,
+          8192
+        ],
+        "semantic_parameters": [
+          2,
+          2
+        ]
+      },
+      "candidate": "row_m50_t256_e4_r2_v4",
+      "config": {
+        "threads": 256,
+        "tile_rows": 2,
+        "tile_cols": 1,
+        "elements_per_thread": 4,
+        "rows_per_block": 2,
+        "vector_width": 4,
+        "stages": 1,
+        "scan_elements": 0,
+        "workspace_bytes": 268435513,
+        "buffer_count": 1,
+        "batch_tile": 1,
+        "memory_tier": 50,
+        "plan_variant": 0,
+        "workspace_peak_bytes": 268435513
+      },
+      "gpu_e2e_median_ms": 130.25283813476562,
+      "gpu_kernel_median_ms": 12.387900352478027,
+      "correctness_status": "PASS",
+      "input_refresh_status": "PASS",
+      "selection": {
+        "static_candidate": "row_static",
+        "static_gpu_e2e_median_ms": 130.40533447265625,
+        "winner_gpu_e2e_median_ms": 130.25283813476562,
+        "validation_round": "winner-against-static",
+        "round1_static_gpu_e2e_median_ms": 124.9371337890625,
+        "round1_winner_candidate": "row_m50_t256_e4_r2_v4",
+        "round1_winner_gpu_e2e_median_ms": 124.86936950683594
+      }
+    },
+    {
+      "family": "row_reduction",
+      "policy_family": "row_reduction",
+      "operator_id": "peak_finding/argrelmax",
+      "key": "row_reduction|operator=peak_finding/argrelmax|dtype=0|layout=0|batch=1|shape=1024x2048|semantic=2,2",
+      "key_fields": {
+        "family": "row_reduction",
+        "operator_id": "peak_finding/argrelmax",
+        "dtype": 0,
+        "layout": 0,
+        "batch": 1,
+        "shape": [
+          1024,
+          2048
+        ],
+        "semantic_parameters": [
+          2,
+          2
+        ]
+      },
+      "candidate": "row_m75_t256_e4_r8_v4",
+      "config": {
+        "threads": 256,
+        "tile_rows": 8,
+        "tile_cols": 1,
+        "elements_per_thread": 4,
+        "rows_per_block": 8,
+        "vector_width": 4,
+        "stages": 2,
+        "scan_elements": 0,
+        "workspace_bytes": 16777365,
+        "buffer_count": 2,
+        "batch_tile": 2,
+        "memory_tier": 75,
+        "plan_variant": 0,
+        "workspace_peak_bytes": 16777365
+      },
+      "gpu_e2e_median_ms": 8.5432710647583,
+      "gpu_kernel_median_ms": 1.0206459760665894,
+      "correctness_status": "PASS",
+      "input_refresh_status": "PASS",
+      "selection": {
+        "static_candidate": "row_static",
+        "static_gpu_e2e_median_ms": 8.566997528076172,
+        "winner_gpu_e2e_median_ms": 8.5432710647583,
+        "validation_round": "winner-against-static",
+        "round1_static_gpu_e2e_median_ms": 8.41160774230957,
+        "round1_winner_candidate": "row_m75_t256_e4_r8_v4",
+        "round1_winner_gpu_e2e_median_ms": 8.405084609985352
+      }
+    },
+    {
+      "family": "row_reduction",
+      "policy_family": "row_reduction",
+      "operator_id": "peak_finding/argrelmax",
+      "key": "row_reduction|operator=peak_finding/argrelmax|dtype=0|layout=0|batch=1|shape=4096x8192|semantic=2,2",
+      "key_fields": {
+        "family": "row_reduction",
+        "operator_id": "peak_finding/argrelmax",
+        "dtype": 0,
+        "layout": 0,
+        "batch": 1,
+        "shape": [
+          4096,
+          8192
+        ],
+        "semantic_parameters": [
+          2,
+          2
+        ]
+      },
+      "candidate": "row_m75_t256_e2_r2_v2",
+      "config": {
+        "threads": 256,
+        "tile_rows": 2,
+        "tile_cols": 1,
+        "elements_per_thread": 2,
+        "rows_per_block": 2,
+        "vector_width": 2,
+        "stages": 2,
+        "scan_elements": 0,
+        "workspace_bytes": 268435605,
+        "buffer_count": 2,
+        "batch_tile": 2,
+        "memory_tier": 75,
+        "plan_variant": 0,
+        "workspace_peak_bytes": 268435605
+      },
+      "gpu_e2e_median_ms": 134.94009399414062,
+      "gpu_kernel_median_ms": 12.396032333374023,
+      "correctness_status": "PASS",
+      "input_refresh_status": "PASS",
+      "selection": {
+        "static_candidate": "row_static",
+        "static_gpu_e2e_median_ms": 154.14846801757812,
+        "winner_gpu_e2e_median_ms": 134.94009399414062,
+        "validation_round": "winner-against-static",
+        "round1_static_gpu_e2e_median_ms": 125.77735900878906,
+        "round1_winner_candidate": "row_m75_t256_e2_r2_v2",
+        "round1_winner_gpu_e2e_median_ms": 120.95295715332031
+      }
+    }
+  ]
+}

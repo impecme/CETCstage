@@ -39,7 +39,7 @@ scripts/performance.sh --all --scale all
 ```
 
 若只验收优化后的公共算子，使用冻结 GPU baseline 的专用入口。该入口直接复用
-`operator_gpu_baseline_75a700d_protocol/inputs/` 中的 486 个 manifest，不重新运行或
+`data/baseline/gpu_reference/inputs/` 中的 486 个 manifest，不重新运行或
 修改 baseline；CPU reference 也只取 frozen CSV 中已保存的值：
 
 ```bash
@@ -108,13 +108,18 @@ Device 输出直接传给下一算子，链尾统一执行 D2H/输出物化。CP
 
 ## 报告位置
 
-本次运行将最终汇总写入固定发布目录，原始中间文件使用唯一暂存目录：
+默认运行将最终汇总写入统一 Auto 目录，原始中间文件使用唯一暂存目录：
 
 ```text
-data/reports/units/benchmarks/
-├── operator_scales.json
-├── operator_scales.csv
-├── operator_scales.md
+data/reports/autotune/units/
+├── benchmarks/
+│   ├── operator_scales.json
+│   ├── operator_scales.csv
+│   └── operator_scales.md
+└── <module>/<operator>/<L1-L6>/
+    ├── metrics.json
+    ├── cases.csv
+    └── summary.md
 ```
 
 原始中间文件位于：
@@ -122,6 +127,8 @@ data/reports/units/benchmarks/
 ```text
 data/.reports_staging/performance/run_<timestamp>_<pid>/
 ├── raw/reports/<scale>/<module>/<operator>/latest_metrics.json
+├── raw/reports/<scale>/<module>/<operator>/latest_cases.csv
+├── raw/reports/<scale>/<module>/<operator>/latest_summary.md
 └── tasks/<task>/<scale>/latest_*.json
 ```
 
@@ -129,9 +136,9 @@ data/.reports_staging/performance/run_<timestamp>_<pid>/
 `data/.reports_staging/demo/<task>/`，其中 `latest_summary.csv`、`latest_operators.csv` 和
 `latest_stages.csv` 是正式任务汇总入口；`latest_operators.csv` 只包含注册公共算子，
 `latest_stages.csv` 保留输入构造、私有 Helper、融合和输出等阶段。性能入口随后只发布
-`data/reports/demo/<task>/summary.csv` 和
-`data/reports/demo/<task>/operators/L1.csv` ... `L6.csv`、
-`data/reports/demo/<task>/stages/L1.csv` ... `L6.csv`。
+`data/reports/autotune/demo/<task>/summary.csv` 和
+`data/reports/autotune/demo/<task>/operators/L1.csv` ... `L6.csv`、
+`data/reports/autotune/demo/<task>/stages/L1.csv` ... `L6.csv`。
 summary/operator CSV 均包含 `max_abs`、`max_rel`、`RMSE`、`mixed_error`；
 正式任务输入 `task_input_h2d_ms` 为零。
 报告由测试

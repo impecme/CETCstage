@@ -24,13 +24,15 @@ data/generated/unit/**/input/
 data/generated/unit/**/output_samples/
 
 # Validation writes raw evidence here, then publishes only compact current-code
-# reports under data/reports/.
+# reports under data/autotune/ or an explicitly selected report root.
 data/.reports_staging/
 
-operator_gpu_baseline_75a700d_protocol
+data/baseline/
 
 data/reports/operator_gpu_rollback_cmplx_sort_20260816
 
-data/cpu_reference_cache_20260816_full
+data/reports/zx_operator_gpu_final_auto/
 
-data/reports/operator_gpu_non_kernel_20260816_full
+# Legacy root-owned static report snapshot.  The canonical static reports are
+# published under data/reports/static/ alongside data/reports/autotune/.
+data/reports/zx_operator_gpu_final_static/

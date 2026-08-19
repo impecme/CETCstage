@@ -28,7 +28,7 @@ namespace cusignal
 {
     namespace zx_tile
     {
-        constexpr const char *kRegistryVersion = "zx-c500-all81-v2";
+        constexpr const char *kRegistryVersion = "zx-c500-all81-task-v3";
 
         enum class TileMode : std::uint8_t
         {
@@ -78,6 +78,24 @@ namespace cusignal
             FftBatch = 6,
             FirFilter = 7,
             Static = 8,
+        };
+
+        enum class TaskScope : std::uint8_t
+        {
+            Task1Radar = 0,
+            Task2Features = 1,
+        };
+
+        struct DeviceFingerprint
+        {
+            bool valid = false;
+            int id = -1;
+            int runtime_version = 0;
+            int compute_major = 0;
+            int compute_minor = 0;
+            std::uint64_t total_global_mem = 0;
+            std::string name;
+            std::string target;
         };
 
         // CandidateId is intentionally closed.  A cache entry is accepted
@@ -167,6 +185,12 @@ namespace cusignal
             FirFilterM90R8B4,
 
             StaticOperator,
+            // Generated candidates are still finite registry members.  Their
+            // numeric parameters are carried by the name/configuration and
+            // are accepted only for the matching implementation family.
+            LinearGenerated,
+            RowGenerated,
+            FirFilterGenerated,
         };
 
         struct TileShape
@@ -193,6 +217,7 @@ namespace cusignal
         struct CandidateConfig
         {
             CandidateId id = CandidateId::CfarStatic;
+            std::string registry_name;
             TileShape tile{};
             int tile_rows = 1;
             int tile_cols = 1;
@@ -211,6 +236,104 @@ namespace cusignal
             // selected.  Registry candidates keep this at zero.
             std::size_t workspace_bytes = 0;
             std::size_t workspace_peak_bytes = 0;
+        };
+
+        enum class TaskCandidateId : std::uint16_t
+        {
+            Task1Static = 0,
+            Task1InputT128,
+            Task1InputT256,
+            Task1InputT512,
+            Task1FusedT128,
+            Task1FusedT256,
+            Task1FusedT512,
+            Task2Static,
+            Task2DirectT128,
+            Task2DirectT256,
+            Task2FftT128,
+            Task2FftT256,
+            Task2FftT512,
+            Task2CwtT128,
+            Task2CwtT256,
+            Task2CwtT512,
+        };
+
+        struct TaskCandidateConfig
+        {
+            TaskCandidateId id = TaskCandidateId::Task1Static;
+            std::string registry_name;
+            int threads = 256;
+            int elements_per_thread = 1;
+            int rows_per_block = 1;
+            int tile_rows = 1;
+            int tile_cols = 1;
+            StageCount stages = StageCount::Single;
+            int buffer_count = 1;
+            int batch_tile = 1;
+            MemoryTier memory_tier = MemoryTier::M50;
+            int route = 0; // task-specific real route: input/direct/fft/cwt
+            std::size_t workspace_bytes = 0;
+            std::size_t workspace_peak_bytes = 0;
+        };
+
+        struct TaskTuningKey
+        {
+            TaskScope scope = TaskScope::Task1Radar;
+            std::string task_id;
+            int scale_level = 0;
+            std::array<std::size_t, 6> shape{};
+            std::uint8_t shape_count = 0;
+            std::array<std::uint64_t, 10> semantic{};
+            std::uint8_t semantic_count = 0;
+            int dtype = 0;
+            LayoutKind layout = LayoutKind::RowMajor;
+
+            static const char *scope_name(TaskScope value)
+            {
+                return value == TaskScope::Task1Radar ? "task1_radar" : "task2_features";
+            }
+
+            std::string canonical() const
+            {
+                std::ostringstream stream;
+                stream << scope_name(scope) << "|task=" << task_id
+                       << "|scale=L" << scale_level << "|dtype=" << dtype
+                       << "|layout=" << static_cast<int>(layout) << "|shape=";
+                for (std::size_t index = 0; index < shape_count; ++index)
+                {
+                    if (index != 0) stream << 'x';
+                    stream << shape[index];
+                }
+                stream << "|semantic=";
+                for (std::size_t index = 0; index < semantic_count; ++index)
+                {
+                    if (index != 0) stream << ',';
+                    stream << semantic[index];
+                }
+                return stream.str();
+            }
+        };
+
+        struct TaskPolicyTrace
+        {
+            bool valid = false;
+            std::string scope;
+            std::string task_id;
+            std::string key;
+            std::string candidate;
+            std::string source;
+            std::string reason;
+            TaskCandidateConfig config{};
+            DeviceFingerprint device{};
+        };
+
+        struct TaskPolicyDecision
+        {
+            TaskCandidateConfig config{};
+            std::string key;
+            std::string source;
+            std::string reason;
+            bool cache_hit = false;
         };
 
         struct TuningKey
@@ -287,18 +410,6 @@ namespace cusignal
             }
         };
 
-        struct DeviceFingerprint
-        {
-            bool valid = false;
-            int id = -1;
-            int runtime_version = 0;
-            int compute_major = 0;
-            int compute_minor = 0;
-            std::uint64_t total_global_mem = 0;
-            std::string name;
-            std::string target;
-        };
-
         struct PolicyTrace
         {
             bool valid = false;
@@ -327,7 +438,14 @@ namespace cusignal
             CandidateConfig config{};
         };
 
+        struct ActiveTaskPolicyState
+        {
+            bool valid = false;
+            TaskCandidateConfig config{};
+        };
+
         inline thread_local ActivePolicyState g_active_policy;
+        inline thread_local ActiveTaskPolicyState g_active_task_policy;
 
         class ScopedPolicy
         {
@@ -349,6 +467,28 @@ namespace cusignal
 
         private:
             ActivePolicyState previous_{};
+        };
+
+        class ScopedTaskPolicy
+        {
+        public:
+            explicit ScopedTaskPolicy(const TaskPolicyDecision &decision)
+                : previous_(g_active_task_policy)
+            {
+                g_active_task_policy.valid = true;
+                g_active_task_policy.config = decision.config;
+            }
+
+            ScopedTaskPolicy(const ScopedTaskPolicy &) = delete;
+            ScopedTaskPolicy &operator=(const ScopedTaskPolicy &) = delete;
+
+            ~ScopedTaskPolicy()
+            {
+                g_active_task_policy = previous_;
+            }
+
+        private:
+            ActiveTaskPolicyState previous_{};
         };
 
         inline TileMode requested_mode()
@@ -387,8 +527,9 @@ namespace cusignal
         inline TileShape linear_shape(std::size_t count)
         {
             if (g_active_policy.valid &&
-                (g_active_policy.config.id > CandidateId::LinearStatic &&
-                 g_active_policy.config.id <= CandidateId::LinearM90T256E8V4B8))
+                ((g_active_policy.config.id > CandidateId::LinearStatic &&
+                  g_active_policy.config.id <= CandidateId::LinearM90T256E8V4B8) ||
+                 g_active_policy.config.id == CandidateId::LinearGenerated))
             {
                 TileShape shape = g_active_policy.config.tile;
                 // batch_tile is a real work-grouping parameter for the
@@ -415,8 +556,9 @@ namespace cusignal
         inline TileShape row_shape(std::size_t columns, std::size_t rows)
         {
             if (g_active_policy.valid &&
-                (g_active_policy.config.id > CandidateId::RowStatic &&
-                 g_active_policy.config.id <= CandidateId::RowM90T256E8R8V4B4))
+                ((g_active_policy.config.id > CandidateId::RowStatic &&
+                  g_active_policy.config.id <= CandidateId::RowM90T256E8R8V4B4) ||
+                 g_active_policy.config.id == CandidateId::RowGenerated))
             {
                 TileShape shape = g_active_policy.config.tile;
                 shape.elements_per_thread *= g_active_policy.config.batch_tile;
@@ -856,12 +998,103 @@ namespace cusignal
                 return "fir_filter_m90_r8_b4";
             case CandidateId::StaticOperator:
                 return "static_operator";
+            case CandidateId::LinearGenerated:
+                return "linear_generated";
+            case CandidateId::RowGenerated:
+                return "row_generated";
+            case CandidateId::FirFilterGenerated:
+                return "fir_filter_generated";
             }
             return "unknown";
         }
 
+        inline const char *task_candidate_name(TaskCandidateId value)
+        {
+            switch (value)
+            {
+            case TaskCandidateId::Task1Static: return "task1_static";
+            case TaskCandidateId::Task1InputT128: return "task1_input_t128";
+            case TaskCandidateId::Task1InputT256: return "task1_input_t256";
+            case TaskCandidateId::Task1InputT512: return "task1_input_t512";
+            case TaskCandidateId::Task1FusedT128: return "task1_fused_t128";
+            case TaskCandidateId::Task1FusedT256: return "task1_fused_t256";
+            case TaskCandidateId::Task1FusedT512: return "task1_fused_t512";
+            case TaskCandidateId::Task2Static: return "task2_static";
+            case TaskCandidateId::Task2DirectT128: return "task2_direct_t128";
+            case TaskCandidateId::Task2DirectT256: return "task2_direct_t256";
+            case TaskCandidateId::Task2FftT128: return "task2_fft_t128";
+            case TaskCandidateId::Task2FftT256: return "task2_fft_t256";
+            case TaskCandidateId::Task2FftT512: return "task2_fft_t512";
+            case TaskCandidateId::Task2CwtT128: return "task2_cwt_t128";
+            case TaskCandidateId::Task2CwtT256: return "task2_cwt_t256";
+            case TaskCandidateId::Task2CwtT512: return "task2_cwt_t512";
+            }
+            return "unknown";
+        }
+
+        inline bool is_generated_candidate(CandidateId value)
+        {
+            return value == CandidateId::LinearGenerated ||
+                   value == CandidateId::RowGenerated ||
+                   value == CandidateId::FirFilterGenerated;
+        }
+
+        inline std::string display_candidate_name(const CandidateConfig &config)
+        {
+            return config.registry_name.empty()
+                       ? std::string(candidate_name(config.id))
+                       : config.registry_name;
+        }
+
+        inline bool task_candidate_from_name(
+            const std::string &name,
+            TaskCandidateId &result)
+        {
+            const TaskCandidateId values[] = {
+                TaskCandidateId::Task1Static,
+                TaskCandidateId::Task1InputT128,
+                TaskCandidateId::Task1InputT256,
+                TaskCandidateId::Task1InputT512,
+                TaskCandidateId::Task1FusedT128,
+                TaskCandidateId::Task1FusedT256,
+                TaskCandidateId::Task1FusedT512,
+                TaskCandidateId::Task2Static,
+                TaskCandidateId::Task2DirectT128,
+                TaskCandidateId::Task2DirectT256,
+                TaskCandidateId::Task2FftT128,
+                TaskCandidateId::Task2FftT256,
+                TaskCandidateId::Task2FftT512,
+                TaskCandidateId::Task2CwtT128,
+                TaskCandidateId::Task2CwtT256,
+                TaskCandidateId::Task2CwtT512};
+            for (TaskCandidateId value : values)
+            {
+                if (name == task_candidate_name(value))
+                {
+                    result = value;
+                    return true;
+                }
+            }
+            return false;
+        }
+
         inline bool candidate_from_name(const std::string &name, CandidateId &result)
         {
+            if (name.rfind("linear_t", 0) == 0)
+            {
+                result = CandidateId::LinearGenerated;
+                return true;
+            }
+            if (name.rfind("row_t", 0) == 0)
+            {
+                result = CandidateId::RowGenerated;
+                return true;
+            }
+            if (name.rfind("fir_filter_t", 0) == 0)
+            {
+                result = CandidateId::FirFilterGenerated;
+                return true;
+            }
             const CandidateId values[] = {
                 CandidateId::CfarStatic,
                 CandidateId::CfarLegacy,
@@ -936,7 +1169,10 @@ namespace cusignal
                 CandidateId::FirFilterM90R8,
                 CandidateId::FirFilterM90R8B2,
                 CandidateId::FirFilterM90R8B4,
-                CandidateId::StaticOperator};
+                CandidateId::StaticOperator,
+                CandidateId::LinearGenerated,
+                CandidateId::RowGenerated,
+                CandidateId::FirFilterGenerated};
             for (CandidateId value : values)
             {
                 if (name == candidate_name(value))
@@ -1407,7 +1643,121 @@ namespace cusignal
                 config.tile_rows = 1;
                 config.tile_cols = 1;
             }
+            if (id == CandidateId::LinearGenerated)
+            {
+                config.tile = TileShape{256, 1, 1, 1, StageCount::Single};
+                config.optimized_route = true;
+                config.registry_name = candidate_name(id);
+            }
+            if (id == CandidateId::RowGenerated)
+            {
+                config.tile = TileShape{256, 1, 1, 1, StageCount::Single};
+                config.optimized_route = true;
+                config.registry_name = candidate_name(id);
+            }
+            if (id == CandidateId::FirFilterGenerated)
+            {
+                config.tile = TileShape{256, 1, 1, 1, StageCount::Single};
+                config.optimized_route = true;
+                config.registry_name = candidate_name(id);
+            }
             return config;
+        }
+
+        inline bool parse_generated_candidate_config(
+            const std::string &name,
+            CandidateConfig &config)
+        {
+            CandidateId id;
+            if (!candidate_from_name(name, id) || !is_generated_candidate(id))
+            {
+                return false;
+            }
+            std::string prefix;
+            if (id == CandidateId::LinearGenerated)
+            {
+                prefix = "linear_";
+            }
+            else if (id == CandidateId::RowGenerated)
+            {
+                prefix = "row_";
+            }
+            else
+            {
+                prefix = "fir_filter_";
+            }
+            if (name.rfind(prefix, 0) != 0)
+            {
+                return false;
+            }
+
+            int threads = 0;
+            int elements = 1;
+            int rows_per_block = 1;
+            int vector_width = 1;
+            int stages = 1;
+            int batch_tile = 1;
+            int buffer_count = 1;
+            int memory_tier = 50;
+            int plan_variant = 0;
+            std::size_t begin = prefix.size();
+            while (begin < name.size())
+            {
+                const std::size_t end = name.find('_', begin);
+                const std::string token = name.substr(
+                    begin, end == std::string::npos ? std::string::npos : end - begin);
+                if (token.size() < 2)
+                {
+                    return false;
+                }
+                char label = token[0];
+                std::size_t value_begin = 1;
+                if (token.rfind("buf", 0) == 0)
+                {
+                    label = 'u';
+                    value_begin = 3;
+                }
+                char *parse_end = nullptr;
+                const long parsed = std::strtol(token.c_str() + value_begin, &parse_end, 10);
+                if (parse_end == token.c_str() + value_begin || *parse_end != '\0')
+                {
+                    return false;
+                }
+                switch (label)
+                {
+                case 't': threads = static_cast<int>(parsed); break;
+                case 'e': elements = static_cast<int>(parsed); break;
+                case 'r': rows_per_block = static_cast<int>(parsed); plan_variant = static_cast<int>(parsed); break;
+                case 'v': vector_width = static_cast<int>(parsed); break;
+                case 's': stages = static_cast<int>(parsed); break;
+                case 'b': batch_tile = static_cast<int>(parsed); break;
+                case 'u': buffer_count = static_cast<int>(parsed); break;
+                case 'm': memory_tier = static_cast<int>(parsed); break;
+                default: return false;
+                }
+                if (end == std::string::npos) break;
+                begin = end + 1;
+            }
+            if ((stages != 1 && stages != 2) ||
+                (memory_tier != 50 && memory_tier != 75 && memory_tier != 90))
+            {
+                return false;
+            }
+            config = candidate_config(id);
+            config.registry_name = name;
+            config.tile.threads = threads;
+            config.tile.elements_per_thread = elements;
+            config.tile.rows_per_block = rows_per_block;
+            config.tile.vector_width = vector_width;
+            config.tile.stages = stages == 2 ? StageCount::Double : StageCount::Single;
+            config.batch_tile = batch_tile;
+            config.buffer_count = buffer_count;
+            config.memory_tier = static_cast<MemoryTier>(memory_tier);
+            config.plan_variant = plan_variant;
+            config.tile_rows = rows_per_block;
+            config.tile_cols = 1;
+            config.optimized_route = true;
+            return valid_shape(config.tile);
         }
 
         inline CandidateId static_candidate(OperatorFamily family)
@@ -1475,13 +1825,16 @@ namespace cusignal
             case OperatorFamily::Correlate2d:
                 return id >= CandidateId::Correlate2dStatic && id <= CandidateId::Correlate2dShared32x16;
             case OperatorFamily::Linear:
-                return id >= CandidateId::LinearStatic && id <= CandidateId::LinearM90T256E8V4B8;
+                return (id >= CandidateId::LinearStatic && id <= CandidateId::LinearM90T256E8V4B8) ||
+                       id == CandidateId::LinearGenerated;
             case OperatorFamily::RowReduction:
-                return id >= CandidateId::RowStatic && id <= CandidateId::RowM90T256E8R8V4B4;
+                return (id >= CandidateId::RowStatic && id <= CandidateId::RowM90T256E8R8V4B4) ||
+                       id == CandidateId::RowGenerated;
             case OperatorFamily::FftBatch:
                 return id >= CandidateId::FftBatchStatic && id <= CandidateId::FftBatchM90B8S2B2;
             case OperatorFamily::FirFilter:
-                return id >= CandidateId::FirFilterStatic && id <= CandidateId::FirFilterM90R8B4;
+                return (id >= CandidateId::FirFilterStatic && id <= CandidateId::FirFilterM90R8B4) ||
+                       id == CandidateId::FirFilterGenerated;
             case OperatorFamily::Static:
                 return id == CandidateId::StaticOperator;
             }
@@ -1626,6 +1979,30 @@ namespace cusignal
                 std::string registry_version;
                 DeviceFingerprint device{};
                 std::vector<CacheEntry> entries;
+                struct TaskEntry
+                {
+                    std::string scope;
+                    std::string key;
+                    std::string candidate_name;
+                    TaskCandidateId candidate = TaskCandidateId::Task1Static;
+                    int threads = 256;
+                    int elements_per_thread = 1;
+                    int rows_per_block = 1;
+                    int tile_rows = 1;
+                    int tile_cols = 1;
+                    int stages = 1;
+                    int buffer_count = 1;
+                    int batch_tile = 1;
+                    int memory_tier = 50;
+                    int route = 0;
+                    std::size_t workspace_bytes = 0;
+                    std::size_t workspace_peak_bytes = 0;
+                    double gpu_e2e_median_ms = 0.0;
+                    double gpu_kernel_median_ms = 0.0;
+                    bool correctness_pass = false;
+                    bool input_refresh_pass = false;
+                };
+                std::vector<TaskEntry> task_entries;
             };
 
             inline std::size_t skip_space(const std::string &text, std::size_t index)
@@ -1820,11 +2197,12 @@ namespace cusignal
                 return false;
             }
 
-            inline bool extract_entry_objects(
+            inline bool extract_entry_objects_for_key(
                 const std::string &text,
+                const std::string &array_key,
                 std::vector<std::string> &objects)
             {
-                const std::string marker = "\"entries\"";
+                const std::string marker = "\"" + array_key + "\"";
                 const std::size_t marker_pos = text.find(marker);
                 if (marker_pos == std::string::npos)
                 {
@@ -1901,6 +2279,13 @@ namespace cusignal
                 return false;
             }
 
+            inline bool extract_entry_objects(
+                const std::string &text,
+                std::vector<std::string> &objects)
+            {
+                return extract_entry_objects_for_key(text, "entries", objects);
+            }
+
             inline bool device_matches(
                 const DeviceFingerprint &expected,
                 const DeviceFingerprint &actual)
@@ -1922,7 +2307,7 @@ namespace cusignal
             {
                 double schema = 0.0;
                 if (!json_number_value(text, "schema_version", schema) ||
-                    (schema != 1.0 && schema != 2.0))
+                    (schema != 1.0 && schema != 2.0 && schema != 3.0))
                 {
                     return false;
                 }
@@ -2085,6 +2470,68 @@ namespace cusignal
                     }
                     document.entries.push_back(std::move(entry));
                 }
+                std::vector<std::string> task_objects;
+                if (extract_entry_objects_for_key(text, "task_entries", task_objects))
+                {
+                    for (const std::string &object : task_objects)
+                    {
+                        CacheDocument::TaskEntry entry;
+                        if (!json_string_value(object, "scope", entry.scope) ||
+                            !json_string_value(object, "key", entry.key) ||
+                            !json_string_value(object, "candidate", entry.candidate_name) ||
+                            !task_candidate_from_name(entry.candidate_name, entry.candidate))
+                        {
+                            return false;
+                        }
+                        std::string correctness;
+                        std::string input_refresh;
+                        if (!json_string_value(object, "correctness_status", correctness) ||
+                            !json_string_value(object, "input_refresh_status", input_refresh))
+                        {
+                            return false;
+                        }
+                        entry.correctness_pass = correctness == "PASS";
+                        entry.input_refresh_pass = input_refresh == "PASS";
+                        if (!entry.correctness_pass || !entry.input_refresh_pass)
+                        {
+                            continue;
+                        }
+                        std::string config_object;
+                        if (!extract_object(object, "config", config_object))
+                        {
+                            return false;
+                        }
+                        if (!json_number_value(config_object, "threads", number) ||
+                            !json_number_value(config_object, "elements_per_thread", number))
+                        {
+                            return false;
+                        }
+                        entry.threads = static_cast<int>(number);
+                        if (json_number_value(config_object, "elements_per_thread", number)) entry.elements_per_thread = static_cast<int>(number);
+                        if (json_number_value(config_object, "rows_per_block", number)) entry.rows_per_block = static_cast<int>(number);
+                        if (json_number_value(config_object, "tile_rows", number)) entry.tile_rows = static_cast<int>(number);
+                        if (json_number_value(config_object, "tile_cols", number)) entry.tile_cols = static_cast<int>(number);
+                        if (json_number_value(config_object, "stages", number)) entry.stages = static_cast<int>(number);
+                        if (json_number_value(config_object, "buffer_count", number)) entry.buffer_count = static_cast<int>(number);
+                        if (json_number_value(config_object, "batch_tile", number)) entry.batch_tile = static_cast<int>(number);
+                        if (json_number_value(config_object, "memory_tier", number)) entry.memory_tier = static_cast<int>(number);
+                        if (json_number_value(config_object, "route", number)) entry.route = static_cast<int>(number);
+                        if (json_number_value(config_object, "workspace_bytes", number)) entry.workspace_bytes = static_cast<std::size_t>(number);
+                        if (json_number_value(config_object, "workspace_peak_bytes", number)) entry.workspace_peak_bytes = static_cast<std::size_t>(number);
+                        if (!json_number_value(object, "gpu_e2e_median_ms", number) ||
+                            !std::isfinite(number) || number <= 0.0)
+                        {
+                            return false;
+                        }
+                        entry.gpu_e2e_median_ms = number;
+                        if (json_number_value(object, "gpu_kernel_median_ms", number) &&
+                            std::isfinite(number) && number >= 0.0)
+                        {
+                            entry.gpu_kernel_median_ms = number;
+                        }
+                        document.task_entries.push_back(std::move(entry));
+                    }
+                }
                 document.valid = true;
                 return true;
             }
@@ -2131,6 +2578,7 @@ namespace cusignal
         } // namespace cache_detail
 
         inline thread_local PolicyTrace g_policy_trace;
+        inline thread_local TaskPolicyTrace g_task_trace;
 
         inline std::size_t memory_tier_budget_bytes(
             MemoryTier tier,
@@ -2286,9 +2734,30 @@ namespace cusignal
                    config.plan_variant == entry.plan_variant;
         }
 
+        inline void apply_cache_config(
+            CandidateConfig &config,
+            const cache_detail::CacheEntry &entry)
+        {
+            config.registry_name = entry.candidate_name;
+            config.tile.threads = entry.threads;
+            config.tile_rows = entry.tile_rows;
+            config.tile_cols = entry.tile_cols;
+            config.tile.elements_per_thread = entry.elements_per_thread;
+            config.tile.rows_per_block = entry.rows_per_block;
+            config.tile.vector_width = entry.vector_width;
+            config.tile.stages = entry.stages == 2 ? StageCount::Double : StageCount::Single;
+            config.scan_elements = entry.scan_elements;
+            config.buffer_count = entry.buffer_count;
+            config.batch_tile = entry.batch_tile;
+            config.memory_tier = static_cast<MemoryTier>(entry.memory_tier);
+            config.plan_variant = entry.plan_variant;
+            config.optimized_route = true;
+        }
+
         inline bool forced_candidate(
             const TuningKey &key,
-            CandidateId &candidate)
+            CandidateId &candidate,
+            std::string *candidate_name_out = nullptr)
         {
             const char *value = std::getenv("CUSIGNAL_ZX_TUNING_FORCE");
             if (value == nullptr)
@@ -2316,6 +2785,10 @@ namespace cusignal
                             candidate_belongs_to_family(key.family, parsed))
                         {
                             candidate = parsed;
+                            if (candidate_name_out != nullptr)
+                            {
+                                *candidate_name_out = candidate_name;
+                            }
                             return true;
                         }
                         return false;
@@ -2342,7 +2815,7 @@ namespace cusignal
             g_policy_trace.family = TuningKey::family_name(family);
             g_policy_trace.operator_id = key.operator_id;
             g_policy_trace.key = key.canonical();
-            g_policy_trace.candidate = candidate_name(config.id);
+            g_policy_trace.candidate = display_candidate_name(config);
             g_policy_trace.source = source;
             g_policy_trace.reason = reason;
             g_policy_trace.config = config;
@@ -2367,13 +2840,21 @@ namespace cusignal
             }
 
             CandidateId forced;
-            if (tuning_forced() && forced_candidate(key, forced))
+            std::string forced_name;
+            if (tuning_forced() && forced_candidate(key, forced, &forced_name))
             {
                 const CandidateConfig config = candidate_config(forced);
-                if (config_resource_supported(config, key))
+                CandidateConfig resolved = config;
+                if (is_generated_candidate(forced) &&
+                    !parse_generated_candidate_config(forced_name, resolved))
                 {
-                    set_policy_trace(family, key, config, "force", "explicit_candidate", device);
-                    return PolicyDecision{config, key.canonical(), "force", "explicit_candidate", false};
+                    set_policy_trace(family, key, static_config, "static", "invalid_generated_candidate", device);
+                    return PolicyDecision{static_config, key.canonical(), "static", "invalid_generated_candidate", false};
+                }
+                if (config_resource_supported(resolved, key))
+                {
+                    set_policy_trace(family, key, resolved, "force", "explicit_candidate", device);
+                    return PolicyDecision{resolved, key.canonical(), "force", "explicit_candidate", false};
                 }
             }
 
@@ -2388,6 +2869,10 @@ namespace cusignal
                     for (const cache_detail::CacheEntry &entry : document->entries)
                     {
                         CandidateConfig config = candidate_config(entry.candidate);
+                        if (is_generated_candidate(entry.candidate))
+                        {
+                            apply_cache_config(config, entry);
+                        }
                         if (entry.family != TuningKey::family_name(family) ||
                             entry.key != canonical_key ||
                             !candidate_belongs_to_family(family, entry.candidate) ||
@@ -2411,6 +2896,307 @@ namespace cusignal
 
             set_policy_trace(family, key, static_config, "static", "cache_miss_or_invalid", device);
             return PolicyDecision{static_config, key.canonical(), "static", "cache_miss_or_invalid", false};
+        }
+
+        inline TaskTuningKey make_task_key(
+            TaskScope scope,
+            const char *task_id,
+            int scale_level,
+            const std::array<std::size_t, 6> &shape,
+            std::uint8_t shape_count,
+            const std::array<std::uint64_t, 10> &semantic = std::array<std::uint64_t, 10>{},
+            std::uint8_t semantic_count = 0,
+            int dtype = 0,
+            LayoutKind layout = LayoutKind::RowMajor)
+        {
+            TaskTuningKey key;
+            key.scope = scope;
+            key.task_id = task_id == nullptr ? std::string{} : std::string(task_id);
+            key.scale_level = scale_level;
+            key.shape = shape;
+            key.shape_count = shape_count > key.shape.size()
+                                  ? static_cast<std::uint8_t>(key.shape.size())
+                                  : shape_count;
+            key.semantic = semantic;
+            key.semantic_count = semantic_count > key.semantic.size()
+                                     ? static_cast<std::uint8_t>(key.semantic.size())
+                                     : semantic_count;
+            key.dtype = dtype;
+            key.layout = layout;
+            return key;
+        }
+
+        inline TaskCandidateConfig task_candidate_config(TaskCandidateId id)
+        {
+            TaskCandidateConfig config;
+            config.id = id;
+            config.registry_name = task_candidate_name(id);
+            switch (id)
+            {
+            case TaskCandidateId::Task1Static:
+                config.route = 0;
+                break;
+            case TaskCandidateId::Task1InputT128:
+                config.threads = 128;
+                config.route = 1;
+                break;
+            case TaskCandidateId::Task1InputT256:
+                config.threads = 256;
+                config.route = 1;
+                break;
+            case TaskCandidateId::Task1InputT512:
+                // The C500 task input kernels are element-wise and use
+                // blockDim.x directly; keep this candidate available only
+                // after the runtime maxThreadsPerBlock check.
+                config.threads = 512;
+                config.route = 1;
+                break;
+            case TaskCandidateId::Task1FusedT128:
+                config.threads = 128;
+                config.route = 2;
+                break;
+            case TaskCandidateId::Task1FusedT256:
+                config.threads = 256;
+                config.route = 2;
+                break;
+            case TaskCandidateId::Task1FusedT512:
+                config.threads = 512;
+                config.route = 2;
+                break;
+            case TaskCandidateId::Task2Static:
+                config.route = 0;
+                break;
+            case TaskCandidateId::Task2DirectT128:
+                config.threads = 128;
+                config.route = 1;
+                break;
+            case TaskCandidateId::Task2DirectT256:
+                config.threads = 256;
+                config.route = 1;
+                break;
+            case TaskCandidateId::Task2FftT128:
+                config.threads = 128;
+                config.route = 2;
+                config.buffer_count = 2;
+                config.memory_tier = MemoryTier::M75;
+                break;
+            case TaskCandidateId::Task2FftT256:
+                config.threads = 256;
+                config.route = 2;
+                config.buffer_count = 2;
+                config.memory_tier = MemoryTier::M75;
+                break;
+            case TaskCandidateId::Task2FftT512:
+                config.threads = 512;
+                config.route = 2;
+                config.buffer_count = 2;
+                config.memory_tier = MemoryTier::M90;
+                break;
+            case TaskCandidateId::Task2CwtT128:
+                config.threads = 128;
+                config.route = 3;
+                config.buffer_count = 2;
+                config.memory_tier = MemoryTier::M75;
+                break;
+            case TaskCandidateId::Task2CwtT256:
+                config.threads = 256;
+                config.route = 3;
+                config.buffer_count = 2;
+                config.memory_tier = MemoryTier::M75;
+                break;
+            case TaskCandidateId::Task2CwtT512:
+                config.threads = 512;
+                config.route = 3;
+                config.buffer_count = 2;
+                config.memory_tier = MemoryTier::M90;
+                break;
+            }
+            return config;
+        }
+
+        inline bool task_candidate_belongs(TaskScope scope, TaskCandidateId id)
+        {
+            if (scope == TaskScope::Task1Radar)
+            {
+                return id >= TaskCandidateId::Task1Static && id <= TaskCandidateId::Task1FusedT512;
+            }
+            return id >= TaskCandidateId::Task2Static && id <= TaskCandidateId::Task2CwtT512;
+        }
+
+        inline bool task_tuning_disabled()
+        {
+            const char *value = std::getenv("CUSIGNAL_ZX_TASK_TUNING_MODE");
+            return value != nullptr &&
+                   (std::strcmp(value, "off") == 0 ||
+                    std::strcmp(value, "OFF") == 0 ||
+                    std::strcmp(value, "0") == 0);
+        }
+
+        inline bool task_tuning_forced()
+        {
+            const char *value = std::getenv("CUSIGNAL_ZX_TASK_TUNING_MODE");
+            return value != nullptr &&
+                   (std::strcmp(value, "force") == 0 ||
+                    std::strcmp(value, "FORCE") == 0);
+        }
+
+        inline bool task_config_resource_supported(
+            const TaskCandidateConfig &config,
+            const TaskTuningKey &key,
+            std::size_t workspace_bytes = 0)
+        {
+            if (config.threads != 128 && config.threads != 256 && config.threads != 512)
+            {
+                return false;
+            }
+            cudaDeviceProp properties{};
+            int device = -1;
+            if (cudaGetDevice(&device) == cudaSuccess &&
+                cudaGetDeviceProperties(&properties, device) == cudaSuccess &&
+                config.threads > properties.maxThreadsPerBlock)
+            {
+                return false;
+            }
+            if (workspace_bytes > (static_cast<std::size_t>(8192) << 20))
+            {
+                return false;
+            }
+            if (key.scope == TaskScope::Task2Features &&
+                config.threads == 512)
+            {
+                // Several Task2 shared reductions use a fixed 256-element
+                // shared array; do not admit an unsafe 512-thread launch.
+                return false;
+            }
+            if (workspace_bytes != 0 && !cache_workspace_available(workspace_bytes))
+            {
+                return false;
+            }
+            return true;
+        }
+
+        inline void set_task_policy_trace(
+            const TaskTuningKey &key,
+            const TaskCandidateConfig &config,
+            const std::string &source,
+            const std::string &reason,
+            const DeviceFingerprint &device)
+        {
+            g_task_trace.valid = true;
+            g_task_trace.scope = TaskTuningKey::scope_name(key.scope);
+            g_task_trace.task_id = key.task_id;
+            g_task_trace.key = key.canonical();
+            g_task_trace.candidate = config.registry_name.empty()
+                                         ? task_candidate_name(config.id)
+                                         : config.registry_name;
+            g_task_trace.source = source;
+            g_task_trace.reason = reason;
+            g_task_trace.config = config;
+            g_task_trace.device = device;
+        }
+
+        inline TaskPolicyDecision select_task(const TaskTuningKey &key)
+        {
+            const DeviceFingerprint device = current_device_fingerprint();
+            const TaskCandidateId static_id = key.scope == TaskScope::Task1Radar
+                                                  ? TaskCandidateId::Task1Static
+                                                  : TaskCandidateId::Task2Static;
+            const TaskCandidateConfig static_config = task_candidate_config(static_id);
+            if (task_tuning_disabled())
+            {
+                set_task_policy_trace(key, static_config, "static", "task_tuning_disabled", device);
+                return TaskPolicyDecision{static_config, key.canonical(), "static", "task_tuning_disabled", false};
+            }
+
+            const char *force_value = std::getenv("CUSIGNAL_ZX_TASK_TUNING_FORCE");
+            if (task_tuning_forced() && force_value != nullptr)
+            {
+                std::string text(force_value);
+                std::size_t begin = 0;
+                while (begin < text.size())
+                {
+                    const std::size_t end = text.find(';', begin);
+                    const std::string token = text.substr(begin, end == std::string::npos ? std::string::npos : end - begin);
+                    const std::size_t separator = token.find('=');
+                    if (separator != std::string::npos &&
+                        (token.substr(0, separator) == key.task_id ||
+                         token.substr(0, separator) == TaskTuningKey::scope_name(key.scope)))
+                    {
+                        TaskCandidateId parsed;
+                        const std::string name = token.substr(separator + 1);
+                        if (task_candidate_from_name(name, parsed) &&
+                            task_candidate_belongs(key.scope, parsed))
+                        {
+                            TaskCandidateConfig config = task_candidate_config(parsed);
+                            config.registry_name = name;
+                            if (task_config_resource_supported(config, key))
+                            {
+                                set_task_policy_trace(key, config, "force", "explicit_candidate", device);
+                                return TaskPolicyDecision{config, key.canonical(), "force", "explicit_candidate", false};
+                            }
+                        }
+                        break;
+                    }
+                    if (end == std::string::npos) break;
+                    begin = end + 1;
+                }
+            }
+
+            const char *cache_path = std::getenv("CUSIGNAL_ZX_TASK_TUNING_CACHE");
+            if (cache_path == nullptr || cache_path[0] == '\0')
+            {
+                cache_path = std::getenv("CUSIGNAL_ZX_TUNING_CACHE");
+            }
+            if (!task_tuning_forced() && cache_path != nullptr && cache_path[0] != '\0' && device.valid)
+            {
+                const cache_detail::CacheDocument *document =
+                    cache_detail::load_cache(std::string(cache_path));
+                if (document != nullptr && cache_detail::device_matches(document->device, device))
+                {
+                    for (const cache_detail::CacheDocument::TaskEntry &entry : document->task_entries)
+                    {
+                        TaskCandidateConfig config = task_candidate_config(entry.candidate);
+                        config.registry_name = entry.candidate_name;
+                        config.threads = entry.threads;
+                        config.elements_per_thread = entry.elements_per_thread;
+                        config.rows_per_block = entry.rows_per_block;
+                        config.tile_rows = entry.tile_rows;
+                        config.tile_cols = entry.tile_cols;
+                        config.stages = entry.stages == 2 ? StageCount::Double : StageCount::Single;
+                        config.buffer_count = entry.buffer_count;
+                        config.batch_tile = entry.batch_tile;
+                        config.memory_tier = static_cast<MemoryTier>(entry.memory_tier);
+                        config.route = entry.route;
+                        config.workspace_bytes = entry.workspace_bytes;
+                        config.workspace_peak_bytes = entry.workspace_peak_bytes;
+                        if (entry.scope == TaskTuningKey::scope_name(key.scope) &&
+                            entry.key == key.canonical() &&
+                            task_candidate_belongs(key.scope, entry.candidate) &&
+                            task_config_resource_supported(config, key, entry.workspace_bytes))
+                        {
+                            set_task_policy_trace(key, config, "cache", "exact_key", device);
+                            return TaskPolicyDecision{config, key.canonical(), "cache", "exact_key", true};
+                        }
+                    }
+                }
+            }
+            set_task_policy_trace(key, static_config, "static", "cache_miss_or_invalid", device);
+            return TaskPolicyDecision{static_config, key.canonical(), "static", "cache_miss_or_invalid", false};
+        }
+
+        inline int task_threads()
+        {
+            return g_active_task_policy.valid ? g_active_task_policy.config.threads : 256;
+        }
+
+        inline int task_route()
+        {
+            return g_active_task_policy.valid ? g_active_task_policy.config.route : 0;
+        }
+
+        inline const TaskPolicyTrace &task_policy_trace_snapshot()
+        {
+            return g_task_trace;
         }
 
         inline const PolicyTrace &policy_trace_snapshot()

@@ -149,12 +149,18 @@ def _integer(row: dict[str, Any], field: str, expected: int | None = None) -> in
     return value
 
 
+def _gpu_reference_root(root: Path) -> Path:
+    """Return the canonical GPU raw-data directory, with legacy fallback."""
+    candidate = root / "gpu_reference"
+    return candidate if candidate.is_dir() else root
+
+
 def _metadata_path(root: Path, level: str) -> Path:
-    return root / "inputs" / f"{level}_scale_metadata.json"
+    return _gpu_reference_root(root) / "inputs" / f"{level}_scale_metadata.json"
 
 
 def _manifest_path(root: Path, level: str, operator: str) -> Path:
-    return root / "inputs" / level / operator / "manifest.json"
+    return _gpu_reference_root(root) / "inputs" / level / operator / "manifest.json"
 
 
 def _get_path(payload: Any, dotted: str) -> Any:

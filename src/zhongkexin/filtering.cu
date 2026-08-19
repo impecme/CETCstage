@@ -3181,6 +3181,7 @@ namespace
                 tile::static_candidate(tile::OperatorFamily::FirFilter));
         }
         const tile::ScopedPolicy policy_scope(tuning);
+        const int launch_threads = tuning.config.tile.threads;
 
         if (zi == nullptr &&
             final_state == nullptr &&
@@ -3229,7 +3230,7 @@ namespace
                 const int outputs_per_thread = plan_variant == 0 ? 2 : plan_variant;
                 const std::size_t kOutputsPerBlock =
                     static_cast<std::size_t>(outputs_per_thread) *
-                    static_cast<std::size_t>(kThreadsPerBlock);
+                    static_cast<std::size_t>(launch_threads);
                 const dim3 grid(
                     static_cast<unsigned int>(tile::ceil_div(plan.axis_size, kOutputsPerBlock)),
                     static_cast<unsigned int>(plan.line_count));
@@ -3237,7 +3238,7 @@ namespace
                     (kOutputsPerBlock + b.size() - 1) * sizeof(float) + b.size() * sizeof(float);
                 if (plan_variant == 0)
                 {
-                    fir_filter_zero_lines_shared_dual_kernel<<<grid, kThreadsPerBlock, shared_bytes>>>(
+                    fir_filter_zero_lines_shared_dual_kernel<<<grid, launch_threads, shared_bytes>>>(
                         b.data(),
                         b.size(),
                         a.data()[0],
@@ -3251,28 +3252,28 @@ namespace
                 }
                 else if (plan_variant == 1)
                 {
-                    fir_filter_zero_lines_shared_multi_kernel<1><<<grid, kThreadsPerBlock, shared_bytes>>>(
+                    fir_filter_zero_lines_shared_multi_kernel<1><<<grid, launch_threads, shared_bytes>>>(
                         b.data(), b.size(), a.data()[0], x.data(), line_bases,
                         plan.line_count, plan.axis_size, plan.axis_stride, output.data());
                     check_kernel_launch("fir_filter_zero_lines_shared_multi_kernel<1>");
                 }
                 else if (plan_variant == 2)
                 {
-                    fir_filter_zero_lines_shared_multi_kernel<2><<<grid, kThreadsPerBlock, shared_bytes>>>(
+                    fir_filter_zero_lines_shared_multi_kernel<2><<<grid, launch_threads, shared_bytes>>>(
                         b.data(), b.size(), a.data()[0], x.data(), line_bases,
                         plan.line_count, plan.axis_size, plan.axis_stride, output.data());
                     check_kernel_launch("fir_filter_zero_lines_shared_multi_kernel<2>");
                 }
                 else if (plan_variant == 4)
                 {
-                    fir_filter_zero_lines_shared_multi_kernel<4><<<grid, kThreadsPerBlock, shared_bytes>>>(
+                    fir_filter_zero_lines_shared_multi_kernel<4><<<grid, launch_threads, shared_bytes>>>(
                         b.data(), b.size(), a.data()[0], x.data(), line_bases,
                         plan.line_count, plan.axis_size, plan.axis_stride, output.data());
                     check_kernel_launch("fir_filter_zero_lines_shared_multi_kernel<4>");
                 }
                 else
                 {
-                    fir_filter_zero_lines_shared_multi_kernel<8><<<grid, kThreadsPerBlock, shared_bytes>>>(
+                    fir_filter_zero_lines_shared_multi_kernel<8><<<grid, launch_threads, shared_bytes>>>(
                         b.data(), b.size(), a.data()[0], x.data(), line_bases,
                         plan.line_count, plan.axis_size, plan.axis_stride, output.data());
                     check_kernel_launch("fir_filter_zero_lines_shared_multi_kernel<8>");
@@ -3282,7 +3283,7 @@ namespace
             {
                 fir_filter_zero_lines_kernel<<<
                     block_count(plan.line_count * plan.axis_size),
-                    kThreadsPerBlock>>>(
+                    launch_threads>>>(
                     b.data(),
                     b.size(),
                     a.data(),
@@ -4697,6 +4698,7 @@ namespace cusignal
                         false,
                         plan.axis_stride));
                 const tile::ScopedPolicy policy_scope(tuning);
+                const int launch_threads = tuning.config.tile.threads;
                 const std::size_t *line_bases = upload_line_bases_cached(
                     x_device.shape(),
                     axis,
@@ -4717,7 +4719,7 @@ namespace cusignal
                             plan_variant == 0 ? (use_quad_output ? 4 : 2) : plan_variant;
                         const std::size_t outputs_per_block =
                             static_cast<std::size_t>(outputs_per_thread) *
-                            static_cast<std::size_t>(kThreadsPerBlock);
+                            static_cast<std::size_t>(launch_threads);
                         const dim3 grid(
                             static_cast<unsigned int>(
                                 (plan.axis_size + outputs_per_block - 1) / outputs_per_block),
@@ -4727,7 +4729,7 @@ namespace cusignal
                             b_device.size() * sizeof(float);
                         if (plan_variant == 0 && use_quad_output)
                         {
-                            complex_fir_filter_zero_lines_shared_quad_kernel<<<grid, kThreadsPerBlock, shared_size>>>(
+                            complex_fir_filter_zero_lines_shared_quad_kernel<<<grid, launch_threads, shared_size>>>(
                                 b_device.data(),
                                 b_device.size(),
                                 reinterpret_cast<const float2 *>(x_device.data()),
@@ -4740,7 +4742,7 @@ namespace cusignal
                         }
                         else if (plan_variant == 0)
                         {
-                            complex_fir_filter_zero_lines_shared_dual_kernel<<<grid, kThreadsPerBlock, shared_size>>>(
+                            complex_fir_filter_zero_lines_shared_dual_kernel<<<grid, launch_threads, shared_size>>>(
                                 b_device.data(),
                                 b_device.size(),
                                 reinterpret_cast<const float2 *>(x_device.data()),
@@ -4754,7 +4756,7 @@ namespace cusignal
                         else if (plan_variant == 1)
                         {
                             complex_fir_filter_zero_lines_shared_multi_kernel<1>
-                                <<<grid, kThreadsPerBlock, shared_size>>>(
+                                <<<grid, launch_threads, shared_size>>>(
                                     b_device.data(),
                                     b_device.size(),
                                     reinterpret_cast<const float2 *>(x_device.data()),
@@ -4768,7 +4770,7 @@ namespace cusignal
                         else if (plan_variant == 2)
                         {
                             complex_fir_filter_zero_lines_shared_multi_kernel<2>
-                                <<<grid, kThreadsPerBlock, shared_size>>>(
+                                <<<grid, launch_threads, shared_size>>>(
                                     b_device.data(),
                                     b_device.size(),
                                     reinterpret_cast<const float2 *>(x_device.data()),
@@ -4782,7 +4784,7 @@ namespace cusignal
                         else if (plan_variant == 4)
                         {
                             complex_fir_filter_zero_lines_shared_multi_kernel<4>
-                                <<<grid, kThreadsPerBlock, shared_size>>>(
+                                <<<grid, launch_threads, shared_size>>>(
                                     b_device.data(),
                                     b_device.size(),
                                     reinterpret_cast<const float2 *>(x_device.data()),
