@@ -204,7 +204,18 @@ class ZxOperatorAutotuneTests(unittest.TestCase):
         )
 
     def test_registry_version_invalidates_previous_cache_generation(self):
-        self.assertEqual(MODULE.REGISTRY_VERSION, "zx-c500-all81-v2")
+        self.assertEqual(MODULE.REGISTRY_VERSION, "zx-c500-all81-task-v3")
+
+    def test_full_registry_has_expanded_candidates_and_tasks(self):
+        self.assertEqual(len(MODULE.OPERATOR_KEYS), 81)
+        self.assertGreater(sum(len(MODULE.all_candidate_names(family)) for family in MODULE.OPERATOR_KEYS), 248)
+        self.assertEqual(set(MODULE.TASKS), {"task1_radar", "task2_features"})
+        self.assertEqual(sum(len(MODULE.all_task_candidate_names(task)) for task in MODULE.TASKS), 9)
+
+    def test_static_only_operator_has_explicit_reason(self):
+        definition = MODULE.FAMILIES["spectral/stft"]
+        self.assertEqual(definition["candidates"], [])
+        self.assertIn("PlanMany", definition["static_only_reason"])
 
     def test_fallback_candidate_is_not_compared_as_an_applied_candidate(self):
         family = "correlate2d"

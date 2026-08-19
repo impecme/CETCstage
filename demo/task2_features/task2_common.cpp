@@ -1,5 +1,7 @@
 #include "task2_common.hpp"
 
+#include "../../src/common/zx_tile_policy.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
@@ -1260,6 +1262,17 @@ namespace cusignal_demo::task2_features
             &run.spectrogram_e2e_error, &run.cwt_e2e_error, &run.feature_score_e2e_error,
             &run.measurement_e2e_error, &run.kalman_e2e_error});
         const StageTiming &input_timing = timing_for("input_construction");
+        const auto &task_tuning = cusignal::zx_tile::task_policy_trace_snapshot();
+        const auto csv_field = [](const std::string &value) {
+            std::string escaped = value;
+            std::size_t position = 0;
+            while ((position = escaped.find('"', position)) != std::string::npos)
+            {
+                escaped.insert(position, 1, '"');
+                position += 2;
+            }
+            return std::string("\"") + escaped + "\"";
+        };
 
         fs::create_directories(report_root() / "operators");
         fs::create_directories(report_root() / "stages");
@@ -1269,7 +1282,12 @@ namespace cusignal_demo::task2_features
                    "cpu_total_ms,gpu_e2e_ms,gpu_kernel_ms,e2e_speedup,kernel_speedup,"
                    "input_max_abs,input_max_rel,input_rmse,input_mixed_error,"
                    "operator_max_abs,operator_max_rel,operator_rmse,operator_mixed_error,"
-                   "e2e_max_abs,e2e_max_rel,e2e_rmse,e2e_mixed_error,validation_pass\n";
+                   "e2e_max_abs,e2e_max_rel,e2e_rmse,e2e_mixed_error,validation_pass,"
+                   "task_tuning_registry_version,task_tuning_key,task_tuning_candidate,"
+                   "task_tuning_source,task_tuning_reason,task_tuning_threads,task_tuning_route,"
+                   "task_tuning_workspace_bytes,task_tuning_workspace_peak_bytes,task_tuning_device_id,"
+                   "task_tuning_device_name,task_tuning_runtime_version,task_tuning_compute_major,"
+                   "task_tuning_compute_minor,task_tuning_total_global_mem,task_tuning_device_target\n";
         summary << std::fixed << std::setprecision(9)
                 << "task2_features,L" << config.scale_level << ',' << config.seed << ',' << warmup << ',' << repeat << ','
                 << (static_cast<long long>(config.num_frames) * config.samples_per_frame) << ','
@@ -1282,7 +1300,16 @@ namespace cusignal_demo::task2_features
                 << input_error.mixed_error << ',' << operator_error.max_abs << ',' << operator_error.max_rel << ','
                 << operator_error.rmse << ',' << operator_error.mixed_error << ',' << e2e_error.max_abs << ','
                 << e2e_error.max_rel << ',' << e2e_error.rmse << ',' << e2e_error.mixed_error << ','
-                << (validation.pass ? "PASS" : "ERROR") << '\n';
+                << (validation.pass ? "PASS" : "ERROR") << ','
+                << cusignal::zx_tile::kRegistryVersion << ','
+                << csv_field(task_tuning.key) << ',' << csv_field(task_tuning.candidate) << ','
+                << csv_field(task_tuning.source) << ',' << csv_field(task_tuning.reason) << ','
+                << task_tuning.config.threads << ',' << task_tuning.config.route << ','
+                << task_tuning.config.workspace_bytes << ',' << task_tuning.config.workspace_peak_bytes << ','
+                << task_tuning.device.id << ',' << csv_field(task_tuning.device.name) << ','
+                << task_tuning.device.runtime_version << ',' << task_tuning.device.compute_major << ','
+                << task_tuning.device.compute_minor << ',' << task_tuning.device.total_global_mem << ','
+                << csv_field(task_tuning.device.target) << '\n';
 
         std::ofstream operators(report_root() / "latest_operators.csv");
         if (!operators) throw std::runtime_error("failed to write task2 operator CSV");

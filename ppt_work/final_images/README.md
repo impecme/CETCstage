@@ -11,8 +11,8 @@
 | P07 | `P07_并行归约重构_LombScargle代表_v08_真实数据.png` | Lomb-Scargle 频率对并行与共享归约；GPU 11.574 ms、CPU/GPU 186.32× |
 | P08 | `P08_形状感知分派_ChannelizePoly代表_v08_真实数据.png` | Channelize Poly 8 通道特化核；GPU 2.321 ms、CPU/GPU 139.87× |
 | P09 | `P09_任务直接依赖算子性能_v02.png` | 27 个任务直接依赖算子：GPU 耗时与 CPU/GPU 加速比 |
-| P10 | `P10_赛题附录算子性能_v02.png` | 28 个赛题附录算子：GPU 耗时与 CPU/GPU 加速比 |
-| P11 | `P11_原生基础算子性能_v02.png` | 53 个原生基础算子：GPU 耗时与 CPU/GPU 加速比 |
+| P10 | `P10_赛题附录算子性能_v02.png` | 26 个赛题附录其余算子：GPU 耗时与 CPU/GPU 加速比 |
+| P11 | `P11_原生基础算子性能_v02.png` | 28 个原生库非赛题算子：GPU 耗时与 CPU/GPU 加速比 |
 | P12 | `P12_任务一_五类路径公开算子链_v05_中文重构.png` | 任务一公开算子链与五类组合路径 |
 | P13 | `P13_Task1_L1-L6_实测_v11_报告看板.png` | 任务一 L1–L6 曲线、六级正式运行记录与 L6 对照 |
 | P14 | `P14_任务二_五类路径评分流程_v12_初版保留主内容.png` | 初版任务二主流程；右侧与底部采用 P12 式路径与总结视觉 |
@@ -22,6 +22,7 @@
 | P18 | `P18_核心亮点_三类结构重构策略_v08.png` | 邻域访存、频率归约、任务输出三类结构重构 |
 | P19 | `P19_AI工具使用说明_v08_比例与人工原创.png` | 代码辅助 90%、文档/PPT 辅助 60%、技术方案由团队提出 |
 
-P09 的 `task27` 是 `core53` 的优先子集；P10 的 `extended28` 与 `core53` 一起构成 `all81`。三页的 27、28、53 不作加和。
+P09/P10 的旧页面仅作图片历史参考；当前口径以 `task_appendix=53`、`task_used=27`、
+`appendix_only=26`、`native_only=28` 为准，不沿用旧页面集合名称。
 
 P06～P08 的前两项性能数据来自 `data/reports/units/benchmarks/summary.json`；P13、P15、P16、P17 来自 `data/reports/demo/*/scales/L1…L6/metrics.json` 及 validation 报告。GPU 优化前后提速尚未使用同规模 Git 基线复测，统一显示为 `X×`。

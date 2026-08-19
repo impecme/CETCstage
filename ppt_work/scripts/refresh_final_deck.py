@@ -78,11 +78,30 @@ def operator_summary() -> dict:
 def contract_sets() -> dict[str, list[str]]:
     payload = load(ROOT / "tests" / "contracts" / "operator_sets.json")["sets"]
     all81 = list(payload["all81"]["operators"])
-    extended = list(payload["extended28"]["operators"])
+
+    def resolve(name: str, stack: set[str] | None = None) -> list[str]:
+        stack = set() if stack is None else stack
+        if name in stack:
+            raise ValueError(f"operator set cycle: {name}")
+        item = payload[name]
+        stack.add(name)
+        if "operators" in item:
+            values = list(item["operators"])
+        else:
+            include = {key for child in item.get("include_sets", []) for key in resolve(child, stack)}
+            exclude = {key for child in item.get("exclude_sets", []) for key in resolve(child, stack)}
+            values = [key for key in all81 if key in include and key not in exclude]
+        stack.remove(name)
+        if len(values) != item["expected_count"]:
+            raise ValueError(f"operator set {name} count mismatch")
+        return values
+
     return {
-        "task27": list(payload["task27"]["operators"]),
-        "extended28": extended,
-        "core53": [item for item in all81 if item not in set(extended)],
+        "task_used": resolve("task_used"),
+        "appendix_only": resolve("appendix_only"),
+        "native_only": resolve("native_only"),
+        "task_appendix": resolve("task_appendix"),
+        "all81": all81,
     }
 
 
@@ -331,18 +350,22 @@ def operator_tier_page(page: str, set_name: str, title: str, conclusion: str) ->
             else:
                 rr(d, (end, y - 6, one_x, y + 6), 3, color)
             txt(d, (bar_x + bar_w + 7, y), f"{item['speed']:.2f}×", value_size, color, True, "lm")
-    set_labels = {"task27": "任务直接依赖集合", "extended28": "赛题附录扩展集合", "core53": "原生基础集合"}
+    set_labels = {
+        "task_used": "任务采用的赛题范围算子",
+        "appendix_only": "赛题附录中任务未采用的其余算子",
+        "native_only": "原生库非赛题集合",
+    }
     summary_band(d, f"总结：{set_labels[set_name]}的 {len(recs)} 个算子均列出 GPU 端到端耗时与 CPU/GPU 加速比。")
     save(im, page)
 
 
 def page_p09_p11() -> None:
-    operator_tier_page("P09_任务直接依赖算子性能_v02.png", "task27",
-                       "任务直接依赖的 27 个算子性能", "逐算子比较 CPU 与 ZQ500 GPU 端到端中位时间，展示任务链的公共算子基础。")
-    operator_tier_page("P10_赛题附录算子性能_v02.png", "extended28",
-                       "赛题附录扩展的 28 个算子性能", "扩展算子保持统一接口与测试口径，性能分布按模块集中呈现。")
-    operator_tier_page("P11_原生基础算子性能_v02.png", "core53",
-                       "原生基础 53 个算子性能", "基础算子覆盖波形、滤波、频谱、小波、雷达和检测等核心模块。")
+    operator_tier_page("P09_任务实际调用算子性能_v02.png", "task_used",
+                       "任务采用的 27 个赛题算子性能", "逐算子比较 CPU 与 ZQ500 GPU 端到端中位时间，展示任务链的公共算子基础。")
+    operator_tier_page("P10_赛题附录未调用算子性能_v02.png", "appendix_only",
+                       "赛题附录其余 26 个算子性能", "赛题范围内的其余算子保持统一接口与测试口径，性能分布按模块集中呈现。")
+    operator_tier_page("P11_原生库非赛题算子性能_v02.png", "native_only",
+                       "原生库非赛题的 28 个算子性能", "不在赛题附录的原生库算子同样完成实现与性能测试。")
 
 
 def curve(d: ImageDraw.ImageDraw, box: tuple[int, int, int, int], values: list[float],

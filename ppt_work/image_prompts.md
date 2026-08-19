@@ -14,7 +14,7 @@
 | P06 | Wiener 访存与资源复用 | 生图 |
 | P07 | Lomb-Scargle 并行归约重构 | 生图 |
 | P08 | Channelize Poly 形状感知分派 | 生图 |
-| P09–P11 | 27/28/53 算子性能 | 真实数据绘图 |
+| P09–P11 | 27/26/28 算子性能 | 真实数据绘图 |
 | P12 | 任务一公开算子链 | 生图 |
 | P13 | 任务一 L1–L6 性能 | 真实数据绘图 |
 | P14 | 任务二批量评分流程 | 生图 |
@@ -133,7 +133,7 @@
 
 ## 数据页与数据来源
 
-- P09、P10、P11：`data/reports/units/benchmarks/summary.json`，分别展示 27、28、53 个算子的 GPU 端到端耗时与 CPU/GPU 加速比。
+- P09、P10、P11：`data/reports/units/benchmarks/summary.json`，分别展示 27、26、28 个算子的 GPU 端到端耗时与 CPU/GPU 加速比。
 - P13、P15：`data/reports/demo/task1_radar/scales/L1…L6/metrics.json`、`data/reports/demo/task2_features/scales/L1…L6/metrics.json`；Task1 L6 为 `376.037 / 11.561 ms = 32.53×`，Task2 L6 为 `28595.400 / 27.148 ms = 1053.33×`。
 - P16：类型契约审计 `81/81`、任务 `2/2`、规模运行 `12/12`、计算步骤 `14/14`；任务数值验证来自对应 L6 `metrics.json`。
 - P17：使用 L1–L6 曲线和 L6 阶段 GPU 时间占比确定优化优先级。

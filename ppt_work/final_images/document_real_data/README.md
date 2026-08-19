@@ -11,7 +11,7 @@ python3 ppt_work/scripts/generate_document_real_figures.py --png
 - 图 20、图 21、图 31—图 33：还需要任务 demo 的 `data/generated/demo/<task>/output_samples/` CSV。
 - `manifest.json` 记录本次生成的文件、输入报告和缺失样本；缺失时不允许用 AI 或其他数据替代。
 
-`scripts/demo.sh --scale-sweep` 会在规模扫描后额外运行 L3，并覆盖 `output_samples/`。因此，图 20、图 21、图 31—图 33 的 L6 样本必须在规模扫描后直接运行两个 L6 可执行文件生成：
+`scripts/performance.sh --tasks --task both --scale all` 会按 L1-L6 运行任务。图 20、图 21、图 31—图 33 的 L6 样本应在任务性能运行后直接从对应报告或输出目录取用：
 
 ```bash
 sudo docker exec -it gpu_04 bash

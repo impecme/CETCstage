@@ -10,17 +10,29 @@ cmake --build build-zx --target zx_operator_autotune
 
 该 target 依赖 `tests/unit` 中已配置的算子测试程序，并通过
 `scripts/performance.sh` 使用冻结基线逐候选运行。注册表覆盖
-`tests/contracts/operator_sets.json` 的 81 个算子、L1-L6 六个精确规模；当前
-dry-run 共展开 248 个候选/算子组合。正式调优第一轮测量全部候选，第二轮只
-复测每个算子的静态路径和第一轮胜者；只有第二轮仍然更快的候选才写入 cache。
-结果目录按 `round1/` 和 `round2_winner_against_static/` 分开保存，最终查表 cache
-和可发布报告保存在仓库 `data/` 目录。也可以直接运行脚本：
+`tests/contracts/operator_sets.json` 的 81 个算子、L1-L6 六个精确规模，并额外覆盖
+Task1/Task2 的 12 个任务 workload。当前 dry-run 展开 812 个算子候选组合和 9
+个任务候选组合；其中没有安全并行变体的算子会显示明确的 static-only 原因，不会
+伪造参数。正式流程是筛选 `warmup=2/repeat=5`、每个 exact key 前 3 名加静态路径
+的 `warmup=5/repeat=30`、再对正式第一名和静态路径进行同协议复核；只有复核仍更快
+的候选才写入 cache。结果目录按 `operator_screening/`、`operator_formal_top3/`、
+`operator_winner_against_static/`、对应的 `task_*` 目录分开保存，最终查表 cache
+和 Auto/Static 报告位于外部运行目录。
+
+可恢复执行器还维护 `manifest.json`、`status.json`、`heartbeat.json`、`lock/`、
+`state/`、`results/`、`cache/` 和 `logs/`；每个候选的六个精确规模分别记录状态，
+同一 `--state-root --resume` 会跳过已通过的候选。
+
+也可以直接运行脚本：
 
 ```bash
 python3 scripts/zx_operator_autotune.py \
+  --scope all \
   --frozen-baseline data/baseline \
-  --output-root data/reports/autotune/tuning_runs \
+  --state-root /path/to/CETC_runs/zq500_autotune_full/state \
+  --output-root /path/to/CETC_runs/zq500_autotune_full/reports \
   --cache-output data/tuning/zx_tuning.json \
+  --resume \
   --warmup 5 --repeat 30 --skip-cpu-timing \
   --selection-validation winner-against-static
 
@@ -56,7 +68,7 @@ export CUSIGNAL_ZX_TUNING_CACHE="$PWD/data/tuning/zx_tuning.json"
 ```
 
 运行时使用完整 shape、语义参数、dtype/layout、设备指纹和 registry version
-`zx-c500-all81-v2` 精确匹配。关闭缓存、cache miss、JSON 损坏、设备不匹配、候选
+`zx-c500-all81-task-v3` 精确匹配。关闭缓存、cache miss、JSON 损坏、设备不匹配、候选
 配置不合法或 workspace 不满足时，均回退静态策略；不会在线测量或写回缓存。
 
 调试/验证可使用：
@@ -81,6 +93,8 @@ export CUSIGNAL_ZX_TUNING_FORCE='ca_cfar=ca_cfar_tiled_t256_e512'
 - FIR：real/complex `firfilter` 与 `lfilter` 共用有限的 1/2/4/8
   outputs-per-thread registry；只有实际进入 shared FIR 分支且语义满足的 workload
   才会应用该候选，其他 `lfilter` 通用递归路径保留静态回退。
+- 任务：Task1 的输入构造线程配置；Task2 的 direct 与 fixed radix-2 FFT 路由和线程
+  配置。任务候选以完整任务 GPU E2E 排序，公共算子阶段仍查冻结后的算子 cache。
 - 其余没有已验证可安全改变 tile、batch、plan 或 workspace 的算子保留
   `static_operator`，仍执行全量正确性和输入刷新检查，不伪造候选。
 
