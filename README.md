@@ -9,52 +9,38 @@
 
 ```text
 CETC/
-├── CMakeLists.txt                         顶层 CMake，生成 CPU/GPU 库和测试目标
+├── CMakeLists.txt                         顶层 CMake
 ├── README.md
-├── DELIVERY_FILES.txt                     同步到 ZQ500 容器的文件白名单
-├── auto_git.sh                            提交辅助脚本
 ├── include/
-│   └── cusignal/                          对外 API、公共类型和结果结构
+│   └── cusignal/                          对外 API 和公共类型
 │       ├── core/
-│       ├── bsplines/       correlate/     demod/        estimation/
-│       ├── filter_design/  filtering/     peak_finding/ radartools/
-│       ├── spectral/       waveforms/     wavelets/     windows/
-│       └── cusignal.hpp                   聚合头文件
+│       ├── radartools/
+│       ├── spectral/
+│       └── ...                             其他算子模块
 ├── src/
-│   ├── common/                            CPU/GPU 共享语义和参数检查
-│   ├── cpu/                               CPU reference 实现
-│   └── zhongkexin/                        ZQ500 GPU 实现和平台适配
+│   ├── common/                             CPU/GPU 共享语义
+│   ├── cpu/                                CPU reference
+│   └── zhongkexin/                         ZQ500 GPU 实现
 ├── demo/
-│   ├── common/
-│   ├── task1_radar/                       Task1 雷达任务 demo
-│   └── task2_features/                    Task2 特征任务 demo
+│   ├── task1_radar/                        Task1 雷达任务
+│   └── task2_features/                     Task2 特征任务
 ├── tests/
-│   ├── contracts/                         算子、规模和任务步骤契约
-│   ├── unit/                              公开算子单元测试
-│   │   ├── core_types/ bsplines/ correlate/ demod/
-│   │   ├── estimation/ filter_design/ filtering/ peak_finding/
-│   │   ├── radartools/ spectral/ waveforms/ wavelets/ windows/
-│   │   └── common/
-│   ├── platform/                          ZQ500 编译/运行库探针
-│   └── tools/                             测试辅助工具
+│   ├── contracts/                          算子和任务契约
+│   ├── unit/                               单元测试
+│   └── platform/                           ZQ500 平台测试
 ├── scripts/
-│   ├── build.sh                           构建入口
-│   ├── performance.sh                     性能测试入口
-│   ├── smoke.sh                           正确性烟测入口
-│   ├── clean.sh                           可再生运行数据清理
-│   ├── sync_to_container.sh               宿主机同步源码
-│   ├── replace_container_project.sh       容器内替换源码
-│   └── pull_results.sh                    容器结果取回
+│   ├── build.sh                            构建
+│   ├── performance.sh                      性能测试
+│   ├── smoke.sh                            正确性烟测
+│   └── ...                                 同步、取回和清理脚本
 ├── data/
-│   ├── reference/                         固定正确性参考数据
-│   ├── generated/                         可再生输入和输出样本
-│   ├── baseline/                          冻结 CPU/GPU 基线
-│   ├── tuning/                            Auto 离线查表缓存
-│   └── reports/                           静态、Auto 和任务报告
+│   ├── reference/                          固定参考数据
+│   ├── generated/                          可再生数据
+│   └── reports/                            性能和任务报告
 └── docs/
-    ├── ARCHITECTURE.md                    完整架构说明
-    ├── BUILD_AND_RUN.md                   构建与运行说明
-    └── ...                                性能、交付和平台兼容文档
+    ├── ARCHITECTURE.md                     架构说明
+    ├── BUILD_AND_RUN.md                    构建与运行
+    └── ...                                 其他说明文档
 ```
 
 ### 代码目录职责
