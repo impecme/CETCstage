@@ -779,6 +779,7 @@ for level in levels:
             "tuning_batch_tile": zx_config.get("batch_tile"),
             "tuning_memory_tier": zx_config.get("memory_tier"),
             "tuning_plan_variant": zx_config.get("plan_variant"),
+            "tuning_route": zx_config.get("route"),
             "tuning_workspace_bytes": zx_config.get("workspace_bytes"),
             "tuning_workspace_peak_bytes": zx_config.get("workspace_peak_bytes"),
             "tuning_device_id": zx_tuning.get("device", {}).get("id") if isinstance(zx_tuning.get("device"), dict) else None,

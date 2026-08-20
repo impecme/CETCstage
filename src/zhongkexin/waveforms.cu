@@ -16,6 +16,7 @@ namespace
     using cusignal::core::ZxGpuComplexSignal;
     using cusignal::core::ZxGpuRealSignal;
     using cusignal::core::RealSignal;
+    using cusignal::core::Shape;
     namespace tile = cusignal::zx_tile;
 
     constexpr int kThreadsPerBlock = 256;
@@ -47,7 +48,30 @@ namespace
             : static_cast<int>(tile::ceil_div(
                   size,
                   static_cast<std::size_t>(threads) *
-                      static_cast<std::size_t>(elements_per_thread)));
+                  static_cast<std::size_t>(elements_per_thread)));
+    }
+
+    int policy_block_count(std::size_t size)
+    {
+        const int threads = tile::active_threads(kThreadsPerBlock);
+        return size == 0
+            ? 0
+            : static_cast<int>(tile::ceil_div(size, static_cast<std::size_t>(threads)));
+    }
+
+    tile::PolicyDecision select_unit_impulse_policy(
+        const Shape &shape,
+        std::size_t flat_index)
+    {
+        return tile::select_if_inactive(tile::make_operator_key(
+            "waveforms/unit_impulse",
+            tile::OperatorFamily::Window,
+            {cusignal::core::shape_product(shape), flat_index, 0, 0, 0, 0},
+            2,
+            0,
+            1,
+            {static_cast<std::uint64_t>(shape.size()), 0, 0, 0, 0, 0, 0, 0, 0, 0},
+            1));
     }
 
     struct ChirpWorkspace
@@ -1075,8 +1099,11 @@ namespace cusignal
                     return core::ZxGpuRealSignal{};
                 }
 
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_unit_impulse_policy(Shape{size}, index));
                 core::ZxGpuRealSignal signal(size, true);
-                set_impulse_kernel<<<1, 1>>>(signal.data(), index);
+                set_impulse_kernel<<<policy_block_count(size), tile::active_threads(kThreadsPerBlock)>>>(
+                    signal.data(), index);
                 check_kernel_launch("set_impulse_kernel");
                 return signal;
             }
@@ -1119,6 +1146,8 @@ namespace cusignal
                 validate_shape_index(shape, nd_index);
 
                 const std::size_t element_count = core::shape_product(shape);
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_unit_impulse_policy(shape, flatten_index(shape, nd_index)));
                 waveforms_api::ZxGpuNdRealSignal result;
                 result.shape = shape;
                 result.values = core::make_zx_gpu_real_signal(element_count, 0.0);
@@ -1127,7 +1156,7 @@ namespace cusignal
                     return result;
                 }
 
-                set_impulse_kernel<<<1, 1>>>(
+                set_impulse_kernel<<<policy_block_count(element_count), tile::active_threads(kThreadsPerBlock)>>>(
                     result.values.data(), flatten_index(shape, nd_index));
                 check_kernel_launch("set_impulse_kernel nd");
                 return result;
@@ -1144,6 +1173,8 @@ namespace cusignal
                 validate_shape_index(shape, index);
 
                 const std::size_t element_count = core::shape_product(shape);
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_unit_impulse_policy(shape, flatten_index(shape, index)));
                 waveforms_api::ZxGpuNdRealSignal result;
                 result.shape = shape;
                 result.values = core::make_zx_gpu_real_signal(element_count, 0.0);
@@ -1152,7 +1183,7 @@ namespace cusignal
                     return result;
                 }
 
-                set_impulse_kernel<<<1, 1>>>(
+                set_impulse_kernel<<<policy_block_count(element_count), tile::active_threads(kThreadsPerBlock)>>>(
                     result.values.data(), flatten_index(shape, index));
                 check_kernel_launch("set_impulse_kernel explicit nd");
                 return result;

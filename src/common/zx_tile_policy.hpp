@@ -28,7 +28,7 @@ namespace cusignal
 {
     namespace zx_tile
     {
-        constexpr const char *kRegistryVersion = "zx-c500-all81-task-v3";
+        constexpr const char *kRegistryVersion = "zx-c500-appendix53-task-v5";
 
         enum class TileMode : std::uint8_t
         {
@@ -78,6 +78,14 @@ namespace cusignal
             FftBatch = 6,
             FirFilter = 7,
             Static = 8,
+            Window = 9,
+            Spectral = 10,
+            Filtering = 11,
+            Wavelet = 12,
+            RadarAux = 13,
+            Correlate1d = 14,
+            Kalman = 15,
+            FilterDesignGpu = 16,
         };
 
         enum class TaskScope : std::uint8_t
@@ -191,6 +199,14 @@ namespace cusignal
             LinearGenerated,
             RowGenerated,
             FirFilterGenerated,
+            WindowGenerated,
+            SpectralGenerated,
+            FilteringGenerated,
+            WaveletGenerated,
+            RadarAuxGenerated,
+            Correlate1dGenerated,
+            KalmanGenerated,
+            FilterDesignGenerated,
         };
 
         struct TileShape
@@ -232,6 +248,9 @@ namespace cusignal
             int batch_tile = 1;
             MemoryTier memory_tier = MemoryTier::M50;
             int plan_variant = 0;
+            // Family-specific route/path variant.  Unlike memory_tier this
+            // field identifies an actual precompiled dispatch branch.
+            int route = 0;
             // Filled from an offline measurement when a cache entry is
             // selected.  Registry candidates keep this at zero.
             std::size_t workspace_bytes = 0;
@@ -405,6 +424,22 @@ namespace cusignal
                     return "fir_filter";
                 case OperatorFamily::Static:
                     return "static";
+                case OperatorFamily::Window:
+                    return "window";
+                case OperatorFamily::Spectral:
+                    return "spectral";
+                case OperatorFamily::Filtering:
+                    return "filtering";
+                case OperatorFamily::Wavelet:
+                    return "wavelet";
+                case OperatorFamily::RadarAux:
+                    return "radar_aux";
+                case OperatorFamily::Correlate1d:
+                    return "correlate1d";
+                case OperatorFamily::Kalman:
+                    return "kalman";
+                case OperatorFamily::FilterDesignGpu:
+                    return "filter_design_gpu";
                 }
                 return "unknown";
             }
@@ -469,6 +504,39 @@ namespace cusignal
             ActivePolicyState previous_{};
         };
 
+        // Public helper implementations call one another (for example a
+        // named window can delegate to general_cosine).  Only the outermost
+        // operator owns the trace; nested helpers must not replace its exact
+        // workload key with an implementation detail.
+        class ScopedPolicyIfInactive
+        {
+        public:
+            explicit ScopedPolicyIfInactive(const PolicyDecision &decision)
+                : previous_(g_active_policy), owns_(!g_active_policy.valid)
+            {
+                if (owns_)
+                {
+                    g_active_policy.valid = true;
+                    g_active_policy.config = decision.config;
+                }
+            }
+
+            ScopedPolicyIfInactive(const ScopedPolicyIfInactive &) = delete;
+            ScopedPolicyIfInactive &operator=(const ScopedPolicyIfInactive &) = delete;
+
+            ~ScopedPolicyIfInactive()
+            {
+                if (owns_)
+                {
+                    g_active_policy = previous_;
+                }
+            }
+
+        private:
+            ActivePolicyState previous_{};
+            bool owns_ = false;
+        };
+
         class ScopedTaskPolicy
         {
         public:
@@ -512,6 +580,36 @@ namespace cusignal
         inline bool optimized_path(bool implementation_supported = true)
         {
             return implementation_supported && requested_mode() != TileMode::Legacy;
+        }
+
+        // These accessors are the common dispatch seam for the expanded
+        // families.  A kernel may use them only after ScopedPolicy has been
+        // created; otherwise they return the existing static defaults.
+        inline bool active_policy_valid()
+        {
+            return g_active_policy.valid;
+        }
+
+        inline int active_threads(int fallback = 256)
+        {
+            return g_active_policy.valid ? g_active_policy.config.tile.threads : fallback;
+        }
+
+        inline int active_route(int fallback = 0)
+        {
+            return g_active_policy.valid ? g_active_policy.config.route : fallback;
+        }
+
+        inline int active_plan_variant(int fallback = 0)
+        {
+            return g_active_policy.valid ? g_active_policy.config.plan_variant : fallback;
+        }
+
+        inline int active_elements_per_thread(int fallback = 1)
+        {
+            return g_active_policy.valid
+                       ? g_active_policy.config.tile.elements_per_thread
+                       : fallback;
         }
 
         inline bool legacy_path()
@@ -1004,6 +1102,22 @@ namespace cusignal
                 return "row_generated";
             case CandidateId::FirFilterGenerated:
                 return "fir_filter_generated";
+            case CandidateId::WindowGenerated:
+                return "window_generated";
+            case CandidateId::SpectralGenerated:
+                return "spectral_generated";
+            case CandidateId::FilteringGenerated:
+                return "filtering_generated";
+            case CandidateId::WaveletGenerated:
+                return "wavelet_generated";
+            case CandidateId::RadarAuxGenerated:
+                return "radar_aux_generated";
+            case CandidateId::Correlate1dGenerated:
+                return "correlate1d_generated";
+            case CandidateId::KalmanGenerated:
+                return "kalman_generated";
+            case CandidateId::FilterDesignGenerated:
+                return "filter_design_generated";
             }
             return "unknown";
         }
@@ -1036,7 +1150,15 @@ namespace cusignal
         {
             return value == CandidateId::LinearGenerated ||
                    value == CandidateId::RowGenerated ||
-                   value == CandidateId::FirFilterGenerated;
+                   value == CandidateId::FirFilterGenerated ||
+                   value == CandidateId::WindowGenerated ||
+                   value == CandidateId::SpectralGenerated ||
+                   value == CandidateId::FilteringGenerated ||
+                   value == CandidateId::WaveletGenerated ||
+                   value == CandidateId::RadarAuxGenerated ||
+                   value == CandidateId::Correlate1dGenerated ||
+                   value == CandidateId::KalmanGenerated ||
+                   value == CandidateId::FilterDesignGenerated;
         }
 
         inline std::string display_candidate_name(const CandidateConfig &config)
@@ -1093,6 +1215,46 @@ namespace cusignal
             if (name.rfind("fir_filter_t", 0) == 0)
             {
                 result = CandidateId::FirFilterGenerated;
+                return true;
+            }
+            if (name.rfind("window_t", 0) == 0)
+            {
+                result = CandidateId::WindowGenerated;
+                return true;
+            }
+            if (name.rfind("spectral_t", 0) == 0)
+            {
+                result = CandidateId::SpectralGenerated;
+                return true;
+            }
+            if (name.rfind("filtering_t", 0) == 0)
+            {
+                result = CandidateId::FilteringGenerated;
+                return true;
+            }
+            if (name.rfind("wavelet_t", 0) == 0)
+            {
+                result = CandidateId::WaveletGenerated;
+                return true;
+            }
+            if (name.rfind("radar_aux_t", 0) == 0)
+            {
+                result = CandidateId::RadarAuxGenerated;
+                return true;
+            }
+            if (name.rfind("correlate1d_t", 0) == 0)
+            {
+                result = CandidateId::Correlate1dGenerated;
+                return true;
+            }
+            if (name.rfind("kalman_t", 0) == 0)
+            {
+                result = CandidateId::KalmanGenerated;
+                return true;
+            }
+            if (name.rfind("filter_design_t", 0) == 0)
+            {
+                result = CandidateId::FilterDesignGenerated;
                 return true;
             }
             const CandidateId values[] = {
@@ -1172,7 +1334,15 @@ namespace cusignal
                 CandidateId::StaticOperator,
                 CandidateId::LinearGenerated,
                 CandidateId::RowGenerated,
-                CandidateId::FirFilterGenerated};
+                CandidateId::FirFilterGenerated,
+                CandidateId::WindowGenerated,
+                CandidateId::SpectralGenerated,
+                CandidateId::FilteringGenerated,
+                CandidateId::WaveletGenerated,
+                CandidateId::RadarAuxGenerated,
+                CandidateId::Correlate1dGenerated,
+                CandidateId::KalmanGenerated,
+                CandidateId::FilterDesignGenerated};
             for (CandidateId value : values)
             {
                 if (name == candidate_name(value))
@@ -1661,6 +1831,19 @@ namespace cusignal
                 config.optimized_route = true;
                 config.registry_name = candidate_name(id);
             }
+            if (id == CandidateId::WindowGenerated ||
+                id == CandidateId::SpectralGenerated ||
+                id == CandidateId::FilteringGenerated ||
+                id == CandidateId::WaveletGenerated ||
+                id == CandidateId::RadarAuxGenerated ||
+                id == CandidateId::Correlate1dGenerated ||
+                id == CandidateId::KalmanGenerated ||
+                id == CandidateId::FilterDesignGenerated)
+            {
+                config.tile = TileShape{256, 1, 1, 1, StageCount::Single};
+                config.optimized_route = true;
+                config.registry_name = candidate_name(id);
+            }
             return config;
         }
 
@@ -1682,9 +1865,41 @@ namespace cusignal
             {
                 prefix = "row_";
             }
-            else
+            else if (id == CandidateId::FirFilterGenerated)
             {
                 prefix = "fir_filter_";
+            }
+            else if (id == CandidateId::WindowGenerated)
+            {
+                prefix = "window_";
+            }
+            else if (id == CandidateId::SpectralGenerated)
+            {
+                prefix = "spectral_";
+            }
+            else if (id == CandidateId::FilteringGenerated)
+            {
+                prefix = "filtering_";
+            }
+            else if (id == CandidateId::WaveletGenerated)
+            {
+                prefix = "wavelet_";
+            }
+            else if (id == CandidateId::RadarAuxGenerated)
+            {
+                prefix = "radar_aux_";
+            }
+            else if (id == CandidateId::Correlate1dGenerated)
+            {
+                prefix = "correlate1d_";
+            }
+            else if (id == CandidateId::KalmanGenerated)
+            {
+                prefix = "kalman_";
+            }
+            else
+            {
+                prefix = "filter_design_";
             }
             if (name.rfind(prefix, 0) != 0)
             {
@@ -1700,6 +1915,10 @@ namespace cusignal
             int buffer_count = 1;
             int memory_tier = 50;
             int plan_variant = 0;
+            int route = 0;
+            int tile_rows = 1;
+            int tile_cols = 1;
+            int scan_elements = 0;
             std::size_t begin = prefix.size();
             while (begin < name.size())
             {
@@ -1733,6 +1952,11 @@ namespace cusignal
                 case 'b': batch_tile = static_cast<int>(parsed); break;
                 case 'u': buffer_count = static_cast<int>(parsed); break;
                 case 'm': memory_tier = static_cast<int>(parsed); break;
+                case 'p': plan_variant = static_cast<int>(parsed); break;
+                case 'o': route = static_cast<int>(parsed); break;
+                case 'y': tile_rows = static_cast<int>(parsed); break;
+                case 'z': tile_cols = static_cast<int>(parsed); break;
+                case 'q': scan_elements = static_cast<int>(parsed); break;
                 default: return false;
                 }
                 if (end == std::string::npos) break;
@@ -1754,10 +1978,23 @@ namespace cusignal
             config.buffer_count = buffer_count;
             config.memory_tier = static_cast<MemoryTier>(memory_tier);
             config.plan_variant = plan_variant;
-            config.tile_rows = rows_per_block;
-            config.tile_cols = 1;
+            config.route = route;
+            config.scan_elements = scan_elements;
+            config.tile_rows = tile_rows;
+            config.tile_cols = tile_cols;
+            if (tile_rows == 1 && tile_cols == 1 && id == CandidateId::FirFilterGenerated)
+            {
+                config.tile_rows = rows_per_block;
+            }
             config.optimized_route = true;
-            return valid_shape(config.tile);
+            return valid_shape(config.tile) &&
+                   config.tile.threads >= 64 && config.tile.threads <= 512 &&
+                   config.tile.elements_per_thread >= 1 && config.tile.elements_per_thread <= 8 &&
+                   config.tile.vector_width >= 1 && config.tile.vector_width <= 4 &&
+                   config.tile.rows_per_block >= 1 && config.tile.rows_per_block <= 8 &&
+                   config.buffer_count >= 1 && config.buffer_count <= 2 &&
+                   config.batch_tile >= 1 && config.batch_tile <= 8 &&
+                   config.route >= 0 && config.route <= 8;
         }
 
         inline CandidateId static_candidate(OperatorFamily family)
@@ -1781,6 +2018,14 @@ namespace cusignal
             case OperatorFamily::FirFilter:
                 return CandidateId::FirFilterStatic;
             case OperatorFamily::Static:
+            case OperatorFamily::Window:
+            case OperatorFamily::Spectral:
+            case OperatorFamily::Filtering:
+            case OperatorFamily::Wavelet:
+            case OperatorFamily::RadarAux:
+            case OperatorFamily::Correlate1d:
+            case OperatorFamily::Kalman:
+            case OperatorFamily::FilterDesignGpu:
                 return CandidateId::StaticOperator;
             }
             return CandidateId::CfarStatic;
@@ -1807,6 +2052,14 @@ namespace cusignal
             case OperatorFamily::FirFilter:
                 return CandidateId::FirFilterStatic;
             case OperatorFamily::Static:
+            case OperatorFamily::Window:
+            case OperatorFamily::Spectral:
+            case OperatorFamily::Filtering:
+            case OperatorFamily::Wavelet:
+            case OperatorFamily::RadarAux:
+            case OperatorFamily::Correlate1d:
+            case OperatorFamily::Kalman:
+            case OperatorFamily::FilterDesignGpu:
                 return CandidateId::StaticOperator;
             }
             return CandidateId::CfarLegacy;
@@ -1837,6 +2090,22 @@ namespace cusignal
                        id == CandidateId::FirFilterGenerated;
             case OperatorFamily::Static:
                 return id == CandidateId::StaticOperator;
+            case OperatorFamily::Window:
+                return id == CandidateId::StaticOperator || id == CandidateId::WindowGenerated;
+            case OperatorFamily::Spectral:
+                return id == CandidateId::StaticOperator || id == CandidateId::SpectralGenerated;
+            case OperatorFamily::Filtering:
+                return id == CandidateId::StaticOperator || id == CandidateId::FilteringGenerated;
+            case OperatorFamily::Wavelet:
+                return id == CandidateId::StaticOperator || id == CandidateId::WaveletGenerated;
+            case OperatorFamily::RadarAux:
+                return id == CandidateId::StaticOperator || id == CandidateId::RadarAuxGenerated;
+            case OperatorFamily::Correlate1d:
+                return id == CandidateId::StaticOperator || id == CandidateId::Correlate1dGenerated;
+            case OperatorFamily::Kalman:
+                return id == CandidateId::StaticOperator || id == CandidateId::KalmanGenerated;
+            case OperatorFamily::FilterDesignGpu:
+                return id == CandidateId::StaticOperator || id == CandidateId::FilterDesignGenerated;
             }
             return false;
         }
@@ -1965,6 +2234,7 @@ namespace cusignal
                 int batch_tile = 1;
                 int memory_tier = 50;
                 int plan_variant = 0;
+                int route = 0;
                 std::size_t workspace_bytes = 0;
                 std::size_t workspace_peak_bytes = 0;
                 double gpu_e2e_median_ms = 0.0;
@@ -2449,6 +2719,10 @@ namespace cusignal
                     {
                         entry.plan_variant = static_cast<int>(number);
                     }
+                    if (json_number_value(config_object, "route", number))
+                    {
+                        entry.route = static_cast<int>(number);
+                    }
                     if (json_number_value(config_object, "workspace_bytes", number))
                     {
                         entry.workspace_bytes = static_cast<std::size_t>(number);
@@ -2633,7 +2907,8 @@ namespace cusignal
                 (config.memory_tier != MemoryTier::M50 &&
                  config.memory_tier != MemoryTier::M75 &&
                  config.memory_tier != MemoryTier::M90) ||
-                config.plan_variant < 0 || config.plan_variant > 8)
+                config.plan_variant < 0 || config.plan_variant > 8 ||
+                config.route < 0 || config.route > 8)
             {
                 return false;
             }
@@ -2731,7 +3006,8 @@ namespace cusignal
                    config.buffer_count == entry.buffer_count &&
                    config.batch_tile == entry.batch_tile &&
                    static_cast<int>(config.memory_tier) == entry.memory_tier &&
-                   config.plan_variant == entry.plan_variant;
+                   config.plan_variant == entry.plan_variant &&
+                   config.route == entry.route;
         }
 
         inline void apply_cache_config(
@@ -2751,6 +3027,7 @@ namespace cusignal
             config.batch_tile = entry.batch_tile;
             config.memory_tier = static_cast<MemoryTier>(entry.memory_tier);
             config.plan_variant = entry.plan_variant;
+            config.route = entry.route;
             config.optimized_route = true;
         }
 
@@ -2896,6 +3173,20 @@ namespace cusignal
 
             set_policy_trace(family, key, static_config, "static", "cache_miss_or_invalid", device);
             return PolicyDecision{static_config, key.canonical(), "static", "cache_miss_or_invalid", false};
+        }
+
+        inline PolicyDecision select_if_inactive(const TuningKey &key)
+        {
+            if (g_active_policy.valid)
+            {
+                return PolicyDecision{
+                    g_active_policy.config,
+                    key.canonical(),
+                    "nested",
+                    "outer_operator_policy",
+                    false};
+            }
+            return select(key);
         }
 
         inline TaskTuningKey make_task_key(

@@ -165,6 +165,40 @@ namespace
         return count == 0 ? 0 : static_cast<int>((count + kThreadsPerBlock - 1) / kThreadsPerBlock);
     }
 
+    int policy_threads()
+    {
+        return tile::active_threads(kThreadsPerBlock);
+    }
+
+    int policy_block_count(std::size_t count)
+    {
+        const int threads = policy_threads();
+        return count == 0 ? 0 : static_cast<int>(tile::ceil_div(
+            count, static_cast<std::size_t>(threads)));
+    }
+
+    tile::PolicyDecision select_correlate1d_policy(
+        const char *operator_id,
+        const Shape &left_shape,
+        const Shape &right_shape,
+        const Shape &output_shape,
+        int dtype,
+        const std::string &mode,
+        const std::string &method)
+    {
+        return tile::select_if_inactive(tile::make_operator_key(
+            operator_id,
+            tile::OperatorFamily::Correlate1d,
+            {cusignal::core::shape_product(left_shape), cusignal::core::shape_product(right_shape),
+             cusignal::core::shape_product(output_shape), 0, 0, 0},
+            3,
+            dtype,
+            1,
+            {tile::stable_string_hash(mode), tile::stable_string_hash(method),
+             static_cast<std::uint64_t>(left_shape.size()), 0, 0, 0, 0, 0, 0, 0},
+            3));
+    }
+
     template <typename SizeContainer>
     IndexVector to_index_vector(const SizeContainer &values)
     {
@@ -346,7 +380,7 @@ namespace
 
         ScopedZxGpuEvents events;
         return events.measure([&]() {
-            pack_real_fft_inputs_kernel<<<block_count(fft_size_u), kThreadsPerBlock>>>(
+            pack_real_fft_inputs_kernel<<<policy_block_count(fft_size_u), policy_threads()>>>(
                 left.data(),
                 left.size(),
                 right.data(),
@@ -361,7 +395,7 @@ namespace
                     reinterpret_cast<cufftComplex *>(packed),
                     CUFFT_FORWARD),
                 "cufftExecC2C(correlate real forward)");
-            multiply_fft_inputs_kernel<<<block_count(fft_size_u), kThreadsPerBlock>>>(packed, fft_size_u);
+            multiply_fft_inputs_kernel<<<policy_block_count(fft_size_u), policy_threads()>>>(packed, fft_size_u);
             check_kernel_launch("multiply_fft_inputs_kernel(real)");
             cusignal::core::platform::throw_on_cufft_error(
                 cufftExecC2C(
@@ -370,7 +404,7 @@ namespace
                     reinterpret_cast<cufftComplex *>(packed),
                     CUFFT_INVERSE),
                 "cufftExecC2C(correlate real inverse)");
-            extract_real_fft_correlation_kernel<<<block_count(output.size()), kThreadsPerBlock>>>(
+            extract_real_fft_correlation_kernel<<<policy_block_count(output.size()), policy_threads()>>>(
                 packed,
                 crop_start,
                 output.size(),
@@ -396,7 +430,7 @@ namespace
 
         ScopedZxGpuEvents events;
         return events.measure([&]() {
-            pack_complex_fft_inputs_kernel<<<block_count(fft_size_u), kThreadsPerBlock>>>(
+            pack_complex_fft_inputs_kernel<<<policy_block_count(fft_size_u), policy_threads()>>>(
                 reinterpret_cast<const float2 *>(left.data()),
                 left.size(),
                 reinterpret_cast<const float2 *>(right.data()),
@@ -411,7 +445,7 @@ namespace
                     reinterpret_cast<cufftComplex *>(packed),
                     CUFFT_FORWARD),
                 "cufftExecC2C(correlate complex forward)");
-            multiply_fft_inputs_kernel<<<block_count(fft_size_u), kThreadsPerBlock>>>(packed, fft_size_u);
+            multiply_fft_inputs_kernel<<<policy_block_count(fft_size_u), policy_threads()>>>(packed, fft_size_u);
             check_kernel_launch("multiply_fft_inputs_kernel(complex)");
             cusignal::core::platform::throw_on_cufft_error(
                 cufftExecC2C(
@@ -420,7 +454,7 @@ namespace
                     reinterpret_cast<cufftComplex *>(packed),
                     CUFFT_INVERSE),
                 "cufftExecC2C(correlate complex inverse)");
-            extract_complex_fft_correlation_kernel<<<block_count(output.size()), kThreadsPerBlock>>>(
+            extract_complex_fft_correlation_kernel<<<policy_block_count(output.size()), policy_threads()>>>(
                 packed,
                 crop_start,
                 output.size(),
@@ -956,6 +990,16 @@ namespace cusignal
 
                 const Shape output_shape = detail::output_shape(left.shape(), right.shape(), normalized_mode);
                 const Shape start = detail::crop_start(left.shape(), right.shape(), normalized_mode);
+                const std::string normalized_method = detail::normalize_method(method);
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_correlate1d_policy(
+                        "correlate/correlate",
+                        left.shape(),
+                        right.shape(),
+                        output_shape,
+                        0,
+                        normalized_mode,
+                        normalized_method));
                 ZxGpuRealArray output(output_shape, true);
                 if (output.size() == 0)
                 {
@@ -963,7 +1007,10 @@ namespace cusignal
                     return output;
                 }
 
-                if (should_use_fft_1d(left.shape(), right.shape(), method))
+                const bool route_fft = tile::active_route() >= 3 &&
+                                       left.rank() == 1 && right.rank() == 1 &&
+                                       normalized_method != "direct";
+                if (route_fft || should_use_fft_1d(left.shape(), right.shape(), normalized_method))
                 {
                     g_last_correlation_used_fft = true;
                     g_last_kernel_ms = run_real_fft_correlation(left, right, start.front(), output);
@@ -973,7 +1020,7 @@ namespace cusignal
                 upload_shape_metadata(left.shape(), right.shape(), output_shape, start);
                 ScopedZxGpuEvents events;
                 g_last_kernel_ms = events.measure([&]() {
-                    correlate_nd_real_kernel<<<block_count(output.size()), kThreadsPerBlock>>>(
+                    correlate_nd_real_kernel<<<policy_block_count(output.size()), policy_threads()>>>(
                         output.data(),
                         left.data(),
                         right.data(),
@@ -1011,6 +1058,16 @@ namespace cusignal
 
                 const Shape output_shape = detail::output_shape(left.shape(), right.shape(), normalized_mode);
                 const Shape start = detail::crop_start(left.shape(), right.shape(), normalized_mode);
+                const std::string normalized_method = detail::normalize_method(method);
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_correlate1d_policy(
+                        "correlate/correlate",
+                        left.shape(),
+                        right.shape(),
+                        output_shape,
+                        1,
+                        normalized_mode,
+                        normalized_method));
                 ZxGpuComplexArray output(output_shape, true);
                 if (output.size() == 0)
                 {
@@ -1018,7 +1075,10 @@ namespace cusignal
                     return output;
                 }
 
-                if (should_use_fft_1d(left.shape(), right.shape(), method))
+                const bool route_fft = tile::active_route() >= 3 &&
+                                       left.rank() == 1 && right.rank() == 1 &&
+                                       normalized_method != "direct";
+                if (route_fft || should_use_fft_1d(left.shape(), right.shape(), normalized_method))
                 {
                     g_last_correlation_used_fft = true;
                     g_last_kernel_ms = run_complex_fft_correlation(left, right, start.front(), output);
@@ -1028,7 +1088,7 @@ namespace cusignal
                 upload_shape_metadata(left.shape(), right.shape(), output_shape, start);
                 ScopedZxGpuEvents events;
                 g_last_kernel_ms = events.measure([&]() {
-                    correlate_nd_complex_kernel<<<block_count(output.size()), kThreadsPerBlock>>>(
+                    correlate_nd_complex_kernel<<<policy_block_count(output.size()), policy_threads()>>>(
                         output.data(),
                         left.data(),
                         right.data(),
@@ -1356,9 +1416,18 @@ namespace cusignal
                 }
 
                 ZxGpuIndexSignal output(static_cast<std::size_t>(count), true);
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_correlate1d_policy(
+                        "correlate/correlation_lags",
+                        Shape{static_cast<std::size_t>(in1_len)},
+                        Shape{static_cast<std::size_t>(in2_len)},
+                        Shape{static_cast<std::size_t>(count)},
+                        0,
+                        normalized_mode,
+                        "lags"));
                 ScopedZxGpuEvents events;
                 g_last_kernel_ms = events.measure([&]() {
-                    correlation_lags_kernel<<<block_count(output.size()), kThreadsPerBlock>>>(
+                    correlation_lags_kernel<<<policy_block_count(output.size()), policy_threads()>>>(
                         output.data(),
                         count,
                         start);

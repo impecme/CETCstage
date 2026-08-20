@@ -130,6 +130,27 @@ namespace
             : static_cast<int>(tile::ceil_div(size, static_cast<std::size_t>(tile::linear_shape(size).threads)));
     }
 
+    int policy_block_count(std::size_t size)
+    {
+        const int threads = tile::active_threads(kThreadsPerBlock);
+        return size == 0
+            ? 0
+            : static_cast<int>(tile::ceil_div(size, static_cast<std::size_t>(threads)));
+    }
+
+    tile::PolicyDecision select_window_policy(const char *operator_id, std::size_t size, bool sym)
+    {
+        return tile::select_if_inactive(tile::make_operator_key(
+            operator_id,
+            tile::OperatorFamily::Window,
+            {size, 0, 0, 0, 0, 0},
+            1,
+            0,
+            1,
+            {sym ? 1ULL : 0ULL, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+            1));
+    }
+
     struct TimingEvents
     {
         cudaEvent_t start = nullptr;
@@ -1150,7 +1171,8 @@ namespace
 
         ScopedZxGpuEvents events;
         g_last_kernel_ms = static_cast<float>(events.measure([&]() {
-            fill_window_kernel<<<block_count(static_cast<std::size_t>(extended.size)), kThreadsPerBlock>>>(
+            fill_window_kernel<<<policy_block_count(static_cast<std::size_t>(extended.size)),
+                                 tile::active_threads(kThreadsPerBlock)>>>(
                 op,
                 extended.size,
                 resolved_coefficients,
@@ -1162,7 +1184,8 @@ namespace
                 workspace.output.get());
             check_kernel_launch("fill_window_kernel");
 
-            copy_window_output_kernel<<<block_count(static_cast<std::size_t>(size)), kThreadsPerBlock>>>(
+            copy_window_output_kernel<<<policy_block_count(static_cast<std::size_t>(size)),
+                                        tile::active_threads(kThreadsPerBlock)>>>(
                 workspace.output.get(),
                 static_cast<std::size_t>(size),
                 result.data());
@@ -1883,6 +1906,8 @@ namespace cusignal
             {
                 detail::validate_size(nx);
                 const bool sym = !fftbins;
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_window_policy("windows/get_window", static_cast<std::size_t>(nx), sym));
 
                 if (std::holds_alternative<core::ZxGpuRealSignal>(window))
                 {
@@ -2034,21 +2059,29 @@ namespace cusignal
 
             core::ZxGpuRealSignal barthann(int size, bool sym)
             {
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_window_policy("windows/barthann", static_cast<std::size_t>(size), sym));
                 return barthann_fast(size, sym);
             }
 
             core::ZxGpuRealSignal bartlett(int size, bool sym)
             {
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_window_policy("windows/bartlett", static_cast<std::size_t>(size), sym));
                 return bartlett_fast(size, sym);
             }
 
             core::ZxGpuRealSignal blackman(int size, bool sym)
             {
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_window_policy("windows/blackman", static_cast<std::size_t>(size), sym));
                 return general_cosine(size, core::RealSignal{0.42, 0.50, 0.08}, sym);
             }
 
             core::ZxGpuRealSignal blackmanharris(int size, bool sym)
             {
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_window_policy("windows/blackmanharris", static_cast<std::size_t>(size), sym));
                 return general_cosine(
                     size,
                     core::RealSignal{0.35875, 0.48829, 0.14128, 0.01168},
@@ -2057,27 +2090,37 @@ namespace cusignal
 
             core::ZxGpuRealSignal bohman(int size, bool sym)
             {
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_window_policy("windows/bohman", static_cast<std::size_t>(size), sym));
                 return bohman_fast(size, sym);
             }
 
             core::ZxGpuRealSignal boxcar(int size, bool sym)
             {
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_window_policy("windows/boxcar", static_cast<std::size_t>(size), sym));
                 (void)sym;
                 return boxcar_fast(size);
             }
 
             core::ZxGpuRealSignal chebwin(int size, float at, bool sym)
             {
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_window_policy("windows/chebwin", static_cast<std::size_t>(size), sym));
                 return chebwin_with_cufft(size, at, sym);
             }
 
             core::ZxGpuRealSignal cosine(int size, bool sym)
             {
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_window_policy("windows/cosine", static_cast<std::size_t>(size), sym));
                 return cosine_fast(size, sym);
             }
 
             core::ZxGpuRealSignal exponential(int size, float tau, bool sym)
             {
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_window_policy("windows/exponential", static_cast<std::size_t>(size), sym));
                 if (!(tau > 0.0))
                 {
                     throw std::invalid_argument("tau must be > 0");
@@ -2089,6 +2132,8 @@ namespace cusignal
 
             core::ZxGpuRealSignal exponential(int size, float center, float tau, bool sym)
             {
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_window_policy("windows/exponential", static_cast<std::size_t>(size), sym));
                 if (!(tau > 0.0))
                 {
                     throw std::invalid_argument("tau must be > 0");
@@ -2102,6 +2147,8 @@ namespace cusignal
 
             core::ZxGpuRealSignal flattop(int size, bool sym)
             {
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_window_policy("windows/flattop", static_cast<std::size_t>(size), sym));
                 return general_cosine(
                     size,
                     core::RealSignal{
@@ -2115,6 +2162,8 @@ namespace cusignal
 
             core::ZxGpuRealSignal gaussian(int size, float std, bool sym)
             {
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_window_policy("windows/gaussian", static_cast<std::size_t>(size), sym));
                 if (!(std > 0.0))
                 {
                     throw std::invalid_argument("std must be > 0");
@@ -2124,6 +2173,8 @@ namespace cusignal
 
             core::ZxGpuRealSignal general_cosine(int size, const core::RealSignalLike &a, bool sym)
             {
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_window_policy("windows/general_cosine", static_cast<std::size_t>(size), sym));
                 if (const auto *device_coefficients = std::get_if<core::ZxGpuRealSignal>(&a))
                 {
                     if (device_coefficients->empty())
@@ -2153,6 +2204,8 @@ namespace cusignal
 
             core::ZxGpuRealSignal general_gaussian(int size, float p, float sig, bool sym)
             {
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_window_policy("windows/general_gaussian", static_cast<std::size_t>(size), sym));
                 if (!(p > 0.0))
                 {
                     throw std::invalid_argument("p must be > 0");
@@ -2166,26 +2219,36 @@ namespace cusignal
 
             core::ZxGpuRealSignal general_hamming(int size, float alpha, bool sym)
             {
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_window_policy("windows/general_hamming", static_cast<std::size_t>(size), sym));
                 return general_cosine_two_coeff_fast(size, sym, alpha, 1.0f - alpha);
             }
 
             core::ZxGpuRealSignal hamming(int size, bool sym)
             {
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_window_policy("windows/hamming", static_cast<std::size_t>(size), sym));
                 return hamming_exact_pair_fast(size, sym);
             }
 
             core::ZxGpuRealSignal hann(int size, bool sym)
             {
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_window_policy("windows/hann", static_cast<std::size_t>(size), sym));
                 return general_hamming(size, 0.5f, sym);
             }
 
             core::ZxGpuRealSignal kaiser(int size, float beta, bool sym)
             {
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_window_policy("windows/kaiser", static_cast<std::size_t>(size), sym));
                 return kaiser_with_symmetric_kernel(size, beta, sym);
             }
 
             core::ZxGpuRealSignal nuttall(int size, bool sym)
             {
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_window_policy("windows/nuttall", static_cast<std::size_t>(size), sym));
                 return general_cosine(
                     size,
                     core::RealSignal{0.3635819, 0.4891775, 0.1365995, 0.0106411},
@@ -2194,11 +2257,15 @@ namespace cusignal
 
             core::ZxGpuRealSignal parzen(int size, bool sym)
             {
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_window_policy("windows/parzen", static_cast<std::size_t>(size), sym));
                 return parzen_fast(size, sym);
             }
 
             core::ZxGpuRealSignal taylor(int size, int nbar, float sll, bool norm, bool sym)
             {
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_window_policy("windows/taylor", static_cast<std::size_t>(size), sym));
                 const RealSignal coefficients = detail::build_taylor_coefficients(nbar, sll);
                 const detail::ExtendedLength extended = detail::extend(size, sym);
                 const float scale = detail::taylor_scale(
@@ -2211,11 +2278,15 @@ namespace cusignal
 
             core::ZxGpuRealSignal triang(int size, bool sym)
             {
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_window_policy("windows/triang", static_cast<std::size_t>(size), sym));
                 return triang_fast(size, sym);
             }
 
             core::ZxGpuRealSignal tukey(int size, float alpha, bool sym)
             {
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_window_policy("windows/tukey", static_cast<std::size_t>(size), sym));
                 return tukey_fast(size, alpha, sym);
             }
 

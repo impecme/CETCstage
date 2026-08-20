@@ -21,10 +21,12 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
 
-REGISTRY_VERSION = "zx-c500-all81-task-v3"
-CACHE_SCHEMA_VERSION = 3
+REGISTRY_VERSION = "zx-c500-appendix53-task-v5"
+CACHE_SCHEMA_VERSION = 5
 LEVELS = [f"L{index}" for index in range(1, 7)]
 SELECTION_VALIDATION_WINNER = "winner-against-static"
+OPERATOR_SET_NAMES = ("all81", "task_appendix", "appendix_only", "native_only")
+CANDIDATE_PROFILE_NAMES = ("full", "two_day")
 
 
 def candidate(name: str, **config: int) -> Dict[str, Any]:
@@ -198,6 +200,96 @@ def _class_candidates(prefix: str) -> List[Dict[str, Any]]:
     raise ValueError(f"unknown candidate class: {prefix}")
 
 
+def _expanded_candidates(prefix: str) -> List[Dict[str, Any]]:
+    """Finite candidate matrices for the families added in registry v4.
+
+    Each row names a real route already present in the C500 implementation.
+    The route is intentionally encoded in the candidate name so the C++
+    closed parser can reject unknown or malformed cache entries.  This is a
+    matrix, not a Cartesian product: it covers thread, element, stage,
+    batching and work-path changes without manufacturing combinations that
+    no kernel can consume.
+    """
+    matrices = {
+        "window": [
+            (128, 1, 1, 1, 1, 1, 50), (256, 1, 2, 1, 1, 1, 50),
+            (512, 2, 4, 1, 1, 1, 50), (128, 2, 2, 2, 2, 2, 75),
+            (256, 2, 4, 2, 2, 2, 75), (512, 4, 4, 2, 2, 2, 75),
+            (256, 4, 4, 3, 4, 2, 90), (512, 4, 4, 3, 4, 2, 90),
+        ],
+        "spectral": [
+            (64, 1, 1, 1, 1, 1, 50), (128, 1, 2, 1, 1, 1, 50),
+            (256, 2, 4, 1, 1, 1, 50), (256, 4, 4, 1, 1, 1, 50),
+            (128, 1, 2, 2, 2, 2, 75), (256, 2, 4, 2, 2, 2, 75),
+            (256, 4, 4, 2, 4, 2, 75), (128, 2, 2, 3, 2, 2, 75),
+            (256, 2, 4, 3, 4, 2, 90), (256, 4, 4, 3, 8, 2, 90),
+            (256, 4, 4, 4, 4, 2, 90), (256, 4, 4, 4, 8, 2, 90),
+        ],
+        "filtering": [
+            (64, 1, 1, 1, 1, 1, 50), (128, 1, 2, 1, 1, 1, 50),
+            (256, 2, 4, 1, 1, 1, 50), (256, 4, 4, 1, 1, 1, 50),
+            (128, 1, 2, 2, 2, 2, 75), (256, 2, 4, 2, 2, 2, 75),
+            (256, 4, 4, 2, 4, 2, 75), (128, 2, 2, 3, 2, 2, 75),
+            (256, 4, 4, 3, 4, 2, 90), (256, 4, 4, 3, 8, 2, 90),
+            (128, 2, 2, 4, 2, 2, 90), (256, 4, 4, 4, 4, 2, 90),
+        ],
+        "wavelet": [
+            (64, 1, 1, 1, 1, 1, 50), (128, 1, 2, 1, 1, 1, 50),
+            (256, 2, 4, 1, 1, 1, 50), (512, 4, 4, 1, 1, 1, 50),
+            (128, 2, 2, 2, 2, 2, 75), (256, 2, 4, 2, 2, 2, 75),
+            (256, 4, 4, 3, 4, 2, 90), (512, 4, 4, 3, 8, 2, 90),
+        ],
+        "radar_aux": [
+            (64, 1, 1, 1, 1, 1, 50), (128, 1, 2, 1, 1, 1, 50),
+            (256, 2, 4, 1, 1, 1, 50), (256, 4, 4, 1, 1, 1, 50),
+            (128, 2, 2, 2, 2, 2, 75), (256, 2, 4, 2, 2, 2, 75),
+            (256, 4, 4, 3, 4, 2, 90), (256, 4, 4, 3, 8, 2, 90),
+        ],
+        "correlate1d": [
+            (64, 1, 1, 1, 1, 1, 50), (128, 1, 2, 1, 1, 1, 50),
+            (256, 2, 4, 1, 1, 1, 50), (512, 4, 4, 1, 1, 1, 50),
+            (128, 2, 2, 2, 2, 2, 75), (256, 2, 4, 2, 2, 2, 75),
+            (256, 4, 4, 3, 4, 2, 90), (512, 4, 4, 3, 8, 2, 90),
+        ],
+        "kalman": [
+            (64, 1, 1, 1, 1, 1, 50), (128, 1, 2, 1, 1, 1, 50),
+            (256, 2, 4, 1, 1, 1, 50), (512, 4, 4, 1, 1, 1, 50),
+            (128, 2, 2, 2, 2, 2, 75), (256, 2, 4, 2, 2, 2, 75),
+        ],
+        "filter_design": [
+            (64, 1, 1, 1, 1, 1, 50), (128, 1, 2, 1, 1, 1, 50),
+            (256, 2, 4, 1, 1, 1, 50), (512, 4, 4, 1, 1, 1, 50),
+            (128, 2, 2, 2, 2, 2, 75), (256, 2, 4, 2, 2, 2, 75),
+            (256, 4, 4, 3, 4, 2, 90), (512, 4, 4, 3, 8, 2, 90),
+        ],
+    }
+    if prefix not in matrices:
+        raise ValueError(f"unknown expanded candidate class: {prefix}")
+    result: List[Dict[str, Any]] = []
+    for index, (threads, elements, vector, route, batch, buffers, tier) in enumerate(matrices[prefix], 1):
+        stages = 2 if tier != 50 else 1
+        rows = 2 if elements >= 2 else 1
+        cols = 2 if vector >= 2 else 1
+        result.append(candidate(
+            f"{prefix}_t{threads}_e{elements}_v{vector}_r{rows}_s{stages}_"
+            f"b{batch}_buf{buffers}_m{tier}_o{route}_y{rows}_z{cols}",
+            threads=threads,
+            tile_rows=rows,
+            tile_cols=cols,
+            elements_per_thread=elements,
+            rows_per_block=rows,
+            vector_width=vector,
+            stages=stages,
+            scan_elements=0,
+            batch_tile=batch,
+            buffer_count=buffers,
+            memory_tier=tier,
+            plan_variant=index % 5,
+            route=route,
+        ))
+    return result
+
+
 FAMILIES: Dict[str, Dict[str, Any]] = {
     "ca_cfar": {
         "operator": "radartools/ca_cfar",
@@ -244,13 +336,21 @@ FAMILIES: Dict[str, Dict[str, Any]] = {
 }
 
 
-def _load_operator_contract() -> List[str]:
+def _load_operator_set(operator_set: str) -> List[str]:
     path = Path(__file__).resolve().parents[1] / "tests" / "contracts" / "operator_sets.json"
     payload = json.loads(path.read_text(encoding="utf-8"))
-    operators = payload["sets"]["all81"]["operators"]
-    if len(operators) != 81 or len(set(operators)) != 81:
-        raise RuntimeError("all81 operator contract must contain 81 unique operators")
+    if operator_set not in OPERATOR_SET_NAMES or operator_set not in payload.get("sets", {}):
+        raise RuntimeError(f"unknown operator contract set: {operator_set}")
+    definition = payload["sets"][operator_set]
+    operators = definition["operators"]
+    expected_count = int(definition["expected_count"])
+    if len(operators) != expected_count or len(set(operators)) != expected_count:
+        raise RuntimeError(f"{operator_set} operator contract must contain {expected_count} unique operators")
     return operators
+
+
+def _load_operator_contract() -> List[str]:
+    return _load_operator_set("all81")
 
 
 LINEAR_OPERATORS = {
@@ -273,13 +373,44 @@ STATIC_CANDIDATE_NAMES = {
 }
 
 STATIC_ONLY_REASON = {
-    "filter_design": "host-side coefficient/design contract; no independent safe C500 launch variant",
-    "spectral": "public spectral plan/layout variants are not independently bound; failed PlanMany remains disabled",
-    "windows": "window kernels use fixed shared-memory layout; no independently validated launch variant",
-    "wavelets": "wavelet shared-table variants require a separate correctness probe before registration",
-    "estimation": "stateful Kalman path has no independently validated parallel launch variant",
-    "correlate": "generic/lag paths have no independently validated alternate C500 dispatch",
-    "radartools": "non-hotspot radar paths have no independently validated alternate C500 dispatch",
+    "filter_design/kaiser_beta": "host-side scalar coefficient helper; no independent C500 dispatch",
+    "filter_design/kaiser_atten": "host-side scalar coefficient helper; no independent C500 dispatch",
+    "filter_design/cmplx_sort": "host-side CPU sort contract; no independent C500 dispatch",
+    # This public API returns one scalar used by CA-CFAR.  It has no
+    # independent GPU workload; CA-CFAR itself remains tunable.
+    "radartools/cfar_alpha": "host-side scalar helper used by CA-CFAR; no independent C500 dispatch",
+}
+
+
+EXPANDED_FAMILY_BY_OPERATOR = {
+    "waveforms/unit_impulse": "window",
+    **{operator: "window" for operator in (
+        "windows/get_window", "windows/barthann", "windows/bartlett", "windows/blackman",
+        "windows/blackmanharris", "windows/bohman", "windows/boxcar", "windows/chebwin",
+        "windows/cosine", "windows/exponential", "windows/flattop", "windows/gaussian",
+        "windows/general_cosine", "windows/general_gaussian", "windows/general_hamming",
+        "windows/hamming", "windows/hann", "windows/kaiser", "windows/nuttall",
+        "windows/parzen", "windows/taylor", "windows/triang", "windows/tukey",
+    )},
+    **{operator: "filter_design_gpu" for operator in ("filter_design/firwin", "filter_design/firwin2")},
+    **{operator: "filtering" for operator in (
+        "filtering/wiener", "filtering/firfilter_zi", "filtering/lfilter_zi",
+        "filtering/firfilter2", "filtering/filtfilt", "filtering/sosfilt",
+        "filtering/hilbert", "filtering/hilbert2", "filtering/detrend",
+        "filtering/freq_shift", "filtering/channelize_poly", "filtering/decimate",
+        "filtering/resample", "filtering/resample_poly", "filtering/upfirdn",
+    )},
+    **{operator: "radar_aux" for operator in ("radartools/ambgfun", "radartools/mvdr")},
+    **{operator: "spectral" for operator in (
+        "spectral/lombscargle", "spectral/periodogram", "spectral/welch", "spectral/csd",
+        "spectral/spectrogram", "spectral/stft", "spectral/istft", "spectral/coherence",
+        "spectral/vectorstrength",
+    )},
+    **{operator: "wavelet" for operator in (
+        "wavelets/qmf", "wavelets/morlet", "wavelets/ricker", "wavelets/morlet2", "wavelets/cwt",
+    )},
+    **{operator: "correlate1d" for operator in ("correlate/correlate", "correlate/correlation_lags")},
+    "estimation/kalman_filter": "kalman",
 }
 
 
@@ -327,10 +458,15 @@ def _register_all81() -> List[str]:
         elif operator in FIR_OPERATORS:
             policy_family = "fir_filter"
             candidates = _class_candidates("fir_filter")
-        else:
+        elif operator in STATIC_ONLY_REASON:
             policy_family = "static"
             candidates = []
-        module_name = operator.split("/", 1)[0]
+        elif operator in EXPANDED_FAMILY_BY_OPERATOR:
+            policy_family = EXPANDED_FAMILY_BY_OPERATOR[operator]
+            candidate_family = "filter_design" if policy_family == "filter_design_gpu" else policy_family
+            candidates = _expanded_candidates(candidate_family)
+        else:
+            raise RuntimeError(f"all81 operator has no candidate family registration: {operator}")
         FAMILIES[operator] = {
             "operator": operator,
             "policy_family": policy_family,
@@ -340,10 +476,7 @@ def _register_all81() -> List[str]:
                 else "static_operator"
             ),
             "candidates": candidates,
-            "static_only_reason": (
-                STATIC_ONLY_REASON.get(module_name, "no independently validated safe precompiled C500 variant")
-                if not candidates else ""
-            ),
+            "static_only_reason": STATIC_ONLY_REASON.get(operator, "") if not candidates else "",
         }
         keys.append(operator)
     return keys
@@ -361,16 +494,65 @@ def project_root() -> Path:
     return Path(__file__).resolve().parents[1]
 
 
-def all_candidate_names(family: str) -> List[str]:
+def operator_ids_for_set(operator_set: str) -> List[str]:
+    operators = _load_operator_set(operator_set)
+    unknown = [operator for operator in operators if operator not in OPERATOR_ID_TO_FAMILY]
+    if unknown:
+        raise RuntimeError(f"operator contract contains unregistered operators: {unknown}")
+    return operators
+
+
+def _two_day_candidate_names(family: str) -> List[str]:
+    """Keep a deterministic, representative shortlist for the two-day run.
+
+    The full profile is retained for future exhaustive runs.  The reduced
+    profile only trims the three historically largest candidate families;
+    every retained shortlist still contains all hand-written M50/M75/M90
+    anchors plus generated thread representatives for 64/128/256/512.
+    """
+    definition = FAMILIES[family]
+    base = [definition["static"]] + [item["candidate"] for item in definition["candidates"]]
+    policy_family = definition.get("policy_family", family)
+    if policy_family not in {"linear", "row_reduction", "fir_filter"} or len(base) <= 17:
+        return base
+
+    prefix = {
+        "linear": "linear",
+        "row_reduction": "row",
+        "fir_filter": "fir_filter",
+    }[policy_family]
+    nonstatic = base[1:]
+    manual = [name for name in nonstatic if name.startswith(f"{prefix}_m")]
+    generated = [name for name in nonstatic if name.startswith(f"{prefix}_t")]
+    selected: List[str] = []
+    for threads in (64, 128, 256, 512):
+        marker = f"{prefix}_t{threads}_"
+        representative = next((name for name in generated if marker in name), None)
+        if representative is not None:
+            selected.append(representative)
+    selected.extend(manual)
+    for name in generated:
+        if name not in selected:
+            selected.append(name)
+        if len(selected) >= 16:
+            break
+    return [base[0], *selected[:16]]
+
+
+def all_candidate_names(family: str, candidate_profile: str = "full") -> List[str]:
+    if candidate_profile not in CANDIDATE_PROFILE_NAMES:
+        raise ValueError(f"unknown candidate profile: {candidate_profile}")
+    if candidate_profile == "two_day":
+        return _two_day_candidate_names(family)
     return [FAMILIES[family]["static"]] + [item["candidate"] for item in FAMILIES[family]["candidates"]]
 
 
-def iter_workloads(families: Iterable[str]) -> Iterable[tuple[str, str, str]]:
+def iter_workloads(
+    families: Iterable[str], candidate_profile: str = "full"
+) -> Iterable[tuple[str, str, str]]:
     for family in families:
         operator = FAMILIES[family]["operator"]
-        for candidate_name in [FAMILIES[family]["static"]] + [
-            item["candidate"] for item in FAMILIES[family]["candidates"]
-        ]:
+        for candidate_name in all_candidate_names(family, candidate_profile):
             yield family, operator, candidate_name
 
 
@@ -381,13 +563,30 @@ def cache_default_path() -> Path:
 
 
 def resolve_families(
-    family_args: Optional[List[str]], operator_args: Optional[List[str]]
+    family_args: Optional[List[str]],
+    operator_args: Optional[List[str]],
+    operator_set: str = "all81",
 ) -> List[str]:
     if family_args and operator_args:
         raise SystemExit("--family and --operator cannot be used together")
+    selected_operators = set(operator_ids_for_set(operator_set))
     if operator_args:
+        outside = [operator for operator in operator_args if operator not in selected_operators]
+        if outside:
+            raise SystemExit(f"operators outside --operator-set {operator_set}: {', '.join(outside)}")
         return [OPERATOR_ID_TO_FAMILY[operator] for operator in operator_args]
-    return family_args or list(OPERATOR_KEYS)
+    if family_args:
+        outside = [
+            family for family in family_args
+            if FAMILIES[family]["operator"] not in selected_operators
+        ]
+        if outside:
+            raise SystemExit(f"families outside --operator-set {operator_set}: {', '.join(outside)}")
+        return family_args
+    return [
+        family for family in OPERATOR_KEYS
+        if FAMILIES[family]["operator"] in selected_operators
+    ]
 
 
 def structured_key(key: str) -> Dict[str, Any]:
@@ -475,7 +674,7 @@ def invoke_candidate(
     candidate_name: str,
     output_root: Path,
     round_name: str = "round1",
-) -> None:
+) -> int:
     root = project_root()
     definition = FAMILIES[family]
     warmup = args.screening_warmup if round_name == "screening" else args.warmup
@@ -540,7 +739,19 @@ def invoke_candidate(
     environment = tuning_env(family, candidate_name)
     if args.skip_cpu_timing:
         environment["CUSIGNAL_SKIP_CPU_TIMING"] = "1"
-    subprocess.run(command, cwd=root, env=environment, check=True)
+    (output_root / "failure.json").unlink(missing_ok=True)
+    completed = subprocess.run(command, cwd=root, env=environment, check=False)
+    if completed.returncode != 0:
+        write_candidate_failure(
+            output_root,
+            "operators",
+            family,
+            candidate_name,
+            completed.returncode,
+            "performance command returned non-zero",
+            command,
+        )
+    return completed.returncode
 
 
 def read_metrics(output_root: Path, family: str, candidate_name: str) -> List[Dict[str, Any]]:
@@ -574,7 +785,11 @@ def read_metrics(output_root: Path, family: str, candidate_name: str) -> List[Di
                 f"{family} requires a real policy dispatch for {candidate_name}"
             )
         operator_id = row.get("tuning_operator_id")
-        operator_id_required = expected_trace_family in {"linear", "row_reduction", "fir_filter"}
+        operator_id_required = expected_trace_family in {
+            "linear", "row_reduction", "fir_filter", "window", "spectral",
+            "filtering", "wavelet", "radar_aux", "correlate1d", "kalman",
+            "filter_design_gpu",
+        }
         if trace_present and ((operator_id_required and operator_id != definition["operator"]) or (
             not operator_id_required and operator_id not in (None, "", definition["operator"])
         )):
@@ -600,6 +815,7 @@ def read_metrics(output_root: Path, family: str, candidate_name: str) -> List[Di
             "batch_tile": row.get("tuning_batch_tile", 1),
             "memory_tier": row.get("tuning_memory_tier", 50),
             "plan_variant": row.get("tuning_plan_variant", 0),
+            "route": row.get("tuning_route", 0),
             "workspace_peak_bytes": row.get("tuning_workspace_peak_bytes", 0),
         }
         if not trace_present:
@@ -700,7 +916,7 @@ def invoke_task_candidate(
     candidate_name: str,
     output_root: Path,
     round_name: str,
-) -> None:
+) -> int:
     root = project_root()
     warmup = args.screening_warmup if round_name == "screening" else args.warmup
     repeat = args.screening_repeat if round_name == "screening" else args.repeat
@@ -753,7 +969,19 @@ def invoke_task_candidate(
     environment = task_tuning_env(task, candidate_name, args.cache_output)
     if args.skip_cpu_timing:
         environment["CUSIGNAL_SKIP_CPU_TIMING"] = "1"
-    subprocess.run(command, cwd=root, env=environment, check=True)
+    (output_root / "failure.json").unlink(missing_ok=True)
+    completed = subprocess.run(command, cwd=root, env=environment, check=False)
+    if completed.returncode != 0:
+        write_candidate_failure(
+            output_root,
+            "tasks",
+            task,
+            candidate_name,
+            completed.returncode,
+            "performance command returned non-zero",
+            command,
+        )
+    return completed.returncode
 
 
 def read_task_metrics(output_root: Path, task: str, candidate_name: str) -> List[Dict[str, Any]]:
@@ -998,6 +1226,8 @@ def write_cache(
     results: List[Dict[str, Any]],
     entries: List[Dict[str, Any]],
     task_entries: Optional[List[Dict[str, Any]]] = None,
+    operator_set: str = "all81",
+    candidate_profile: str = "full",
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     device = device_from_results(results)
@@ -1010,6 +1240,8 @@ def write_cache(
         "schema_version": CACHE_SCHEMA_VERSION,
         "registry_version": REGISTRY_VERSION,
         "platform": "zhongkexin-c500",
+        "operator_set": operator_set,
+        "candidate_profile": candidate_profile,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "device": device,
         "selection_policy": (
@@ -1035,14 +1267,45 @@ def run_candidate_round(
     all_results: List[Dict[str, Any]] = []
     for family in families:
         if candidate_names is None:
-            names = all_candidate_names(family)
+            names = all_candidate_names(family, args.candidate_profile)
         else:
             names = candidate_names.get(family, [])
         for candidate_name in names:
             output_root = round_root / family / candidate_name
-            if not args.resume or not run_output_is_complete(output_root, family, candidate_name):
-                invoke_candidate(args, family, candidate_name, output_root, round_name)
-            metrics = read_metrics(output_root, family, candidate_name)
+            failure = read_candidate_failure(output_root)
+            if args.resume and failure is not None:
+                metrics = failed_candidate_metrics("operators", family, candidate_name, output_root)
+            else:
+                if not args.resume or not run_output_is_complete(output_root, family, candidate_name):
+                    return_code = invoke_candidate(args, family, candidate_name, output_root, round_name)
+                    failure = read_candidate_failure(output_root)
+                    if return_code != 0 and failure is None:
+                        write_candidate_failure(
+                            output_root,
+                            "operators",
+                            family,
+                            candidate_name,
+                            return_code,
+                            "performance command returned non-zero",
+                        )
+                        failure = read_candidate_failure(output_root)
+                    if return_code != 0 or failure is not None:
+                        metrics = failed_candidate_metrics("operators", family, candidate_name, output_root)
+                    else:
+                        try:
+                            metrics = read_metrics(output_root, family, candidate_name)
+                        except (OSError, RuntimeError, json.JSONDecodeError) as error:
+                            write_candidate_failure(
+                                output_root,
+                                "operators",
+                                family,
+                                candidate_name,
+                                1,
+                                f"invalid candidate report: {error}",
+                            )
+                            metrics = failed_candidate_metrics("operators", family, candidate_name, output_root)
+                else:
+                    metrics = read_metrics(output_root, family, candidate_name)
             all_results.extend(metrics)
             record_candidate_workloads(args, "operators", family, candidate_name, metrics)
     return all_results
@@ -1060,10 +1323,42 @@ def run_task_candidate_round(
         names = all_task_candidate_names(task) if candidate_names is None else candidate_names.get(task, [])
         for candidate_name in names:
             output_root = round_root / task / candidate_name
-            if not args.resume or not run_task_output_is_complete(output_root, task, candidate_name):
-                invoke_task_candidate(args, task, candidate_name, output_root, round_name)
-            all_results.extend(read_task_metrics(output_root, task, candidate_name))
-            record_candidate_workloads(args, "tasks", task, candidate_name, all_results[-len(LEVELS):])
+            failure = read_candidate_failure(output_root)
+            if args.resume and failure is not None:
+                metrics = failed_candidate_metrics("tasks", task, candidate_name, output_root)
+            else:
+                if not args.resume or not run_task_output_is_complete(output_root, task, candidate_name):
+                    return_code = invoke_task_candidate(args, task, candidate_name, output_root, round_name)
+                    failure = read_candidate_failure(output_root)
+                    if return_code != 0 and failure is None:
+                        write_candidate_failure(
+                            output_root,
+                            "tasks",
+                            task,
+                            candidate_name,
+                            return_code,
+                            "performance command returned non-zero",
+                        )
+                        failure = read_candidate_failure(output_root)
+                    if return_code != 0 or failure is not None:
+                        metrics = failed_candidate_metrics("tasks", task, candidate_name, output_root)
+                    else:
+                        try:
+                            metrics = read_task_metrics(output_root, task, candidate_name)
+                        except (OSError, RuntimeError, ValueError, json.JSONDecodeError) as error:
+                            write_candidate_failure(
+                                output_root,
+                                "tasks",
+                                task,
+                                candidate_name,
+                                1,
+                                f"invalid candidate report: {error}",
+                            )
+                            metrics = failed_candidate_metrics("tasks", task, candidate_name, output_root)
+                else:
+                    metrics = read_task_metrics(output_root, task, candidate_name)
+            all_results.extend(metrics)
+            record_candidate_workloads(args, "tasks", task, candidate_name, metrics)
     return all_results
 
 
@@ -1092,6 +1387,102 @@ def atomic_json(path: Path, payload: Dict[str, Any]) -> None:
     os.replace(temporary, path)
 
 
+def write_candidate_failure(
+    output_root: Path,
+    scope: str,
+    family_or_task: str,
+    candidate_name: str,
+    return_code: int,
+    reason: str,
+    command: Optional[List[str]] = None,
+) -> None:
+    output_root.mkdir(parents=True, exist_ok=True)
+    atomic_json(
+        output_root / "failure.json",
+        {
+            "scope": scope,
+            "family_or_task": family_or_task,
+            "candidate": candidate_name,
+            "return_code": return_code,
+            "reason": reason,
+            "command": command or [],
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        },
+    )
+
+
+def read_candidate_failure(output_root: Path) -> Optional[Dict[str, Any]]:
+    path = output_root / "failure.json"
+    if not path.is_file():
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {"reason": "invalid failure record", "return_code": 1}
+    return payload if isinstance(payload, dict) else {"reason": "invalid failure record", "return_code": 1}
+
+
+def failed_candidate_metrics(
+    scope: str,
+    family_or_task: str,
+    candidate_name: str,
+    output_root: Path,
+) -> List[Dict[str, Any]]:
+    failure = read_candidate_failure(output_root) or {
+        "reason": "candidate execution failed without a failure record",
+        "return_code": 1,
+    }
+    if scope == "operators":
+        definition = FAMILIES[family_or_task]
+        config = next(
+            (
+                dict(item.get("config", {}))
+                for item in definition.get("candidates", [])
+                if item.get("candidate") == candidate_name
+            ),
+            {},
+        )
+        policy_family = definition.get("policy_family", family_or_task)
+        operator = definition.get("operator")
+    else:
+        definition = TASKS[family_or_task]
+        config = next(
+            (
+                dict(item.get("config", {}))
+                for item in definition.get("candidates", [])
+                if item.get("candidate") == candidate_name
+            ),
+            {},
+        )
+        policy_family = None
+        operator = None
+
+    return [
+        {
+            "family": family_or_task,
+            "policy_family": policy_family,
+            "operator": operator,
+            "task": family_or_task if scope == "tasks" else None,
+            "scale_level": level,
+            "trace_present": False,
+            "key": None,
+            "candidate": candidate_name,
+            "candidate_applied": False,
+            "gpu_e2e_median_ms": None,
+            "gpu_kernel_median_ms": None,
+            "correctness_status": "FAIL",
+            "input_refresh_status": "FAIL",
+            "failure_reason": failure.get("reason", "candidate execution failed"),
+            "return_code": failure.get("return_code"),
+            "workspace_bytes": 0,
+            "config": config,
+            "device": {},
+            "metrics_path": str(output_root / "failure.json"),
+        }
+        for level in LEVELS
+    ]
+
+
 def record_candidate_workloads(
     args: argparse.Namespace,
     scope: str,
@@ -1118,6 +1509,8 @@ def record_candidate_workloads(
                 "gpu_e2e_median_ms": result.get("gpu_e2e_median_ms"),
                 "gpu_kernel_median_ms": result.get("gpu_kernel_median_ms"),
                 "workspace_bytes": result.get("workspace_bytes", 0),
+                "failure_reason": result.get("failure_reason"),
+                "return_code": result.get("return_code"),
                 "metrics_path": result.get("metrics_path"),
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             },
@@ -1308,6 +1701,18 @@ def build_parser() -> argparse.ArgumentParser:
         default="operators",
         help="tuning scope; operators keeps the backward-compatible default",
     )
+    parser.add_argument(
+        "--operator-set",
+        choices=OPERATOR_SET_NAMES,
+        default="all81",
+        help="operator contract set; task_appendix is the 53-operator appendix",
+    )
+    parser.add_argument(
+        "--candidate-profile",
+        choices=CANDIDATE_PROFILE_NAMES,
+        default="full",
+        help="full registry or the reduced representative two-day shortlist",
+    )
     parser.add_argument("--family", choices=sorted(FAMILIES), action="append", help="family to tune; repeatable")
     parser.add_argument(
         "--operator",
@@ -1349,7 +1754,7 @@ def initialize_run_state(
         (args.state_root / directory).mkdir(parents=True, exist_ok=True)
     operator_workloads = [
         {"family": family, "operator": FAMILIES[family]["operator"], "scale_level": level,
-         "candidates": all_candidate_names(family)}
+         "candidates": all_candidate_names(family, args.candidate_profile)}
         for family in families for level in LEVELS
     ]
     task_workloads = [
@@ -1361,11 +1766,13 @@ def initialize_run_state(
             "registry_version": REGISTRY_VERSION,
             "platform": "zhongkexin-c500",
             "scope": args.scope,
+            "operator_set": args.operator_set,
+            "candidate_profile": args.candidate_profile,
             "operator_count": len({FAMILIES[family]["operator"] for family in families}),
             "operator_workload_count": len(operator_workloads),
             "task_workload_count": len(task_workloads),
             "candidate_count": {
-                "operators": sum(len(all_candidate_names(family)) for family in families),
+                "operators": sum(len(all_candidate_names(family, args.candidate_profile)) for family in families),
                 "tasks": sum(len(all_task_candidate_names(task)) for task in tasks),
             },
             "static_only": {
@@ -1444,7 +1851,7 @@ def run_final_benchmarks(
         for mode, name in (("auto", "final_auto"), ("off", "final_static")):
             command = [
                 str(root / "scripts" / "performance.sh"), "--operators",
-                "--operator-set", "all81", *common,
+                "--operator-set", args.operator_set, *common,
                 "--frozen-baseline", str(args.frozen_baseline),
                 "--output-root", str(args.output_root / name),
             ]
@@ -1472,14 +1879,23 @@ def run_final_benchmarks(
 def main(argv: Optional[List[str]] = None) -> int:
     args = build_parser().parse_args(argv)
     if args.list_candidates:
+        listed_families = resolve_families(None, None, args.operator_set)
         print(json.dumps({
-            "operators": {family: all_candidate_names(family) for family in sorted(FAMILIES)},
+            "operator_set": args.operator_set,
+            "candidate_profile": args.candidate_profile,
+            "operators": {
+                family: all_candidate_names(family, args.candidate_profile)
+                for family in sorted(listed_families)
+            },
             "tasks": {task: all_task_candidate_names(task) for task in sorted(TASKS)},
         }, indent=2))
         return 0
     if args.warmup < 0 or args.repeat < 3 or args.screening_warmup < 0 or args.screening_repeat < 3:
         raise SystemExit("warmup/repeat must satisfy warmup>=0 and repeat>=3")
-    families = resolve_families(args.family, args.operator) if args.scope in {"operators", "all"} else []
+    families = (
+        resolve_families(args.family, args.operator, args.operator_set)
+        if args.scope in {"operators", "all"} else []
+    )
     tasks = resolve_tasks(args.task, args.scope)
     if args.scope == "operators" and args.task:
         raise SystemExit("--task requires --scope tasks or all")
@@ -1501,10 +1917,14 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     with run_lock(args):
         if args.dry_run:
-            print(f"[zx-autotune] registry={REGISTRY_VERSION} scope={args.scope} platform=zhongkexin-c500")
+            print(
+                f"[zx-autotune] registry={REGISTRY_VERSION} scope={args.scope} "
+                f"operator_set={args.operator_set} candidate_profile={args.candidate_profile} "
+                "platform=zhongkexin-c500"
+            )
             operator_candidate_count = 0
             for family in families:
-                names = all_candidate_names(family)
+                names = all_candidate_names(family, args.candidate_profile)
                 operator_candidate_count += len(names)
                 definition = FAMILIES[family]
                 reason = definition.get("static_only_reason", "")
@@ -1561,7 +1981,14 @@ def main(argv: Optional[List[str]] = None) -> int:
                     family_validation if args.selection_validation == SELECTION_VALIDATION_WINNER else None,
                 ))
             # Freeze operator choices before Task1/Task2 candidate search.
-            write_cache(args.cache_output, formal_results + validation_results, operator_entries, [])
+            write_cache(
+                args.cache_output,
+                formal_results + validation_results,
+                operator_entries,
+                [],
+                args.operator_set,
+                args.candidate_profile,
+            )
             all_results.extend(screening_results + formal_results + validation_results)
 
         if tasks:
@@ -1591,7 +2018,14 @@ def main(argv: Optional[List[str]] = None) -> int:
             all_results.extend(task_screening + task_formal + task_validation)
 
         update_run_status(args, phase="cache_publish", status="publishing", operator_entries=len(operator_entries), task_entries=len(task_entries))
-        write_cache(args.cache_output, all_results, operator_entries, task_entries)
+        write_cache(
+            args.cache_output,
+            all_results,
+            operator_entries,
+            task_entries,
+            args.operator_set,
+            args.candidate_profile,
+        )
         update_run_status(args, phase="final_benchmark", status="running")
         run_final_benchmarks(args, bool(families), bool(tasks))
         update_run_status(args, phase="complete", status="complete", operator_entries=len(operator_entries), task_entries=len(task_entries))

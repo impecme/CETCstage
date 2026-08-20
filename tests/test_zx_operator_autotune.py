@@ -3,6 +3,8 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "zx_operator_autotune.py"
@@ -13,6 +15,39 @@ SPEC.loader.exec_module(MODULE)
 
 
 class ZxOperatorAutotuneTests(unittest.TestCase):
+    def test_failed_task_candidate_is_recorded_and_does_not_abort_round(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            args = SimpleNamespace(
+                state_root=root / "state",
+                resume=False,
+            )
+            with patch.object(MODULE, "invoke_task_candidate", return_value=2):
+                results = MODULE.run_task_candidate_round(
+                    args,
+                    ["task2_features"],
+                    root / "round",
+                    "screening",
+                    {"task2_features": ["task2_direct_t128"]},
+                )
+            self.assertEqual(len(results), len(MODULE.LEVELS))
+            self.assertTrue(all(row["correctness_status"] == "FAIL" for row in results))
+            self.assertTrue(all(row["candidate_applied"] is False for row in results))
+            self.assertTrue((root / "round" / "task2_features" / "task2_direct_t128" / "failure.json").is_file())
+            self.assertTrue((root / "state" / "state" / "tasks" / "task2_features" / "task2_direct_t128" / "L1.json").is_file())
+
+    def test_task2_grouped_spectrogram_uses_runtime_thread_group_count(self):
+        source = (
+            Path(__file__).resolve().parents[1]
+            / "demo" / "task2_features" / "task2_features_zx_gpu.cu"
+        ).read_text(encoding="utf-8")
+        self.assertNotIn(
+            "constexpr int kBinGroupsPerBlock = kThreadsPerBlock / kBinGroupSize;",
+            source,
+        )
+        self.assertIn("const int bin_groups_per_block = blockDim.x / kBinGroupSize;", source)
+        self.assertIn("bin_base += bin_groups_per_block", source)
+
     def test_default_cache_is_repository_owned(self):
         self.assertEqual(
             MODULE.cache_default_path(),
@@ -204,18 +239,46 @@ class ZxOperatorAutotuneTests(unittest.TestCase):
         )
 
     def test_registry_version_invalidates_previous_cache_generation(self):
-        self.assertEqual(MODULE.REGISTRY_VERSION, "zx-c500-all81-task-v3")
+        self.assertEqual(MODULE.REGISTRY_VERSION, "zx-c500-appendix53-task-v5")
 
     def test_full_registry_has_expanded_candidates_and_tasks(self):
         self.assertEqual(len(MODULE.OPERATOR_KEYS), 81)
-        self.assertGreater(sum(len(MODULE.all_candidate_names(family)) for family in MODULE.OPERATOR_KEYS), 248)
+        self.assertGreater(sum(len(MODULE.all_candidate_names(family)) for family in MODULE.OPERATOR_KEYS), 995)
         self.assertEqual(set(MODULE.TASKS), {"task1_radar", "task2_features"})
         self.assertEqual(sum(len(MODULE.all_task_candidate_names(task)) for task in MODULE.TASKS), 9)
 
+    def test_appendix53_scope_and_two_day_profile_are_exact(self):
+        families = MODULE.resolve_families(None, None, "task_appendix")
+        self.assertEqual(len(families), 53)
+        self.assertEqual(
+            sum(len(MODULE.all_candidate_names(family, "two_day")) for family in families),
+            609,
+        )
+        self.assertLess(
+            sum(len(MODULE.all_candidate_names(family, "two_day")) for family in families),
+            sum(len(MODULE.all_candidate_names(family)) for family in families),
+        )
+
     def test_static_only_operator_has_explicit_reason(self):
-        definition = MODULE.FAMILIES["spectral/stft"]
+        definition = MODULE.FAMILIES["filter_design/kaiser_beta"]
         self.assertEqual(definition["candidates"], [])
-        self.assertIn("PlanMany", definition["static_only_reason"])
+        self.assertIn("no independent C500 dispatch", definition["static_only_reason"])
+
+    def test_expanded_families_have_exact_runtime_family_names(self):
+        expected = {
+            "window", "spectral", "filtering", "wavelet", "radar_aux",
+            "correlate1d", "kalman", "filter_design_gpu",
+        }
+        actual = {
+            definition["policy_family"]
+            for definition in MODULE.FAMILIES.values()
+            if definition.get("policy_family") in expected
+        }
+        self.assertEqual(actual, expected)
+        for family, definition in MODULE.FAMILIES.items():
+            if definition.get("policy_family") in expected:
+                self.assertTrue(definition["candidates"], family)
+                self.assertTrue(all(item["config"].get("route", 0) >= 1 for item in definition["candidates"]))
 
     def test_fallback_candidate_is_not_compared_as_an_applied_candidate(self):
         family = "correlate2d"

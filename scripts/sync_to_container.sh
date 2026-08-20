@@ -141,7 +141,6 @@ required_files=(
   scripts/replace_container_project.sh
   scripts/sync_to_container.sh
   scripts/clean.sh
-  data/reports/README.md
   third_party/fftw/dist/fftw-3.3.10.tar.gz
 )
 for relative_path in "${required_files[@]}"; do

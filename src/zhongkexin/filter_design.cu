@@ -172,6 +172,22 @@ namespace
         return size == 0 ? 0 : static_cast<int>((size + kThreadsPerBlock - 1) / kThreadsPerBlock);
     }
 
+    int policy_block_count(std::size_t size)
+    {
+        const int threads = tile::active_threads(kThreadsPerBlock);
+        return size == 0 ? 0 : static_cast<int>((size + static_cast<std::size_t>(threads) - 1) /
+                                                 static_cast<std::size_t>(threads));
+    }
+
+    tile::PolicyDecision select_filter_design_policy(const char *operator_id, std::size_t numtaps)
+    {
+        return tile::select_if_inactive(tile::make_operator_key(
+            operator_id,
+            tile::OperatorFamily::FilterDesignGpu,
+            {numtaps, 0, 0, 0, 0, 0},
+            1));
+    }
+
     bool same_values(const std::vector<float> &lhs, const std::vector<float> &rhs)
     {
         return lhs.size() == rhs.size() &&
@@ -525,6 +541,8 @@ namespace cusignal
             {
                 thread_local FilterDesignWorkspace workspace;
                 detail::ensure_numtaps(numtaps);
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_filter_design_policy("filter_design/firwin", static_cast<std::size_t>(numtaps)));
                 const float resolved_fs = detail::resolved_fs(nyq, fs);
                 detail::ensure_positive(resolved_fs, "fs");
                 const float resolved_nyq = 0.5 * resolved_fs;
@@ -565,14 +583,15 @@ namespace cusignal
 
                 ScopedZxGpuEvents events;
                 g_last_kernel_ms = static_cast<float>(events.measure([&]() {
-                    build_firwin_taps_kernel<<<block_count(static_cast<std::size_t>(numtaps)), kThreadsPerBlock>>>(
+                    build_firwin_taps_kernel<<<policy_block_count(static_cast<std::size_t>(numtaps)),
+                                               tile::active_threads(kThreadsPerBlock)>>>(
                         output.data(),
                         numtaps,
                         workspace.bands.get(),
                         static_cast<int>(host_bands.size()));
                     check_kernel_launch("build_firwin_taps_kernel");
 
-                    multiply_window_kernel<<<block_count(output.size()), kThreadsPerBlock>>>(
+                    multiply_window_kernel<<<policy_block_count(output.size()), tile::active_threads(kThreadsPerBlock)>>>(
                         output.data(),
                         device_window.data(),
                         output.size());
@@ -597,7 +616,7 @@ namespace cusignal
                             partial_count,
                             workspace.firwin_response_scalar.get());
                         check_kernel_launch("firwin_response_finalize_kernel");
-                        scale_signal_by_response_kernel<<<block_count(output.size()), kThreadsPerBlock>>>(
+                        scale_signal_by_response_kernel<<<policy_block_count(output.size()), tile::active_threads(kThreadsPerBlock)>>>(
                             output.data(),
                             output.size(),
                             workspace.firwin_response_scalar.get());
@@ -619,6 +638,8 @@ namespace cusignal
             {
                 thread_local FilterDesignWorkspace workspace;
                 detail::ensure_numtaps(numtaps);
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_filter_design_policy("filter_design/firwin2", static_cast<std::size_t>(numtaps)));
                 const float resolved_fs = detail::resolved_fs(nyq, fs);
                 detail::ensure_positive(resolved_fs, "fs");
 
@@ -771,7 +792,8 @@ namespace cusignal
                             CUFFT_INVERSE),
                         "cufftExecC2C");
 
-                    extract_firwin2_taps_kernel<<<block_count(static_cast<std::size_t>(numtaps)), kThreadsPerBlock>>>(
+                    extract_firwin2_taps_kernel<<<policy_block_count(static_cast<std::size_t>(numtaps)),
+                                                  tile::active_threads(kThreadsPerBlock)>>>(
                         output.data(),
                         workspace.spectrum.get(),
                         device_window->data(),

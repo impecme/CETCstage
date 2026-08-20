@@ -1476,9 +1476,16 @@ namespace cusignal_demo::task2_features
             float *time_energy)
         {
             constexpr int kBinGroupSize = 8;
-            constexpr int kBinGroupsPerBlock = kThreadsPerBlock / kBinGroupSize;
-            __shared__ float shared[kThreadsPerBlock];
+            // The task tuner may select 128 or 256 threads.  The previous
+            // compile-time group count (256 / 8) left half of the frequency
+            // bins uncomputed for a 128-thread block, so stale shared-memory
+            // values contaminated the feature score.  Size the reduction
+            // buffer for the largest admitted task launch and derive the
+            // number of groups from the actual block at runtime.
+            constexpr int kMaxTaskThreads = 512;
+            __shared__ float shared[kMaxTaskThreads];
             __shared__ float shared_bin_energy[512];
+            const int bin_groups_per_block = blockDim.x / kBinGroupSize;
 
             const std::size_t segment_flat = static_cast<std::size_t>(blockIdx.x);
             const int seg = static_cast<int>(segment_flat % static_cast<std::size_t>(nseg));
@@ -1505,7 +1512,7 @@ namespace cusignal_demo::task2_features
 
             const int lane = threadIdx.x % kBinGroupSize;
             const int group = threadIdx.x / kBinGroupSize;
-            for (int bin_base = 0; bin_base < band_bin_count; bin_base += kBinGroupsPerBlock)
+            for (int bin_base = 0; bin_base < band_bin_count; bin_base += bin_groups_per_block)
             {
                 const int bin = bin_base + group;
                 float real = 0.0f;

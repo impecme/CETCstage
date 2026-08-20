@@ -105,11 +105,32 @@ namespace
 
     inline int block_count(int count)
     {
+        const int threads = tile::active_threads(kThreadsPerBlock);
         return count == 0
             ? 0
             : static_cast<int>(tile::ceil_div(
                   static_cast<std::size_t>(count),
-                  static_cast<std::size_t>(tile::linear_shape(static_cast<std::size_t>(count), kThreadsPerBlock).threads)));
+                  static_cast<std::size_t>(threads)));
+    }
+
+    inline int policy_threads()
+    {
+        return tile::active_threads(kThreadsPerBlock);
+    }
+
+    tile::PolicyDecision select_kalman_policy(int points, int dim_x, int dim_z, int dim_u)
+    {
+        return tile::select_if_inactive(tile::make_operator_key(
+            "estimation/kalman_filter",
+            tile::OperatorFamily::Kalman,
+            {static_cast<std::size_t>(points), static_cast<std::size_t>(dim_x),
+             static_cast<std::size_t>(dim_z), static_cast<std::size_t>(dim_u), 0, 0},
+            4,
+            0,
+            1,
+            {static_cast<std::uint64_t>(dim_x), static_cast<std::uint64_t>(dim_z),
+             static_cast<std::uint64_t>(dim_u), 0, 0, 0, 0, 0, 0, 0},
+            3));
     }
 
     void copy_device_array(const ZxGpuRealArray &src, ZxGpuRealArray &dst)
@@ -1149,6 +1170,8 @@ namespace cusignal
             void KalmanFilter::predict()
             {
                 validate_filter_state(*this);
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_kalman_policy(points_, dim_x_, dim_z_, dim_u_));
 
                 if (tile::optimized_path() && dim_x_ <= 4 && dim_u_ <= 2)
                 {
@@ -1156,7 +1179,7 @@ namespace cusignal
                     g_last_kernel_ms = events.measure([&]() {
                         if (dim_x_ == 4 && dim_u_ == 2)
                         {
-                            predict_fixed_kernel<4, 2><<<block_count(points_), kThreadsPerBlock>>>(
+                            predict_fixed_kernel<4, 2><<<block_count(points_), policy_threads()>>>(
                                 x.data(),
                                 P.data(),
                                 F.data(),
@@ -1170,7 +1193,7 @@ namespace cusignal
                         }
                         else if (dim_x_ == 2 && dim_u_ == 1)
                         {
-                            predict_fixed_kernel<2, 1><<<block_count(points_), kThreadsPerBlock>>>(
+                            predict_fixed_kernel<2, 1><<<block_count(points_), policy_threads()>>>(
                                 x.data(),
                                 P.data(),
                                 F.data(),
@@ -1184,7 +1207,7 @@ namespace cusignal
                         }
                         else
                         {
-                            predict_small_kernel<<<block_count(points_), kThreadsPerBlock>>>(
+                            predict_small_kernel<<<block_count(points_), policy_threads()>>>(
                                 x.data(),
                                 P.data(),
                                 F.data(),
@@ -1215,7 +1238,7 @@ namespace cusignal
 
                 ScopedZxGpuEvents events;
                 g_last_kernel_ms = events.measure([&]() {
-                    predict_kernel<<<block_count(points_), kThreadsPerBlock>>>(
+                    predict_kernel<<<block_count(points_), policy_threads()>>>(
                         x.data(),
                         P.data(),
                         F.data(),
@@ -1242,13 +1265,15 @@ namespace cusignal
                     detail::state_vector_shape(points_, dim_u_),
                     "control");
                 validate_filter_state(*this);
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_kalman_policy(points_, dim_x_, dim_z_, dim_u_));
                 if (tile::optimized_path() && dim_x_ <= 4 && dim_u_ <= 2)
                 {
                     ScopedZxGpuEvents events;
                     g_last_kernel_ms = events.measure([&]() {
                         if (dim_x_ == 4 && dim_u_ == 2)
                         {
-                            predict_fixed_kernel<4, 2><<<block_count(points_), kThreadsPerBlock>>>(
+                            predict_fixed_kernel<4, 2><<<block_count(points_), policy_threads()>>>(
                                 x.data(),
                                 P.data(),
                                 F.data(),
@@ -1262,7 +1287,7 @@ namespace cusignal
                         }
                         else if (dim_x_ == 2 && dim_u_ == 1)
                         {
-                            predict_fixed_kernel<2, 1><<<block_count(points_), kThreadsPerBlock>>>(
+                            predict_fixed_kernel<2, 1><<<block_count(points_), policy_threads()>>>(
                                 x.data(),
                                 P.data(),
                                 F.data(),
@@ -1276,7 +1301,7 @@ namespace cusignal
                         }
                         else
                         {
-                            predict_small_kernel<<<block_count(points_), kThreadsPerBlock>>>(
+                            predict_small_kernel<<<block_count(points_), policy_threads()>>>(
                                 x.data(),
                                 P.data(),
                                 F.data(),
@@ -1307,6 +1332,8 @@ namespace cusignal
                     detail::state_vector_shape(points_, dim_z_),
                     "measurement");
                 validate_filter_state(*this);
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_kalman_policy(points_, dim_x_, dim_z_, dim_u_));
 
                 if (tile::optimized_path() && dim_x_ <= 4 && dim_z_ <= 2)
                 {
@@ -1314,7 +1341,7 @@ namespace cusignal
                     g_last_kernel_ms = events.measure([&]() {
                         if (dim_x_ == 4 && dim_z_ == 2)
                         {
-                            update_fixed_kernel<4, 2><<<block_count(points_), kThreadsPerBlock>>>(
+                            update_fixed_kernel<4, 2><<<block_count(points_), policy_threads()>>>(
                                 x.data(),
                                 P.data(),
                                 z.data(),
@@ -1325,7 +1352,7 @@ namespace cusignal
                         }
                         else if (dim_x_ == 2 && dim_z_ == 1)
                         {
-                            update_fixed_kernel<2, 1><<<block_count(points_), kThreadsPerBlock>>>(
+                            update_fixed_kernel<2, 1><<<block_count(points_), policy_threads()>>>(
                                 x.data(),
                                 P.data(),
                                 z.data(),
@@ -1336,7 +1363,7 @@ namespace cusignal
                         }
                         else
                         {
-                            update_small_kernel<<<block_count(points_), kThreadsPerBlock>>>(
+                            update_small_kernel<<<block_count(points_), policy_threads()>>>(
                                 x.data(),
                                 P.data(),
                                 z.data(),
@@ -1384,7 +1411,7 @@ namespace cusignal
 
                 ScopedZxGpuEvents events;
                 g_last_kernel_ms = events.measure([&]() {
-                    update_kernel<<<block_count(points_), kThreadsPerBlock>>>(
+                    update_kernel<<<block_count(points_), policy_threads()>>>(
                         x.data(),
                         P.data(),
                         z.data(),

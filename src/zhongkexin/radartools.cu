@@ -6,6 +6,7 @@
 #include <cusolverDn.h>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <complex>
 #include <cstring>
@@ -551,6 +552,35 @@ namespace
     {
         const std::size_t width = threads > 0 ? static_cast<std::size_t>(threads) : 1;
         return size == 0 ? 0 : static_cast<int>((size + width - 1) / width);
+    }
+
+    int policy_threads()
+    {
+        return tile::active_threads(kThreadsPerBlock);
+    }
+
+    int policy_block_count(std::size_t size)
+    {
+        return block_count(size, policy_threads());
+    }
+
+    tile::PolicyDecision select_radar_aux_policy(
+        const char *operator_id,
+        const std::array<std::size_t, 6> &shape,
+        std::uint8_t shape_count,
+        int dtype,
+        const std::array<std::uint64_t, 10> &semantic,
+        std::uint8_t semantic_count)
+    {
+        return tile::select_if_inactive(tile::make_operator_key(
+            operator_id,
+            tile::OperatorFamily::RadarAux,
+            shape,
+            shape_count,
+            dtype,
+            1,
+            semantic,
+            semantic_count));
     }
 
     const ZxGpuComplexArray &as_cached_mvdr_device_array(
@@ -2682,6 +2712,17 @@ namespace cusignal
                 g_workspace.beamformer.ensure_handles();
                 const int len_seq = static_cast<int>(xlen + ylen);
                 const int nfreq = detail::next_power_of_two(len_seq - 1);
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_radar_aux_policy(
+                        "radartools/ambgfun",
+                        {xlen, ylen, static_cast<std::size_t>(nfreq), 0, 0, 0},
+                        3,
+                        1,
+                        {tile::stable_string_hash(normalized_cut),
+                         tile::float_bits(cut_value),
+                         tile::float_bits(fs),
+                         tile::float_bits(prf), 0, 0, 0, 0, 0, 0},
+                        4));
 
                 g_workspace.ambgfun.x_buffer.reserve(std::max<std::size_t>(static_cast<std::size_t>(nfreq), xlen + ylen - 1));
                 g_workspace.ambgfun.y_buffer.reserve(std::max<std::size_t>(static_cast<std::size_t>(nfreq), xlen + ylen - 1));
@@ -2723,13 +2764,13 @@ namespace cusignal
                         throw std::invalid_argument("ambgfun inputs must have non-zero norm");
                     }
 
-                    copy_scale_complex_kernel<<<block_count(xlen), kThreadsPerBlock>>>(
+                    copy_scale_complex_kernel<<<policy_block_count(xlen), policy_threads()>>>(
                         reinterpret_cast<const float2 *>(x_device->data()),
                         reinterpret_cast<float2 *>(g_workspace.ambgfun.x_buffer.get()),
                         xlen,
                         1.0 / x_norm);
                     check_kernel_launch("copy_scale_complex_kernel(x)");
-                    copy_scale_complex_kernel<<<block_count(ylen), kThreadsPerBlock>>>(
+                    copy_scale_complex_kernel<<<policy_block_count(ylen), policy_threads()>>>(
                         reinterpret_cast<const float2 *>(y_device->data()),
                         reinterpret_cast<float2 *>(g_workspace.ambgfun.y_buffer.get()),
                         ylen,
@@ -2791,16 +2832,34 @@ namespace cusignal
                                     current_elements * sizeof(cufftComplex)),
                                 "cudaMemset(ambgfun 2d tile)");
                             const std::size_t nonzero_scan_elements = current_rows * ylen;
-                            build_shifted_matrix_nonzero_tile_kernel<<<block_count(nonzero_scan_elements), kThreadsPerBlock>>>(
-                                reinterpret_cast<const float2 *>(g_workspace.ambgfun.x_buffer.get()),
-                                reinterpret_cast<const float2 *>(g_workspace.ambgfun.y_buffer.get()),
-                                xlen,
-                                ylen,
-                                row_offset,
-                                current_rows,
-                                nfreq,
-                                g_workspace.ambgfun.matrix_buffer.get());
-                            check_kernel_launch("build_shifted_matrix_nonzero_tile_kernel");
+                            if (tile::active_route() <= 2)
+                            {
+                                build_shifted_matrix_tile_kernel<<<
+                                    policy_block_count(current_elements), policy_threads()>>>(
+                                    reinterpret_cast<const float2 *>(g_workspace.ambgfun.x_buffer.get()),
+                                    reinterpret_cast<const float2 *>(g_workspace.ambgfun.y_buffer.get()),
+                                    xlen,
+                                    ylen,
+                                    row_offset,
+                                    current_rows,
+                                    nfreq,
+                                    g_workspace.ambgfun.matrix_buffer.get());
+                                check_kernel_launch("build_shifted_matrix_tile_kernel");
+                            }
+                            else
+                            {
+                                build_shifted_matrix_nonzero_tile_kernel<<<
+                                    policy_block_count(nonzero_scan_elements), policy_threads()>>>(
+                                    reinterpret_cast<const float2 *>(g_workspace.ambgfun.x_buffer.get()),
+                                    reinterpret_cast<const float2 *>(g_workspace.ambgfun.y_buffer.get()),
+                                    xlen,
+                                    ylen,
+                                    row_offset,
+                                    current_rows,
+                                    nfreq,
+                                    g_workspace.ambgfun.matrix_buffer.get());
+                                check_kernel_launch("build_shifted_matrix_nonzero_tile_kernel");
+                            }
 
                             throw_on_cufft_error(
                                 cufftExecC2C(
@@ -2810,7 +2869,7 @@ namespace cusignal
                                     CUFFT_INVERSE),
                                 "cufftExecC2C(ambgfun 2d tile)");
 
-                            extract_surface_tile_kernel<<<block_count(current_elements), kThreadsPerBlock>>>(
+                            extract_surface_tile_kernel<<<policy_block_count(current_elements), policy_threads()>>>(
                                 g_workspace.ambgfun.matrix_buffer.get(),
                                 row_offset,
                                 current_rows,
@@ -2819,10 +2878,10 @@ namespace cusignal
                             check_kernel_launch("extract_surface_tile_kernel");
                         }
 
-                        build_delay_axis_kernel<<<block_count(delay_axis.size()), kThreadsPerBlock>>>(
+                        build_delay_axis_kernel<<<policy_block_count(delay_axis.size()), policy_threads()>>>(
                             delay_axis.data(), xlen, ylen, fs);
                         check_kernel_launch("build_delay_axis_kernel");
-                        build_doppler_axis_kernel<<<block_count(doppler_axis.size()), kThreadsPerBlock>>>(
+                        build_doppler_axis_kernel<<<policy_block_count(doppler_axis.size()), policy_threads()>>>(
                             doppler_axis.data(), nfreq, fs);
                         check_kernel_launch("build_doppler_axis_kernel");
                     }));
@@ -2841,13 +2900,13 @@ namespace cusignal
 
                     ScopedZxGpuEvents events;
                     g_last_kernel_ms = static_cast<float>(events.measure([&]() {
-                        pack_signal_kernel<<<block_count(static_cast<std::size_t>(nfreq)), kThreadsPerBlock>>>(
+                        pack_signal_kernel<<<policy_block_count(static_cast<std::size_t>(nfreq)), policy_threads()>>>(
                             reinterpret_cast<const float2 *>(g_workspace.ambgfun.x_buffer.get()),
                             xlen,
                             g_workspace.ambgfun.x_buffer.get(),
                             nfreq);
                         check_kernel_launch("pack_signal_kernel(x)");
-                        pack_signal_kernel<<<block_count(static_cast<std::size_t>(nfreq)), kThreadsPerBlock>>>(
+                        pack_signal_kernel<<<policy_block_count(static_cast<std::size_t>(nfreq)), policy_threads()>>>(
                             reinterpret_cast<const float2 *>(g_workspace.ambgfun.y_buffer.get()),
                             ylen,
                             g_workspace.ambgfun.y_buffer.get(),
@@ -2862,7 +2921,7 @@ namespace cusignal
                                 g_workspace.ambgfun.x_buffer.get(),
                                 CUFFT_FORWARD),
                             "cufftExecC2C(delay forward)");
-                        apply_frequency_phase_kernel<<<block_count(static_cast<std::size_t>(nfreq)), kThreadsPerBlock>>>(
+                        apply_frequency_phase_kernel<<<policy_block_count(static_cast<std::size_t>(nfreq)), policy_threads()>>>(
                             g_workspace.ambgfun.x_buffer.get(), nfreq, fs, cut_value);
                         check_kernel_launch("apply_frequency_phase_kernel");
                         throw_on_cufft_error(
@@ -2872,13 +2931,13 @@ namespace cusignal
                                 g_workspace.ambgfun.x_buffer.get(),
                                 CUFFT_INVERSE),
                             "cufftExecC2C(delay inverse shift)");
-                        scale_complex_kernel<<<block_count(static_cast<std::size_t>(nfreq)), kThreadsPerBlock>>>(
+                        scale_complex_kernel<<<policy_block_count(static_cast<std::size_t>(nfreq)), policy_threads()>>>(
                             reinterpret_cast<float2 *>(g_workspace.ambgfun.x_buffer.get()),
                             static_cast<std::size_t>(nfreq),
                             1.0 / static_cast<float>(nfreq));
                         check_kernel_launch("scale_complex_kernel(delay shift)");
 
-                        multiply_with_conj_kernel<<<block_count(static_cast<std::size_t>(nfreq)), kThreadsPerBlock>>>(
+                        multiply_with_conj_kernel<<<policy_block_count(static_cast<std::size_t>(nfreq)), policy_threads()>>>(
                             g_workspace.ambgfun.y_buffer.get(),
                             g_workspace.ambgfun.x_buffer.get(),
                             g_workspace.ambgfun.y_buffer.get(),
@@ -2892,14 +2951,14 @@ namespace cusignal
                                 CUFFT_INVERSE),
                             "cufftExecC2C(delay final inverse)");
 
-                        extract_cut_kernel<<<block_count(static_cast<std::size_t>(nfreq)), kThreadsPerBlock>>>(
+                        extract_cut_kernel<<<policy_block_count(static_cast<std::size_t>(nfreq)), policy_threads()>>>(
                             g_workspace.ambgfun.y_buffer.get(),
                             nfreq,
                             true,
                             1.0,
                             values.data());
                         check_kernel_launch("extract_cut_kernel(delay)");
-                        build_doppler_axis_kernel<<<block_count(axis.size()), kThreadsPerBlock>>>(
+                        build_doppler_axis_kernel<<<policy_block_count(axis.size()), policy_threads()>>>(
                             axis.data(), nfreq, fs);
                         check_kernel_launch("build_doppler_axis_kernel(delay)");
                     }));
@@ -2916,7 +2975,7 @@ namespace cusignal
 
                 ScopedZxGpuEvents events;
                 g_last_kernel_ms = static_cast<float>(events.measure([&]() {
-                    modulate_and_pack_kernel<<<block_count(static_cast<std::size_t>(out_size)), kThreadsPerBlock>>>(
+                    modulate_and_pack_kernel<<<policy_block_count(static_cast<std::size_t>(out_size)), policy_threads()>>>(
                         reinterpret_cast<const float2 *>(g_workspace.ambgfun.x_buffer.get()),
                         xlen,
                         fs,
@@ -2924,7 +2983,7 @@ namespace cusignal
                         g_workspace.ambgfun.x_buffer.get(),
                         out_size);
                     check_kernel_launch("modulate_and_pack_kernel");
-                    pack_signal_kernel<<<block_count(static_cast<std::size_t>(out_size)), kThreadsPerBlock>>>(
+                    pack_signal_kernel<<<policy_block_count(static_cast<std::size_t>(out_size)), policy_threads()>>>(
                         reinterpret_cast<const float2 *>(g_workspace.ambgfun.y_buffer.get()),
                         ylen,
                         g_workspace.ambgfun.y_buffer.get(),
@@ -2946,7 +3005,7 @@ namespace cusignal
                             g_workspace.ambgfun.y_buffer.get(),
                             CUFFT_FORWARD),
                         "cufftExecC2C(doppler y)");
-                    multiply_with_conj_kernel<<<block_count(static_cast<std::size_t>(out_size)), kThreadsPerBlock>>>(
+                    multiply_with_conj_kernel<<<policy_block_count(static_cast<std::size_t>(out_size)), policy_threads()>>>(
                         g_workspace.ambgfun.y_buffer.get(),
                         g_workspace.ambgfun.x_buffer.get(),
                         g_workspace.ambgfun.y_buffer.get(),
@@ -2959,14 +3018,14 @@ namespace cusignal
                             g_workspace.ambgfun.y_buffer.get(),
                             CUFFT_INVERSE),
                         "cufftExecC2C(doppler inverse)");
-                    extract_cut_kernel<<<block_count(static_cast<std::size_t>(out_size)), kThreadsPerBlock>>>(
+                    extract_cut_kernel<<<policy_block_count(static_cast<std::size_t>(out_size)), policy_threads()>>>(
                         g_workspace.ambgfun.y_buffer.get(),
                         out_size,
                         false,
                         1.0 / static_cast<float>(out_size),
                         values.data());
                     check_kernel_launch("extract_cut_kernel(doppler)");
-                    build_delay_axis_kernel<<<block_count(axis.size()), kThreadsPerBlock>>>(
+                    build_delay_axis_kernel<<<policy_block_count(axis.size()), policy_threads()>>>(
                         axis.data(), xlen, ylen, fs);
                     check_kernel_launch("build_delay_axis_kernel(doppler)");
                 }));
@@ -3312,6 +3371,19 @@ namespace cusignal
                         throw std::invalid_argument("Steering Vector and input data do not align");
                     }
                 }
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_radar_aux_policy(
+                        "radartools/mvdr",
+                        {x_device.shape().size() > 0 ? x_device.shape()[0] : 0,
+                         x_device.shape().size() > 1 ? x_device.shape()[1] : 0,
+                         static_cast<std::size_t>(sensors), 0, 0, 0},
+                        3,
+                        1,
+                        {calc_cov ? 1ULL : 0ULL,
+                         static_cast<std::uint64_t>(sensors),
+                         static_cast<std::uint64_t>(x_device.shape().size() > 1 ? x_device.shape()[1] : 0),
+                         0, 0, 0, 0, 0, 0, 0},
+                        3));
                 if (!use_small_solver)
                 {
                     g_workspace.beamformer.ensure_handles();
@@ -3324,9 +3396,11 @@ namespace cusignal
                     {
                         const std::size_t snapshots = x_device.shape()[1];
                         g_workspace.beamformer.means.reserve(static_cast<std::size_t>(sensors));
-                        if (sensors <= 16)
+                        const bool use_parallel_mean = sensors <= 16 &&
+                                                       (tile::active_route() == 0 || tile::active_route() >= 2);
+                        if (use_parallel_mean)
                         {
-                            row_mean_parallel_kernel<<<sensors, kThreadsPerBlock>>>(
+                            row_mean_parallel_kernel<<<sensors, policy_threads()>>>(
                                 reinterpret_cast<const float2 *>(x_device.data()),
                                 static_cast<std::size_t>(sensors),
                                 snapshots,
@@ -3335,7 +3409,7 @@ namespace cusignal
                         }
                         else
                         {
-                            row_mean_kernel<<<block_count(static_cast<std::size_t>(sensors)), kThreadsPerBlock>>>(
+                            row_mean_kernel<<<policy_block_count(static_cast<std::size_t>(sensors)), policy_threads()>>>(
                                 reinterpret_cast<const float2 *>(x_device.data()),
                                 static_cast<std::size_t>(sensors),
                                 snapshots,
@@ -3346,7 +3420,7 @@ namespace cusignal
                         g_workspace.beamformer.covariance.reserve(static_cast<std::size_t>(sensors) * static_cast<std::size_t>(sensors));
                         if (sensors <= 16)
                         {
-                            mvdr_covariance_direct_kernel<<<sensors * (sensors + 1) / 2, kThreadsPerBlock>>>(
+                            mvdr_covariance_direct_kernel<<<sensors * (sensors + 1) / 2, policy_threads()>>>(
                                 reinterpret_cast<const float2 *>(x_device.data()),
                                 g_workspace.beamformer.means.get(),
                                 sensors,
@@ -3357,7 +3431,7 @@ namespace cusignal
                         else
                         {
                             g_workspace.beamformer.centered.reserve(static_cast<std::size_t>(sensors) * snapshots);
-                            center_matrix_kernel<<<block_count(static_cast<std::size_t>(sensors) * snapshots), kThreadsPerBlock>>>(
+                            center_matrix_kernel<<<policy_block_count(static_cast<std::size_t>(sensors) * snapshots), policy_threads()>>>(
                                 reinterpret_cast<const float2 *>(x_device.data()),
                                 g_workspace.beamformer.means.get(),
                                 static_cast<std::size_t>(sensors),
@@ -3386,7 +3460,7 @@ namespace cusignal
                                     g_workspace.beamformer.covariance.get(),
                                     sensors),
                                 "cublasCgemm(covariance)");
-                            conjugate_matrix_kernel<<<block_count(static_cast<std::size_t>(sensors) * static_cast<std::size_t>(sensors)), kThreadsPerBlock>>>(
+                            conjugate_matrix_kernel<<<policy_block_count(static_cast<std::size_t>(sensors) * static_cast<std::size_t>(sensors)), policy_threads()>>>(
                                 g_workspace.beamformer.covariance.get(),
                                 static_cast<std::size_t>(sensors) * static_cast<std::size_t>(sensors));
                             check_kernel_launch("conjugate_matrix_kernel");
@@ -3395,7 +3469,7 @@ namespace cusignal
                     else
                     {
                         g_workspace.beamformer.covariance.reserve(static_cast<std::size_t>(sensors) * static_cast<std::size_t>(sensors));
-                        transpose_square_to_column_major_kernel<<<block_count(static_cast<std::size_t>(sensors) * static_cast<std::size_t>(sensors)), kThreadsPerBlock>>>(
+                        transpose_square_to_column_major_kernel<<<policy_block_count(static_cast<std::size_t>(sensors) * static_cast<std::size_t>(sensors)), policy_threads()>>>(
                             reinterpret_cast<const float2 *>(x_device.data()),
                             sensors,
                             g_workspace.beamformer.covariance.get());
@@ -3428,7 +3502,7 @@ namespace cusignal
                     else
                     {
                         g_workspace.beamformer.rhs.reserve(static_cast<std::size_t>(sensors));
-                        copy_vector_to_cucomplex_kernel<<<block_count(static_cast<std::size_t>(sensors)), kThreadsPerBlock>>>(
+                        copy_vector_to_cucomplex_kernel<<<policy_block_count(static_cast<std::size_t>(sensors)), policy_threads()>>>(
                             reinterpret_cast<const float2 *>(sv_device.data()),
                             static_cast<std::size_t>(sensors),
                             g_workspace.beamformer.rhs.get());
@@ -3501,7 +3575,7 @@ namespace cusignal
                         {
                             throw std::invalid_argument("mvdr denominator is zero");
                         }
-                        scale_solution_kernel<<<block_count(static_cast<std::size_t>(sensors)), kThreadsPerBlock>>>(
+                        scale_solution_kernel<<<policy_block_count(static_cast<std::size_t>(sensors)), policy_threads()>>>(
                             g_workspace.beamformer.rhs.get(),
                             static_cast<std::size_t>(sensors),
                             denom,

@@ -25,6 +25,7 @@
 
 namespace
 {
+    namespace core = cusignal::core;
     using cusignal::core::Complex;
     using cusignal::core::ComplexArrayLike;
     using cusignal::core::ComplexSignalLike;
@@ -265,7 +266,37 @@ namespace
 
     inline int block_count(std::size_t count)
     {
-        return count == 0 ? 0 : static_cast<int>((count + kThreadsPerBlock - 1) / kThreadsPerBlock);
+        const int threads = tile::active_threads(kThreadsPerBlock);
+        return count == 0 ? 0 : static_cast<int>((count + static_cast<std::size_t>(threads) - 1) /
+                                                 static_cast<std::size_t>(threads));
+    }
+
+    inline int policy_threads()
+    {
+        return tile::active_threads(kThreadsPerBlock);
+    }
+
+    tile::PolicyDecision select_spectral_policy(
+        const char *operator_id,
+        const core::Shape &shape,
+        int dtype = 0,
+        std::uint64_t semantic0 = 0,
+        std::uint64_t semantic1 = 0)
+    {
+        return tile::select_if_inactive(tile::make_operator_key(
+            operator_id,
+            tile::OperatorFamily::Spectral,
+            {shape.size() > 0 ? shape[0] : 0,
+             shape.size() > 1 ? shape[1] : 0,
+             shape.size() > 2 ? shape[2] : 0,
+             shape.size() > 3 ? shape[3] : 0,
+             0,
+             0},
+            static_cast<std::uint8_t>(std::min<std::size_t>(shape.size(), 4)),
+            dtype,
+            1,
+            {semantic0, semantic1, 0, 0, 0, 0, 0, 0, 0, 0},
+            semantic1 == 0 ? (semantic0 == 0 ? 0 : 1) : 2));
     }
 
     std::string float_cache_key(float value)
@@ -1830,6 +1861,8 @@ namespace cusignal
                 const core::ZxGpuRealSignal &x_device = core::as_device_signal(x, workspace.x_signal_storage);
                 const core::ZxGpuRealSignal &y_device = core::as_device_signal(y, workspace.y_signal_storage);
                 const core::ZxGpuRealSignal &freqs_device = core::as_device_signal(freqs, workspace.freq_storage);
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_spectral_policy("spectral/lombscargle", core::Shape{x_device.size()}));
                 if (x_device.size() != y_device.size())
                 {
                     throw std::invalid_argument("lombscargle inputs must have the same length");
@@ -1854,12 +1887,12 @@ namespace cusignal
                 measure_gpu_compute(events, [&]() {
                     if (precenter)
                     {
-                        lombscargle_sum_kernel<<<partial_count, kThreadsPerBlock>>>(
+                        lombscargle_sum_kernel<<<partial_count, policy_threads()>>>(
                             y_device.data(),
                             sample_count,
                             workspace.reduction_scratch_a.get());
                         check_kernel_launch("lombscargle_sum_kernel");
-                        lombscargle_finalize_sum_kernel<<<1, kThreadsPerBlock>>>(
+                        lombscargle_finalize_sum_kernel<<<1, policy_threads()>>>(
                             workspace.reduction_scratch_a.get(),
                             partial_count,
                             1.0f / static_cast<float>(sample_count),
@@ -1868,14 +1901,14 @@ namespace cusignal
                     }
                     if (normalize)
                     {
-                        lombscargle_dot_kernel<<<partial_count, kThreadsPerBlock>>>(
+                        lombscargle_dot_kernel<<<partial_count, policy_threads()>>>(
                             y_device.data(),
                             sample_count,
                             workspace.real_scratch.get(),
                             precenter,
                             workspace.reduction_scratch_b.get());
                         check_kernel_launch("lombscargle_dot_kernel");
-                        lombscargle_finalize_sum_kernel<<<1, kThreadsPerBlock>>>(
+                        lombscargle_finalize_sum_kernel<<<1, policy_threads()>>>(
                             workspace.reduction_scratch_b.get(),
                             partial_count,
                             1.0f,
@@ -1886,7 +1919,7 @@ namespace cusignal
                     if (tile::optimized_path() && sample_count >= 1024 && freq_count >= 1024)
                     {
                         const int pair_block_count = (freq_count + 1) / 2;
-                        lombscargle_parallel_pair_kernel<<<pair_block_count, kThreadsPerBlock>>>(
+                        lombscargle_parallel_pair_kernel<<<pair_block_count, policy_threads()>>>(
                             x_device.data(),
                             y_device.data(),
                             freqs_device.data(),
@@ -1901,7 +1934,7 @@ namespace cusignal
                     }
                     else
                     {
-                        lombscargle_parallel_kernel<<<freq_count, kThreadsPerBlock>>>(
+                        lombscargle_parallel_kernel<<<freq_count, policy_threads()>>>(
                             x_device.data(),
                             y_device.data(),
                             freqs_device.data(),
@@ -1937,6 +1970,8 @@ namespace cusignal
                 }
                 g_last_periodogram_cache_state = kPeriodogramCacheStateBypass;
                 const core::ZxGpuRealArray &x_device = core::as_device_array(x, workspace.x_storage);
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_spectral_policy("spectral/periodogram", x_device.shape()));
                 require_last_axis(x_device, axis);
                 const std::size_t line_len = x_device.shape().back();
                 const std::size_t line_count = line_count_last_axis(x_device.shape());
@@ -2021,7 +2056,7 @@ namespace cusignal
                         {
                             prepare_segments_real_constant_kernel<<<
                                 static_cast<int>(line_count * nseg),
-                                kThreadsPerBlock>>>(
+                                policy_threads()>>>(
                                 x_device.data(),
                                 static_cast<int>(line_count),
                                 static_cast<int>(line_len),
@@ -2035,7 +2070,7 @@ namespace cusignal
                         }
                         else
                         {
-                            prepare_segments_real_kernel<<<block_count(total_fft), kThreadsPerBlock>>>(
+                            prepare_segments_real_kernel<<<block_count(total_fft), policy_threads()>>>(
                                 x_device.data(),
                                 static_cast<int>(line_count),
                                 static_cast<int>(line_len),
@@ -2054,7 +2089,7 @@ namespace cusignal
                         throw_on_cufft_error(
                             cufftExecR2C(workspace.real_forward_plan.handle, workspace.real_fft_x.get(), workspace.rfft_x.get()),
                             "cufftExecR2C(periodogram)");
-                        spectrogram_psd_r2c_kernel<<<block_count(values.size()), kThreadsPerBlock>>>(
+                        spectrogram_psd_r2c_kernel<<<block_count(values.size()), policy_threads()>>>(
                             workspace.rfft_x.get(),
                             static_cast<int>(line_count),
                             static_cast<int>(nseg),
@@ -2066,7 +2101,7 @@ namespace cusignal
                     }
                     else
                     {
-                        prepare_segments_kernel<<<block_count(total_fft), kThreadsPerBlock>>>(
+                        prepare_segments_kernel<<<block_count(total_fft), policy_threads()>>>(
                             x_device.data(),
                             static_cast<int>(line_count),
                             static_cast<int>(line_len),
@@ -2084,7 +2119,7 @@ namespace cusignal
                         throw_on_cufft_error(
                             cufftExecC2C(workspace.forward_plan.handle, workspace.fft_x.get(), workspace.fft_x.get(), CUFFT_FORWARD),
                             "cufftExecC2C(periodogram)");
-                        average_cross_kernel<<<block_count(values.size()), kThreadsPerBlock>>>(
+                        average_cross_kernel<<<block_count(values.size()), policy_threads()>>>(
                             workspace.fft_x.get(),
                             nullptr,
                             static_cast<int>(line_count),
@@ -2139,6 +2174,8 @@ namespace cusignal
                 }
                 g_last_welch_cache_state = kWelchCacheStateBypass;
                 const core::ZxGpuRealArray &x_device = core::as_device_array(x, workspace.x_storage);
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_spectral_policy("spectral/welch", x_device.shape()));
                 require_last_axis(x_device, axis);
                 const std::string avg = detail::normalize_average(average);
                 const std::size_t line_len = x_device.shape().back();
@@ -2210,7 +2247,7 @@ namespace cusignal
                     if (detrend_code == 1)
                     {
                         const int segment_count = static_cast<int>(line_count * nseg);
-                        prepare_segments_complex_constant_kernel<<<segment_count, kThreadsPerBlock>>>(
+                        prepare_segments_complex_constant_kernel<<<segment_count, policy_threads()>>>(
                             x_device.data(),
                             static_cast<int>(line_count),
                             static_cast<int>(line_len),
@@ -2224,7 +2261,7 @@ namespace cusignal
                     }
                     else
                     {
-                        prepare_segments_kernel<<<block_count(total_fft), kThreadsPerBlock>>>(
+                        prepare_segments_kernel<<<block_count(total_fft), policy_threads()>>>(
                             x_device.data(),
                             static_cast<int>(line_count),
                             static_cast<int>(line_len),
@@ -2243,7 +2280,7 @@ namespace cusignal
                     throw_on_cufft_error(
                         cufftExecC2C(workspace.forward_plan.handle, workspace.fft_x.get(), workspace.fft_x.get(), CUFFT_FORWARD),
                         "cufftExecC2C(welch)");
-                    average_cross_kernel<<<block_count(values.size()), kThreadsPerBlock>>>(
+                    average_cross_kernel<<<block_count(values.size()), policy_threads()>>>(
                         workspace.fft_x.get(),
                         nullptr,
                         static_cast<int>(line_count),
@@ -2292,6 +2329,8 @@ namespace cusignal
                 thread_local SpectralWorkspace workspace;
                 const core::ZxGpuRealArray &x_device = core::as_device_array(x, workspace.x_storage);
                 const core::ZxGpuRealArray &y_device = core::as_device_array(y, workspace.y_storage);
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_spectral_policy("spectral/csd", x_device.shape()));
                 require_last_axis(x_device, axis);
                 require_last_axis(y_device, axis);
                 if (x_device.shape() != y_device.shape())
@@ -2379,7 +2418,7 @@ namespace cusignal
                         if (detrend_code == 1)
                         {
                             const int segment_count = static_cast<int>(line_count * nseg);
-                            prepare_segments_real_constant_kernel<<<segment_count, kThreadsPerBlock>>>(
+                            prepare_segments_real_constant_kernel<<<segment_count, policy_threads()>>>(
                                 x_device.data(),
                                 static_cast<int>(line_count),
                                 static_cast<int>(line_len),
@@ -2389,7 +2428,7 @@ namespace cusignal
                                 config.nfft,
                                 window_values->data(),
                                 workspace.real_fft_x.get());
-                            prepare_segments_real_constant_kernel<<<segment_count, kThreadsPerBlock>>>(
+                            prepare_segments_real_constant_kernel<<<segment_count, policy_threads()>>>(
                                 y_device.data(),
                                 static_cast<int>(line_count),
                                 static_cast<int>(line_len),
@@ -2403,7 +2442,7 @@ namespace cusignal
                         }
                         else
                         {
-                            prepare_segments_real_kernel<<<block_count(total_fft), kThreadsPerBlock>>>(
+                            prepare_segments_real_kernel<<<block_count(total_fft), policy_threads()>>>(
                                 x_device.data(),
                                 static_cast<int>(line_count),
                                 static_cast<int>(line_len),
@@ -2416,7 +2455,7 @@ namespace cusignal
                                 window_values->data(),
                                 detrend_code,
                                 workspace.real_fft_x.get());
-                            prepare_segments_real_kernel<<<block_count(total_fft), kThreadsPerBlock>>>(
+                            prepare_segments_real_kernel<<<block_count(total_fft), policy_threads()>>>(
                                 y_device.data(),
                                 static_cast<int>(line_count),
                                 static_cast<int>(line_len),
@@ -2438,7 +2477,7 @@ namespace cusignal
                         throw_on_cufft_error(
                             cufftExecR2C(workspace.real_forward_plan.handle, workspace.real_fft_y.get(), workspace.rfft_y.get()),
                             "cufftExecR2C(csd/y)");
-                        average_cross_r2c_kernel<<<block_count(values.size()), kThreadsPerBlock>>>(
+                        average_cross_r2c_kernel<<<block_count(values.size()), policy_threads()>>>(
                             workspace.rfft_x.get(),
                             workspace.rfft_y.get(),
                             static_cast<int>(line_count),
@@ -2455,7 +2494,7 @@ namespace cusignal
                         if (detrend_code == 1)
                         {
                             const int segment_count = static_cast<int>(line_count * nseg);
-                            prepare_segments_complex_constant_kernel<<<segment_count, kThreadsPerBlock>>>(
+                            prepare_segments_complex_constant_kernel<<<segment_count, policy_threads()>>>(
                                 x_device.data(),
                                 static_cast<int>(line_count),
                                 static_cast<int>(line_len),
@@ -2465,7 +2504,7 @@ namespace cusignal
                                 config.nfft,
                                 window_values->data(),
                                 workspace.fft_x.get());
-                            prepare_segments_complex_constant_kernel<<<segment_count, kThreadsPerBlock>>>(
+                            prepare_segments_complex_constant_kernel<<<segment_count, policy_threads()>>>(
                                 y_device.data(),
                                 static_cast<int>(line_count),
                                 static_cast<int>(line_len),
@@ -2479,7 +2518,7 @@ namespace cusignal
                         }
                         else
                         {
-                            prepare_segments_kernel<<<block_count(total_fft), kThreadsPerBlock>>>(
+                            prepare_segments_kernel<<<block_count(total_fft), policy_threads()>>>(
                                 x_device.data(),
                                 static_cast<int>(line_count),
                                 static_cast<int>(line_len),
@@ -2492,7 +2531,7 @@ namespace cusignal
                                 window_values->data(),
                                 detrend_code,
                                 workspace.fft_x.get());
-                            prepare_segments_kernel<<<block_count(total_fft), kThreadsPerBlock>>>(
+                            prepare_segments_kernel<<<block_count(total_fft), policy_threads()>>>(
                                 y_device.data(),
                                 static_cast<int>(line_count),
                                 static_cast<int>(line_len),
@@ -2514,7 +2553,7 @@ namespace cusignal
                         throw_on_cufft_error(
                             cufftExecC2C(workspace.forward_plan.handle, workspace.fft_y.get(), workspace.fft_y.get(), CUFFT_FORWARD),
                             "cufftExecC2C(csd/y)");
-                        average_cross_kernel<<<block_count(values.size()), kThreadsPerBlock>>>(
+                        average_cross_kernel<<<block_count(values.size()), policy_threads()>>>(
                             workspace.fft_x.get(),
                             workspace.fft_y.get(),
                             static_cast<int>(line_count),
@@ -2553,6 +2592,8 @@ namespace cusignal
             {
                 thread_local SpectralWorkspace workspace;
                 const core::ZxGpuRealArray &x_device = core::as_device_array(x, workspace.x_storage);
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_spectral_policy("spectral/spectrogram", x_device.shape()));
                 require_last_axis(x_device, axis);
 
                 const std::string normalized_mode = detail::normalize_mode(mode);
@@ -2644,7 +2685,7 @@ namespace cusignal
                         if (detrend_code == 1)
                         {
                             const int segment_count = static_cast<int>(line_count * nseg);
-                            prepare_segments_real_constant_kernel<<<segment_count, kThreadsPerBlock>>>(
+                            prepare_segments_real_constant_kernel<<<segment_count, policy_threads()>>>(
                                 x_device.data(),
                                 static_cast<int>(line_count),
                                 static_cast<int>(line_len),
@@ -2658,7 +2699,7 @@ namespace cusignal
                         }
                         else
                         {
-                            prepare_segments_real_kernel<<<block_count(total_fft), kThreadsPerBlock>>>(
+                            prepare_segments_real_kernel<<<block_count(total_fft), policy_threads()>>>(
                                 x_device.data(),
                                 static_cast<int>(line_count),
                                 static_cast<int>(line_len),
@@ -2680,7 +2721,7 @@ namespace cusignal
                         ZxGpuRealArray values(time_shape, false);
                         if (use_r2c_psd)
                         {
-                            spectrogram_psd_r2c_kernel<<<block_count(values.size()), kThreadsPerBlock>>>(
+                            spectrogram_psd_r2c_kernel<<<block_count(values.size()), policy_threads()>>>(
                                 workspace.rfft_x.get(),
                                 static_cast<int>(line_count),
                                 static_cast<int>(nseg),
@@ -2692,7 +2733,7 @@ namespace cusignal
                         }
                         else
                         {
-                            spectrogram_magnitude_r2c_kernel<<<block_count(values.size()), kThreadsPerBlock>>>(
+                            spectrogram_magnitude_r2c_kernel<<<block_count(values.size()), policy_threads()>>>(
                                 workspace.rfft_x.get(),
                                 static_cast<int>(line_count),
                                 static_cast<int>(nseg),
@@ -2709,7 +2750,7 @@ namespace cusignal
                         if (detrend_code == 1)
                         {
                             const int segment_count = static_cast<int>(line_count * nseg);
-                            prepare_segments_complex_constant_kernel<<<segment_count, kThreadsPerBlock>>>(
+                            prepare_segments_complex_constant_kernel<<<segment_count, policy_threads()>>>(
                                 x_device.data(),
                                 static_cast<int>(line_count),
                                 static_cast<int>(line_len),
@@ -2723,7 +2764,7 @@ namespace cusignal
                         }
                         else
                         {
-                            prepare_segments_kernel<<<block_count(total_fft), kThreadsPerBlock>>>(
+                            prepare_segments_kernel<<<block_count(total_fft), policy_threads()>>>(
                                 x_device.data(),
                                 static_cast<int>(line_count),
                                 static_cast<int>(line_len),
@@ -2745,7 +2786,7 @@ namespace cusignal
                         if (normalized_mode == "psd")
                         {
                             ZxGpuRealArray values(time_shape, false);
-                            spectrogram_psd_kernel<<<block_count(values.size()), kThreadsPerBlock>>>(
+                            spectrogram_psd_kernel<<<block_count(values.size()), policy_threads()>>>(
                                 workspace.fft_x.get(),
                                 static_cast<int>(line_count),
                                 static_cast<int>(nseg),
@@ -2760,7 +2801,7 @@ namespace cusignal
                         else
                         {
                             ZxGpuComplexArray complex_values(time_shape, false);
-                            spectrogram_complex_kernel<<<block_count(complex_values.size()), kThreadsPerBlock>>>(
+                            spectrogram_complex_kernel<<<block_count(complex_values.size()), policy_threads()>>>(
                                 workspace.fft_x.get(),
                                 static_cast<int>(line_count),
                                 static_cast<int>(nseg),
@@ -2777,7 +2818,7 @@ namespace cusignal
                             {
                                 ZxGpuRealArray real_values(time_shape, false);
                                 const int mode_code = normalized_mode == "magnitude" ? 0 : 1;
-                                complex_to_mode_kernel<<<block_count(real_values.size()), kThreadsPerBlock>>>(
+                                complex_to_mode_kernel<<<block_count(real_values.size()), policy_threads()>>>(
                                     reinterpret_cast<const cufftComplex *>(complex_values.data()),
                                     real_values.size(),
                                     mode_code,
@@ -2785,7 +2826,7 @@ namespace cusignal
                                 check_kernel_launch("complex_to_mode_kernel");
                                 if (normalized_mode == "phase")
                                 {
-                                    unwrap_phase_kernel<<<block_count(line_count * nseg), kThreadsPerBlock>>>(
+                                    unwrap_phase_kernel<<<block_count(line_count * nseg), policy_threads()>>>(
                                         real_values.data(),
                                         static_cast<int>(line_count),
                                         static_cast<int>(freq_count),
@@ -2815,6 +2856,8 @@ namespace cusignal
             {
                 thread_local SpectralWorkspace workspace;
                 const core::ZxGpuRealArray &x_device = core::as_device_array(x, workspace.x_storage);
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_spectral_policy("spectral/stft", x_device.shape()));
                 require_last_axis(x_device, axis);
                 const std::string normalized_boundary = detail::normalize_boundary(boundary);
                 const std::size_t line_len = x_device.shape().back();
@@ -2892,7 +2935,7 @@ namespace cusignal
 
                 ScopedZxGpuEvents events;
                 measure_gpu_compute(events, [&]() {
-                    prepare_segments_kernel<<<block_count(total_fft), kThreadsPerBlock>>>(
+                    prepare_segments_kernel<<<block_count(total_fft), policy_threads()>>>(
                         x_device.data(),
                         static_cast<int>(line_count),
                         static_cast<int>(line_len),
@@ -2910,7 +2953,7 @@ namespace cusignal
                     throw_on_cufft_error(
                         cufftExecC2C(workspace.forward_plan.handle, workspace.fft_x.get(), workspace.fft_x.get(), CUFFT_FORWARD),
                         "cufftExecC2C(stft)");
-                    spectrogram_complex_kernel<<<block_count(result.values.size()), kThreadsPerBlock>>>(
+                    spectrogram_complex_kernel<<<block_count(result.values.size()), policy_threads()>>>(
                         workspace.fft_x.get(),
                         static_cast<int>(line_count),
                         static_cast<int>(nseg),
@@ -2944,6 +2987,8 @@ namespace cusignal
                 }
                 g_last_istft_cache_state = kIstftCacheStateBypass;
                 const core::ZxGpuComplexArray &z_device = core::as_device_array(zxx, workspace.z_storage);
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_spectral_policy("spectral/istft", z_device.shape(), 1));
                 const std::size_t rank = z_device.rank();
                 const std::size_t normalized_time = core::normalize_axis(time_axis, rank);
                 const std::size_t normalized_freq = core::normalize_axis(freq_axis, rank);
@@ -3053,7 +3098,7 @@ namespace cusignal
                 measure_gpu_compute(events, [&]() {
                     if (input_onesided)
                     {
-                        expand_onesided_kernel<<<block_count(spectrum_count), kThreadsPerBlock>>>(
+                        expand_onesided_kernel<<<block_count(spectrum_count), policy_threads()>>>(
                             reinterpret_cast<const cufftComplex *>(z_device.data()),
                             static_cast<int>(outer_count),
                             static_cast<int>(time_count),
@@ -3064,7 +3109,7 @@ namespace cusignal
                     }
                     else
                     {
-                        copy_twosided_kernel<<<block_count(z_device.size()), kThreadsPerBlock>>>(
+                        copy_twosided_kernel<<<block_count(z_device.size()), policy_threads()>>>(
                             reinterpret_cast<const cufftComplex *>(z_device.data()),
                             z_device.size(),
                             workspace.fft_full.get());
@@ -3074,7 +3119,7 @@ namespace cusignal
                     throw_on_cufft_error(
                         cufftExecC2C(workspace.inverse_plan.handle, workspace.fft_full.get(), workspace.fft_full.get(), CUFFT_INVERSE),
                         "cufftExecC2C(istft)");
-                    overlap_add_kernel<<<block_count(result.signal.size()), kThreadsPerBlock>>>(
+                    overlap_add_kernel<<<block_count(result.signal.size()), policy_threads()>>>(
                         workspace.fft_full.get(),
                         static_cast<int>(outer_count),
                         static_cast<int>(time_count),
@@ -3105,6 +3150,8 @@ namespace cusignal
                 thread_local SpectralWorkspace workspace;
                 const core::ZxGpuRealArray &x_device = core::as_device_array(x, workspace.x_storage);
                 const core::ZxGpuRealArray &y_device = core::as_device_array(y, workspace.y_storage);
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_spectral_policy("spectral/coherence", x_device.shape()));
                 require_last_axis(x_device, axis);
                 require_last_axis(y_device, axis);
                 if (x_device.shape() != y_device.shape())
@@ -3171,7 +3218,7 @@ namespace cusignal
                     if (detrend_code == 1)
                     {
                         const int segment_count = static_cast<int>(line_count * nseg);
-                        prepare_segments_complex_constant_kernel<<<segment_count, kThreadsPerBlock>>>(
+                        prepare_segments_complex_constant_kernel<<<segment_count, policy_threads()>>>(
                             x_device.data(),
                             static_cast<int>(line_count),
                             static_cast<int>(line_len),
@@ -3181,7 +3228,7 @@ namespace cusignal
                             config.nfft,
                             window_values->data(),
                             workspace.fft_x.get());
-                        prepare_segments_complex_constant_kernel<<<segment_count, kThreadsPerBlock>>>(
+                        prepare_segments_complex_constant_kernel<<<segment_count, policy_threads()>>>(
                             y_device.data(),
                             static_cast<int>(line_count),
                             static_cast<int>(line_len),
@@ -3195,7 +3242,7 @@ namespace cusignal
                     }
                     else
                     {
-                        prepare_segments_kernel<<<block_count(total_fft), kThreadsPerBlock>>>(
+                        prepare_segments_kernel<<<block_count(total_fft), policy_threads()>>>(
                             x_device.data(),
                             static_cast<int>(line_count),
                             static_cast<int>(line_len),
@@ -3208,7 +3255,7 @@ namespace cusignal
                             window_values->data(),
                             detrend_code,
                             workspace.fft_x.get());
-                        prepare_segments_kernel<<<block_count(total_fft), kThreadsPerBlock>>>(
+                        prepare_segments_kernel<<<block_count(total_fft), policy_threads()>>>(
                             y_device.data(),
                             static_cast<int>(line_count),
                             static_cast<int>(line_len),
@@ -3230,7 +3277,7 @@ namespace cusignal
                     throw_on_cufft_error(
                         cufftExecC2C(workspace.forward_plan.handle, workspace.fft_y.get(), workspace.fft_y.get(), CUFFT_FORWARD),
                         "cufftExecC2C(coherence/y)");
-                    coherence_from_fft_kernel<<<block_count(result.values.size()), kThreadsPerBlock>>>(
+                    coherence_from_fft_kernel<<<block_count(result.values.size()), policy_threads()>>>(
                         workspace.fft_x.get(),
                         workspace.fft_y.get(),
                         static_cast<int>(line_count),
@@ -3254,6 +3301,8 @@ namespace cusignal
                 }
                 thread_local SpectralWorkspace workspace;
                 const core::ZxGpuRealSignal &events_device = core::as_device_signal(events, workspace.x_signal_storage);
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_spectral_policy("spectral/vectorstrength", core::Shape{events_device.size()}));
                 RealSignal period_host{period};
                 workspace.period_storage.copy_from(period_host);
                 spectral_api::ZxGpuVectorStrengthResult result;
@@ -3266,7 +3315,7 @@ namespace cusignal
                         std::max(1, std::min(kVectorStrengthMaxBlocksPerPeriod, block_count(events_device.size())));
                     workspace.reduction_scratch_a.reserve(static_cast<std::size_t>(blocks_per_period));
                     workspace.reduction_scratch_b.reserve(static_cast<std::size_t>(blocks_per_period));
-                    vectorstrength_partial_kernel<<<dim3(1, blocks_per_period), kThreadsPerBlock>>>(
+                    vectorstrength_partial_kernel<<<dim3(1, blocks_per_period), policy_threads()>>>(
                         events_device.data(),
                         event_count,
                         workspace.period_storage.data(),
@@ -3275,7 +3324,7 @@ namespace cusignal
                         workspace.reduction_scratch_a.get(),
                         workspace.reduction_scratch_b.get());
                     check_kernel_launch("vectorstrength_partial_kernel(scalar)");
-                    vectorstrength_finalize_kernel<<<1, kThreadsPerBlock>>>(
+                    vectorstrength_finalize_kernel<<<1, policy_threads()>>>(
                         workspace.reduction_scratch_a.get(),
                         workspace.reduction_scratch_b.get(),
                         event_count,
@@ -3293,6 +3342,8 @@ namespace cusignal
             {
                 thread_local SpectralWorkspace workspace;
                 const core::ZxGpuRealSignal &events_device = core::as_device_signal(events, workspace.x_signal_storage);
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_spectral_policy("spectral/vectorstrength", core::Shape{events_device.size()}));
                 RealSignal host_periods;
                 const core::ZxGpuRealSignal *period_device = nullptr;
                 if (const auto *host = std::get_if<RealSignal>(&period))
@@ -3360,7 +3411,7 @@ namespace cusignal
                         const int pair_count = period_count / 2;
                         vectorstrength_partial_pair_kernel<<<
                             dim3(pair_count, blocks_per_period),
-                            kThreadsPerBlock>>>(
+                            policy_threads()>>>(
                             events_device.data(),
                             event_count,
                             period_device->data(),
@@ -3375,7 +3426,7 @@ namespace cusignal
                                 static_cast<std::size_t>(blocks_per_period);
                             vectorstrength_partial_kernel<<<
                                 dim3(1, blocks_per_period),
-                                kThreadsPerBlock>>>(
+                                policy_threads()>>>(
                                 events_device.data(),
                                 event_count,
                                 period_device->data() + pair_count * 2,
@@ -3388,7 +3439,7 @@ namespace cusignal
                     }
                     else
                     {
-                        vectorstrength_partial_kernel<<<dim3(period_count, blocks_per_period), kThreadsPerBlock>>>(
+                        vectorstrength_partial_kernel<<<dim3(period_count, blocks_per_period), policy_threads()>>>(
                             events_device.data(),
                             event_count,
                             period_device->data(),
@@ -3398,7 +3449,7 @@ namespace cusignal
                             workspace.reduction_scratch_b.get());
                         check_kernel_launch("vectorstrength_partial_kernel(vector)");
                     }
-                    vectorstrength_finalize_kernel<<<period_count, kThreadsPerBlock>>>(
+                    vectorstrength_finalize_kernel<<<period_count, policy_threads()>>>(
                         workspace.reduction_scratch_a.get(),
                         workspace.reduction_scratch_b.get(),
                         event_count,

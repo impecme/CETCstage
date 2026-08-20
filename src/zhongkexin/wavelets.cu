@@ -108,6 +108,22 @@ namespace
         return size == 0 ? 0 : static_cast<int>((size + kThreadsPerBlock - 1) / kThreadsPerBlock);
     }
 
+    int policy_block_count(std::size_t size)
+    {
+        const int threads = tile::active_threads(kThreadsPerBlock);
+        return size == 0 ? 0 : static_cast<int>((size + static_cast<std::size_t>(threads) - 1) /
+                                                 static_cast<std::size_t>(threads));
+    }
+
+    tile::PolicyDecision select_wavelet_policy(const char *operator_id, std::size_t size)
+    {
+        return tile::select_if_inactive(tile::make_operator_key(
+            operator_id,
+            tile::OperatorFamily::Wavelet,
+            {size, 0, 0, 0, 0, 0},
+            1));
+    }
+
     std::size_t to_size(int value)
     {
         return value > 0 ? static_cast<std::size_t>(value) : 0;
@@ -421,6 +437,8 @@ namespace cusignal
             {
                 const core::ZxGpuRealSignal &hk_device =
                     core::as_device_signal(hk, g_workspace.hk_storage);
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_wavelet_policy("wavelets/qmf", hk_device.size()));
                 if (hk_device.empty())
                 {
                     g_last_kernel_ms = 0.0;
@@ -430,7 +448,7 @@ namespace cusignal
                 ZxGpuRealSignal output(hk_device.size());
                 ScopedZxGpuEvents events;
                 g_last_kernel_ms = static_cast<float>(events.measure([&]() {
-                    qmf_kernel<<<block_count(hk_device.size()), kThreadsPerBlock>>>(
+                    qmf_kernel<<<policy_block_count(hk_device.size()), tile::active_threads(kThreadsPerBlock)>>>(
                         hk_device.data(),
                         output.data(),
                         hk_device.size());
@@ -445,6 +463,8 @@ namespace cusignal
                 detail::ensure_positive(s, "s");
 
                 const std::size_t count = to_size(points);
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_wavelet_policy("wavelets/morlet", count));
                 if (count == 0)
                 {
                     g_last_kernel_ms = 0.0;
@@ -458,7 +478,7 @@ namespace cusignal
                 const float correction = expf(-0.5f * w * w);
                 ScopedZxGpuEvents events;
                 g_last_kernel_ms = static_cast<float>(events.measure([&]() {
-                    morlet_kernel<<<block_count(count), kThreadsPerBlock>>>(
+                    morlet_kernel<<<policy_block_count(count), tile::active_threads(kThreadsPerBlock)>>>(
                         reinterpret_cast<float2 *>(output.data()),
                         count,
                         w,
@@ -477,6 +497,8 @@ namespace cusignal
                 detail::ensure_positive(a, "a");
 
                 const std::size_t count = to_size(points);
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_wavelet_policy("wavelets/ricker", count));
                 if (count == 0)
                 {
                     g_last_kernel_ms = 0.0;
@@ -495,7 +517,7 @@ namespace cusignal
                     if (count <= kMaxExactFloatInteger)
                     {
                         const std::size_t work_count = (count + 1) / 2;
-                        ricker_symmetric_kernel<<<block_count(work_count), kThreadsPerBlock>>>(
+                        ricker_symmetric_kernel<<<policy_block_count(work_count), tile::active_threads(kThreadsPerBlock)>>>(
                             output.data(),
                             count,
                             amplitude,
@@ -505,7 +527,7 @@ namespace cusignal
                     }
                     else
                     {
-                        ricker_kernel<<<block_count(count), kThreadsPerBlock>>>(
+                        ricker_kernel<<<policy_block_count(count), tile::active_threads(kThreadsPerBlock)>>>(
                             output.data(),
                             count,
                             amplitude,
@@ -523,6 +545,8 @@ namespace cusignal
                 detail::ensure_positive(s, "s");
 
                 const std::size_t count = to_size(points);
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_wavelet_policy("wavelets/morlet2", count));
                 if (count == 0)
                 {
                     g_last_kernel_ms = 0.0;
@@ -547,7 +571,7 @@ namespace cusignal
                         std::isfinite(max_phase))
                     {
                         const std::size_t work_count = (count + 1) / 2;
-                        morlet2_symmetric_kernel<<<block_count(work_count), kThreadsPerBlock>>>(
+                        morlet2_symmetric_kernel<<<policy_block_count(work_count), tile::active_threads(kThreadsPerBlock)>>>(
                             reinterpret_cast<float2 *>(output.data()),
                             count,
                             inv_s,
@@ -557,7 +581,7 @@ namespace cusignal
                     }
                     else
                     {
-                        morlet2_kernel<<<block_count(count), kThreadsPerBlock>>>(
+                        morlet2_kernel<<<policy_block_count(count), tile::active_threads(kThreadsPerBlock)>>>(
                             reinterpret_cast<float2 *>(output.data()),
                             count,
                             inv_s,
@@ -578,6 +602,8 @@ namespace cusignal
 
                 const core::ZxGpuRealSignal &data_device =
                     core::as_device_signal(data, g_workspace.data_storage);
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_wavelet_policy("wavelets/cwt", data_device.size()));
 
                 RealSignal host_widths;
                 const core::ZxGpuRealSignal *widths_device = nullptr;
@@ -638,17 +664,19 @@ namespace cusignal
                         g_workspace.cwt_cache_max_kernel_size > 0 &&
                         g_workspace.cwt_cache_max_kernel_size <= kMaxSharedKernelSize)
                     {
+                        const std::size_t active_threads =
+                            static_cast<std::size_t>(tile::active_threads(kThreadsPerBlock));
                         const std::size_t shared_bytes =
-                            (2 * static_cast<std::size_t>(kThreadsPerBlock) +
+                            (2 * active_threads +
                              g_workspace.cwt_cache_max_kernel_size - 1) *
                             sizeof(float);
                         const std::size_t outputs_per_block =
-                            2 * static_cast<std::size_t>(kThreadsPerBlock);
+                            2 * active_threads;
                         const dim3 grid(
                             static_cast<unsigned int>(
                                 (data_device.size() + outputs_per_block - 1) / outputs_per_block),
                             static_cast<unsigned int>(widths_device->size()));
-                        cwt_ricker_shared_kernel<<<grid, kThreadsPerBlock, shared_bytes>>>(
+                        cwt_ricker_shared_kernel<<<grid, tile::active_threads(kThreadsPerBlock), shared_bytes>>>(
                             data_device.data(),
                             data_device.size(),
                             g_workspace.kernel_sizes_storage.data(),
@@ -660,7 +688,7 @@ namespace cusignal
                     }
                     else if (wavelet == "ricker")
                     {
-                        cwt_ricker_real_kernel<<<block_count(output.size()), kThreadsPerBlock>>>(
+                        cwt_ricker_real_kernel<<<policy_block_count(output.size()), tile::active_threads(kThreadsPerBlock)>>>(
                             data_device.data(),
                             widths_device->size(),
                             data_device.size(),
@@ -673,7 +701,7 @@ namespace cusignal
                     }
                     else
                     {
-                        cwt_kernel<<<block_count(output.size()), kThreadsPerBlock>>>(
+                        cwt_kernel<<<policy_block_count(output.size()), tile::active_threads(kThreadsPerBlock)>>>(
                             data_device.data(),
                             widths_device->size(),
                             data_device.size(),

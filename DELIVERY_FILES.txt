@@ -967,7 +967,6 @@ data/reference/unit/windows/triang/expected/periodic_small.csv
 data/reference/unit/windows/triang/manifest.json
 data/reference/unit/windows/tukey/expected/alpha_035.csv
 data/reference/unit/windows/tukey/manifest.json
-data/reports/README.md
 demo/common/task_step_report.hpp
 demo/task1_radar/CMakeLists.txt
 demo/task1_radar/README.md

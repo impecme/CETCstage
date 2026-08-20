@@ -301,7 +301,44 @@ namespace
 
     int block_count(std::size_t size)
     {
-        return size == 0 ? 0 : static_cast<int>((size + kThreadsPerBlock - 1) / kThreadsPerBlock);
+        const int threads = tile::active_threads(kThreadsPerBlock);
+        return size == 0 ? 0 : static_cast<int>((size + static_cast<std::size_t>(threads) - 1) /
+                                                 static_cast<std::size_t>(threads));
+    }
+
+    int policy_block_count(std::size_t size)
+    {
+        const int threads = tile::active_threads(kThreadsPerBlock);
+        return size == 0 ? 0 : static_cast<int>((size + static_cast<std::size_t>(threads) - 1) /
+                                                 static_cast<std::size_t>(threads));
+    }
+
+    int policy_threads()
+    {
+        return tile::active_threads(kThreadsPerBlock);
+    }
+
+    tile::PolicyDecision select_filtering_policy(
+        const char *operator_id,
+        const core::Shape &shape,
+        int dtype = 0,
+        std::uint64_t semantic0 = 0,
+        std::uint64_t semantic1 = 0)
+    {
+        return tile::select_if_inactive(tile::make_operator_key(
+            operator_id,
+            tile::OperatorFamily::Filtering,
+            {shape.size() > 0 ? shape[0] : 0,
+             shape.size() > 1 ? shape[1] : 0,
+             shape.size() > 2 ? shape[2] : 0,
+             shape.size() > 3 ? shape[3] : 0,
+             0,
+             0},
+            static_cast<std::uint8_t>(std::min<std::size_t>(shape.size(), 4)),
+            dtype,
+            1,
+            {semantic0, semantic1, 0, 0, 0, 0, 0, 0, 0, 0},
+            semantic1 == 0 ? (semantic0 == 0 ? 0 : 1) : 2));
     }
 
     __device__ void kahan_add(float value, float &sum, float &compensation)
@@ -3125,7 +3162,7 @@ namespace
         ZxGpuRealSignal output(order, true);
         g_workspace.matrix_buffer.reserve(order * order);
         g_workspace.scalar_buffer_a.reserve(order);
-        solve_lfilter_zi_kernel<<<1, kThreadsPerBlock>>>(
+        solve_lfilter_zi_kernel<<<1, policy_threads()>>>(
             b.data(),
             b.size(),
             a.data(),
@@ -3331,7 +3368,7 @@ namespace
             zf_axis_stride = zf_plan.axis_stride;
         }
 
-        lfilter_line_kernel<<<block_count(plan.line_count), kThreadsPerBlock>>>(
+        lfilter_line_kernel<<<block_count(plan.line_count), policy_threads()>>>(
             b.data(),
             b.size(),
             a.data(),
@@ -3375,7 +3412,7 @@ namespace
         const float *section_input = x.data();
         for (std::size_t section = 0; section < n_sections; ++section)
         {
-            sosfilt_prefix_tiles_kernel<<<tile_count, kThreadsPerBlock>>>(
+            sosfilt_prefix_tiles_kernel<<<tile_count, policy_threads()>>>(
                 sos.data(),
                 section,
                 section_input,
@@ -3385,7 +3422,7 @@ namespace
                 g_workspace.scalar_buffer_a.get());
             check_kernel_launch("sosfilt_prefix_tiles_kernel");
 
-            sosfilt_scan_tile_transform_blocks_kernel<<<tile_scan_block_count, kThreadsPerBlock>>>(
+            sosfilt_scan_tile_transform_blocks_kernel<<<tile_scan_block_count, policy_threads()>>>(
                 g_workspace.scalar_buffer_a.get(),
                 tile_count,
                 g_workspace.real_signal_a.data(),
@@ -3400,7 +3437,7 @@ namespace
                 scale_input);
             check_kernel_launch("sosfilt_scan_block_transforms_kernel");
 
-            sosfilt_apply_block_prefix_to_samples_kernel<<<tile_count, kThreadsPerBlock>>>(
+            sosfilt_apply_block_prefix_to_samples_kernel<<<tile_count, policy_threads()>>>(
                 g_workspace.real_signal_a.data(),
                 g_workspace.real_signal_c.data(),
                 g_workspace.matrix_buffer.get(),
@@ -3503,7 +3540,7 @@ namespace
             zf_axis_stride = zf_strides[1 + core::normalize_axis(axis, x.rank())];
         }
 
-        sosfilt_line_kernel<<<block_count(plan.line_count), kThreadsPerBlock>>>(
+        sosfilt_line_kernel<<<block_count(plan.line_count), policy_threads()>>>(
             sos.data(),
             n_sections,
             x.data(),
@@ -3559,7 +3596,7 @@ namespace
             "cudaMemcpy H2D(padded_bases)");
 
         ZxGpuRealArray padded(padded_shape, false);
-        pad_lines_kernel<<<block_count(padded_plan.line_count * padded_plan.axis_size), kThreadsPerBlock>>>(
+        pad_lines_kernel<<<block_count(padded_plan.line_count * padded_plan.axis_size), policy_threads()>>>(
             x.data(),
             input_bases,
             input_plan.axis_size,
@@ -3606,7 +3643,7 @@ namespace
         }
         else
         {
-            lfilter_line_kernel<<<block_count(padded_plan.line_count), kThreadsPerBlock>>>(
+            lfilter_line_kernel<<<block_count(padded_plan.line_count), policy_threads()>>>(
                 b.data(),
                 b.size(),
                 a.data(),
@@ -3629,7 +3666,7 @@ namespace
         }
 
         ZxGpuRealArray reversed(padded_shape, false);
-        reverse_lines_kernel<<<block_count(padded_plan.line_count * padded_plan.axis_size), kThreadsPerBlock>>>(
+        reverse_lines_kernel<<<block_count(padded_plan.line_count * padded_plan.axis_size), policy_threads()>>>(
             forward.data(),
             padded_bases,
             padded_plan.axis_size,
@@ -3652,7 +3689,7 @@ namespace
         }
         else
         {
-            lfilter_line_kernel<<<block_count(padded_plan.line_count), kThreadsPerBlock>>>(
+            lfilter_line_kernel<<<block_count(padded_plan.line_count), policy_threads()>>>(
                 b.data(),
                 b.size(),
                 a.data(),
@@ -3674,7 +3711,7 @@ namespace
             check_kernel_launch("lfilter_line_kernel backward");
         }
 
-        reverse_lines_kernel<<<block_count(padded_plan.line_count * padded_plan.axis_size), kThreadsPerBlock>>>(
+        reverse_lines_kernel<<<block_count(padded_plan.line_count * padded_plan.axis_size), policy_threads()>>>(
             backward.data(),
             padded_bases,
             padded_plan.axis_size,
@@ -3691,7 +3728,7 @@ namespace
         }
 
         ZxGpuRealArray output(x.shape(), false);
-        crop_lines_kernel<<<block_count(input_plan.line_count * input_plan.axis_size), kThreadsPerBlock>>>(
+        crop_lines_kernel<<<block_count(input_plan.line_count * input_plan.axis_size), policy_threads()>>>(
             reversed.data(),
             padded_bases,
             padded_plan.axis_stride,
@@ -3739,7 +3776,7 @@ namespace
             "cudaMemcpy H2D(padded_bases)");
 
         ZxGpuRealArray padded(padded_shape, false);
-        pad_lines_kernel<<<block_count(padded_plan.line_count * padded_plan.axis_size), kThreadsPerBlock>>>(
+        pad_lines_kernel<<<block_count(padded_plan.line_count * padded_plan.axis_size), policy_threads()>>>(
             x.data(),
             input_bases,
             input_plan.axis_size,
@@ -3756,7 +3793,7 @@ namespace
         ZxGpuRealArray forward(padded_shape, false);
         fir_filter_clamped_lines_kernel<<<
             block_count(padded_plan.line_count * padded_plan.axis_size),
-            kThreadsPerBlock>>>(
+            policy_threads()>>>(
             b.data(),
             b.size(),
             padded.data(),
@@ -3781,7 +3818,7 @@ namespace
             ZxGpuRealArray output(x.shape(), false);
             fir_filter_reverse_clamped_crop_lines_kernel<<<
                 block_count(input_plan.line_count * input_plan.axis_size),
-                kThreadsPerBlock>>>(
+                policy_threads()>>>(
                 b.data(),
                 b.size(),
                 forward.data(),
@@ -3799,7 +3836,7 @@ namespace
         }
 
         ZxGpuRealArray reversed(padded_shape, false);
-        reverse_lines_kernel<<<block_count(padded_plan.line_count * padded_plan.axis_size), kThreadsPerBlock>>>(
+        reverse_lines_kernel<<<block_count(padded_plan.line_count * padded_plan.axis_size), policy_threads()>>>(
             forward.data(),
             padded_bases,
             padded_plan.axis_size,
@@ -3813,7 +3850,7 @@ namespace
         ZxGpuRealArray backward(padded_shape, false);
         fir_filter_clamped_lines_kernel<<<
             block_count(padded_plan.line_count * padded_plan.axis_size),
-            kThreadsPerBlock>>>(
+            policy_threads()>>>(
             b.data(),
             b.size(),
             reversed.data(),
@@ -3824,7 +3861,7 @@ namespace
             backward.data());
         check_kernel_launch("fir_filter_clamped_lines_kernel backward");
 
-        reverse_lines_kernel<<<block_count(padded_plan.line_count * padded_plan.axis_size), kThreadsPerBlock>>>(
+        reverse_lines_kernel<<<block_count(padded_plan.line_count * padded_plan.axis_size), policy_threads()>>>(
             backward.data(),
             padded_bases,
             padded_plan.axis_size,
@@ -3841,7 +3878,7 @@ namespace
         }
 
         ZxGpuRealArray output(x.shape(), false);
-        crop_lines_kernel<<<block_count(input_plan.line_count * input_plan.axis_size), kThreadsPerBlock>>>(
+        crop_lines_kernel<<<block_count(input_plan.line_count * input_plan.axis_size), policy_threads()>>>(
             reversed.data(),
             padded_bases,
             padded_plan.axis_stride,
@@ -3880,7 +3917,7 @@ namespace
 
         for (std::size_t line = 0; line < input_plan.line_count; ++line)
         {
-            gather_real_line_to_complex_kernel<<<block_count(static_cast<std::size_t>(target)), kThreadsPerBlock>>>(
+            gather_real_line_to_complex_kernel<<<block_count(static_cast<std::size_t>(target)), policy_threads()>>>(
                 x.data(),
                 input_bases,
                 input_plan.axis_stride,
@@ -3898,7 +3935,7 @@ namespace
                     CUFFT_FORWARD),
                 "cufftExecC2C(hilbert forward)");
 
-            apply_hilbert_mask_kernel<<<block_count(static_cast<std::size_t>(target)), kThreadsPerBlock>>>(
+            apply_hilbert_mask_kernel<<<block_count(static_cast<std::size_t>(target)), policy_threads()>>>(
                 reinterpret_cast<cufftComplex *>(g_workspace.complex_signal_a.data()),
                 target);
             check_kernel_launch("apply_hilbert_mask_kernel");
@@ -3911,7 +3948,7 @@ namespace
                     CUFFT_INVERSE),
                 "cufftExecC2C(hilbert inverse)");
 
-            scatter_complex_line_kernel<<<block_count(static_cast<std::size_t>(target)), kThreadsPerBlock>>>(
+            scatter_complex_line_kernel<<<block_count(static_cast<std::size_t>(target)), policy_threads()>>>(
                 reinterpret_cast<cufftComplex *>(g_workspace.complex_signal_a.data()),
                 output.data(),
                 output_bases,
@@ -3941,7 +3978,7 @@ namespace
         g_workspace.ensure_plan2d(rows, cols);
         g_workspace.complex_signal_a.resize(static_cast<std::size_t>(rows) * static_cast<std::size_t>(cols));
 
-        pack_real_array_to_complex_kernel<<<block_count(g_workspace.complex_signal_a.size()), kThreadsPerBlock>>>(
+        pack_real_array_to_complex_kernel<<<block_count(g_workspace.complex_signal_a.size()), policy_threads()>>>(
             x.data(),
             x.shape()[0],
             x.shape()[1],
@@ -3958,7 +3995,7 @@ namespace
                 CUFFT_FORWARD),
             "cufftExecC2C(hilbert2 forward)");
 
-        apply_hilbert2_mask_kernel<<<block_count(g_workspace.complex_signal_a.size()), kThreadsPerBlock>>>(
+        apply_hilbert2_mask_kernel<<<block_count(g_workspace.complex_signal_a.size()), policy_threads()>>>(
             reinterpret_cast<cufftComplex *>(g_workspace.complex_signal_a.data()),
             rows,
             cols);
@@ -3973,7 +4010,7 @@ namespace
             "cufftExecC2C(hilbert2 inverse)");
 
         ZxGpuComplexArray output(target, false);
-        copy_complex_buffer_kernel<<<block_count(output.size()), kThreadsPerBlock>>>(
+        copy_complex_buffer_kernel<<<block_count(output.size()), policy_threads()>>>(
             reinterpret_cast<cufftComplex *>(g_workspace.complex_signal_a.data()),
             output.data(),
             output.size(),
@@ -4074,7 +4111,7 @@ namespace
         {
             if (resolved_domain == "time")
             {
-                gather_real_line_to_complex_kernel<<<block_count(input_plan.axis_size), kThreadsPerBlock>>>(
+                gather_real_line_to_complex_kernel<<<block_count(input_plan.axis_size), policy_threads()>>>(
                     x.data(),
                     input_bases,
                     input_plan.axis_stride,
@@ -4094,7 +4131,7 @@ namespace
             }
             else
             {
-                gather_spectrum_line_kernel<<<block_count(input_plan.axis_size), kThreadsPerBlock>>>(
+                gather_spectrum_line_kernel<<<block_count(input_plan.axis_size), policy_threads()>>>(
                     x.data(),
                     input_bases,
                     input_plan.axis_stride,
@@ -4110,7 +4147,7 @@ namespace
                  (g_resample_path_override == kResamplePathAuto && auto_uses_windowed_pack));
             if (!use_windowed_pack && explicit_window != nullptr && explicit_window->size() != 0)
             {
-                apply_window_direct_kernel<<<block_count(input_plan.axis_size), kThreadsPerBlock>>>(
+                apply_window_direct_kernel<<<block_count(input_plan.axis_size), policy_threads()>>>(
                     reinterpret_cast<cufftComplex *>(g_workspace.complex_signal_a.data()),
                     explicit_window->data(),
                     static_cast<int>(input_plan.axis_size));
@@ -4118,7 +4155,7 @@ namespace
             }
             else if (!use_windowed_pack && frequency_window != nullptr && frequency_window->size() != 0)
             {
-                apply_window_fftshift_kernel<<<block_count(input_plan.axis_size), kThreadsPerBlock>>>(
+                apply_window_fftshift_kernel<<<block_count(input_plan.axis_size), policy_threads()>>>(
                     reinterpret_cast<cufftComplex *>(g_workspace.complex_signal_a.data()),
                     frequency_window->data(),
                     static_cast<int>(input_plan.axis_size));
@@ -4139,7 +4176,7 @@ namespace
                     : (use_fused_pack ? kResamplePathFused : kResamplePathGeneric);
             if (use_fused_pack)
             {
-                resample_pack_spectrum_kernel<<<block_count(static_cast<std::size_t>(num)), kThreadsPerBlock>>>(
+                resample_pack_spectrum_kernel<<<block_count(static_cast<std::size_t>(num)), policy_threads()>>>(
                     reinterpret_cast<cufftComplex *>(g_workspace.complex_signal_b.data()),
                     num,
                     reinterpret_cast<cufftComplex *>(g_workspace.complex_signal_a.data()),
@@ -4150,12 +4187,12 @@ namespace
             }
             else
             {
-                zero_complex_kernel<<<block_count(static_cast<std::size_t>(num)), kThreadsPerBlock>>>(
+                zero_complex_kernel<<<block_count(static_cast<std::size_t>(num)), policy_threads()>>>(
                     reinterpret_cast<cufftComplex *>(g_workspace.complex_signal_b.data()),
                     num);
                 check_kernel_launch("zero_complex_kernel");
 
-                resample_copy_low_kernel<<<block_count(static_cast<std::size_t>(m2)), kThreadsPerBlock>>>(
+                resample_copy_low_kernel<<<block_count(static_cast<std::size_t>(m2)), policy_threads()>>>(
                     reinterpret_cast<cufftComplex *>(g_workspace.complex_signal_b.data()),
                     reinterpret_cast<cufftComplex *>(g_workspace.complex_signal_a.data()),
                     m2);
@@ -4163,7 +4200,7 @@ namespace
 
                 if (m2 < m)
                 {
-                    resample_copy_high_kernel<<<block_count(static_cast<std::size_t>(m - m2)), kThreadsPerBlock>>>(
+                    resample_copy_high_kernel<<<block_count(static_cast<std::size_t>(m - m2)), policy_threads()>>>(
                         reinterpret_cast<cufftComplex *>(g_workspace.complex_signal_b.data()),
                         num,
                         reinterpret_cast<cufftComplex *>(g_workspace.complex_signal_a.data()),
@@ -4189,7 +4226,7 @@ namespace
                     CUFFT_INVERSE),
                 "cufftExecC2C(resample inverse)");
 
-            scatter_real_line_from_complex_kernel<<<block_count(static_cast<std::size_t>(num)), kThreadsPerBlock>>>(
+            scatter_real_line_from_complex_kernel<<<block_count(static_cast<std::size_t>(num)), policy_threads()>>>(
                 reinterpret_cast<cufftComplex *>(g_workspace.complex_signal_b.data()),
                 output.data(),
                 output_bases,
@@ -4229,7 +4266,7 @@ namespace
             g_workspace.line_bases_cache_b,
             "cudaMemcpy H2D(output_bases)");
         ZxGpuRealArray output(output_shape, false);
-        upfirdn_kernel<<<block_count(output_plan.line_count * output_plan.axis_size), kThreadsPerBlock>>>(
+        upfirdn_kernel<<<block_count(output_plan.line_count * output_plan.axis_size), policy_threads()>>>(
             h.data(),
             h.size(),
             x.data(),
@@ -4284,7 +4321,7 @@ namespace
                 ++n_post_pad;
             }
             local_padded_filter.resize(explicit_filter->size() + n_pre_pad + n_post_pad, true);
-            copy_scaled_signal_segment_kernel<<<block_count(explicit_filter->size()), kThreadsPerBlock>>>(
+            copy_scaled_signal_segment_kernel<<<block_count(explicit_filter->size()), policy_threads()>>>(
                 local_padded_filter.data(),
                 local_padded_filter.size(),
                 n_pre_pad,
@@ -4328,7 +4365,7 @@ namespace
                     -1.0,
                     window);
                 g_workspace.resample_poly_filter.resize(filter_size + n_pre_pad + n_post_pad, true);
-                copy_scaled_signal_segment_kernel<<<block_count(h.size()), kThreadsPerBlock>>>(
+                copy_scaled_signal_segment_kernel<<<block_count(h.size()), policy_threads()>>>(
                     g_workspace.resample_poly_filter.data(),
                     g_workspace.resample_poly_filter.size(),
                     n_pre_pad,
@@ -4371,7 +4408,7 @@ namespace
             g_workspace.line_bases_cache_b,
             "cudaMemcpy H2D(output_bases)");
         ZxGpuRealArray output(output_shape, false);
-        crop_lines_kernel<<<block_count(output_plan.line_count * output_plan.axis_size), kThreadsPerBlock>>>(
+        crop_lines_kernel<<<block_count(output_plan.line_count * output_plan.axis_size), policy_threads()>>>(
             filtered.data(),
             filtered_bases,
             filtered_plan.axis_stride,
@@ -4430,7 +4467,7 @@ namespace
             ZxGpuRealArray output(output_shape, false);
             const std::size_t delay =
                 (static_cast<std::size_t>(order) / 2) / static_cast<std::size_t>(q);
-            crop_lines_kernel<<<block_count(output_plan.line_count * output_plan.axis_size), kThreadsPerBlock>>>(
+            crop_lines_kernel<<<block_count(output_plan.line_count * output_plan.axis_size), policy_threads()>>>(
                 filtered.data(),
                 filtered_bases,
                 filtered_plan.axis_stride,
@@ -4463,7 +4500,7 @@ namespace
             g_workspace.line_bases_cache_b,
             "cudaMemcpy H2D(output_bases)");
         ZxGpuRealArray output(output_shape, false);
-        subsample_lines_kernel<<<block_count(output_plan.line_count * output_plan.axis_size), kThreadsPerBlock>>>(
+        subsample_lines_kernel<<<block_count(output_plan.line_count * output_plan.axis_size), policy_threads()>>>(
             filtered.data(),
             filtered_bases,
             filtered_plan.axis_stride,
@@ -4511,6 +4548,8 @@ namespace cusignal
                     throw std::invalid_argument("mysize must not be empty");
                 }
                 const core::ZxGpuRealArray &image_device = core::as_device_array(image, g_workspace.real_array_a);
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_filtering_policy("filtering/wiener", image_device.shape()));
                 if (mysize.size() != image_device.rank())
                 {
                     throw std::invalid_argument("mysize rank must match image rank");
@@ -4571,7 +4610,7 @@ namespace cusignal
                     }
                     else
                     {
-                        wiener_local_stats_kernel<<<block_count(image_device.size()), kThreadsPerBlock>>>(
+                        wiener_local_stats_kernel<<<block_count(image_device.size()), policy_threads()>>>(
                             image_device.data(),
                             image_device.size(),
                             g_workspace.wiener_shape_buffer.get(),
@@ -4589,12 +4628,12 @@ namespace cusignal
                     {
                         const int variance_blocks = block_count(image_device.size());
                         g_workspace.reduction_buffer_a.reserve(static_cast<std::size_t>(variance_blocks));
-                        sum_values_block_kernel<<<variance_blocks, kThreadsPerBlock>>>(
+                        sum_values_block_kernel<<<variance_blocks, policy_threads()>>>(
                             g_workspace.real_array_c.data(),
                             image_device.size(),
                             g_workspace.reduction_buffer_a.get());
                         check_kernel_launch("sum_values_block_kernel(wiener)");
-                        sum_values_finalize_kernel<<<1, kThreadsPerBlock>>>(
+                        sum_values_finalize_kernel<<<1, policy_threads()>>>(
                             g_workspace.reduction_buffer_a.get(),
                             static_cast<std::size_t>(variance_blocks),
                             g_workspace.scalar_buffer_a.get());
@@ -4613,7 +4652,7 @@ namespace cusignal
                     }
 
 #ifdef CUSIGNAL_PLATFORM_ZHONGKEXIN
-                    wiener_apply_kernel<<<block_count(image_device.size()), kThreadsPerBlock>>>(
+                    wiener_apply_kernel<<<block_count(image_device.size()), policy_threads()>>>(
                         image_device.data(),
                         g_workspace.real_array_b.data(),
                         g_workspace.real_array_c.data(),
@@ -4624,7 +4663,7 @@ namespace cusignal
 #else
                     if (noise < 0.0)
                     {
-                        wiener_apply_auto_noise_kernel<<<block_count(image_device.size()), kThreadsPerBlock>>>(
+                        wiener_apply_auto_noise_kernel<<<block_count(image_device.size()), policy_threads()>>>(
                             image_device.data(),
                             g_workspace.real_array_b.data(),
                             g_workspace.real_array_c.data(),
@@ -4635,7 +4674,7 @@ namespace cusignal
                     }
                     else
                     {
-                        wiener_apply_kernel<<<block_count(image_device.size()), kThreadsPerBlock>>>(
+                        wiener_apply_kernel<<<block_count(image_device.size()), policy_threads()>>>(
                             image_device.data(),
                             g_workspace.real_array_b.data(),
                             g_workspace.real_array_c.data(),
@@ -4798,7 +4837,7 @@ namespace cusignal
                         else
                         {
                             complex_fir_filter_zero_lines_shared_multi_kernel<8>
-                                <<<grid, kThreadsPerBlock, shared_size>>>(
+                                <<<grid, launch_threads, shared_size>>>(
                                     b_device.data(),
                                     b_device.size(),
                                     reinterpret_cast<const float2 *>(x_device.data()),
@@ -4818,9 +4857,9 @@ namespace cusignal
                             static_cast<unsigned int>(block_count(plan.axis_size)),
                             static_cast<unsigned int>(plan.line_count));
                         const std::size_t shared_size =
-                            (static_cast<std::size_t>(kThreadsPerBlock) + b_device.size() - 1) * sizeof(float2) +
+                            (static_cast<std::size_t>(launch_threads) + b_device.size() - 1) * sizeof(float2) +
                             b_device.size() * sizeof(float);
-                        complex_fir_filter_zero_lines_shared_kernel<<<grid, kThreadsPerBlock, shared_size>>>(
+                        complex_fir_filter_zero_lines_shared_kernel<<<grid, launch_threads, shared_size>>>(
                             b_device.data(),
                             b_device.size(),
                             reinterpret_cast<const float2 *>(x_device.data()),
@@ -4835,7 +4874,7 @@ namespace cusignal
                     {
                         complex_fir_filter_zero_lines_kernel<<<
                             block_count(plan.line_count * plan.axis_size),
-                            kThreadsPerBlock>>>(
+                            policy_threads()>>>(
                             b_device.data(),
                             b_device.size(),
                             reinterpret_cast<const float2 *>(x_device.data()),
@@ -4925,6 +4964,8 @@ namespace cusignal
             {
                 const ZxGpuRealSignal &b_device = core::as_device_signal(b, g_workspace.real_signal_a);
                 const ZxGpuRealSignal &a_device = core::as_device_signal(a, g_workspace.real_signal_b);
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_filtering_policy("filtering/lfilter_zi", core::Shape{b_device.size(), a_device.size()}));
                 ScopedZxGpuEvents events;
                 ZxGpuRealSignal output;
                 g_last_kernel_ms = static_cast<float>(events.measure([&]() {
@@ -4936,6 +4977,8 @@ namespace cusignal
             core::ZxGpuRealSignal firfilter_zi(const core::RealSignalLike &b)
             {
                 const ZxGpuRealSignal &b_device = core::as_device_signal(b, g_workspace.real_signal_a);
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_filtering_policy("filtering/firfilter_zi", core::Shape{b_device.size()}));
                 const ZxGpuRealSignal &one = make_unit_signal();
                 ScopedZxGpuEvents events;
                 ZxGpuRealSignal output;
@@ -4972,6 +5015,8 @@ namespace cusignal
 
                 const ZxGpuRealSignal &b_device = core::as_device_signal(b, g_workspace.real_signal_a);
                 const ZxGpuRealArray &x_device = core::as_device_array(x, g_workspace.real_array_a);
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_filtering_policy("filtering/firfilter2", x_device.shape()));
                 const ZxGpuRealSignal &one = make_unit_signal();
                 ScopedZxGpuEvents events;
                 ZxGpuRealArray output;
@@ -5030,6 +5075,8 @@ namespace cusignal
                 const ZxGpuRealSignal &b_device = core::as_device_signal(b, g_workspace.real_signal_a);
                 const ZxGpuRealSignal &a_device = core::as_device_signal(a, g_workspace.real_signal_b);
                 const ZxGpuRealArray &x_device = core::as_device_array(x, g_workspace.real_array_a);
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_filtering_policy("filtering/filtfilt", x_device.shape()));
                 ScopedZxGpuEvents events;
                 ZxGpuRealArray output;
                 g_last_kernel_ms = static_cast<float>(events.measure([&]() {
@@ -5051,6 +5098,8 @@ namespace cusignal
             {
                 const ZxGpuRealArray &sos_device = core::as_device_array(sos, g_workspace.real_array_a);
                 const ZxGpuRealArray &x_device = core::as_device_array(x, g_workspace.real_array_b);
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_filtering_policy("filtering/sosfilt", x_device.shape()));
                 ScopedZxGpuEvents events;
                 ZxGpuRealArray output;
                 g_last_kernel_ms = static_cast<float>(events.measure([&]() {
@@ -5068,6 +5117,8 @@ namespace cusignal
                 const ZxGpuRealArray &sos_device = core::as_device_array(sos, g_workspace.real_array_a);
                 const ZxGpuRealArray &x_device = core::as_device_array(x, g_workspace.real_array_b);
                 const ZxGpuRealArray &zi_device = core::as_device_array(zi, g_workspace.real_array_c);
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_filtering_policy("filtering/sosfilt", x_device.shape()));
                 filtering_api::ZxGpuFilterStateResult result;
                 ScopedZxGpuEvents events;
                 g_last_kernel_ms = static_cast<float>(events.measure([&]() {
@@ -5082,6 +5133,8 @@ namespace cusignal
                 int axis)
             {
                 const ZxGpuRealArray &x_device = core::as_device_array(x, g_workspace.real_array_a);
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_filtering_policy("filtering/hilbert", x_device.shape()));
                 ScopedZxGpuEvents events;
                 ZxGpuComplexArray output;
                 g_last_kernel_ms = static_cast<float>(events.measure([&]() {
@@ -5093,6 +5146,8 @@ namespace cusignal
             core::ZxGpuComplexArray hilbert2(const core::RealArrayLike &x, const core::Shape &n)
             {
                 const ZxGpuRealArray &x_device = core::as_device_array(x, g_workspace.real_array_a);
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_filtering_policy("filtering/hilbert2", x_device.shape()));
                 ScopedZxGpuEvents events;
                 ZxGpuComplexArray output;
                 g_last_kernel_ms = static_cast<float>(events.measure([&]() {
@@ -5111,6 +5166,8 @@ namespace cusignal
                 (void)overwrite_data;
                 const std::string trend = detail::normalize_trend_type(type);
                 const ZxGpuRealArray &data_device = core::as_device_array(data, g_workspace.real_array_a);
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_filtering_policy("filtering/detrend", data_device.shape()));
                 const detail::AxisPlan plan = detail::make_axis_plan(data_device.shape(), axis);
                 const std::vector<std::size_t> line_bases = compute_line_bases(data_device.shape(), axis);
                 if (!g_workspace.detrend_line_bases_valid ||
@@ -5137,18 +5194,18 @@ namespace cusignal
                             const int grid_blocks = block_count(plan.axis_size);
                             g_workspace.reduction_buffer_a.reserve(static_cast<std::size_t>(grid_blocks) + 1);
                             float *coefficients = g_workspace.reduction_buffer_a.get() + grid_blocks;
-                            detrend_constant_partials_kernel<<<grid_blocks, kThreadsPerBlock>>>(
+                            detrend_constant_partials_kernel<<<grid_blocks, policy_threads()>>>(
                                 data_device.data(),
                                 plan.axis_size,
                                 g_workspace.reduction_buffer_a.get());
                             check_kernel_launch("detrend_constant_partials_kernel");
-                            detrend_constant_mean_kernel<<<1, kThreadsPerBlock>>>(
+                            detrend_constant_mean_kernel<<<1, policy_threads()>>>(
                                 g_workspace.reduction_buffer_a.get(),
                                 grid_blocks,
                                 plan.axis_size,
                                 coefficients);
                             check_kernel_launch("detrend_constant_mean_kernel");
-                            detrend_constant_apply_kernel<<<grid_blocks, kThreadsPerBlock>>>(
+                            detrend_constant_apply_kernel<<<grid_blocks, policy_threads()>>>(
                                 data_device.data(),
                                 plan.axis_size,
                                 coefficients,
@@ -5157,7 +5214,7 @@ namespace cusignal
                         }
                         else if (plan.axis_size >= 1024)
                         {
-                            detrend_constant_parallel_kernel<<<static_cast<unsigned int>(plan.line_count), kThreadsPerBlock>>>(
+                            detrend_constant_parallel_kernel<<<static_cast<unsigned int>(plan.line_count), policy_threads()>>>(
                                 data_device.data(),
                                 g_workspace.size_buffer_a.get(),
                                 plan.line_count,
@@ -5168,7 +5225,7 @@ namespace cusignal
                         }
                         else
                         {
-                            detrend_constant_kernel<<<block_count(plan.line_count), kThreadsPerBlock>>>(
+                            detrend_constant_kernel<<<block_count(plan.line_count), policy_threads()>>>(
                                 data_device.data(),
                                 g_workspace.size_buffer_a.get(),
                                 plan.line_count,
@@ -5210,20 +5267,20 @@ namespace cusignal
                         float *partial_sum_y = g_workspace.reduction_buffer_a.get();
                         float *coefficients = g_workspace.reduction_buffer_a.get() + grid_blocks;
                         float *partial_sum_ty = g_workspace.reduction_buffer_b.get();
-                        detrend_linear_partials_kernel<<<grid_blocks, kThreadsPerBlock>>>(
+                        detrend_linear_partials_kernel<<<grid_blocks, policy_threads()>>>(
                             data_device.data(),
                             plan.axis_size,
                             partial_sum_y,
                             partial_sum_ty);
                         check_kernel_launch("detrend_linear_partials_kernel");
-                        detrend_linear_coefficients_kernel<<<1, kThreadsPerBlock>>>(
+                        detrend_linear_coefficients_kernel<<<1, policy_threads()>>>(
                             partial_sum_y,
                             partial_sum_ty,
                             grid_blocks,
                             plan.axis_size,
                             coefficients);
                         check_kernel_launch("detrend_linear_coefficients_kernel");
-                        detrend_linear_apply_kernel<<<grid_blocks, kThreadsPerBlock>>>(
+                        detrend_linear_apply_kernel<<<grid_blocks, policy_threads()>>>(
                             data_device.data(),
                             plan.axis_size,
                             coefficients,
@@ -5235,7 +5292,7 @@ namespace cusignal
                         const std::size_t segment_count = breaks.size() - 1;
                         detrend_linear_parallel_kernel<<<
                             static_cast<unsigned int>(plan.line_count * segment_count),
-                            kThreadsPerBlock>>>(
+                            policy_threads()>>>(
                             data_device.data(),
                             g_workspace.size_buffer_a.get(),
                             plan.line_count,
@@ -5247,7 +5304,7 @@ namespace cusignal
                     }
                     else
                     {
-                        detrend_linear_kernel<<<block_count(plan.line_count), kThreadsPerBlock>>>(
+                        detrend_linear_kernel<<<block_count(plan.line_count), policy_threads()>>>(
                             data_device.data(),
                             g_workspace.size_buffer_a.get(),
                             plan.line_count,
@@ -5272,10 +5329,12 @@ namespace cusignal
                     throw std::invalid_argument("fs must be > 0");
                 }
                 const ZxGpuComplexArray &x_device = core::as_device_array(x, g_workspace.complex_array_a);
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_filtering_policy("filtering/freq_shift", x_device.shape(), 1));
                 ZxGpuComplexArray output(x_device.shape(), false);
                 ScopedZxGpuEvents events;
                 g_last_kernel_ms = static_cast<float>(events.measure([&]() {
-                    freq_shift_kernel<<<block_count(x_device.size()), kThreadsPerBlock>>>(
+                    freq_shift_kernel<<<block_count(x_device.size()), policy_threads()>>>(
                         x_device.data(),
                         output.data(),
                         x_device.size(),
@@ -5293,6 +5352,8 @@ namespace cusignal
             {
                 detail::ensure_positive_int(n_chans, "n_chans");
                 const ZxGpuComplexSignal &x_device = core::as_device_signal(x, g_workspace.complex_signal_a);
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_filtering_policy("filtering/channelize_poly", core::Shape{x_device.size()}, 1));
                 const std::size_t channels = static_cast<std::size_t>(n_chans);
                 const std::size_t n_pts = x_device.size() / channels;
                 const RealSignal *host_h = std::get_if<RealSignal>(&h);
@@ -5318,7 +5379,7 @@ namespace cusignal
                 if (!padded_taps_ready)
                 {
                     g_workspace.real_signal_b.resize(padded_h_size, true);
-                    copy_signal_segment_kernel<<<block_count(h_input->size()), kThreadsPerBlock>>>(
+                    copy_signal_segment_kernel<<<block_count(h_input->size()), policy_threads()>>>(
                         g_workspace.real_signal_b.data(),
                         padded_h_size,
                         0,
@@ -5344,12 +5405,13 @@ namespace cusignal
                 g_last_kernel_ms = static_cast<float>(events.measure([&]() {
                     const bool use_point_kernel =
                         n_chans == kChannelizeSharedChannels &&
-                        (g_channelize_path_override == kChannelizePathPoint ||
+                        (tile::active_route() >= 2 ||
+                         g_channelize_path_override == kChannelizePathPoint ||
                          (g_channelize_path_override == kChannelizePathAuto &&
                           n_pts >= kChannelizePointMinPoints));
                     if (use_point_kernel)
                     {
-                        channelize_poly_channels8_point_kernel<<<block_count(n_pts), kThreadsPerBlock>>>(
+                        channelize_poly_channels8_point_kernel<<<block_count(n_pts), policy_threads()>>>(
                             x_device.data(),
                             x_device.size(),
                             g_workspace.real_signal_b.data(),
@@ -5360,7 +5422,7 @@ namespace cusignal
                     }
                     else
                     {
-                        channelize_poly_kernel<<<block_count(result.channels.size()), kThreadsPerBlock>>>(
+                        channelize_poly_kernel<<<block_count(result.channels.size()), policy_threads()>>>(
                             x_device.data(),
                             x_device.size(),
                             g_workspace.real_signal_b.data(),
@@ -5382,6 +5444,8 @@ namespace cusignal
                 bool zero_phase)
             {
                 const ZxGpuRealArray &x_device = core::as_device_array(x, g_workspace.real_array_a);
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_filtering_policy("filtering/decimate", x_device.shape()));
                 ScopedZxGpuEvents events;
                 ZxGpuRealArray output;
                 g_last_kernel_ms = static_cast<float>(events.measure([&]() {
@@ -5399,6 +5463,8 @@ namespace cusignal
             {
                 detail::ensure_positive_int(num, "num");
                 const ZxGpuRealArray &x_device = core::as_device_array(x, g_workspace.real_array_a);
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_filtering_policy("filtering/resample", x_device.shape()));
                 ScopedZxGpuEvents events;
                 ZxGpuRealArray output;
                 g_last_kernel_ms = static_cast<float>(events.measure([&]() {
@@ -5420,6 +5486,8 @@ namespace cusignal
                 {
                     throw std::invalid_argument("t must contain at least two samples");
                 }
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_filtering_policy("filtering/resample", shape_of(x)));
                 filtering_api::ZxGpuResampleResult result;
                 ScopedZxGpuEvents events;
                 g_last_kernel_ms = static_cast<float>(events.measure([&]() {
@@ -5429,7 +5497,7 @@ namespace cusignal
                         (t1 - t0) * static_cast<float>(shape[core::normalize_axis(axis, shape.size())]) /
                         static_cast<float>(num);
                     result.time = ZxGpuRealSignal(static_cast<std::size_t>(num), true);
-                    generate_time_axis_kernel<<<block_count(static_cast<std::size_t>(num)), kThreadsPerBlock>>>(
+                    generate_time_axis_kernel<<<block_count(static_cast<std::size_t>(num)), policy_threads()>>>(
                         result.time.data(),
                         static_cast<std::size_t>(num),
                         t0,
@@ -5447,6 +5515,8 @@ namespace cusignal
                 core::ZxGpuWindowSpec window)
             {
                 const ZxGpuRealArray &x_device = core::as_device_array(x, g_workspace.real_array_a);
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_filtering_policy("filtering/resample_poly", x_device.shape()));
                 ScopedZxGpuEvents events;
                 ZxGpuRealArray output;
                 g_last_kernel_ms = static_cast<float>(events.measure([&]() {
@@ -5464,6 +5534,8 @@ namespace cusignal
             {
                 const ZxGpuRealSignal &h_device = core::as_device_signal(h, g_workspace.real_signal_a);
                 const ZxGpuRealArray &x_device = core::as_device_array(x, g_workspace.real_array_a);
+                const tile::ScopedPolicyIfInactive policy_scope(
+                    select_filtering_policy("filtering/upfirdn", x_device.shape()));
                 ScopedZxGpuEvents events;
                 ZxGpuRealArray output;
                 g_last_kernel_ms = static_cast<float>(events.measure([&]() {

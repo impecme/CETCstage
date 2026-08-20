@@ -191,6 +191,7 @@ namespace cusignal_test::report
         stream << device_indent << "\"memory_tier\": "
                << static_cast<int>(trace.config.memory_tier) << ",\n";
         stream << device_indent << "\"plan_variant\": " << trace.config.plan_variant << ",\n";
+        stream << device_indent << "\"route\": " << trace.config.route << ",\n";
         stream << device_indent << "\"workspace_bytes\": " << measured_workspace_bytes << ",\n";
         stream << device_indent << "\"workspace_peak_bytes\": " << measured_workspace_bytes << ",\n";
         stream << device_indent << "\"workspace_measurement\": \"device_storage_cache_peak\"\n";
