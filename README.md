@@ -2,6 +2,82 @@
 
 中科芯 ZQ500 信号处理库、81 个公开算子和两个任务 demo。
 
+## 代码框架
+
+项目采用“公开 API → 公共语义 → CPU/GPU 双后端 → 任务与测试”的分层结构：
+
+```text
+调用方
+├── demo/task1_radar/       Task1 雷达任务编排、输入构造、校验和报告
+├── demo/task2_features/    Task2 特征任务编排、输入构造、任务私有融合
+└── tests/                   单元测试、任务契约和 ZQ500 平台探针
+          │
+          ▼
+include/cusignal/            对外 API、公共类型和结果结构
+          │
+          ▼
+src/common/                  两个后端共享的参数、shape、axis 和数学语义
+       ┌──┴──────────────────────┐
+       ▼                         ▼
+src/cpu/                       src/zhongkexin/
+CPU reference                ZQ500 GPU 实现、kernel、workspace 和缓存
+       │                         │
+       └────────── CMake ─────────┘
+                  │
+       cusignal_cpu → cusignal_zx_gpu
+                  │
+       task1_radar_demo / task2_features_demo
+```
+
+### 代码目录职责
+
+| 路径 | 职责 |
+| --- | --- |
+| `include/cusignal/` | 公开模块 API、输入/输出类型、公共结果结构和聚合头 |
+| `src/common/` | CPU/GPU 必须一致的参数检查、shape/axis、窗口和数学语义 |
+| `src/cpu/` | CPU reference；FFT-heavy 路径使用 FFTW，作为正确性对照 |
+| `src/zhongkexin/` | ZQ500 GPU 后端、设备 kernel、workspace、平台库和设备缓存 |
+| `demo/task1_radar/` | Task1 输入构造、任务链、分步 timing/accuracy 和报告 |
+| `demo/task2_features/` | Task2 输入构造、批处理、融合、跟踪和任务私有优化；不新增公开算子 |
+| `tests/contracts/` | 算子集合、规模和任务步骤契约 |
+| `tests/unit/` | 公开算子的独立 CPU/GPU 正确性测试 |
+| `tests/platform/` | ZQ500 兼容性编译、运行库探针和平台检查 |
+
+### CMake 构建关系
+
+顶层 `CMakeLists.txt` 在 `CUSIGNAL_PLATFORM=ZHONGKEXIN` 下建立两个核心静态库：
+
+```text
+cusignal_cpu
+├── src/cpu/
+└── FFTW
+
+cusignal_zx_gpu
+├── src/zhongkexin/
+├── ZQ500 runtime / FFT / BLAS / SOLVER 等兼容库
+└── links cusignal_cpu
+        │
+        ├── task1_radar_demo
+        ├── task2_features_demo
+        ├── tests/unit/*
+        └── tests/platform/*
+```
+
+### 两条任务调用链
+
+- Task1 的 GPU 入口是 `demo/task1_radar/task1_gpu.cu`，公共算子主实现位于
+  `src/zhongkexin/radartools.cu`；主链为
+  `pulse_compression → pulse_doppler_shifted → power_map → ca_cfar → detect_peak`，
+  `ambgfun` 为独立分支。
+- Task2 的 GPU 输入和任务入口位于 `demo/task2_features/task2_gpu.cu`，任务私有批处理、
+  融合、缓存和 fallback 位于 `task2_features_zx_gpu.cu`；核心数学仍通过
+  `include/cusignal/`、`src/common/` 和 `src/zhongkexin/` 的公开算子完成。
+- `demo/` 中的 helper、融合和阶段代码属于任务实现，不计为额外的公开算子；公开算子集合
+  和任务步骤分别以 `tests/contracts/` 中的契约文件为准。
+
+完整架构说明见 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)，构建与运行入口见
+[`docs/BUILD_AND_RUN.md`](docs/BUILD_AND_RUN.md)。
+
 ## 脚本边界
 
 ```text
