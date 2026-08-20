@@ -4,29 +4,57 @@
 
 ## 代码框架
 
-项目采用“公开 API → 公共语义 → CPU/GPU 双后端 → 任务与测试”的分层结构：
+项目主要目录树如下；运行期生成物、性能报告和源码分别归档在 `data/`、`scripts/`、
+`src/` 等对应目录中：
 
 ```text
-调用方
-├── demo/task1_radar/       Task1 雷达任务编排、输入构造、校验和报告
-├── demo/task2_features/    Task2 特征任务编排、输入构造、任务私有融合
-└── tests/                   单元测试、任务契约和 ZQ500 平台探针
-          │
-          ▼
-include/cusignal/            对外 API、公共类型和结果结构
-          │
-          ▼
-src/common/                  两个后端共享的参数、shape、axis 和数学语义
-       ┌──┴──────────────────────┐
-       ▼                         ▼
-src/cpu/                       src/zhongkexin/
-CPU reference                ZQ500 GPU 实现、kernel、workspace 和缓存
-       │                         │
-       └────────── CMake ─────────┘
-                  │
-       cusignal_cpu → cusignal_zx_gpu
-                  │
-       task1_radar_demo / task2_features_demo
+CETC/
+├── CMakeLists.txt                         顶层 CMake，生成 CPU/GPU 库和测试目标
+├── README.md
+├── DELIVERY_FILES.txt                     同步到 ZQ500 容器的文件白名单
+├── auto_git.sh                            提交辅助脚本
+├── include/
+│   └── cusignal/                          对外 API、公共类型和结果结构
+│       ├── core/
+│       ├── bsplines/       correlate/     demod/        estimation/
+│       ├── filter_design/  filtering/     peak_finding/ radartools/
+│       ├── spectral/       waveforms/     wavelets/     windows/
+│       └── cusignal.hpp                   聚合头文件
+├── src/
+│   ├── common/                            CPU/GPU 共享语义和参数检查
+│   ├── cpu/                               CPU reference 实现
+│   └── zhongkexin/                        ZQ500 GPU 实现和平台适配
+├── demo/
+│   ├── common/
+│   ├── task1_radar/                       Task1 雷达任务 demo
+│   └── task2_features/                    Task2 特征任务 demo
+├── tests/
+│   ├── contracts/                         算子、规模和任务步骤契约
+│   ├── unit/                              公开算子单元测试
+│   │   ├── core_types/ bsplines/ correlate/ demod/
+│   │   ├── estimation/ filter_design/ filtering/ peak_finding/
+│   │   ├── radartools/ spectral/ waveforms/ wavelets/ windows/
+│   │   └── common/
+│   ├── platform/                          ZQ500 编译/运行库探针
+│   └── tools/                             测试辅助工具
+├── scripts/
+│   ├── build.sh                           构建入口
+│   ├── performance.sh                     性能测试入口
+│   ├── smoke.sh                           正确性烟测入口
+│   ├── clean.sh                           可再生运行数据清理
+│   ├── sync_to_container.sh               宿主机同步源码
+│   ├── replace_container_project.sh       容器内替换源码
+│   └── pull_results.sh                    容器结果取回
+├── data/
+│   ├── reference/                         固定正确性参考数据
+│   ├── generated/                         可再生输入和输出样本
+│   ├── baseline/                          冻结 CPU/GPU 基线
+│   ├── tuning/                            Auto 离线查表缓存
+│   └── reports/                           静态、Auto 和任务报告
+└── docs/
+    ├── ARCHITECTURE.md                    完整架构说明
+    ├── BUILD_AND_RUN.md                   构建与运行说明
+    └── ...                                性能、交付和平台兼容文档
 ```
 
 ### 代码目录职责
