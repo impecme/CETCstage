@@ -178,6 +178,42 @@ scripts/performance.sh --all --scale all
 加速比。无独立 GPU kernel 的算子以 `null`/“不适用”表示。已有构建可加 `--no-build`；正式性能测量
 默认 `warmup=5/repeat=30`，可用 `--warmup`、`--repeat` 调整。
 
+### C500 现场五分钟演示
+
+现场演示只运行附录 53 个算子和 Task1、Task2：每个算子选择参考报告中 CPU/GPU 端到端加速比最高的一个规模，两个任务运行 L1～L6 全部规模。演示不重新编译、不搜索候选，运行时只查
+`data/tuning/zx_tuning.json`；固定 `warmup=1/repeat=3`，总时限为 285 秒。
+
+进入 `gpu_04` 容器时，在宿主机只执行：
+
+```bash
+sudo docker start gpu_04
+sudo docker exec -it gpu_04 bash
+```
+
+进入容器后先检查选择结果和预计耗时，再执行正式现场测试：
+
+```bash
+cd /CETC
+
+bash scripts/performance.sh \
+  --demo-dry-run \
+  --demo-reference-root /CETC/data/reports/autotune \
+  --demo-cache /CETC/data/tuning/zx_tuning.json
+
+bash scripts/performance.sh \
+  --demo \
+  --no-build \
+  --build-dir /tmp/cetc-zx-autotune-build \
+  --demo-reference-root /CETC/data/reports/autotune \
+  --demo-cache /CETC/data/tuning/zx_tuning.json
+```
+
+终端会分层输出任务使用算子、附录其余算子、Task1 和 Task2 的性能结果，包括端到端耗时、内核耗时、CPU/GPU 加速比及相对参考结果的比例。默认现场报告写入临时目录，测试成功后自动删除；如需留档，在 `--demo` 命令中增加：
+
+```bash
+--output-root /CETC/data/reports/demo
+```
+
 任务级正式 E2E 每次 repeat 都在各自后端重新构造输入；GPU 路径由 Device 波形算子和
 输入 kernel 直接生成，正式 `task_input_h2d_ms=0`，链内 Device 输出直接传给下一算子，
 链尾统一回读。可复用的是显存容量和 FFT plan，不是上一轮输入值；任务报告的
