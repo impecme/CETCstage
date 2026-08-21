@@ -47,6 +47,17 @@ class ConsolidatedScriptInterfaceTest(unittest.TestCase):
         self.assertIn('case_set == "full"', source)
         self.assertIn("NOT_REPORTED", source)
 
+    def test_demo_batches_task_scales_in_one_process(self) -> None:
+        source = PERFORMANCE_SCRIPT.read_text(encoding="utf-8")
+        self.assertIn("run_task_batch", source)
+        self.assertIn("--scale-level all", source)
+        for relative in (
+            "demo/task1_radar/task1_common.hpp",
+            "demo/task2_features/task2_common.hpp",
+        ):
+            task_source = (REPO_ROOT / relative).read_text(encoding="utf-8")
+            self.assertIn("all_scale_levels", task_source)
+
     def test_performance_rejects_custom_scale_without_building(self) -> None:
         result = subprocess.run(
             [str(PERFORMANCE_SCRIPT), "--scale", "custom", "--no-build"],

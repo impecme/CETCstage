@@ -82,6 +82,7 @@ namespace cusignal_demo::task2_features
         int warmup = 0;
         int repeat = 1;
         int scale_level = 6;
+        bool all_scale_levels = false;
         std::optional<int> num_frames;
         std::optional<int> samples_per_frame;
         std::optional<int> template_length;

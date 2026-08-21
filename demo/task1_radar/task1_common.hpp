@@ -66,6 +66,7 @@ namespace cusignal_demo::task1_radar
         int warmup = 0;
         int repeat = 1;
         int scale_level = 6;
+        bool all_scale_levels = false;
         std::optional<int> num_pulses;
         std::optional<int> samples_per_pulse;
         std::optional<int> template_length;

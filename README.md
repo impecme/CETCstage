@@ -180,8 +180,8 @@ scripts/performance.sh --all --scale all
 
 ### C500 现场五分钟演示
 
-现场演示只运行附录 53 个算子和 Task1、Task2：每个算子选择参考报告中 CPU/GPU 端到端加速比最高的一个规模，两个任务运行 L1～L6 全部规模。演示不重新编译、不搜索候选，运行时只查
-`data/tuning/zx_tuning.json`；固定 `warmup=1/repeat=3`，总时限为 285 秒。
+现场演示只运行附录 53 个算子和 Task1、Task2：每个算子直接选择参考报告中历史实测 CPU/GPU 端到端加速比最高的一个规模，两个任务运行 L1～L6 全部规模。演示不重新编译、不搜索候选，运行时只查
+`data/tuning/zx_tuning.json`；固定 `warmup=1/repeat=1`，总时限为 285 秒。现场加速比只作实测诊断，不设置相对历史结果的淘汰门槛，也不会改选其他规模。
 
 进入 `gpu_04` 容器时，在宿主机只执行：
 

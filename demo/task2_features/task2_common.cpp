@@ -374,12 +374,18 @@ namespace cusignal_demo::task2_features
             {
                 if (index + 1 >= argc)
                 {
-                    throw std::invalid_argument("--scale-level requires a value in [1, 6]");
+                    throw std::invalid_argument("--scale-level requires a value in [1, 6] or all");
                 }
-                options.scale_level = std::atoi(argv[++index]);
+                const std::string value = argv[++index];
+                if (value == "all")
+                {
+                    options.all_scale_levels = true;
+                    continue;
+                }
+                options.scale_level = std::atoi(value.c_str());
                 if (options.scale_level < 1 || options.scale_level > 6)
                 {
-                    throw std::invalid_argument("--scale-level must be in [1, 6]");
+                    throw std::invalid_argument("--scale-level must be in [1, 6] or all");
                 }
             }
             else if (arg == "--num-frames" || arg == "--samples-per-frame" ||
@@ -418,7 +424,7 @@ namespace cusignal_demo::task2_features
             }
             else if (arg == "--help" || arg == "-h")
             {
-                std::cout << "usage: task2_features_demo [--warmup N] [--repeat N] [--scale-level 1..6] [--unified-scale-protocol] [--invalid-input-checks] "
+                std::cout << "usage: task2_features_demo [--warmup N] [--repeat N] [--scale-level 1..6|all] [--unified-scale-protocol] [--invalid-input-checks] "
                              "[--skip-timing-validation] [--num-frames N] [--samples-per-frame N] "
                              "[--template-length N] [--filter-numtaps N] [--spectrogram-nperseg N] "
                              "[--spectrogram-noverlap N] [--spectrogram-nfft N]\n";
@@ -583,6 +589,36 @@ namespace cusignal_demo::task2_features
             throw std::runtime_error("failed to write file: " + path.string());
         }
         output << content;
+    }
+
+    void archive_batch_report(int scale_level)
+    {
+        const fs::path source = report_root();
+        const fs::path destination = source / "batch" / ("L" + std::to_string(scale_level));
+        fs::remove_all(destination);
+        fs::create_directories(destination);
+        for (const fs::directory_entry &entry : fs::directory_iterator(source))
+        {
+            if (!entry.is_regular_file())
+            {
+                continue;
+            }
+            const std::string name = entry.path().filename().string();
+            if (name.rfind("latest_", 0) != 0)
+            {
+                continue;
+            }
+            fs::copy_file(
+                entry.path(), destination / entry.path().filename(),
+                fs::copy_options::overwrite_existing);
+        }
+        const fs::path scenario = generated_root() / "input" / "scenario.json";
+        if (fs::is_regular_file(scenario))
+        {
+            fs::copy_file(
+                scenario, destination / "input_scenario.json",
+                fs::copy_options::overwrite_existing);
+        }
     }
 
     void write_real_csv(const fs::path &path, const RealSignal &values)
@@ -1876,6 +1912,25 @@ namespace cusignal_demo::task2_features
 
     int run(const DemoOptions &options)
     {
+        if (options.all_scale_levels)
+        {
+            bool invalid_checks_remaining = options.invalid_input_checks;
+            for (int scale_level = 1; scale_level <= 6; ++scale_level)
+            {
+                DemoOptions single = options;
+                single.all_scale_levels = false;
+                single.scale_level = scale_level;
+                single.invalid_input_checks = invalid_checks_remaining;
+                const int status = run(single);
+                if (status != 0)
+                {
+                    return status;
+                }
+                invalid_checks_remaining = false;
+                archive_batch_report(scale_level);
+            }
+            return 0;
+        }
         ScenarioConfig config = options.unified_scale_protocol
             ? unified_scenario_for_scale_level(options.scale_level)
             : scenario_for_scale_level(options.scale_level);
